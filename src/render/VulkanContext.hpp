@@ -10,14 +10,13 @@
 // Targets Vulkan 1.3 core, so dynamic rendering and synchronization2 are used
 // directly. There are no render pass or framebuffer objects anywhere.
 //
-#include <vk_mem_alloc.h>
-#include <vulkan/vulkan.h>
+#include "render/VulkanHandle.hpp"
 
 #include <array>
 #include <cstdint>
+#include <expected>
 #include <filesystem>
 #include <optional>
-#include <span>
 #include <string>
 #include <vector>
 
@@ -29,10 +28,12 @@ namespace orb::gfx {
 // input latency, which matters for flying a spacecraft by hand.
 inline constexpr uint32_t kFramesInFlight = 2;
 
-// Not booleans. `init(window, true, error)` and `createBuffer(size, usage,
-// true)` were mysteries at the call site, patched with /*name=*/ comments that
-// the compiler could not check -- and that comment was the evidence the type
-// was wrong. See CODING_GUIDELINES.md section 2.
+inline constexpr VkFormat kDepthFormat = VK_FORMAT_D32_SFLOAT;
+
+// Not booleans. `create(window, true)` and `createBuffer(size, usage, true)`
+// were mysteries at the call site, patched with /*name=*/ comments that the
+// compiler could not check -- and that comment was the evidence the type was
+// wrong. See CODING_GUIDELINES.md section 2.
 enum class Validation {
     Disabled,
     Enabled,
@@ -43,7 +44,14 @@ enum class Memory {
     HostVisible, // mappable, so the CPU can write it directly
 };
 
-inline constexpr VkFormat kDepthFormat = VK_FORMAT_D32_SFLOAT;
+// Why a string here, when the orbital core reports an enum: device-creation
+// failures are reported *by the driver*, and the useful part is its text.
+// "No suitable GPU" tells a user less than the driver's own account of which
+// feature was missing. Section 7 asks for one strategy per layer -- one way of
+// signalling failure -- not one representation of it everywhere.
+struct InitError {
+    std::string message;
+};
 
 // A GPU buffer together with the allocation that backs it.
 struct Buffer {
@@ -61,19 +69,19 @@ struct FrameContext {
     VkExtent2D extent{};
 };
 
+// Rule of Zero. Every handle below owns itself (render/VulkanHandle.hpp), so
+// this class declares no destructor, no copy and no move: the compiler writes
+// them, destruction happens in reverse declaration order because the language
+// says so, and there is no shutdown() to keep in step with the member list.
 class VulkanContext {
 public:
-    VulkanContext() = default;
-    ~VulkanContext();
-
-    VulkanContext(const VulkanContext&) = delete;
-    VulkanContext& operator=(const VulkanContext&) = delete;
-
-    // Returns false and fills `error` on failure; the caller reports it. No
-    // exceptions, because a missing GPU feature is a normal outcome to explain
-    // to the user, not an exceptional one.
-    [[nodiscard]] bool init(SDL_Window* window, Validation validation, std::string& error);
-    void shutdown();
+    // A factory, not a constructor followed by init(). Either you hold a fully
+    // valid context or you hold an error; there is no half-built third state to
+    // write defensive code against, and therefore none to forget to write
+    // defensive code against (E.5, NR.5). A failure part-way through unwinds on
+    // its own, because every handle built so far destroys itself.
+    [[nodiscard]] static std::expected<VulkanContext, InitError> create(SDL_Window* window,
+                                                                        Validation validation);
 
     // Acquires a swapchain image and opens a command buffer with the colour and
     // depth attachments already bound and cleared. Returns nullopt when the
@@ -87,7 +95,7 @@ public:
     void waitIdle() const;
 
     // Marks the swapchain for rebuild at the next beginFrame. Called on resize.
-    void requestSwapchainRebuild() { swapchainDirty_ = true; }
+    void requestSwapchainRebuild() noexcept { swapchainDirty_ = true; }
 
     // --- resources ---------------------------------------------------------
 
@@ -96,84 +104,87 @@ public:
 
     // Uploads through a host-visible staging buffer. Synchronous: intended for
     // load-time data, not per-frame streaming.
-    [[nodiscard]] bool
-    uploadBuffer(Buffer& dst, const void* data, VkDeviceSize size, std::string& error);
+    [[nodiscard]] std::expected<void, InitError>
+    uploadBuffer(Buffer& dst, const void* data, VkDeviceSize size);
 
-    // Loads a SPIR-V module from disk. Returns VK_NULL_HANDLE on failure.
+    // Loads a SPIR-V module from disk.
     //
     // std::filesystem::path, not std::string: on Windows the native encoding is
     // wchar_t, and a narrow string works right up until a user's account name
     // steps outside it -- then it fails in a way nobody can diagnose from a bug
     // report.
-    [[nodiscard]] VkShaderModule loadShaderModule(const std::filesystem::path& path,
-                                                  std::string& error) const;
+    [[nodiscard]] std::expected<VkShaderModule, InitError>
+    loadShaderModule(const std::filesystem::path& path) const;
 
     // --- accessors ---------------------------------------------------------
 
-    [[nodiscard]] VkDevice device() const { return device_; }
-    [[nodiscard]] VkPhysicalDevice physicalDevice() const { return physicalDevice_; }
-    [[nodiscard]] VmaAllocator allocator() const { return allocator_; }
-    [[nodiscard]] VkFormat colorFormat() const { return swapchainFormat_; }
-    [[nodiscard]] VkExtent2D extent() const { return swapchainExtent_; }
-    [[nodiscard]] const std::string& deviceName() const { return deviceName_; }
+    [[nodiscard]] VkDevice device() const noexcept { return device_.get(); }
+    [[nodiscard]] VkPhysicalDevice physicalDevice() const noexcept { return physicalDevice_; }
+    [[nodiscard]] VmaAllocator allocator() const noexcept { return allocator_.get(); }
+    [[nodiscard]] VkFormat colorFormat() const noexcept { return swapchainFormat_; }
+    [[nodiscard]] VkExtent2D extent() const noexcept { return swapchainExtent_; }
+    [[nodiscard]] const std::string& deviceName() const noexcept { return deviceName_; }
 
 private:
-    // init() is these five steps in order. Split out because one 149-line
-    // function doing eight jobs cannot be read without scrolling, cannot be
-    // tested in pieces, and gave every one of its failure paths the same
-    // undifferentiated `return false` (section 17, F.2, F.3).
-    [[nodiscard]] bool createAllocator(std::string& error);
-    [[nodiscard]] bool createFrameResources(std::string& error);
-    [[nodiscard]] bool createUploadContext(std::string& error);
+    VulkanContext() = default;
 
-    [[nodiscard]] bool createSwapchain(std::string& error);
-    [[nodiscard]] bool createDepthAttachment(std::string& error);
+    [[nodiscard]] std::expected<void, InitError> createAllocator();
+    [[nodiscard]] std::expected<void, InitError> createFrameResources();
+    [[nodiscard]] std::expected<void, InitError> createUploadContext();
+    [[nodiscard]] std::expected<void, InitError> createSwapchain();
+    [[nodiscard]] std::expected<void, InitError> createDepthAttachment();
     void beginRendering(VkCommandBuffer cmd, uint32_t imageIndex) const;
-    void destroySwapchain() noexcept;
     bool recreateSwapchain();
 
+    // Non-owning: SDL owns the window, and it outlives this object.
     SDL_Window* window_{nullptr};
 
-    VkInstance instance_{VK_NULL_HANDLE};
-    VkDebugUtilsMessengerEXT debugMessenger_{VK_NULL_HANDLE};
-    VkSurfaceKHR surface_{VK_NULL_HANDLE};
-    VkPhysicalDevice physicalDevice_{VK_NULL_HANDLE};
-    VkDevice device_{VK_NULL_HANDLE};
-    VkQueue graphicsQueue_{VK_NULL_HANDLE};
+    // DECLARATION ORDER IS DESTRUCTION ORDER, REVERSED. The instance must
+    // outlive the surface and the messenger; the device must outlive everything
+    // allocated from it. Do not reorder these without understanding that.
+    UniqueInstance instance_;
+    UniqueDebugMessenger debugMessenger_;
+    UniqueSurface surface_;
+    VkPhysicalDevice physicalDevice_{VK_NULL_HANDLE}; // owned by the instance
+    UniqueDevice device_;
+    VkQueue graphicsQueue_{VK_NULL_HANDLE}; // owned by the device
     uint32_t graphicsQueueFamily_{0};
-    VmaAllocator allocator_{nullptr};
     std::string deviceName_;
+    UniqueAllocator allocator_;
 
-    VkSwapchainKHR swapchain_{VK_NULL_HANDLE};
+    UniqueSwapchain swapchain_;
     VkFormat swapchainFormat_{VK_FORMAT_UNDEFINED};
     VkExtent2D swapchainExtent_{};
-    std::vector<VkImage> swapchainImages_;
-    std::vector<VkImageView> swapchainViews_;
+    std::vector<VkImage> swapchainImages_; // owned by the swapchain
+    std::vector<UniqueImageView> swapchainViews_;
     bool swapchainDirty_{false};
 
-    VkImage depthImage_{VK_NULL_HANDLE};
-    VmaAllocation depthAllocation_{nullptr};
-    VkImageView depthView_{VK_NULL_HANDLE};
+    UniqueImage depthImage_;
+    UniqueImageView depthView_;
 
     // Per frame in flight. std::array, not a C array: it knows its own size,
-    // and .at() gives a bounds check at the handful of runtime-indexed accesses
-    // below, none of which are in a hot path.
-    std::array<VkCommandPool, kFramesInFlight> commandPools_{};
-    std::array<VkCommandBuffer, kFramesInFlight> commandBuffers_{};
-    std::array<VkSemaphore, kFramesInFlight> imageAvailable_{};
-    std::array<VkFence, kFramesInFlight> inFlight_{};
+    // and .at() bounds-checks the handful of runtime-indexed accesses in the
+    // .cpp, none of which are in a hot path.
+    std::array<UniqueCommandPool, kFramesInFlight> commandPools_;
+    std::array<VkCommandBuffer, kFramesInFlight> commandBuffers_{}; // freed with the pool
+    std::array<UniqueSemaphore, kFramesInFlight> imageAvailable_;
+    std::array<UniqueFence, kFramesInFlight> inFlight_;
 
     // Per swapchain image. A present-wait semaphore must not be reused while a
     // previous present on the same image is still pending, and the swapchain
     // image count is not necessarily kFramesInFlight.
-    std::vector<VkSemaphore> renderFinished_;
+    std::vector<UniqueSemaphore> renderFinished_;
 
     // Immediate-submit context for uploads.
-    VkCommandPool uploadPool_{VK_NULL_HANDLE};
-    VkCommandBuffer uploadCmd_{VK_NULL_HANDLE};
-    VkFence uploadFence_{VK_NULL_HANDLE};
+    UniqueCommandPool uploadPool_;
+    VkCommandBuffer uploadCmd_{VK_NULL_HANDLE}; // freed with uploadPool_
+    UniqueFence uploadFence_;
 
     uint32_t frameIndex_{0};
+
+    // LAST, deliberately: destroyed first, so the GPU is idle before any handle
+    // above it is destroyed. See DeviceIdleGuard in render/VulkanHandle.hpp.
+    DeviceIdleGuard idleGuard_;
 };
 
 // --- small helpers shared by the render code -------------------------------

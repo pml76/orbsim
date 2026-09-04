@@ -11,6 +11,7 @@
 
 #include <print>
 #include <string>
+#include <utility>
 
 namespace {
 
@@ -67,16 +68,17 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    orb::gfx::VulkanContext gfx;
-    std::string error;
-
-    if (!gfx.init(window, validation, error)) {
-        std::print(stderr, "Renderer initialisation failed: {}\n", error);
-        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "orbsim", error.c_str(), window);
+    // A factory, so there is no moment where `gfx` exists but is not usable.
+    auto created = orb::gfx::VulkanContext::create(window, validation);
+    if (!created) {
+        const std::string& message = created.error().message;
+        std::print(stderr, "Renderer initialisation failed: {}\n", message);
+        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "orbsim", message.c_str(), window);
         SDL_DestroyWindow(window);
         SDL_Quit();
         return 1;
     }
+    orb::gfx::VulkanContext gfx = std::move(*created);
 
     std::print("GPU: {}\n", gfx.deviceName());
     std::print("Swapchain: {}x{}\n", gfx.extent().width, gfx.extent().height);
@@ -125,7 +127,8 @@ int main(int argc, char** argv) {
                    1000.0 * static_cast<double>(frames) / static_cast<double>(elapsed));
     }
 
-    gfx.shutdown();
+    // No shutdown() call: ~VulkanContext does it, in reverse
+    // declaration order, without anyone having to remember.
     SDL_DestroyWindow(window);
     SDL_Quit();
     return 0;
