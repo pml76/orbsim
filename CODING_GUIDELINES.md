@@ -38,6 +38,7 @@ So here is the whole thing on one screen. Everything below is elaboration.
 3. **No boolean parameters.** If the call site needs a `/*hostVisible=*/`
    comment, the parameter wanted to be an `enum class`.
 4. **Rule of Zero.** Every hand-written destructor is a bug you volunteered for.
+   Wrap the resource once; the class that holds it then needs nothing.
 5. **`const` by default, `[[nodiscard]]` on anything whose return value is the
    point.**
 6. **Pick one error strategy and keep it.** `std::expected` is available to you.
@@ -354,26 +355,36 @@ Write classes that need no destructor, no copy constructor, no assignment
 operator, and no move operations. The best special member function is the one
 you did not have to write, because you cannot get it wrong.
 
-Which brings me to the uncomfortable part.
+Which brings me to what used to be the uncomfortable part.
 
-**`VulkanContext` is currently a Rule of Five class pretending to be a Rule of
-Zero class.** It holds nineteen raw handles. `shutdown()` destroys them in a
-carefully hand-written order, and `~VulkanContext()` calls it. Copy and move are
-deleted, which is correct and I am glad you did it.
+**`VulkanContext` was a Rule of Five class pretending to be a Rule of Zero
+class.** It held nineteen raw handles. `shutdown()` destroyed them in a
+carefully hand-written order, and `~VulkanContext()` called it.
 
-But look at what that costs: every single early `return false` inside `init()`
-leaves the object partially constructed, and correctness now depends on
-`shutdown()` checking each handle against `VK_NULL_HANDLE` — forever, including
-for the handles you add next month. That is a maintenance burden you signed up
-for, and one day you will add a handle and forget one of the two places.
+Look at what that cost: every single early `return false` inside `init()` left
+the object partially constructed, so correctness depended on `shutdown()`
+checking each handle against `VK_NULL_HANDLE` — forever, including for the
+handles added next month. One day somebody adds a handle and edits only one of
+the two places.
 
 The fix is boring and it works: wrap each handle in a small move-only RAII type,
-then delete `shutdown()` entirely and let the compiler generate the destructor.
+delete `shutdown()` entirely, and let the compiler generate the destructor.
 Destruction order becomes reverse declaration order, which is a rule the
 *language* enforces instead of a rule you enforce.
 
-I am not saying rewrite it this afternoon. I am saying: every handle you add
-from here makes it more expensive, so do it before there are thirty.
+**Done.** `render/VulkanHandle.hpp` now contains every hand-written destructor
+in the renderer, and `VulkanContext` declares none at all.
+
+And it is worth knowing what that refactor turned up. Deleting `shutdown()` also
+deleted the `vkDeviceWaitIdle` it opened with, so teardown began destroying
+command pools and a swapchain the GPU was still using. The validation layers
+said so on the first run. The fix was not to remember the wait — it was to make
+it a member, `DeviceIdleGuard`, declared last and therefore destroyed first, so
+that nobody editing the member list can drop it again.
+
+That is the argument for RAII in miniature: the version that relies on a person
+remembering fails quietly, and the version that encodes the requirement in a
+type cannot.
 
 ---
 
@@ -449,15 +460,13 @@ Not once it hurts. You are at exactly the right moment to do this deliberately,
 because the codebase currently has two strategies and has not chosen between
 them.
 
-### What you have now
+### What you had
 
-The simulation core has chosen: `std::expected<_, OrbitError>` everywhere, with
-assertions for the conditions only a bug can reach. The renderer has not:
+Both layers have now chosen `std::expected`. This is what they replaced:
 
 ```cpp
-[[nodiscard]] bool init(SDL_Window* window, Validation validation, std::string& error);
-[[nodiscard]] bool uploadBuffer(Buffer& dst, const void* data, VkDeviceSize size,
-                                std::string& error);
+bool init(SDL_Window* window, bool enableValidation, std::string& error);
+bool uploadBuffer(Buffer& dst, const void* data, VkDeviceSize size, std::string& error);
 ```
 
 Boolean return, error text through an out-parameter. The Guidelines would push
@@ -475,10 +484,10 @@ normal-control-flow side of that line.
 ### What C++23 gives you instead
 
 You are on C++23. You do not have to choose between exceptions and out-params,
-because `std::expected` exists:
+because `std::expected` exists — and this is now the actual signature:
 
 ```cpp
-[[nodiscard]] std::expected<VulkanContext, InitError> createContext(SDL_Window*);
+[[nodiscard]] static std::expected<VulkanContext, InitError> create(SDL_Window*, Validation);
 ```
 
 This is strictly better than what you have:
@@ -494,15 +503,23 @@ This is strictly better than what you have:
 E.5 says **"Let a constructor establish an invariant, and throw if it cannot."**
 NR.5 is the same idea from the other side: do not use two-phase initialization.
 
-`VulkanContext` is two-phase - construct, then `init()`, and between those two
-lines it is a live object holding nothing. A factory function returning
-`std::expected` collapses that: either you have a fully valid context, or you
-have an error. There is no third state to write defensive code against, which
-means there is no third state to *forget* to write defensive code against.
+`VulkanContext` was two-phase - construct, then `init()`, and between those two
+lines it was a live object holding nothing. The factory collapses that: either
+you have a fully valid context, or you have an error. There is no third state to
+write defensive code against, which means there is no third state to *forget* to
+write defensive code against.
 
-That is the same argument as section 4, arriving from a different direction.
+That was the same argument as section 4, arriving from a different direction.
 When two independent principles point at the same refactor, that is usually the
-refactor to do.
+refactor to do — and in this case doing it once satisfied both.
+
+One deliberate difference between the two layers: the core reports an
+`OrbitError` enum, the renderer an `InitError` carrying a string. That is not
+inconsistency. A degenerate orbit is one of three things this code can decide;
+a device-creation failure is the *driver's* to explain, and "no suitable GPU"
+tells a user less than the driver's own account of which feature was missing.
+One strategy per layer means one way of signalling failure, not one
+representation of it.
 
 ### The rest
 
