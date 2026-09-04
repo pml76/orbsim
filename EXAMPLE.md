@@ -5,50 +5,46 @@ homage caveat: written in the style of Jason Turner, who did not write it.*
 
 ---
 
-Twenty-one sections of advice is twenty-one arguments you have to hold in your
-head at once. That is not how anybody actually writes code. So here is one
-feature, written the way the whole document says to write it, with the rules
-called out where they land.
+Twenty-one sections of advice is twenty-one things to hold in your head at once,
+which is not how anybody writes code. So here is **one program**, complete and
+self-contained, written so that every rule in the guidelines is followed
+somewhere in it.
 
 **The feature:** sample a closed orbit into a polyline the renderer can draw.
 
-I picked it because it is the next thing this project genuinely needs — you
-cannot have an Orbit MFD without it — and because it happens to touch nearly
-every argument in the document. It does real floating-point work, it can fail,
-it crosses the simulation/renderer boundary, and it has a numerical loop that
-might not converge. That is most of the guidelines in about 250 lines.
+I picked it because it is the next thing this project genuinely needs -- there
+is no Orbit MFD without it -- and because it happens to touch nearly every
+argument in the document. It does real floating-point work, it can fail, it
+crosses the simulation/renderer boundary, and it contains a numerical loop that
+might not converge.
 
-## This code was compiled and run before it was written up
+The `[S<n>]` markers in the code point at the guideline section each construct
+demonstrates, so you can read the code and see the rule, or read the
+[coverage table](#coverage) and jump to the code.
 
-Nothing here is illustrative pseudocode.
+## This was compiled and run before it was written up
 
-```
-clang++ -std=c++23 -O2 -ffp-contract=off \
-  -Wall -Wextra -Wpedantic -Wshadow -Wold-style-cast -Wcast-align -Wunused \
-  -Wconversion -Wsign-conversion -Wnull-dereference -Wdouble-promotion \
-  -Wformat=2 -Wimplicit-fallthrough \
-  -I src -I example \
-  example/orbit/Kepler.cpp example/orbit/OrbitPath.cpp \
-  example/tests/test_orbit_path.cpp src/orbit/Orbit.cpp -o test_orbit_path
-```
+Nothing below is illustrative pseudocode. It depends on nothing but the standard
+library, so you can paste it into Compiler Explorer unchanged.
 
 | Check | Result |
 |---|---|
 | Compiles under the full section-1 warning set | **zero warnings, zero errors** |
-| Test suite | **29 checks, 0 failures** |
-| Every header compiles standalone (SF.11) | **all four self-contained** |
-| `Radians` vs bare `double`, `-O2` assembly | **byte-identical** |
+| Test suite | **28 checks, 0 failures** |
+| Longest function | **29 statements** (`OrbitPath::sample`) |
+| Mutable globals | **none** |
+| Places `f64` narrows to `f32` | **one function** (three lines: x, y, z) |
+| `Radians` vs bare `double` at `-O2` | **byte-identical assembly** |
 
-That last one is section 21 keeping its promise, so let me get it out of the
-way immediately. These two functions:
+That last row is section 21 keeping its promise, so let me settle it up front.
+These two functions:
 
 ```cpp
-extern "C" double withStrongType(double d) { return toRadians(Degrees{d}).value; }
-extern "C" double withBareDouble(double d) { return d * (kPi / 180.0); }
+extern "C" double withStrongType(double d) { return orb::toRadians(orb::Degrees{d}).value; }
+extern "C" double withBareDouble(double d) { return d * (orb::kPi / 180.0); }
 ```
 
-compile to this. Both of them. The same instruction, referencing the same
-constant:
+compile to this -- both of them, same instruction, same constant:
 
 ```asm
 withStrongType:
@@ -60,44 +56,136 @@ withBareDouble:
         ret
 ```
 
-Zero-overhead abstraction is not a slogan. Do not take my word for it — that is
-the point of the exercise. Go and look at your own.
+Zero-overhead abstraction is not a slogan. And do not take my word for it --
+that is the whole point. Go look at your own.
 
 ---
 
-## 1. `src/core/Units.hpp` — put the meaning in the type
-
-> Sections **2** (strong types), **3** (`constexpr` + `static_assert`),
-> **6** (initialize everything), **11** (never `==` on floats),
-> **17** (do not write code you do not need yet)
+## The code
 
 ```cpp
-#pragma once
+// ============================================================================
+// orbsim -- one worked example: sampling a closed orbit into a polyline.
 //
-// Strong scalar types for the simulation domain.
+// Written so that every rule in CODING_GUIDELINES.md is followed somewhere in
+// this file. The [S<n>] markers point at the section a construct demonstrates.
 //
-// Every one of these is a `double` at runtime and disappears entirely at -O2.
-// What they buy is that the compiler now knows the difference between an angle
-// and an eccentricity, and between degrees and radians -- a distinction that
-// otherwise exists only in the head of whoever wrote the call.
+// Self-contained: depends on nothing but the standard library, so it can be
+// pasted into Compiler Explorer unchanged.
 //
-#include "core/Math.hpp"
+// [S1] Built with, and required to stay clean under, the full warning set:
+//   clang++ -std=c++23 -O2 -ffp-contract=off -Wall -Wextra -Wpedantic -Wshadow
+//           -Wold-style-cast -Wcast-align -Wunused -Wconversion
+//           -Wsign-conversion -Wnull-dereference -Wdouble-promotion -Wformat=2
+//           -Wimplicit-fallthrough example.cpp -o example
+//
+// [S14] In the real tree this is five files -- core/Math.hpp, core/Units.hpp,
+// orbit/Kepler.*, orbit/OrbitPath.*, render/PathUpload.hpp -- each .cpp
+// including its own header first, which is what keeps that header
+// self-contained. The banners below mark where those seams fall.
+// ============================================================================
 
+// [S14] Standard-library includes in one sorted block. No `using namespace std`
+// anywhere, at any scope.
+#include <algorithm>
+#include <array>
+#include <cmath>
 #include <compare>
+#include <cstddef>
+#include <expected>
+#include <iterator>
+#include <limits>
+#include <numbers>
+#include <optional>
+#include <print>
+#include <ranges>
+#include <span>
+#include <string_view>
+#include <thread>
+#include <type_traits>
+#include <utility>
+#include <vector>
+
+// ============================================================================
+// core/Math.hpp -- double-precision vector maths
+// ============================================================================
 
 namespace orb {
 
-// Deliberately NOT defined here: Metres, Seconds, Velocity. They follow the
-// identical pattern, nothing in this module needs them yet, and code written
-// before it has a caller is code shaped by a guess.
+using f32 = float;
+using f64 = double;
+
+// [S8] constexpr, not #define: it has a type and it obeys scope.
+inline constexpr f64 kPi = std::numbers::pi_v<f64>;
+inline constexpr f64 kTau = 2.0 * kPi;
+
+// [S11] Floating-point equality is never `==`. This is the only comparison the
+// rest of the file is allowed to use, including inside static_assert, because
+// the compile-time answer and the runtime answer are the same answer.
+[[nodiscard]] constexpr bool nearlyEqual(f64 a, f64 b, f64 tolerance) noexcept {
+    const f64 difference = a > b ? a - b : b - a;
+    return difference <= tolerance;
+}
+
+[[nodiscard]] inline f64 wrapToPi(f64 angle) noexcept {
+    const f64 wrapped = std::fmod(angle, kTau);
+    if (wrapped > kPi) return wrapped - kTau;
+    if (wrapped < -kPi) return wrapped + kTau;
+    return wrapped;   // [S21] Three returns. NR.2: the single-return rule comes
+                      // from a language without destructors.
+}
+
+// [S4] Rule of Zero: no destructor, no copy, no assignment, no move. The
+// compiler generates all of them and cannot get them wrong.
+// [S6] Default member initializers cover every constructor, including the ones
+// added later, so a Vec3 cannot exist uninitialized.
+struct Vec3 {
+    f64 x{}, y{}, z{};
+
+    [[nodiscard]] constexpr Vec3 operator-(const Vec3& other) const noexcept {
+        return {x - other.x, y - other.y, z - other.z};
+    }
+
+    [[nodiscard]] constexpr bool operator==(const Vec3&) const noexcept = default;
+};
+
+[[nodiscard]] constexpr f64 dot(const Vec3& a, const Vec3& b) noexcept {
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+[[nodiscard]] constexpr Vec3 cross(const Vec3& a, const Vec3& b) noexcept {
+    return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
+}
+
+[[nodiscard]] inline f64 length(const Vec3& v) noexcept { return std::sqrt(dot(v, v)); }
+
+// [S3] A static_assert is a unit test that costs no runtime, runs on every
+// build whether or not anyone invokes the test suite, and cannot rot.
+static_assert(cross(Vec3{1.0, 0.0, 0.0}, Vec3{0.0, 1.0, 0.0}) == Vec3{0.0, 0.0, 1.0});
+static_assert(nearlyEqual(dot(Vec3{1.0, 2.0, 3.0}, Vec3{4.0, 5.0, 6.0}), 32.0, 0.0));
+
+// ============================================================================
+// core/Units.hpp -- the meaning lives in the type, not in your head
+// ============================================================================
+
+// [S2] Each of these is a double at runtime and disappears entirely at -O2.
+// What they buy is that the compiler now knows a radian from a degree and an
+// angle from an eccentricity -- distinctions that otherwise exist only in the
+// head of whoever wrote the call.
+//
+// [S17] Metres, Velocity and Mass are deliberately absent. They follow the
+// identical pattern, nothing here needs them, and code written before it has a
+// caller is code shaped by a guess.
 
 struct Radians {
     f64 value{};
 
     constexpr Radians() noexcept = default;
+    // [S2] explicit, or the type silently converts back to a bare double and
+    // rebuilds the very problem it was introduced to solve.
     explicit constexpr Radians(f64 v) noexcept : value(v) {}
 
-    constexpr auto operator<=>(const Radians&) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const Radians&) const noexcept = default;
 };
 
 struct Degrees {
@@ -106,18 +194,27 @@ struct Degrees {
     constexpr Degrees() noexcept = default;
     explicit constexpr Degrees(f64 v) noexcept : value(v) {}
 
-    constexpr auto operator<=>(const Degrees&) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const Degrees&) const noexcept = default;
+};
+
+struct Seconds {
+    f64 value{};
+
+    constexpr Seconds() noexcept = default;
+    explicit constexpr Seconds(f64 v) noexcept : value(v) {}
+
+    [[nodiscard]] constexpr auto operator<=>(const Seconds&) const noexcept = default;
 };
 
 // Dimensionless, but not interchangeable with any other dimensionless quantity.
-// This is what stops solveKepler(anomaly, ecc) being callable backwards.
+// This is what stops solveKepler(anomaly, eccentricity) compiling backwards.
 struct Eccentricity {
     f64 value{};
 
     constexpr Eccentricity() noexcept = default;
     explicit constexpr Eccentricity(f64 v) noexcept : value(v) {}
 
-    constexpr auto operator<=>(const Eccentricity&) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const Eccentricity&) const noexcept = default;
 };
 
 // Standard gravitational parameter GM, m^3/s^2.
@@ -127,7 +224,7 @@ struct GravParam {
     constexpr GravParam() noexcept = default;
     explicit constexpr GravParam(f64 v) noexcept : value(v) {}
 
-    constexpr auto operator<=>(const GravParam&) const noexcept = default;
+    [[nodiscard]] constexpr auto operator<=>(const GravParam&) const noexcept = default;
 };
 
 [[nodiscard]] constexpr Radians toRadians(Degrees d) noexcept {
@@ -141,87 +238,26 @@ struct GravParam {
 inline namespace literals {
 
 [[nodiscard]] constexpr Degrees operator""_deg(long double v) noexcept {
-    return Degrees{static_cast<f64>(v)};
-}
-[[nodiscard]] constexpr Degrees operator""_deg(unsigned long long v) noexcept {
-    return Degrees{static_cast<f64>(v)};
+    return Degrees{static_cast<f64>(v)};   // [S8] named cast, never a C cast
 }
 [[nodiscard]] constexpr Radians operator""_rad(long double v) noexcept {
-    return Radians{static_cast<f64>(v)};
-}
-[[nodiscard]] constexpr Radians operator""_rad(unsigned long long v) noexcept {
     return Radians{static_cast<f64>(v)};
 }
 
 } // namespace literals
 
-// Floating-point equality is never `==`, not even in a static_assert, because
-// the compile-time answer and the runtime answer are the same answer.
-[[nodiscard]] constexpr bool nearlyEqual(f64 a, f64 b, f64 tolerance) noexcept {
-    const f64 diff = a > b ? a - b : b - a;
-    return diff <= tolerance;
-}
-
-// Compile-time tests. They cost nothing, run on every build whether or not
-// anyone remembers to invoke the test suite, and cannot rot.
 static_assert(nearlyEqual(toRadians(180.0_deg).value, kPi, 1e-15));
 static_assert(nearlyEqual(toDegrees(Radians{kPi}).value, 180.0, 1e-13));
 static_assert(nearlyEqual(toRadians(toDegrees(Radians{1.0})).value, 1.0, 1e-15));
-static_assert(180.0_deg == Degrees{180.0});
 
-// And a couple on the vector maths this module builds on.
-static_assert(cross(Vec3{1, 0, 0}, Vec3{0, 1, 0}) == Vec3{0, 0, 1});
-static_assert(dot(Vec3{1, 2, 3}, Vec3{4, 5, 6}) == 32.0);
+// ============================================================================
+// orbit/Kepler.hpp + .cpp -- a solver that admits when it failed
+// ============================================================================
 
-} // namespace orb
-```
-
-Four things worth pointing at.
-
-**`explicit` on every constructor.** Leave it off and `Radians` converts to and
-from a bare `double` on its own, and you have rebuilt the problem you were
-solving. Section 2 says this in one line; here is what it looks like.
-
-**`f64 value{}` is a default member initializer.** It covers every constructor
-at once, including the one somebody adds next year and forgets to update. That
-is section 6, and it is why none of these types can exist uninitialized.
-
-**`nearlyEqual` exists because `==` on floats is wrong even in a
-`static_assert`.** `180.0 * (kPi / 180.0)` is *not* bit-identical to `kPi` —
-each operation rounds. A `static_assert` comparing them with `==` would fail,
-and the temptation would be to delete the assert rather than fix the
-comparison.
-
-**The comment about what is *not* in the file.** `Metres` and `Seconds` are
-four lines each and I did not write them, because nothing needs them yet. That
-is section 17's "delete code", applied before the code exists — which is the
-cheap version.
-
----
-
-## 2. `src/orbit/Kepler.hpp` — a function that admits when it failed
-
-> Sections **2** (preconditions, I.24), **5** (`[[nodiscard]]`),
-> **7** (error handling), **8** (`enum class`), **16** (comment the why)
-
-```cpp
-#pragma once
-//
-// Kepler's equation, M = E - e*sin(E), solved for E.
-//
-// There is no closed form, so this is Newton-Raphson. The interesting part is
-// not the iteration -- it is that the function tells you when it failed.
-//
-#include "core/Units.hpp"
-
-#include <expected>
-#include <string_view>
-
-namespace orb {
-
+// [S8] enum class: scoped, typed, no surprise conversions.
 enum class KeplerError {
     EccentricityOutOfRange,   // precondition violated by the caller
-    DidNotConverge,           // iteration limit hit; the answer is not usable
+    DidNotConverge,           // iteration limit reached; the answer is unusable
 };
 
 [[nodiscard]] constexpr std::string_view describe(KeplerError error) noexcept {
@@ -229,162 +265,95 @@ enum class KeplerError {
     case KeplerError::EccentricityOutOfRange:
         return "eccentricity must be in [0, 1) for an elliptic orbit";
     case KeplerError::DidNotConverge:
-        return "Kepler solver hit its iteration limit without converging";
+        return "Kepler solver reached its iteration limit without converging";
     }
     return "unknown error";
 }
 
-// Solves Kepler's equation for the eccentric anomaly.
-//
-// Preconditions: 0 <= ecc < 1. Violating that is reported, not asserted, because
-// an eccentricity arriving from a scenario file is user input rather than a
-// programmer error.
-//
-// Guarantees: on success the returned E satisfies |E - e*sin(E) - M| < 1e-13.
-// On failure nothing is returned at all -- there is no "approximately right"
-// value to accidentally use.
-[[nodiscard]] std::expected<Radians, KeplerError> solveKepler(Radians meanAnomaly,
-                                                              Eccentricity ecc) noexcept;
+namespace {   // [S14] internal linkage: invisible to the linker, free to rename
 
-} // namespace orb
-```
+// [S16] Every constant says where its value came from. A bare 1e-14 is a
+// mystery nobody will later dare to change.
 
-The signature is the whole argument of section 2 compressed into one line.
-
-```cpp
-solveKepler(Radians meanAnomaly, Eccentricity ecc)   // this
-solveKepler(f64 meanAnomaly, f64 ecc)                // not this
-```
-
-Two adjacent parameters, same underlying type, swappable in silence — that is
-exactly rule I.24, and it is what `bugprone-easily-swappable-parameters` in the
-project's `.clang-tidy` exists to catch. With strong types the swap is a
-compile error, and the fix cost four lines in a header.
-
-And note what the doc comment does: it states the **precondition** (I.5), the
-**guarantee** (I.7), and — the part people skip — *why* the precondition is
-reported rather than asserted. A bad eccentricity comes from a scenario file a
-user wrote. That is input, not a programmer error, and section 7 says input
-validation is normal control flow.
-
----
-
-## 3. `src/orbit/Kepler.cpp` — the bounded loop, done properly
-
-> Sections **16** (every constant explains itself), **20** (JPL rules 2 and 5),
-> **11** (NaN-safe comparison), **21** (multiple returns are fine)
-
-```cpp
-#include "orbit/Kepler.hpp"   // own header first: this is what proves it self-contained
-
-#include <cmath>
-
-namespace orb {
-namespace {
-
-// Below this eccentricity the mean anomaly is a good enough starting guess. Above
-// it, the orbit spends nearly all of its mean anomaly close to periapsis, M is a
-// poor guess, and starting at +/-pi keeps Newton inside the convergent basin.
-// The 0.8 threshold is the classical one from Danby's formulation.
+// Below this eccentricity the mean anomaly is a good enough starting guess.
+// Above it the orbit spends nearly all its mean anomaly near periapsis, M is a
+// poor guess, and starting at +/-pi keeps Newton in the convergent basin. The
+// 0.8 threshold is the classical one from Danby's formulation.
 constexpr f64 kHighEccentricity = 0.8;
 
-// One ulp of a double near pi is about 4.4e-16. A tolerance two orders of
-// magnitude above that converges without chasing rounding noise.
+// One ulp of a double near pi is about 4.4e-16. Two orders of magnitude above
+// that converges without chasing rounding noise.
 constexpr f64 kConvergenceTolerance = 1e-14;
 
+// [S20] JPL Power of Ten, rule 2: every loop needs a provable upper bound.
 // Newton roughly doubles its correct digits per step, so from the guesses above
-// this converges in well under ten iterations for every eccentricity in range.
-// The cap is not a performance budget -- it exists so the loop has a provable
-// upper bound (JPL Power of Ten, rule 2).
-constexpr int kMaxIterations = 50;
+// this converges in well under ten iterations for any eccentricity in range.
+// The cap is not a performance budget -- it is what makes the bound provable.
+constexpr int kMaxKeplerIterations = 50;
 
 } // namespace
 
-std::expected<Radians, KeplerError> solveKepler(Radians meanAnomaly, Eccentricity ecc) noexcept {
+// Solves Kepler's equation M = E - e*sin(E) for the eccentric anomaly.
+//
+// [S2] Preconditions: 0 <= ecc < 1. Reported rather than asserted, because an
+// eccentricity arriving from a scenario file is user input, not a programmer
+// error.
+// Guarantees: on success |E - e*sin(E) - M| < 1e-13. On failure nothing is
+// returned at all, so there is no "approximately right" value lying around to
+// be used by accident.
+//
+// [S2] Note the parameter types. `solveKepler(f64, f64)` would take two
+// adjacent doubles that swap silently (I.24); these two cannot be transposed.
+[[nodiscard]] std::expected<Radians, KeplerError> solveKepler(Radians meanAnomaly,
+                                                              Eccentricity ecc) noexcept {
+    // [S11] Negated comparisons, so a NaN eccentricity is rejected too. The
+    // natural spelling `ecc.value < 0.0 || ecc.value >= 1.0` is false for NaN
+    // and would hand NaN to Newton, which returns NaN as though it converged.
     if (!(ecc.value >= 0.0) || !(ecc.value < 1.0)) {
-        // Written as negated comparisons so a NaN eccentricity is rejected too;
-        // `ecc.value < 0.0 || ecc.value >= 1.0` would let NaN through.
         return std::unexpected(KeplerError::EccentricityOutOfRange);
     }
 
+    // [S21] Declared at first use, in the smallest scope that works (NR.1).
     const f64 e = ecc.value;
-    const f64 m = wrapPi(meanAnomaly.value);
+    const f64 m = wrapToPi(meanAnomaly.value);
 
     f64 eccentricAnomaly = (e < kHighEccentricity) ? m : (m >= 0.0 ? kPi : -kPi);
 
-    for (int iteration = 0; iteration < kMaxIterations; ++iteration) {
+    // [S20] Bounded (rule 2) *and* it reports failure (rule 5). The bound alone
+    // is the easy half.
+    for (int iteration = 0; iteration < kMaxKeplerIterations; ++iteration) {
         const f64 residual = eccentricAnomaly - e * std::sin(eccentricAnomaly) - m;
         const f64 slope = 1.0 - e * std::cos(eccentricAnomaly);
         const f64 step = -residual / slope;
 
         eccentricAnomaly += step;
 
-        if (std::abs(step) < kConvergenceTolerance) {
-            return Radians{eccentricAnomaly};
-        }
+        if (std::abs(step) < kConvergenceTolerance) return Radians{eccentricAnomaly};
     }
 
-    // The bound was the easy half. This is the half that stops a wrong number
-    // from leaving the function wearing the same face as a right one.
+    // This return is what stops a wrong number leaving the function wearing the
+    // same face as a right one.
     return std::unexpected(KeplerError::DidNotConverge);
 }
 
-} // namespace orb
-```
+// ============================================================================
+// orbit/OrbitPath.hpp + .cpp -- the interface you cannot misread
+// ============================================================================
 
-**This is the fix for the flaw section 20 names in the existing code.** The
-current `Orbit.cpp` has the same loop with the same bound and no final
-`return std::unexpected`. It falls out of the loop and returns whatever it had,
-and no caller can tell the difference between a converged answer and a
-surrendered one.
-
-Three constants, three comments, and each comment answers *where the number came
-from* — 0.8 is Danby's classical threshold, 1e-14 is two orders above one ulp
-near pi, 50 is not a performance budget. That is section 16. A `1e-14` with no
-explanation is a mystery that nobody will ever dare to change.
-
-The NaN handling deserves its own note. `!(x >= 0.0) || !(x < 1.0)` looks like a
-worse way to write `x < 0.0 || x >= 1.0`, and it is not: every comparison
-against NaN is false, so the natural spelling *accepts* a NaN eccentricity and
-hands it to Newton, which produces NaN forever and then returns it as though it
-had converged. That is section 11 in practice.
-
----
-
-## 4. `src/orbit/OrbitPath.hpp` — an interface you cannot misread
-
-> Sections **2** (enums not bools, I.23), **4** (Rule of Zero),
-> **6** (default member initializers), **7** (`std::expected`),
-> **13** and **19** (pure function), **18** (`std::size_t`)
-
-```cpp
-#pragma once
-//
-// Sampling a closed orbit into a polyline the renderer can draw.
-//
-// Returns f64 positions in the body-centred inertial frame. Deliberately knows
-// nothing about vertex buffers, cameras or Vulkan -- narrowing to f32 happens
-// downstream, in exactly one place (see render/PathUpload.hpp).
-//
-#include "core/Units.hpp"
-#include "orbit/Orbit.hpp"
-
-#include <cstddef>
-#include <expected>
-#include <vector>
-
-namespace orb {
-
-enum class PathError {
-    NotAClosedOrbit,   // hyperbolic or parabolic: there is no closed path to draw
-    TooFewSamples,     // fewer than three points is not a shape
-    SolverFailed,      // Kepler did not converge; see KeplerError
+// [S2] Strong types all the way into the aggregate, so an Elements cannot be
+// filled in with degrees where radians belong.
+struct Elements {
+    f64 semiMajorAxis{};   // metres
+    Eccentricity eccentricity{};
+    Radians inclination{};
+    Radians ascendingNode{};
+    Radians periapsisArgument{};
 };
 
-// Neither of these is a bool, so neither is a mystery at the call site.
+// [S2] Neither of these is a bool, so neither is a mystery at the call site.
 enum class PathClosure {
-    OpenEnded,   // last point is one step short of the first
-    ClosedLoop,  // last point repeats the first, ready for a line strip
+    OpenEnded,    // last point stops one step short of the first
+    ClosedLoop,   // last point repeats the first, ready for a line strip
 };
 
 enum class Spacing {
@@ -392,190 +361,196 @@ enum class Spacing {
     UniformInTime,    // even time: what tick marks along the path want
 };
 
+enum class PathError {
+    NotAClosedOrbit,     // hyperbolic or parabolic: no closed path exists
+    NonPositiveGravity,  // mu <= 0 is not a central body
+    TooFewSamples,       // fewer than three points is not a shape
+    SolverFailed,        // Kepler did not converge
+};
+
+[[nodiscard]] constexpr std::string_view describe(PathError error) noexcept {
+    switch (error) {
+    case PathError::NotAClosedOrbit:    return "orbit is not closed (eccentricity >= 1)";
+    case PathError::NonPositiveGravity: return "gravitational parameter must be positive";
+    case PathError::TooFewSamples:      return "a path needs at least three samples";
+    case PathError::SolverFailed:       return "Kepler solver failed while spacing by time";
+    }
+    return "unknown error";
+}
+
 struct SampleCount {
-    std::size_t value{};
+    std::size_t value{};   // [S18] size_t for counts, matching the library
 
     constexpr SampleCount() noexcept = default;
     explicit constexpr SampleCount(std::size_t v) noexcept : value(v) {}
 };
 
-// Bundling the options keeps the call short (I.23) and means adding a knob
-// later does not change the signature of every existing call.
+// [S2] Bundling the options keeps the call short (I.23) and means adding a knob
+// next month does not change the signature of every existing call.
+// [S6] Every field has a default, so `PathOptions{}` is already valid.
 struct PathOptions {
     SampleCount samples{std::size_t{64}};
     Spacing spacing{Spacing::UniformInAngle};
     PathClosure closure{PathClosure::ClosedLoop};
 };
 
-// Preconditions: `elements` describes a closed orbit (ecc < 1) and carries a
-// positive semi-latus rectum or semi-major axis; `mu` is positive.
-//
-// Guarantees: on success, exactly `samples` points for OpenEnded or
-// `samples + 1` for ClosedLoop, every one of them on the orbit. Pure -- no
-// globals, no clock, no allocation the caller cannot see -- so the same inputs
-// always give bit-identical output, and it is safe to call from any thread.
-[[nodiscard]] std::expected<std::vector<Vec3>, PathError>
-sampleOrbitPath(const Elements& elements, GravParam mu, const PathOptions& options = {});
-
-} // namespace orb
-```
-
-Compare the call sites. This is the entire boolean-parameter argument in two
-lines:
-
-```cpp
-sampleOrbitPath(el, mu, {64, true, false});                   // three mysteries
-sampleOrbitPath(el, mu, {.samples = SampleCount{64},
-                         .spacing = Spacing::UniformInTime,
-                         .closure = PathClosure::ClosedLoop}); // reads as English
-```
-
-`PathOptions` is also the answer to I.23. Five parameters would have been three
-too many, and — more usefully — adding a fourth knob next month does not touch
-a single existing call.
-
-**Rule of Zero, invisibly.** Not one type in this whole example has a
-destructor, a copy constructor, or an assignment operator. `std::vector` owns
-the memory, `std::span` borrows it, the strong types own nothing. There is
-nothing to get wrong because there is nothing written.
-
-**"Safe to call from any thread" is a documented guarantee, not a hope.** The
-function reads its arguments, touches no global, and consults no clock. That is
-section 13's design — the physics hands over finished values — and it is also
-section 19's determinism, which the tests then actually check.
-
----
-
-## 5. `src/orbit/OrbitPath.cpp` — ranges, and one comment that earns its place
-
-> Sections **9** (`views::iota`), **10** (`reserve`, do not pessimize),
-> **16** (the *why* comment), **7** (errors propagate)
-
-```cpp
-#include "orbit/OrbitPath.hpp"
-
-#include "orbit/Kepler.hpp"
-
-#include <ranges>
-
-namespace orb {
 namespace {
 
-// Two points are a line, not a shape.
-constexpr std::size_t kMinSamples = 3;
+constexpr std::size_t kMinSamples = 3;   // two points are a line, not a shape
+
+[[nodiscard]] Vec3 rotateAboutZ(const Vec3& v, Radians angle) noexcept {
+    const f64 c = std::cos(angle.value);
+    const f64 s = std::sin(angle.value);
+    return {v.x * c - v.y * s, v.x * s + v.y * c, v.z};
+}
+
+[[nodiscard]] Vec3 rotateAboutX(const Vec3& v, Radians angle) noexcept {
+    const f64 c = std::cos(angle.value);
+    const f64 s = std::sin(angle.value);
+    return {v.x, v.y * c - v.z * s, v.y * s + v.z * c};
+}
+
+[[nodiscard]] Radians eccentricToTrueAnomaly(Radians eccentricAnomaly, Eccentricity ecc) noexcept {
+    const f64 e = ecc.value;
+    const f64 half = eccentricAnomaly.value * 0.5;
+    return Radians{2.0 * std::atan2(std::sqrt(1.0 + e) * std::sin(half),
+                                    std::sqrt(1.0 - e) * std::cos(half))};
+}
+
+[[nodiscard]] Vec3 positionAt(const Elements& elements, Radians trueAnomaly) noexcept {
+    const f64 e = elements.eccentricity.value;
+    const f64 semiLatusRectum = elements.semiMajorAxis * (1.0 - e * e);
+    const f64 nu = trueAnomaly.value;
+    const f64 radius = semiLatusRectum / (1.0 + e * std::cos(nu));
+
+    // Perifocal frame: x toward periapsis, z along the angular-momentum vector.
+    const Vec3 perifocal{radius * std::cos(nu), radius * std::sin(nu), 0.0};
+
+    // Perifocal -> inertial is Rz(node) * Rx(inclination) * Rz(argument),
+    // applied right to left.
+    const Vec3 inPlane = rotateAboutZ(perifocal, elements.periapsisArgument);
+    const Vec3 tilted = rotateAboutX(inPlane, elements.inclination);
+    return rotateAboutZ(tilted, elements.ascendingNode);
+}
 
 } // namespace
 
-std::expected<std::vector<Vec3>, PathError> sampleOrbitPath(const Elements& elements,
-                                                            GravParam mu,
-                                                            const PathOptions& options) {
-    // Negated comparison so a NaN eccentricity is rejected rather than admitted.
-    if (!(elements.ecc < 1.0)) return std::unexpected(PathError::NotAClosedOrbit);
+// [S4] Rule of Zero *with* a resource: the vector does the owning, so this
+// class still needs no destructor, copy, or move of its own. Rule of Zero is
+// not "owns nothing", it is "delegates ownership".
+// [S12] Knows nothing about vertex buffers, cameras, or any graphics API.
+class OrbitPath {
+public:
+    // [S7] A factory returning std::expected, not a constructor plus an init()
+    // that can half-succeed. Either you hold a valid OrbitPath or you hold an
+    // error; there is no third state to write defensive code against, and so no
+    // third state to forget to write defensive code against (E.5, NR.5).
+    [[nodiscard]] static std::expected<OrbitPath, PathError>
+    sample(const Elements& elements, GravParam mu, const PathOptions& options = {});
+
+    // [S5] const member functions; [S18] a span, which borrows and cannot copy.
+    [[nodiscard]] std::span<const Vec3> points() const noexcept { return points_; }
+    [[nodiscard]] std::size_t size() const noexcept { return points_.size(); }
+    [[nodiscard]] Seconds period() const noexcept { return period_; }
+
+    [[nodiscard]] bool operator==(const OrbitPath&) const noexcept = default;
+
+private:
+    // [S6] Member initializer list, in declaration order. Assigning in the body
+    // would default-construct the vector and then throw that away.
+    OrbitPath(std::vector<Vec3> points, Seconds period) noexcept
+        : points_(std::move(points)), period_(period) {}
+
+    // [S15] Trailing underscore for private data. Never a leading underscore:
+    // `_name` at namespace scope is reserved for the implementation.
+    std::vector<Vec3> points_;
+    Seconds period_;
+};
+
+std::expected<OrbitPath, PathError> OrbitPath::sample(const Elements& elements, GravParam mu,
+                                                      const PathOptions& options) {
+    // [S2] Preconditions checked and reported, never silently repaired.
+    // [S11] Negated form again, so NaN is rejected rather than admitted.
+    if (!(elements.eccentricity.value >= 0.0) || !(elements.eccentricity.value < 1.0)) {
+        return std::unexpected(PathError::NotAClosedOrbit);
+    }
+    if (!(mu.value > 0.0)) return std::unexpected(PathError::NonPositiveGravity);
     if (options.samples.value < kMinSamples) return std::unexpected(PathError::TooFewSamples);
 
     const std::size_t steps = options.samples.value;
     const std::size_t count =
         steps + (options.closure == PathClosure::ClosedLoop ? std::size_t{1} : std::size_t{0});
 
-    std::vector<Vec3> path;
-    path.reserve(count);   // one allocation, known up front
+    std::vector<Vec3> points;
+    // [S10] Not an optimization -- simply not being wasteful when the size is
+    // sitting right there. [S20] And it is the only allocation, made up front.
+    points.reserve(count);
 
-    const Eccentricity ecc{elements.ecc};
-
+    // [S9] A range-for over a view, not an index loop with a hand-written bound.
     for (const std::size_t index : std::views::iota(std::size_t{0}, count)) {
         const f64 fraction = static_cast<f64>(index) / static_cast<f64>(steps);
         const Radians anomaly{kTau * fraction};
 
-        // Stepped in eccentric anomaly, not true anomaly. Equal steps of true
-        // anomaly crowd points around periapsis and leave the apoapsis arc as
-        // one long straight chord, which is visibly wrong on an eccentric orbit.
-        f64 eccentricAnomaly = anomaly.value;
+        // [S16] Stepped in eccentric anomaly, not true anomaly. Equal steps of
+        // true anomaly crowd points around periapsis and leave the apoapsis arc
+        // as one long straight chord, which is visibly wrong on an eccentric
+        // orbit. Nothing in the code below says that; without this sentence
+        // somebody "simplifies" it and the bug takes a week to find.
+        Radians eccentricAnomaly = anomaly;
 
         if (options.spacing == Spacing::UniformInTime) {
-            // Equal steps of MEAN anomaly are equal steps of time, which is what
-            // tick marks want. That needs Kepler's equation solved, and that can
-            // fail, and the failure is propagated rather than swallowed.
-            const std::expected<Radians, KeplerError> solved = solveKepler(anomaly, ecc);
+            // Equal steps of *mean* anomaly are equal steps of time, which is
+            // what tick marks want. That needs Kepler solved, that can fail,
+            // and the failure is propagated rather than swallowed.  [S7]
+            const std::expected<Radians, KeplerError> solved =
+                solveKepler(anomaly, elements.eccentricity);
             if (!solved) return std::unexpected(PathError::SolverFailed);
-            eccentricAnomaly = solved->value;
+            eccentricAnomaly = *solved;
         }
 
-        Elements sample = elements;
-        sample.tra = eccentricToTrueAnomaly(eccentricAnomaly, elements.ecc);
-
-        path.push_back(stateFromElements(sample, mu.value).pos);
+        points.push_back(
+            positionAt(elements, eccentricToTrueAnomaly(eccentricAnomaly, elements.eccentricity)));
     }
 
-    return path;
+    // Kepler's third law: T = tau * sqrt(a^3 / mu).
+    const f64 a = elements.semiMajorAxis;
+    const Seconds period{kTau * std::sqrt((a * a * a) / mu.value)};
+
+    // [S10] Moved, not copied, into the returned object.
+    return OrbitPath{std::move(points), period};
 }
 
-} // namespace orb
-```
+// ============================================================================
+// render/PathUpload.hpp -- the precision boundary, in exactly one place
+// ============================================================================
 
-The comment about eccentric versus true anomaly is the kind section 16 is
-asking for. Nothing in the code says why the step is taken in eccentric anomaly.
-Without that sentence, a future reader "simplifies" it to true anomaly, the
-orbit still draws, and it just looks slightly wrong on eccentric orbits in a way
-nobody can pin down for a week.
+// [S12] This namespace is the renderer's, and it includes no graphics API at
+// all: it takes plain data and returns plain data. That is what lets the
+// physics be tested without a GPU and the renderer be replaced without touching
+// a line of orbital mechanics. The dependency runs one way -- gfx knows about
+// orb, orb has never heard of gfx.
+namespace gfx {
 
-`reserve(count)` is section 10's "do not pessimize". It is not an optimization —
-nobody profiled it — it is simply not being wasteful when the size is sitting
-right there.
-
-Three `return`s in one function, one of them mid-loop. That is NR.2 from section
-21: the single-return rule comes from a language without destructors.
-
----
-
-## 6. `src/render/PathUpload.hpp` — the precision boundary, in one place
-
-> Sections **11** (f64 → f32 exactly once), **12** (layers),
-> **9** (`ranges::transform`), **18** (`std::span`)
-
-```cpp
-#pragma once
-//
-// The boundary between the simulation and the GPU.
-//
-// This header lives in orb::gfx but includes no Vulkan and no SDL: it takes
-// plain data and returns plain data. That is what lets the physics stay
-// testable without a device, and lets the renderer be replaced without touching
-// a line of orbital mechanics.
-//
-#include "core/Math.hpp"
-
-#include <algorithm>
-#include <iterator>
-#include <span>
-#include <vector>
-
-namespace orb::gfx {
-
-// What the vertex shader consumes. f32, because that is what a GPU has.
+// What a vertex shader consumes. f32, because that is what a GPU has.
 struct PathVertex {
     f32 x{}, y{}, z{};
 };
 
-// The one and only place in the codebase where f64 becomes f32.
-//
-// Keeping the narrowing in a single named function is what makes the precision
-// boundary something you can grep for. If a `static_cast<f32>` ever appears
-// upstream of here, that is a bug report waiting to be filed about jitter.
-//
-// Takes a span rather than a vector: it does not own the input, does not care
-// how the caller stored it, and cannot silently copy it.
+// [S11] The one and only place in this file where f64 becomes f32. Keeping the
+// narrowing in a single named function is what makes the precision boundary
+// something you can grep for; a static_cast<f32> anywhere upstream of here is a
+// jitter bug report waiting to be filed.
 [[nodiscard]] inline std::vector<PathVertex> toCameraRelative(std::span<const Vec3> pathWorld,
                                                               const Vec3& cameraWorld) {
     std::vector<PathVertex> vertices;
     vertices.reserve(pathWorld.size());
 
+    // [S9] A genuine transform over existing data, so it is written as one.
     std::ranges::transform(pathWorld, std::back_inserter(vertices), [&](const Vec3& point) {
-        // Subtract in f64 FIRST, then narrow. Narrowing before the subtraction
-        // would discard exactly the digits the subtraction needs: at Earth
-        // orbit radius, f32 has metre-scale spacing, so a 10 m feature would
-        // round away before the camera offset ever removed the big magnitude.
+        // [S11] Subtract in f64 FIRST, then narrow. At Earth-orbit radius f32
+        // has metre-scale spacing, so narrowing first would round a ten-metre
+        // feature away before the camera offset ever removed the magnitude.
         const Vec3 relative = point - cameraWorld;
-
         return PathVertex{static_cast<f32>(relative.x),
                           static_cast<f32>(relative.y),
                           static_cast<f32>(relative.z)};
@@ -584,182 +559,365 @@ struct PathVertex {
     return vertices;
 }
 
-} // namespace orb::gfx
-```
+} // namespace gfx
+} // namespace orb
 
-This is section 11's most important rule made physical. **There is exactly one
-`static_cast<f32>` in the entire example and it is in this function.** Every
-`f64` upstream stays `f64`; everything downstream is a GPU buffer. When jitter
-shows up — and it will — there is one place to look.
+// ============================================================================
+// tests/test_orbit_path.cpp
+// ============================================================================
 
-The ordering matters more than it appears. `point - cameraWorld` happens in
-`f64`; only the small result is narrowed. Narrow first and you have thrown away
-the digits the subtraction was going to recover.
+namespace {
 
-`std::ranges::transform` rather than an index loop is section 9. This one *is* a
-genuine transform over existing data — unlike the generator loop in
-`OrbitPath.cpp`, which is honestly just a loop and is written as one.
+using namespace orb;            // [S8] in a .cpp, at function-adjacent scope --
+using namespace orb::literals;  // never at global scope in a header (SF.7)
 
-And note the layering: this header sits in `orb::gfx` and includes no Vulkan and
-no SDL. It is section 12's line drawn at the file level.
+constexpr GravParam kMuEarth{3.986004418e14};   // m^3/s^2, EGM-96
+constexpr f64 kEarthRadius = 6378137.0;         // m, WGS-84 equatorial
 
----
+// [S18] No mutable globals. Static mutable state has unspecified initialization
+// order across translation units and is a data race waiting for a second
+// thread; the counters are carried explicitly instead.
+struct TestResults {
+    int checks{};
+    int failures{};
+};
 
-## 7. `tests/test_orbit_path.cpp` — proofs, then checks
+void check(TestResults& results, bool condition, std::string_view what) {
+    ++results.checks;
+    if (!condition) {
+        ++results.failures;
+        // [S8] '\n', never std::endl: endl flushes and you did not ask it to.
+        std::print("  FAIL {}\n", what);
+    }
+}
 
-> Sections **1** (independent cross-validation), **2** (proving misuse
-> won't compile), **19** (determinism), **20** (failure is reported)
+[[nodiscard]] Elements testOrbit(f64 semiMajorAxis, f64 eccentricity) {
+    // [S6] Braced initialization: it will not silently narrow.
+    return Elements{.semiMajorAxis = semiMajorAxis,
+                    .eccentricity = Eccentricity{eccentricity},
+                    .inclination = toRadians(28.5_deg),
+                    .ascendingNode = toRadians(120.0_deg),
+                    .periapsisArgument = toRadians(45.0_deg)};
+}
 
-The full file is long; here are the parts that carry the argument.
-
-**Compile-time proofs that the guidelines actually hold:**
-
-```cpp
+// [S2] These are not runtime tests. They are the compiler certifying, on every
+// build, that the misuse the guidelines warn about cannot be written. Delete an
+// `explicit` for convenience and the build stops here.
 static_assert(!std::is_convertible_v<f64, Radians>,
               "a bare double must not become an angle on its own");
 static_assert(!std::is_convertible_v<Radians, f64>,
-              "an angle must not decay back to a bare double");
+              "an angle must not decay back into a bare double");
 static_assert(!std::is_constructible_v<Radians, Eccentricity>,
               "an eccentricity must never be usable as an angle");
 static_assert(!std::is_invocable_v<decltype(solveKepler), Eccentricity, Radians>,
-              "solveKepler must not be callable with its arguments swapped");
+              "solveKepler must not be callable with its arguments transposed");
 static_assert(std::is_invocable_v<decltype(solveKepler), Radians, Eccentricity>,
               "...but must of course be callable correctly");
+
+// [S4] And the Rule of Zero claim, checked rather than asserted in prose.
+static_assert(std::is_nothrow_move_constructible_v<OrbitPath>,
+              "the compiler-generated move must be available and cheap");
+static_assert(std::is_copy_constructible_v<OrbitPath>,
+              "the compiler-generated copy must be available");
+
+// [S1] The solver is checked against the equation it claims to solve, not
+// against a second solver written by the same hand on the same afternoon. A
+// sign error cannot hide, because the test does not share it.
+void testKeplerAgainstItsDefinition(TestResults& results) {
+    std::print("Kepler solver satisfies M = E - e*sin(E)\n");
+
+    // [S8] std::array, never a C array: it knows its own size.
+    constexpr std::array kEccentricities{0.0, 0.1, 0.5, 0.9, 0.99, 0.999};
+
+    for (const f64 e : kEccentricities) {
+        f64 worstResidual = 0.0;
+
+        for (const int degree : std::views::iota(0, 360)) {
+            const Radians meanAnomaly = toRadians(Degrees{static_cast<f64>(degree)});
+            const auto solved = solveKepler(meanAnomaly, Eccentricity{e});
+
+            if (!solved) {
+                check(results, false, "solver failed for a valid eccentricity");
+                break;
+            }
+
+            const f64 bigE = solved->value;
+            const f64 residual = bigE - e * std::sin(bigE) - wrapToPi(meanAnomaly.value);
+            worstResidual = std::max(worstResidual, std::abs(wrapToPi(residual)));
+        }
+
+        check(results, worstResidual < 1e-13, "residual within the documented guarantee");
+    }
+}
+
+// [S20] The contract says failure is reported, never returned as a plausible
+// number. That contract is worth exactly as much as its test.
+void testFailuresAreReported(TestResults& results) {
+    std::print("failures are reported, not approximated\n");
+
+    const auto parabolic = solveKepler(1.0_rad, Eccentricity{1.0});
+    check(results, !parabolic.has_value(), "eccentricity 1.0 is rejected");
+    check(results, parabolic.error() == KeplerError::EccentricityOutOfRange, "with the right error");
+
+    const auto negative = solveKepler(1.0_rad, Eccentricity{-0.1});
+    check(results, !negative.has_value(), "negative eccentricity is rejected");
+
+    const auto notANumber =
+        solveKepler(1.0_rad, Eccentricity{std::numeric_limits<f64>::quiet_NaN()});
+    check(results, !notANumber.has_value(), "NaN eccentricity is rejected, not propagated");
+
+    const auto escape = OrbitPath::sample(testOrbit(-8000e3, 1.4), kMuEarth);
+    check(results, !escape.has_value() && escape.error() == PathError::NotAClosedOrbit,
+          "a hyperbolic orbit has no closed path");
+
+    const auto noGravity = OrbitPath::sample(testOrbit(7000e3, 0.1), GravParam{0.0});
+    check(results, !noGravity.has_value() && noGravity.error() == PathError::NonPositiveGravity,
+          "a massless central body is refused");
+
+    const auto tooFew = OrbitPath::sample(testOrbit(7000e3, 0.1), kMuEarth,
+                                          PathOptions{.samples = SampleCount{std::size_t{2}}});
+    check(results, !tooFew.has_value() && tooFew.error() == PathError::TooFewSamples,
+          "two points is not a shape");
+
+    // [S7] Every error can be explained to a human.
+    check(results, !describe(KeplerError::DidNotConverge).empty(), "Kepler errors describe");
+    check(results, !describe(PathError::SolverFailed).empty(), "path errors describe");
+}
+
+void testGeometry(TestResults& results) {
+    std::print("sampled points lie on the orbit\n");
+
+    const Elements elements = testOrbit(kEarthRadius + 2000e3, 0.35);
+    const auto path = OrbitPath::sample(elements, kMuEarth,
+                                        PathOptions{.samples = SampleCount{std::size_t{128}},
+                                                    .spacing = Spacing::UniformInAngle,
+                                                    .closure = PathClosure::ClosedLoop});
+    check(results, path.has_value(), "sampling a closed orbit succeeds");
+    if (!path) return;   // [S21] early return; NR.2 again
+
+    check(results, path->size() == 129, "ClosedLoop yields samples + 1 points");
+
+    const f64 e = elements.eccentricity.value;
+    const f64 periapsis = elements.semiMajorAxis * (1.0 - e);
+    const f64 apoapsis = elements.semiMajorAxis * (1.0 + e);
+
+    // [S9] An algorithm says what it means; a loop with an index would not.
+    const bool onOrbit = std::ranges::all_of(path->points(), [&](const Vec3& point) {
+        const f64 radius = length(point);
+        return radius >= periapsis * (1.0 - 1e-9) && radius <= apoapsis * (1.0 + 1e-9);
+    });
+    check(results, onOrbit, "every sample lies between periapsis and apoapsis");
+
+    const Vec3 gap = path->points().front() - path->points().back();
+    check(results, length(gap) < periapsis * 1e-9, "the loop closes");
+
+    // A 2000 km circular-ish orbit takes a bit over two hours; this anchors the
+    // period against something a reader can sanity-check by hand.
+    check(results, path->period().value > 7000.0 && path->period().value < 8000.0,
+          "period is physically plausible");
+}
+
+// [S19] A simulator promises that resuming a scenario continues the same
+// flight. That promise is worth nothing untested.
+void testDeterminism(TestResults& results) {
+    std::print("determinism\n");
+
+    const Elements elements = testOrbit(kEarthRadius + 800e3, 0.2);
+    const PathOptions options{.samples = SampleCount{std::size_t{256}},
+                              .spacing = Spacing::UniformInTime,
+                              .closure = PathClosure::ClosedLoop};
+
+    const auto first = OrbitPath::sample(elements, kMuEarth, options);
+    const auto second = OrbitPath::sample(elements, kMuEarth, options);
+    check(results, first.has_value() && second.has_value(), "both runs succeed");
+    if (!first || !second) return;
+
+    // [S11] [S19] This is the one place where comparing doubles with == is not
+    // merely allowed but the entire point: the claim is bit-identical
+    // reproduction, and any tolerance at all would hide exactly the drift being
+    // tested for. Knowing which rule applies beats knowing the rules.
+    check(results, *first == *second, "identical inputs give bit-identical output");
+}
+
+void testCameraRelativeUpload(TestResults& results) {
+    std::print("the f64 -> f32 boundary\n");
+
+    const auto path = OrbitPath::sample(testOrbit(kEarthRadius + 400e3, 0.01), kMuEarth);
+    check(results, path.has_value(), "sampling succeeds");
+    if (!path) return;
+
+    const Vec3 camera = path->points().front();
+    const std::vector<gfx::PathVertex> vertices = gfx::toCameraRelative(path->points(), camera);
+
+    check(results, vertices.size() == path->size(), "one vertex per point");
+
+    // The camera sits exactly on the first point, so that vertex must land on
+    // the origin. Subtracting in f64 makes this exact; narrowing first would not.
+    const gfx::PathVertex& firstVertex = vertices.front();
+    check(results, firstVertex.x == 0.0F && firstVertex.y == 0.0F && firstVertex.z == 0.0F,
+          "the point under the camera lands exactly on the origin");
+
+    const bool withinFloatComfort = std::ranges::all_of(vertices, [](const gfx::PathVertex& v) {
+        return std::abs(v.x) < 2.0e7F && std::abs(v.y) < 2.0e7F && std::abs(v.z) < 2.0e7F;
+    });
+    check(results, withinFloatComfort, "camera-relative values stay in f32's comfortable range");
+}
+
+// [S13] Two paths computed concurrently. There is no mutex anywhere, because
+// nothing is shared: each worker owns its inputs and its result, and the
+// simulation functions are pure. That is CP.3 (minimize sharing) and CP.4
+// (think in tasks) rather than "add a lock".
+void testConcurrentSampling(TestResults& results) {
+    std::print("concurrent sampling needs no locks\n");
+
+    std::optional<OrbitPath> low;
+    std::optional<OrbitPath> high;
+
+    {
+        // [S13] std::jthread, never std::thread: it joins in its destructor, so
+        // the scope exit below is the join. A std::thread you forget to join
+        // calls std::terminate.
+        const std::jthread lowWorker{[&low] {
+            if (auto sampled = OrbitPath::sample(testOrbit(7000e3, 0.05), kMuEarth)) {
+                low = std::move(*sampled);
+            }
+        }};
+        const std::jthread highWorker{[&high] {
+            if (auto sampled = OrbitPath::sample(testOrbit(42164e3, 0.001), kMuEarth)) {
+                high = std::move(*sampled);
+            }
+        }};
+    }   // both workers joined here
+
+    check(results, low.has_value() && high.has_value(), "both workers produced a path");
+    if (!low || !high) return;
+
+    // Geostationary altitude has a much longer period than low Earth orbit; if
+    // these matched, the threads would have trampled each other.
+    check(results, high->period().value > low->period().value * 10.0,
+          "the two results are independent and correct");
+}
+
+} // namespace
+
+// [S17] Every function here fits on a screen. The longest is OrbitPath::sample
+// at 29 statements across 52 lines -- the difference being the comments, which
+// is why JPL rule 4 counts statements and not lines.
+int main() {
+    std::print("orbsim :: one worked example\n\n");
+
+    TestResults results;
+
+    testKeplerAgainstItsDefinition(results);
+    testFailuresAreReported(results);
+    testGeometry(results);
+    testDeterminism(results);
+    testCameraRelativeUpload(results);
+    testConcurrentSampling(results);
+
+    std::print("\n{} checks, {} failures\n", results.checks, results.failures);
+    return results.failures == 0 ? 0 : 1;
+}
 ```
-
-These are not runtime tests. They are the compiler certifying, on every build,
-that the mistake section 2 warns about **cannot be written**. If somebody later
-removes an `explicit` for convenience, the build stops.
-
-**Checked against the definition, not against another implementation:**
-
-```cpp
-const f64 bigE = solved->value;
-const f64 residual = bigE - e * std::sin(bigE) - wrapPi(meanAnomaly.value);
-worstResidual = std::max(worstResidual, std::abs(wrapPi(residual)));
-```
-
-The solver never references Kepler's equation directly — it works with a
-residual and a slope. The test evaluates `E - e*sin(E) - M` from scratch. A sign
-error in the solver cannot hide, because the test does not share the mistake.
-That is the same instinct as the existing suite's two-propagator
-cross-validation.
-
-**Failure is reported, not approximated:**
-
-```cpp
-const auto notANumber =
-    solveKepler(1.0_rad, Eccentricity{std::numeric_limits<f64>::quiet_NaN()});
-check(!notANumber.has_value(), "NaN eccentricity is rejected, not propagated");
-```
-
-**Determinism — and the one time `==` on doubles is correct:**
-
-```cpp
-const auto first = sampleOrbitPath(el, kMuEarth, options);
-const auto second = sampleOrbitPath(el, kMuEarth, options);
-
-// This is the one place where comparing doubles with == is not only correct
-// but the entire point: the claim is bit-identical reproduction, and any
-// tolerance at all would hide exactly the drift being tested for.
-check(*first == *second, "identical inputs give bit-identical output");
-```
-
-Section 11 says never compare floats with `==`. Section 19 says a simulator must
-reproduce a scenario exactly. Here they meet, and the resolution is that the
-rule is about *approximate* comparison. When the claim genuinely is
-bit-identity, `==` is the only correct operator — and a tolerance would hide the
-very thing being tested.
-
-Knowing which rule applies beats knowing the rules.
 
 ---
 
 ## Coverage
 
-| § | Guideline | Where it shows up |
+Every section of the guidelines, and the thing in the code you can point at.
+
+| § | Guideline | Point at |
 |---|---|---|
-| 1 | Use the tools | Compiled under the full warning set, zero warnings. The compiler found a missing `<compare>` before any human did |
-| 2 | Express intent, hard-to-misuse interfaces | `Units.hpp` entire; `PathOptions` for I.23; `PathClosure`/`Spacing` instead of bools; `static_assert`s proving misuse won't compile |
-| 3 | Make it `constexpr` | Every function in `Units.hpp`, each with a `static_assert` under it |
-| 4 | Rule of Zero | No destructor, copy or assignment anywhere. `vector` owns, `span` borrows |
-| 5 | `const` and `[[nodiscard]]` | Every return-valued function; every local that can be `const`; primitives passed by value, never `const&` |
-| 6 | Initialize your variables | `f64 value{}`, `Elements el{}`, `PathOptions` default member initializers |
-| 7 | Error handling | `std::expected` throughout, one strategy, `describe()` for every error, no out-params, no two-phase init |
-| 8 | Things we do not do | No `using namespace std`, no C casts, no `new`/`delete`, no macros, `enum class` everywhere |
-| 9 | Algorithms over raw loops | `std::ranges::transform` in `PathUpload`; `std::views::iota` in `OrbitPath` |
-| 10 | Do not pessimize | `reserve()` before both loops; `span` instead of a copied vector |
-| 11 | Floating point | `nearlyEqual` not `==`; NaN-safe negated comparisons; exactly one `static_cast<f32>`, and it subtracts first |
-| 12 | Keep the layers apart | `orb::gfx` header includes no Vulkan, no SDL. The orbit code has never heard of a camera |
-| 13 | Concurrency | Pure function, no globals, no clock — documented as callable from any thread |
-| 14 | Source files | Own header included first; all four headers verified self-contained; unnamed namespaces for internals |
-| 15 | Naming | `PascalCase` types, `camelCase` functions, `kConstant`; no leading underscores; `meanToEccentricAnomaly`-style domain names |
-| 16 | Comments | Every constant says where its value came from; the eccentric-anomaly comment saves a future reader a week |
-| 17 | Maintainability | Longest function is 40 lines; `Metres`/`Seconds` deliberately not written |
-| 18 | Portability | `std::size_t` for counts, `std::span` for views, no platform types |
-| 19 | Determinism | Pure by construction; the bit-identity test proves it |
-| 20 | Flight software | Bounded loop (rule 2) that **reports** non-convergence (rule 5); stated preconditions; short functions (rule 4) |
-| 21 | Non-rules and myths | Multiple returns (NR.2); declarations at first use (NR.1); the identical assembly at the top of this file |
+| 1 | Use the tools available | The build command in the file header. The file is required to stay clean under it, and does. |
+| 2 | Express intent, hard-to-misuse interfaces | `Radians`, `Degrees`, `Eccentricity`, `GravParam`, each with an `explicit` constructor. `solveKepler(Radians, Eccentricity)` cannot be called with its arguments transposed -- and a `static_assert` proves it. `PathOptions` bundles three parameters into one (I.23). `PathClosure` and `Spacing` instead of bools. Preconditions stated in the comment and checked in the code. |
+| 3 | Make it `constexpr` | Every unit conversion is `constexpr`, and each has a `static_assert` under it that runs on every build. |
+| 4 | Rule of Zero | **Not one destructor, copy constructor, or assignment operator in the entire file.** `OrbitPath` owns heap memory and still declares none -- the `std::vector` does the owning. `static_assert(is_nothrow_move_constructible_v<OrbitPath>)` checks the claim rather than asserting it in prose. |
+| 5 | `const` and `[[nodiscard]]` | `[[nodiscard]]` on every function whose return value is the point. `points()`, `size()`, `period()` are `const`. Primitives passed by value, never `const&`. |
+| 6 | Initialize your variables | `f64 x{}, y{}, z{}` on `Vec3`; every `PathOptions` field defaulted; `OrbitPath`'s member initializer list in declaration order; designated initializers in `testOrbit`. |
+| 7 | Error handling | `std::expected` throughout -- one strategy, no mixing. `describe()` for both error enums. A static factory instead of a constructor plus `init()`, so there is no half-built state (E.5, NR.5). No out-parameters. |
+| 8 | Things we simply do not do | `constexpr` not `#define`; `enum class` everywhere; `static_cast` never a C cast; `std::array` not a C array; `'\n'` not `std::endl`; no `new`/`delete`; no `using namespace std` at any scope. |
+| 9 | Prefer algorithms over raw loops | `std::views::iota` in the sampler, `std::ranges::transform` at the GPU boundary, `std::ranges::all_of` twice in the tests. |
+| 10 | Measure. Do not guess. | The "do not pessimize" half: `reserve()` before the only growing loop, `std::move` into the returned object, `std::span` instead of a copied vector. |
+| 11 | Floating point | `nearlyEqual` instead of `==`, including inside `static_assert`. NaN-safe negated preconditions -- `!(e >= 0.0)` rather than `e < 0.0`. Exactly one `static_cast<f32>` in the file, and it subtracts in `f64` first. |
+| 12 | Keep the layers apart | `orb::gfx` contains no graphics API at all: plain data in, plain data out. `orb` never mentions `gfx`. The dependency runs one way. |
+| 13 | Concurrency | `std::jthread`, never `std::thread`, joined by scope exit. No mutex anywhere, because nothing is shared -- each worker owns its inputs and its result. |
+| 14 | Source files | Unnamed namespaces for everything internal. One sorted include block. No `using namespace` in the header-shaped sections. Banners mark where the five real files would split. |
+| 15 | Naming | `PascalCase` types, `camelCase` functions, `kConstant`, trailing `_` on private data -- never a leading underscore, which is reserved. |
+| 16 | Comments | Every constant says where its number came from: 0.8 is Danby's threshold, 1e-14 is two orders above one ulp near pi, 50 is not a performance budget. Plus the eccentric-anomaly comment, which exists to stop a future reader "simplifying" it. |
+| 17 | Maintainability | Longest function is 29 statements. `Metres`, `Velocity` and `Mass` are deliberately not written, because nothing needs them yet. |
+| 18 | Portability | `std::size_t` for counts, `std::span` for views, no platform types, and no mutable statics -- the test counters are carried in a struct instead. |
+| 19 | Determinism | Pure functions by construction: no globals, no clock, no RNG. The bit-identity test proves it rather than assuming it. |
+| 20 | What flight software does | The Newton loop is bounded (rule 2) **and reports non-convergence** (rule 5). Preconditions checked (rule 5). One allocation, up front (the spirit of rule 3). Short functions (rule 4). |
+| 21 | Non-rules and myths | Multiple returns used freely (NR.2). Declarations at first use (NR.1). The identical assembly above. |
 
-## What this example does not show, and why
+## The two places the rules collide
 
-Being honest about the gaps, because a coverage table that claims everything is
-a coverage table nobody should trust.
+A worked example is most useful where the guidelines disagree with each other,
+because that is where following them mechanically stops working.
 
-- **Section 4's hardest case.** Rule of Zero is easy here because nothing owns a
-  raw handle. The genuinely instructive version is wrapping `VkDevice` in a
-  move-only type, and that belongs with the `VulkanContext` refactor.
-- **Section 13's actual threading.** The function is *ready* to be threaded and
-  is deliberately not threaded, because section 13 also says do not thread until
-  a profiler tells you to.
+**Section 11 says never compare floats with `==`. Section 19 says a simulator
+must reproduce a scenario exactly.** In `testDeterminism` they meet, and the
+resolution is that section 11 is about *approximate* comparison. When the claim
+genuinely is bit-identity, `==` is the only correct operator, and a tolerance
+would hide precisely the drift being tested for.
+
+**Section 20 says assert your preconditions. Section 7 says report expected
+failures.** `solveKepler` reports rather than asserts, because an eccentricity
+arriving from a scenario file is user input, not a programmer error. Had it come
+from an internal invariant, an assert would be right.
+
+Knowing which rule applies beats knowing the rules.
+
+## What one file cannot show
+
+Being straight about the gaps, because a coverage table that claims everything
+is a coverage table nobody should trust.
+
+- **Section 14 is about physical layout**, and a single translation unit can
+  only demonstrate part of it. The unnamed namespaces and the include block are
+  real; "each `.cpp` includes its own header first, which is what keeps that
+  header self-contained" needs the five-file split the banners mark.
 - **Sections 1, 10 and 17 are partly process.** Sanitizer runs, CI matrices,
-  profiling sessions and commit hygiene do not live inside a source file. The
-  compile command at the top is the part that fits.
-- **`Elements` still uses raw `f64` for its angles.** The example takes the
-  existing type and adds strong types around it, which is what incremental
-  adoption actually looks like. Migrating `Elements` itself is the next step,
-  not a prerequisite.
+  profiler sessions, commit hygiene and version control do not live inside a
+  source file. The build command is the part that fits.
+- **Section 4's hardest case is absent.** Rule of Zero is easy here because
+  nothing owns a raw OS handle. The instructive version is wrapping `VkDevice`
+  in a move-only type, and that belongs with the `VulkanContext` refactor.
+- **Section 13 shows the mechanism, not the architecture.** `std::jthread` and
+  the absence of shared state are real; the snapshot-and-interpolate design for
+  a threaded physics loop needs a physics loop.
 
 ## Running it
 
-The sources are not in the tree yet — this document is the deliverable. To try
-them, drop the files at the paths in the headings and add:
-
-```cmake
-add_executable(test_orbit_path
-        tests/test_orbit_path.cpp
-        src/orbit/Kepler.cpp
-        src/orbit/OrbitPath.cpp
-)
-target_link_libraries(test_orbit_path PRIVATE orbsim_core)
-add_test(NAME orbit_path COMMAND test_orbit_path)
+```
+clang++ -std=c++23 -O2 -ffp-contract=off -Wall -Wextra -Wpedantic -Wshadow \
+        -Wold-style-cast -Wcast-align -Wunused -Wconversion -Wsign-conversion \
+        -Wnull-dereference -Wdouble-promotion -Wformat=2 -Wimplicit-fallthrough \
+        example.cpp -o example
 ```
 
-Expected output:
-
 ```
-orbsim :: orbit path sampling
+orbsim :: one worked example
 
 Kepler solver satisfies M = E - e*sin(E)
-Kepler solver reports failure instead of guessing
-sampled path lies on the orbit
-uniform-in-time spacing
-bad requests are refused, not approximated
+failures are reported, not approximated
+sampled points lie on the orbit
 determinism
 the f64 -> f32 boundary
+concurrent sampling needs no locks
 
-29 checks, 0 failures
+28 checks, 0 failures
 ```
 
 ---
 
-That is one feature. Two hundred and fifty lines, and every argument in the
-guidelines showed up somewhere without being forced.
+That is one feature, and every argument in the guidelines turned up somewhere
+without being forced.
 
-Which is the actual point. None of this is extra work you do *on top of* writing
-the code. Strong types are four lines. `std::expected` is the same length as a
-`bool` and an out-param. The `static_assert`s took four minutes. What you get
-back is a function nobody can call backwards, a solver that cannot lie to you
-about converging, and a precision boundary you can find with `grep`.
+Which is the actual point. None of this is extra work done *on top of* writing
+the code. Strong types are four lines each. `std::expected` is the same length
+as a `bool` and an out-parameter. The `static_assert`s took four minutes. What
+comes back is a function nobody can call backwards, a solver that cannot lie to
+you about converging, and a precision boundary you can find with `grep`.
 
 Now go make the compiler yell at you.
