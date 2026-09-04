@@ -47,8 +47,9 @@ So here is the whole thing on one screen. Everything below is elaboration.
 9. **`f64` in the simulation, `f32` only at the GPU boundary**, and never touch
    the floating-point flags.
 10. **The physics must not know the renderer exists.**
-11. **Put it under version control.** It currently is not. This is the single
-    biggest risk in the project.
+11. **Commit in small, coherent steps, and say why in the message.** The repo
+    exists now; `git bisect` is what will one day find the commit that broke a
+    trajectory.
 
 ---
 
@@ -184,6 +185,16 @@ disassembly.
 The same argument applies to metres versus kilometres, and to seconds versus
 days once you have time acceleration running.
 
+Two footnotes on strong types:
+
+- **Mark single-argument constructors `explicit`**, as `Radians` above does.
+  Leave it off and the type converts back to a bare `f64` on its own, which
+  rebuilds the exact problem you were solving.
+- **You do not have to hand-roll this.** `strong_type`, `NamedType` and
+  `type_safe` are small header-only libraries that generate the boilerplate
+  including the arithmetic operators. Two hand-written types is fine. Eight is
+  a library.
+
 ### I.24: adjacent parameters you can swap
 
 Rule I.24 is "Avoid adjacent parameters that can be invoked by the same
@@ -276,6 +287,18 @@ Until C++26 contracts land, an assert macro and a comment are enough. The
 Guidelines call these `Expects()` and `Ensures()`; the names matter less than
 the habit.
 
+And one trap, since this section is now telling you to write assertions:
+**never put anything with a side effect inside `assert()`.** Assertions vanish
+in release builds and take the side effect with them, which gives you a bug
+that exists only in the configuration you ship.
+
+```cpp
+assert(solveKepler(meanAnomaly, ecc));   // gone in release. never solved.
+
+[[maybe_unused]] const auto ok = solveKepler(meanAnomaly, ecc);
+assert(ok);                              // correct
+```
+
 ---
 
 ## 3. Make it `constexpr`
@@ -357,6 +380,13 @@ Calling `propagate()` and dropping the result is *always* a bug. Ignoring the
 costs you one attribute and buys you a whole category of mistake you can never
 make again.
 
+One counterpart, because it is the standard overcorrection: **do not pass or
+return simple types by `const&`.** `const f64& mu` is slower than `f64 mu`, not
+faster — a reference is an indirection the compiler has to chase, where a
+`double` travels in a register. Pass primitives by value. `const&` starts
+earning its keep at the first type big enough that copying it costs more than
+the indirection, and your code already gets this right.
+
 ---
 
 ## 6. Initialize your variables
@@ -374,6 +404,20 @@ flight.
 
 Prefer `{}` braced initialization generally. It won't silently narrow on you,
 which in a codebase that mixes `f64` and `f32` is worth real money.
+
+Three more from the same instinct:
+
+- **Use the member initializer list, not assignment in the constructor body.**
+  Assigning means the member was default-constructed first and then
+  overwritten. For a `std::vector` that is an allocation you paid for and threw
+  away.
+- **Write the list in declaration order.** Members initialize in the order they
+  are *declared*, not the order you list them, so a mismatched list is how a
+  member gets initialized from another member that does not have a value yet.
+  `-Wreorder` catches it, and it is already in `-Wall`.
+- **Default member initializers cover every constructor at once** — including
+  the one you add next year and forget to update. `Vec3`'s `f64 x{}, y{}, z{};`
+  is doing this, which is why `Vec3` cannot be constructed uninitialized.
 
 ---
 
@@ -451,6 +495,17 @@ refactor to do.
 - **Whatever you choose, be consistent.** One strategy per layer. A codebase
   where a third of the functions throw, a third return `bool`, and a third
   return `std::expected` is worse than any one of those three done uniformly.
+
+One honest note, because I do not want to quietly contradict myself. *C++ Best
+Practices* has a section headed simply **"Use Exceptions"**, and it is right
+about the reason: an exception cannot be silently ignored the way a return code
+can. The reason this section lands somewhere else is that `std::expected` did
+not exist when most of that advice was written, and `[[nodiscard]]` closes
+precisely the gap the argument is about.
+
+So if you prefer exceptions, use them — deliberately, and everywhere. The
+failure this section is warning about is not "you chose wrong". It is "you
+never chose".
 
 ---
 
@@ -639,9 +694,28 @@ consistency has real value, so:
 - Write a `.clang-format` and stop discussing it. Any style, checked in, applied
   automatically, is better than the best style applied by hand.
 
+- **Never start an identifier with an underscore.** `_foo` at namespace scope,
+  and anything containing `__`, is reserved for the implementation. That is not
+  a style preference — it is undefined behaviour lying in wait for a standard
+  library update. A *trailing* underscore (`device_`) is the safe form, and the
+  one this codebase already uses.
+- **Mark single-argument constructors `explicit`** so your types stop
+  converting themselves behind your back.
+
 The one naming rule I *will* argue about: **name things what they are, not what
 type they are.** `meanToEccentricAnomaly` is a good name. It tells you the
 domain concept. Nobody has ever been helped by `doubleConverter2`.
+
+### A documented deviation
+
+*C++ Best Practices* says braces are required around every block. This codebase
+uses single-line guard clauses — `if (r0 <= 0.0) return sv;` — and `.clang-tidy`
+has `readability-braces-around-statements` disabled to match.
+
+That is a deliberate choice, written down here, and applied consistently, which
+is the actual requirement. The thing you must never have is half the codebase
+each way and an argument in every review. If you would rather have the braces,
+change it once, flip the check on, and let the tool keep it that way.
 
 ---
 
@@ -668,43 +742,54 @@ Everything above is about the code. This section is about everything around the
 code, which is what actually determines whether this project is pleasant to work
 on in two years or a thing you dread opening.
 
-### Put it under version control. Today. Before the next edit.
+### Version control
 
-```
-$ git rev-parse --is-inside-work-tree
-fatal: not a git repository
-```
+This one is done: the project is now a git repository with an initial commit of
+all 21 source files, a `.gitignore` that keeps `build/`, `cmake-build-debug/`
+and `.idea/` out of history, and a `.gitattributes` that normalises line endings
+to LF so git and `.editorconfig` stop disagreeing.
 
-I want to be direct: **this is the single largest risk in the project**, and it
-is larger than every code issue in this document combined. Right now there is no
-history, no `git blame`, no branches, no way to undo a bad afternoon, and — the
-one I would miss most — no `git bisect`.
+It is worth saying why this was the first thing fixed, because it looks like
+bookkeeping and it is not. You are building a physics simulator. One day a
+trajectory will be subtly wrong and you will know it was right two weeks ago.
+With history that is `git bisect` — a binary search over commits, culprit in
+fifteen minutes. Without history it is archaeology. **Everything else in this
+document makes bugs less likely. Version control is what makes them findable.**
 
-Think about what `bisect` is worth to *you specifically*. You are building a
-physics simulator. One day a trajectory will be subtly wrong, and you will know
-it was right two weeks ago. With history, that is a binary search over commits
-and you have the culprit in fifteen minutes. Without history, it is archaeology.
+Keeping it worth having:
 
-```
-git init
-git add .
-git commit -m "Initial commit: two-body core, Vulkan context, 546 passing checks"
-```
+- **Commit in small, coherent steps.** A commit that does one thing can be
+  reverted. A commit that does nine cannot.
+- **Say why in the message, not what.** The diff already says what.
+- **Never commit generated output.** It makes diffs unreadable and the
+  repository enormous.
+- **The formatting pass gets its own commit**, doing nothing else. A reformat
+  mixed with a logic change is a diff nobody can review, so nobody does.
 
-And a `.gitignore` that excludes `build/`, `cmake-build-debug/`, and `.idea/`.
-Generated output does not belong in history; it makes diffs unreadable and the
-repository enormous.
+### The config files, and what each one buys
 
-### The config files that should exist and do not
+These now exist, and each one converts a section of this document from advice
+into something a machine enforces:
 
-Section 15 says "write a `.clang-format` and stop discussing it". There isn't
-one. Neither is there a `.clang-tidy`, an `.editorconfig`, or a `.gitignore`.
+| File | What it mechanises |
+|---|---|
+| `.clang-format` | Section 15. Tuned to the code that already exists, so adopting it is low-churn |
+| `.clang-tidy` | Much of sections 2, 5, 8 and 17, including a function-size limit |
+| `.editorconfig` | Indentation and encoding, for editors that never run clang-format |
+| `.gitattributes` | LF normalisation, so a line-ending flip never hides a real diff |
+| `.gitignore` | Keeps build output out of history |
 
-This is the gap between a guideline and a *mechanism*. A guideline in a markdown
-file decays, because it relies on everybody remembering. A guideline in a config
-file that runs on every save cannot decay. Four small files convert most of this
-document from advice into automation, and if you only do one, make it
-`.clang-format`.
+Two things worth knowing about how they are set up:
+
+- **`.clang-format` has not been run over the tree yet.** It would touch roughly
+  500 lines across seven files, almost all of it expanding multi-statement
+  one-liners. That belongs in its own commit, per the rule above.
+- **`.clang-tidy` deliberately enables `bugprone-easily-swappable-parameters`.**
+  That is the mechanical enforcement of I.24 from section 2, and it *will* fire
+  on `propagate(sv, mu, dt)`. That is not a false positive, that is the finding.
+  Every disabled check in that file has a written reason beside it, because a
+  suppression list without reasons is how a lint config quietly stops meaning
+  anything.
 
 ### Functions should fit on a screen
 
@@ -1126,7 +1211,15 @@ real thing.
   — the collaborative collection. Its chapter structure (Tools, Style, Safety,
   Maintainability, Portability, Threadability, Performance, Correctness) is
   roughly the shape of this document, and sections 17 and 18 exist because that
-  book has chapters this one was missing.
+  book had chapters this one was missing. The Style, Safety, Maintainability,
+  Portability and Correctness chapters were each read against this document;
+  the boolean-parameter rule, the `assert` side-effect trap, the reserved-
+  identifier rule and the note on passing primitives by value all came from
+  that pass.
+- **[strong_type](https://github.com/rollbear/strong_type)**,
+  **[NamedType](https://github.com/joboccara/NamedType)**,
+  **[type_safe](https://foonathan.net/type_safe/)** — if you would rather not
+  hand-roll the `Radians`/`Degrees` boilerplate from section 2.
 - **"The Power of 10: Rules for Developing Safety-Critical Code"** — Gerard J.
   Holzmann, NASA/JPL Laboratory for Reliable Software, 2006. Section 20.
 - **[cppreference.com](https://en.cppreference.com/)** — the standard library
