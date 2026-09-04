@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.24)
+cmake_minimum_required(VERSION 3.25)
 project(orbsim LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 23)
@@ -14,24 +14,83 @@ include(FetchContent)
 set(FETCHCONTENT_QUIET OFF)
 
 # ---------------------------------------------------------------------------
+# Warnings, as errors.
+#
+# See CODING_GUIDELINES.md section 1. Carried on an INTERFACE target so that
+# every target below gets exactly the same set and none can quietly opt out.
+# Third-party headers are included with -isystem (see the SYSTEM argument on
+# the FetchContent_Declare calls), so this only ever reports our own code.
+# ---------------------------------------------------------------------------
+add_library(orbsim_warnings INTERFACE)
+target_compile_options(orbsim_warnings INTERFACE
+        $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:
+            -Wall -Wextra -Wpedantic
+            -Wshadow
+            -Wnon-virtual-dtor
+            -Wold-style-cast
+            -Wcast-align
+            -Wunused
+            -Woverloaded-virtual
+            -Wconversion
+            -Wsign-conversion
+            -Wnull-dereference
+            -Wdouble-promotion
+            -Wformat=2
+            -Wimplicit-fallthrough
+            # Vulkan structs are written as designated initialisers with the
+            # remaining fields intentionally value-initialised. Warning on each
+            # one buries everything real.
+            -Wno-missing-designated-field-initializers
+            -Werror>
+        $<$<CXX_COMPILER_ID:MSVC>:/W4 /WX /permissive->
+)
+
+# ---------------------------------------------------------------------------
+# Floating point. See CODING_GUIDELINES.md section 11.
+#
+# FMA contraction reorders arithmetic, and reordered arithmetic breaks the
+# round-trip identities the orbital tests depend on. -ffast-math is never set,
+# at any optimisation level: orbitInfo() returns infinity on purpose.
+#
+# PUBLIC on orbsim_core below, so anything computing against the physics
+# inherits the same arithmetic.
+# ---------------------------------------------------------------------------
+add_library(orbsim_fp INTERFACE)
+target_compile_options(orbsim_fp INTERFACE
+        $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-ffp-contract=off>
+        $<$<CXX_COMPILER_ID:MSVC>:/fp:precise>
+)
+
+# ---------------------------------------------------------------------------
+# AddressSanitizer, off by default and one flag away.
+#
+# UBSan is deliberately not offered here: its Windows support is partial, and a
+# build option that silently does less than its name promises is worse than no
+# option. On a Linux job, use -fsanitize=address,undefined.
+# ---------------------------------------------------------------------------
+option(ORBSIM_SANITIZE_ADDRESS "Build with AddressSanitizer" OFF)
+add_library(orbsim_sanitizers INTERFACE)
+if(ORBSIM_SANITIZE_ADDRESS)
+    target_compile_options(orbsim_sanitizers INTERFACE
+            $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-fsanitize=address -fno-omit-frame-pointer>)
+    target_link_options(orbsim_sanitizers INTERFACE
+            $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-fsanitize=address>)
+endif()
+
+# ---------------------------------------------------------------------------
 # Simulation core
 #
 # Deliberately free of any dependency on the renderer or on SDL: the physics
-# must be runnable headless, both for tests and, later, for a scenario
-# batch-runner.
+# must run headless, both for tests and for a future scenario batch-runner.
 # ---------------------------------------------------------------------------
 add_library(orbsim_core STATIC
         src/orbit/Orbit.cpp
 )
 target_include_directories(orbsim_core PUBLIC src)
-
-if(MSVC)
-    target_compile_options(orbsim_core PRIVATE /W4)
-else()
-    # Contracting doubles into FMAs reorders arithmetic, which quietly breaks
-    # the round-trip identities the orbital code relies on. Keep it off.
-    target_compile_options(orbsim_core PRIVATE -Wall -Wextra -Wpedantic -ffp-contract=off)
-endif()
+target_link_libraries(orbsim_core
+        PUBLIC orbsim_fp
+        PRIVATE orbsim_warnings orbsim_sanitizers
+)
 
 # ---------------------------------------------------------------------------
 # Tests
@@ -39,7 +98,7 @@ endif()
 include(CTest)
 
 add_executable(test_orbit tests/test_orbit.cpp)
-target_link_libraries(test_orbit PRIVATE orbsim_core)
+target_link_libraries(test_orbit PRIVATE orbsim_core orbsim_warnings orbsim_sanitizers)
 add_test(NAME orbit COMMAND test_orbit)
 
 # ---------------------------------------------------------------------------
@@ -48,25 +107,29 @@ add_test(NAME orbit COMMAND test_orbit)
 # Vulkan headers are fetched at a pinned version rather than taken from
 # whatever SDK happens to be installed, so the build is reproducible across
 # machines. Only the loader library and the shader compiler come from the SDK.
+#
+# SYSTEM on every dependency: their headers are not our code, and 640 warnings
+# from vk_mem_alloc.h would bury the one that matters.
 # ---------------------------------------------------------------------------
-find_package(Vulkan REQUIRED COMPONENTS glslc)
-
 FetchContent_Declare(vulkan_headers
         GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Headers.git
         GIT_TAG        v1.3.302
         GIT_SHALLOW    TRUE
+        SYSTEM
 )
 
 FetchContent_Declare(vk_bootstrap
         GIT_REPOSITORY https://github.com/charles-lunarg/vk-bootstrap.git
         GIT_TAG        v1.3.302
         GIT_SHALLOW    TRUE
+        SYSTEM
 )
 
 FetchContent_Declare(vma
         GIT_REPOSITORY https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator.git
         GIT_TAG        v3.2.1
         GIT_SHALLOW    TRUE
+        SYSTEM
 )
 
 set(SDL_SHARED ON  CACHE BOOL "" FORCE)
@@ -77,16 +140,27 @@ FetchContent_Declare(sdl3
         GIT_REPOSITORY https://github.com/libsdl-org/SDL.git
         GIT_TAG        release-3.4.16
         GIT_SHALLOW    TRUE
+        SYSTEM
 )
 
-FetchContent_MakeAvailable(vulkan_headers vk_bootstrap vma sdl3)
+# Vulkan-Headers first, and on its own: it defines the Vulkan::Headers target,
+# and FindVulkan below will not overwrite a target that already exists. That
+# ordering is what makes "pinned headers, SDK only for the loader and glslc"
+# actually true rather than merely intended -- without it, an SDK upgrade on the
+# build machine silently changes which headers this project compiles against.
+FetchContent_MakeAvailable(vulkan_headers)
+FetchContent_MakeAvailable(vk_bootstrap vma sdl3)
+
+# The SDK supplies only the loader import library and the shader compiler.
+find_package(Vulkan REQUIRED COMPONENTS glslc)
 
 # VMA ships as a single header; this target holds the one translation unit that
 # instantiates its implementation.
 add_library(vma_impl STATIC src/render/VmaImpl.cpp)
 target_link_libraries(vma_impl PUBLIC Vulkan::Headers GPUOpen::VulkanMemoryAllocator)
 target_compile_definitions(vma_impl PUBLIC VMA_STATIC_VULKAN_FUNCTIONS=0 VMA_DYNAMIC_VULKAN_FUNCTIONS=1)
-# VMA's own header is not warning-clean under -Wall; that is not our problem to fix.
+# VMA's own header is not warning-clean; that is not ours to fix, and it is not
+# ours to hear about either.
 if(NOT MSVC)
     target_compile_options(vma_impl PRIVATE -Wno-everything)
 endif()
@@ -135,6 +209,8 @@ add_dependencies(orbsim orbsim_shaders)
 
 target_link_libraries(orbsim PRIVATE
         orbsim_core
+        orbsim_warnings
+        orbsim_sanitizers
         vma_impl
         vk-bootstrap::vk-bootstrap
         Vulkan::Headers
@@ -147,13 +223,6 @@ target_compile_definitions(orbsim PRIVATE
         ORBSIM_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data"
 )
 
-if(NOT MSVC)
-    # Vulkan structs are written as designated initialisers with the remaining
-    # fields intentionally value-initialised to zero, which is the idiomatic
-    # style. Warning on each one buries anything real.
-    target_compile_options(orbsim PRIVATE -Wall -Wextra -Wno-missing-designated-field-initializers)
-endif()
-
 # SDL3 is built as a DLL; put it next to the executable so the app runs from
 # the build tree without any PATH fiddling.
 add_custom_command(TARGET orbsim POST_BUILD
@@ -161,3 +230,29 @@ add_custom_command(TARGET orbsim POST_BUILD
         $<TARGET_FILE:SDL3::SDL3> $<TARGET_FILE_DIR:orbsim>
         VERBATIM
 )
+
+# ---------------------------------------------------------------------------
+# Header self-containment (SF.11), enforced rather than assumed.
+#
+# One generated translation unit per header, containing nothing but that
+# include. If a header stops compiling on its own, the build stops.
+# ---------------------------------------------------------------------------
+set(ORBSIM_CORE_HEADERS
+        core/Math.hpp
+        orbit/Orbit.hpp
+)
+
+set(orbsim_selfcheck_sources "")
+foreach(header IN LISTS ORBSIM_CORE_HEADERS)
+    string(REPLACE "/" "_" stem "${header}")
+    string(REPLACE "." "_" stem "${stem}")
+    set(generated "${CMAKE_CURRENT_BINARY_DIR}/selfcheck/selfcheck_${stem}.cpp")
+    file(WRITE "${generated}"
+            "// Generated by CMake. Proves ${header} is self-contained (SF.11).\n"
+            "#include \"${header}\"\n")
+    list(APPEND orbsim_selfcheck_sources "${generated}")
+endforeach()
+
+add_library(orbsim_header_selfcheck OBJECT ${orbsim_selfcheck_sources})
+target_link_libraries(orbsim_header_selfcheck PRIVATE orbsim_core orbsim_warnings)
+add_dependencies(test_orbit orbsim_header_selfcheck)
