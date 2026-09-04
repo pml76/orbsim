@@ -84,8 +84,11 @@ The compiler is the cheapest code reviewer you will ever have. It works for
 free, it never gets tired, and it never gets tired of telling you the same
 thing. Let it.
 
-Right now `orbsim_core` gets `-Wall -Wextra -Wpedantic` and the app gets
-`-Wall -Wextra`. That is a fine start and it is not the finish line.
+**Done.** Every target now links an `orbsim_warnings` INTERFACE target
+carrying the list above plus `-Werror`, so no target can quietly opt out.
+Dependencies are pulled in with `SYSTEM`, which is what makes that survivable:
+the full set appeared to produce 643 warnings, and 639 of them were inside
+`vk_mem_alloc.h` and `VkBootstrap.h`.
 
 **A note on `-Wconversion` in this project specifically.** You are going to get
 a *lot* of hits, because this codebase deliberately computes in `double` and
@@ -134,19 +137,23 @@ ballgame. So let's talk about I.4, "Make interfaces precisely and strongly
 typed", which I think is the single highest-value rule in the entire document
 for *this* codebase.
 
-### Units are types. Yours are not.
+### Units are types. Yours were not.
 
-Look at what you have:
+This is what `core/Math.hpp` used to offer:
 
 ```cpp
 inline constexpr f64 rad(f64 degrees);
 inline constexpr f64 deg(f64 radians);
 ```
 
-Both take an `f64`. Both return an `f64`. Nothing - *nothing* - stops you
-writing `rad(rad(x))`, or handing degrees to a function that expects radians.
-The compiler will smile and produce a spacecraft that flies somewhere
+Both took an `f64`. Both returned an `f64`. Nothing - *nothing* - stopped you
+writing `rad(rad(x))`, or handing degrees to a function that expected radians.
+The compiler would smile and produce a spacecraft that flew somewhere
 interesting.
+
+**Fixed.** `core/Units.hpp` now defines `Radians`, `Degrees`, `Metres`,
+`Seconds`, `Eccentricity` and `GravParam`, and `Elements` is built from them.
+The rest of this section is why.
 
 In 1999 the Mars Climate Orbiter was destroyed because one team's software
 produced impulse in pound-force seconds and another team's expected
@@ -198,26 +205,33 @@ Two footnotes on strong types:
 ### I.24: adjacent parameters you can swap
 
 Rule I.24 is "Avoid adjacent parameters that can be invoked by the same
-arguments in either order". Here is your propagator:
+arguments in either order". Here is what the propagator used to be:
 
 ```cpp
 StateVector propagate(const StateVector& sv, f64 mu, f64 dt);
 
-propagate(state, dt, mu);   // compiles perfectly. flies you into the sun.
+propagate(state, dt, mu);   // compiled perfectly. flew you into the sun.
 ```
 
-Two adjacent `f64` parameters, silently swappable. Your test helpers have three
-of them in a row - `checkNear(what, got, want, tol)`. Strong types fix this for
-free, as a side effect of fixing the units problem. That is what a good
+Two adjacent `f64` parameters, silently swappable. The test helpers had three
+of them in a row - `checkNear(what, got, want, tol)`. Strong types fixed this
+for free, as a side effect of fixing the units problem. That is what a good
 abstraction does: you buy one thing and get another.
+
+Today it reads `propagate(const StateVector&, GravParam, Seconds)`, the helper
+takes a `Tolerance`, and `bugprone-easily-swappable-parameters` is enabled to
+keep it that way. That check is not decoration: it is what found the
+`nearlyEqual(f64, f64, f64)` defect in the worked example.
 
 Related: I.23, "Keep the number of function arguments low". If you find yourself
 passing five doubles, you have discovered a struct that wants to exist.
 
 ### Boolean parameters are a mystery at the call site
 
-This one is from Jason's own collection rather than the Core Guidelines, and
-your code has three instances of it:
+This one is from Jason's own collection rather than the Core Guidelines. The
+renderer had three instances of it, now all fixed - `Validation`, `Memory` and
+`FenceState` - but the argument is worth keeping, because the next one will
+look just as harmless:
 
 ```cpp
 Buffer createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, bool hostVisible);
@@ -231,8 +245,8 @@ Read this at the call site and tell me what it does:
 createBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, true);   // true... what?
 ```
 
-Now here is the interesting part. Your code does not actually look like that.
-It looks like this:
+Now here is the interesting part. The code did not actually look like that.
+It looked like this:
 
 ```cpp
 createBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, /*hostVisible=*/true);
@@ -240,10 +254,10 @@ makeFence(device_, /*signalled=*/true);
 makeFence(device_, /*signalled=*/false);
 ```
 
-Every single boolean call site in this codebase has a hand-written comment
-explaining the argument. **That comment is the evidence.** You already knew the
-type was not carrying its meaning, and you patched it with a comment the
-compiler cannot check and nobody has to keep accurate.
+Every single boolean call site had a hand-written comment explaining the
+argument. **That comment is the evidence.** Whoever wrote it already knew the
+type was not carrying its meaning, and patched it with a comment the compiler
+cannot check and nobody has to keep accurate.
 
 The type system will do this for you, for free, and check it:
 
@@ -268,20 +282,24 @@ telling you what it wanted to be.
 State your preconditions. `mu` must be positive. `ecc` must not be negative. A
 radius must be non-zero.
 
-Right now `propagate()` opens with:
+`propagate()` used to open with:
 
 ```cpp
 if (r0 <= 0.0) return sv;
 ```
 
-I want to push back on that one, gently. A zero radius is not a *situation*, it
-is a *bug* - a spacecraft at the exact centre of a planet. Silently returning
-the input turns a loud, findable error into a spacecraft that mysteriously
-stops moving three hours into a flight, for reasons nobody can reconstruct.
+A zero radius is not a *situation*, it is a *bug* - a spacecraft at the exact
+centre of a planet. Silently returning the input turned a loud, findable error
+into a spacecraft that mysteriously stopped moving three hours into a flight,
+for reasons nobody could reconstruct.
 
 Decide which it is. If it is a precondition, assert it and say so. If it is a
 supported input, document what the function guarantees. What you must not do is
 leave it ambiguous, because ambiguous is how it stays broken.
+
+**Fixed:** it now returns `std::unexpected(OrbitError::DegenerateState)`, and
+there is a test that says so. The split between reporting and asserting lives in
+`core/Contract.hpp`.
 
 Until C++26 contracts land, an assert macro and a comment are enough. The
 Guidelines call these `Expects()` and `Ensures()`; the names matter less than
@@ -319,10 +337,10 @@ static_assert(cross(Vec3{1, 0, 0}, Vec3{0, 1, 0}) == Vec3{0, 0, 1});
 ```
 
 That `static_assert` is a unit test that costs zero runtime, can never rot, and
-runs on every single build whether you remember to run the test suite or not. In
-`Math.hpp` you have `dot`, `cross`, `lengthSq`, and every operator already
-`constexpr`. Put `static_assert`s under them. Right now. It takes four minutes
-and you will find something.
+runs on every single build whether you remember to run the test suite or not.
+`Math.hpp` had `dot`, `cross`, `lengthSq` and every operator `constexpr`
+already, with nothing checking them; there are `static_assert`s under them now,
+and more under the unit conversions in `Units.hpp`.
 
 In C++23 you can go further than you could a few years ago — `std::sqrt` is not
 `constexpr`, but a great deal of your element-manipulation code is *nearly*
@@ -366,7 +384,9 @@ References. Yes, all of them. `const` is not decoration — it is you telling th
 next reader "you do not need to track this one, it never changes", and the next
 reader is you in five months.
 
-Your orbital code is already good about this. Keep it up.
+Your orbital code was always good about `const`. `[[nodiscard]]` was the gap,
+and it is closed: every orbital entry point and every renderer accessor has it
+now.
 
 `[[nodiscard]]` goes on any function whose entire purpose is its return value:
 
@@ -431,9 +451,13 @@ them.
 
 ### What you have now
 
+The simulation core has chosen: `std::expected<_, OrbitError>` everywhere, with
+assertions for the conditions only a bug can reach. The renderer has not:
+
 ```cpp
-bool init(SDL_Window* window, bool enableValidation, std::string& error);
-bool uploadBuffer(Buffer& dst, const void* data, VkDeviceSize size, std::string& error);
+[[nodiscard]] bool init(SDL_Window* window, Validation validation, std::string& error);
+[[nodiscard]] bool uploadBuffer(Buffer& dst, const void* data, VkDeviceSize size,
+                                std::string& error);
 ```
 
 Boolean return, error text through an out-parameter. The Guidelines would push
@@ -793,9 +817,9 @@ Two things worth knowing about how they are set up:
 
 ### Functions should fit on a screen
 
-`VulkanContext::init()` is **149 lines**. It creates an instance, a surface,
-picks a device, creates a device, builds an allocator, allocates command pools,
-builds sync objects, and creates an upload context. That is eight jobs.
+`VulkanContext::init()` was **149 lines**. It created an instance, a surface,
+picked a device, created a device, built an allocator, allocated command pools,
+built sync objects, and created an upload context. That is eight jobs.
 
 The Core Guidelines say it in F.2 and F.3 — a function should do one thing, and
 be short. NASA says roughly sixty lines (section 20). Neither number is magic;
@@ -803,10 +827,13 @@ what matters is that a 149-line function cannot be understood without scrolling,
 cannot be tested in pieces, and gives every one of its eight failure paths the
 same undifferentiated `return false`.
 
-Split it. `createInstance`, `selectDevice`, `createAllocator`,
-`createFrameResources`, `createUploadContext`. Each one fits on a screen, each
-one can fail with a specific error, and `init()` becomes a five-line sequence
-that reads like a description of what it does.
+**Done.** It is 29 lines now, delegating to `makeInstanceAndSurface`,
+`makeDevice`, `createAllocator`, `createFrameResources` and
+`createUploadContext`. Each fits on a screen and reports its own specific
+failure. The first two are file-local rather than members, which is what keeps
+`vkb::Instance` out of the header - see "Build time is a feature" below.
+`createSwapchain` and `beginFrame` were split for the same reason, and
+`readability-function-size` now holds the line.
 
 ### Delete code
 
@@ -867,7 +894,8 @@ that happens to also let you ship elsewhere.
   you `uint32_t`. Mixing them is exactly where 32-bit-versus-64-bit bugs hide,
   and they only appear when a count gets large. `-Wsign-conversion` and
   `-Wconversion` find these; that is a second reason to keep them on.
-- **Use `std::filesystem::path` for paths, not `std::string`.** Right now:
+- **Use `std::filesystem::path` for paths, not `std::string`.** This used to
+  read:
 
   ```cpp
   VkShaderModule loadShaderModule(const std::string& path, std::string& error) const;
@@ -947,7 +975,7 @@ squarely on code you have already written.
   happen".** This is section 2's precondition argument, stated as a quota. The
   quota is not the point; the habit is.
 - **Rule 4: no function longer than about sixty lines.** `VulkanContext::init()`
-  is 149.
+  was 149; it is 29 now, and `readability-function-size` keeps it there.
 
 **Transfers with judgement:**
 
@@ -955,11 +983,12 @@ squarely on code you have already written.
   that will stream terrain. But the frame-loop version of it is exactly right:
   **do not allocate in the hot path.** Size your vertex buffers once and reuse
   them.
-- **Rule 2: every loop must have a provable fixed upper bound.** Your Newton
-  iterations already satisfy this — 100, 100, and 200 in `Orbit.cpp` — and that
-  is genuinely good practice that most numerical code skips.
+- **Rule 2: every loop must have a provable fixed upper bound.** The Newton
+  iterations always satisfied this — 100, 100, and 200 in `Orbit.cpp` — which is
+  genuinely good practice that most numerical code skips.
 
-  But rule 2 is meant to be paired with rule 5, and that half is missing:
+  But rule 2 is meant to be paired with rule 5, and that half used to be
+  missing:
 
   ```cpp
   for (int i = 0; i < 100; ++i) {
@@ -970,11 +999,14 @@ squarely on code you have already written.
   return E;    // converged? did not converge? the caller cannot tell.
   ```
 
-  At an eccentricity of 0.9999 this returns a number that is simply wrong, and
-  nothing anywhere reports it. The bound was the easy half. **Say something when
-  the loop exits without converging** — assert in debug, and return a value the
-  caller can check. A silent wrong answer in a Kepler solver becomes a spacecraft
-  in the wrong place, twenty minutes later, for no visible reason.
+  At an eccentricity of 0.9999 that returned a number which was simply wrong,
+  with nothing anywhere reporting it. The bound was the easy half. **Say
+  something when the loop exits without converging.**
+
+  **Fixed:** all three now return `std::expected<_, OrbitError>` and end with
+  `std::unexpected(OrbitError::SolverDidNotConverge)`. A silent wrong answer in a
+  Kepler solver becomes a spacecraft in the wrong place twenty minutes later, for
+  no visible reason.
 
 **Does not transfer:**
 
