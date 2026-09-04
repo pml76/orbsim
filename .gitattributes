@@ -1,0 +1,14 @@
+# Normalise line endings in the repository to LF, matching .editorconfig.
+#
+# Without this, git's core.autocrlf on Windows rewrites endings on checkout and
+# the two configurations disagree, which shows up later as a diff where every
+# line changed and nobody can see the one line that actually did.
+* text=auto eol=lf
+
+# Binary assets: never touch these.
+*.png   binary
+*.jpg   binary
+*.dds   binary
+*.spv   binary
+*.ttf   binary
+*.msh   binary

@@ -1,0 +1,30 @@
+# Editor-agnostic baseline, so the file is correct before clang-format ever
+# runs and correct in editors that do not run clang-format at all.
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+insert_final_newline = true
+trim_trailing_whitespace = true
+indent_style = space
+indent_size = 4
+
+[*.{cpp,hpp,h,c,inl}]
+indent_size = 4
+max_line_length = 100
+
+[*.{vert,frag,comp,geom,glsl}]
+indent_size = 4
+
+[{CMakeLists.txt,*.cmake}]
+indent_size = 4
+
+[*.{json,yml,yaml}]
+indent_size = 2
+
+# Markdown uses two trailing spaces as a hard line break, so stripping trailing
+# whitespace here would silently change the rendered output.
+[*.md]
+trim_trailing_whitespace = false
+indent_size = 2

@@ -1,0 +1,115 @@
+# Static analysis configuration.
+#
+# The point of this file is to convert the advice in CODING_GUIDELINES.md into
+# something a machine enforces on every build, because advice that relies on
+# everyone remembering decays and advice a tool checks does not.
+#
+# Every disabled check below has a reason next to it. If you disable one more,
+# write the reason too -- a bare list of suppressions is how a lint config
+# quietly becomes meaningless.
+---
+Checks: >
+  bugprone-*,
+  cppcoreguidelines-*,
+  modernize-*,
+  performance-*,
+  portability-*,
+  readability-*,
+  misc-*,
+
+  -bugprone-narrowing-conversions,
+  -cppcoreguidelines-narrowing-conversions,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -readability-magic-numbers,
+  -readability-identifier-length,
+  -modernize-use-trailing-return-type,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  -cppcoreguidelines-pro-type-vararg,
+  -misc-include-cleaner,
+  -readability-braces-around-statements,
+  -modernize-use-nodiscard,
+
+# Only our code. The dependency tree under _deps is not ours to lint, and
+# linting it buries every finding that matters.
+HeaderFilterRegex: '.*/(src|tests)/.*\.(hpp|h)$'
+
+# Nothing is an error yet, deliberately. Turn the highest-signal families into
+# errors once the existing findings are cleared -- starting with
+# bugprone-* -- so the count can only go down.
+WarningsAsErrors: ''
+
+CheckOptions:
+  # Matches the naming rules in section 15 of CODING_GUIDELINES.md.
+  - key: readability-identifier-naming.NamespaceCase
+    value: lower_case
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.StructCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumCase
+    value: CamelCase
+  - key: readability-identifier-naming.FunctionCase
+    value: camelBack
+  - key: readability-identifier-naming.VariableCase
+    value: camelBack
+  - key: readability-identifier-naming.PrivateMemberSuffix
+    value: _
+  - key: readability-identifier-naming.GlobalConstantPrefix
+    value: k
+  - key: readability-identifier-naming.ConstexprVariablePrefix
+    value: k
+
+  # Section 17: functions should fit on a screen. VulkanContext::init() is
+  # currently 149 lines and will trip this, which is the intended outcome.
+  - key: readability-function-size.LineThreshold
+    value: '80'
+  - key: readability-function-size.StatementThreshold
+    value: '60'
+  - key: readability-function-size.NestingThreshold
+    value: '5'
+
+# --- notes on the disabled checks -------------------------------------------
+#
+# bugprone-narrowing-conversions / cppcoreguidelines-narrowing-conversions
+#   This codebase computes in f64 and hands f32 to the GPU by design. The
+#   compiler's -Wconversion already flags every narrowing, and section 1 argues
+#   for keeping that on; two tools shouting the same thing is noise, and the
+#   compiler's version is the one that cannot be forgotten.
+#
+# *-magic-numbers
+#   In orbital mechanics, 2.0, 0.5 and 180.0 are mathematics, not magic. The
+#   constants that DO deserve names (tolerances, iteration caps) are covered by
+#   section 16, which asks for a comment saying where the number came from --
+#   a requirement no linter can check.
+#
+# readability-identifier-length
+#   dt, mu, e, i, r0 are the standard symbols of the domain. Renaming them to
+#   satisfy a linter would make the code harder to check against a textbook.
+#
+# modernize-use-trailing-return-type
+#   Pure style, and not the style used here.
+#
+# cppcoreguidelines-pro-bounds-* and pro-type-reinterpret-cast / pro-type-vararg
+#   Unavoidable when calling the Vulkan and SDL C APIs. Keep them suppressed at
+#   the renderer boundary, never in orbsim_core.
+#
+# misc-include-cleaner
+#   Valuable, but extremely noisy against the Vulkan headers. Run
+#   include-what-you-use as a periodic job instead (see the Toolbox).
+#
+# readability-braces-around-statements
+#   `if (cond) return x;` on one line is used deliberately for guard clauses.
+#
+# modernize-use-nodiscard
+#   Suggests [[nodiscard]] on almost every const member function. Section 5
+#   asks for it where the return value IS the point, which is a judgement call.
+#
+# --- deliberately ENABLED, despite being noisy -------------------------------
+#
+# bugprone-easily-swappable-parameters
+#   This is the mechanical enforcement of I.24 and section 2. It will fire on
+#   propagate(sv, mu, dt) and on the test helpers. That is not a false
+#   positive -- it is the finding. Fix it with strong types rather than
+#   suppressing the check.
