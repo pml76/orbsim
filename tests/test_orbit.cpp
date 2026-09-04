@@ -17,8 +17,8 @@ using namespace orb;
 namespace {
 
 // Earth, WGS-84 / EGM-96.
-constexpr f64 kMuEarth = 3.986004418e14;   // m^3/s^2
-constexpr f64 kREarth  = 6378137.0;        // m
+constexpr f64 kMuEarth = 3.986004418e14; // m^3/s^2
+constexpr f64 kREarth = 6378137.0;       // m
 
 int g_checks = 0;
 int g_failures = 0;
@@ -26,7 +26,10 @@ int g_failures = 0;
 void fail(std::string_view what, f64 got, f64 want, f64 tol) {
     ++g_failures;
     std::print("  FAIL {}\n        got  {:.12g}\n        want {:.12g}  (tol {:g})\n",
-               what, got, want, tol);
+               what,
+               got,
+               want,
+               tol);
 }
 
 void checkNear(std::string_view what, f64 got, f64 want, f64 tol) {
@@ -52,7 +55,13 @@ void checkVecRel(std::string_view what, const Vec3& got, const Vec3& want, f64 r
         --g_checks;
         std::print("  FAIL {}\n        got  ({:.10g}, {:.10g}, {:.10g})\n"
                    "        want ({:.10g}, {:.10g}, {:.10g})\n        rel err {:g}\n",
-                   what, got.x, got.y, got.z, want.x, want.y, want.z,
+                   what,
+                   got.x,
+                   got.y,
+                   got.z,
+                   want.x,
+                   want.y,
+                   want.z,
                    length(got - want) / scale);
     }
 }
@@ -72,20 +81,39 @@ void section(std::string_view name) { std::print("{}\n", name); }
 void testElementRoundTrip() {
     section("elements <-> state round trip");
 
-    struct Case { const char* name; Elements el; };
+    struct Case {
+        const char* name;
+        Elements el;
+    };
     const Case cases[] = {
         {"LEO, inclined, slightly eccentric",
-         {.sma = kREarth + 500e3, .ecc = 0.01, .inc = rad(51.6),
-          .lan = rad(120.0), .aop = rad(45.0), .tra = rad(200.0)}},
+         {.sma = kREarth + 500e3,
+          .ecc = 0.01,
+          .inc = rad(51.6),
+          .lan = rad(120.0),
+          .aop = rad(45.0),
+          .tra = rad(200.0)}},
         {"GTO, highly eccentric",
-         {.sma = 24582e3, .ecc = 0.7306, .inc = rad(28.5),
-          .lan = rad(10.0), .aop = rad(178.0), .tra = rad(30.0)}},
+         {.sma = 24582e3,
+          .ecc = 0.7306,
+          .inc = rad(28.5),
+          .lan = rad(10.0),
+          .aop = rad(178.0),
+          .tra = rad(30.0)}},
         {"Polar",
-         {.sma = 7200e3, .ecc = 0.02, .inc = rad(90.0),
-          .lan = rad(300.0), .aop = rad(90.0), .tra = rad(45.0)}},
+         {.sma = 7200e3,
+          .ecc = 0.02,
+          .inc = rad(90.0),
+          .lan = rad(300.0),
+          .aop = rad(90.0),
+          .tra = rad(45.0)}},
         {"Retrograde",
-         {.sma = 8000e3, .ecc = 0.15, .inc = rad(145.0),
-          .lan = rad(200.0), .aop = rad(320.0), .tra = rad(275.0)}},
+         {.sma = 8000e3,
+          .ecc = 0.15,
+          .inc = rad(145.0),
+          .lan = rad(200.0),
+          .aop = rad(320.0),
+          .tra = rad(275.0)}},
     };
 
     for (const auto& c : cases) {
@@ -96,8 +124,8 @@ void testElementRoundTrip() {
         const Elements back = elementsFromState(sv, kMuEarth);
 
         std::print("  {}\n", c.name);
-        checkRel  ("    sma", back.sma, el.sma, 1e-12);
-        checkNear ("    ecc", back.ecc, el.ecc, 1e-12);
+        checkRel("    sma", back.sma, el.sma, 1e-12);
+        checkNear("    ecc", back.ecc, el.ecc, 1e-12);
         checkAngle("    inc", back.inc, el.inc, 1e-12);
         checkAngle("    lan", back.lan, el.lan, 1e-12);
         checkAngle("    aop", back.aop, el.aop, 1e-11);
@@ -111,31 +139,41 @@ void testDegenerateOrbits() {
     section("degenerate orbits stay finite");
 
     {
-        Elements el{.sma = 7000e3, .ecc = 0.0, .inc = rad(30.0),
-                    .lan = rad(70.0), .aop = rad(40.0), .tra = rad(25.0)};
+        Elements el{.sma = 7000e3,
+                    .ecc = 0.0,
+                    .inc = rad(30.0),
+                    .lan = rad(70.0),
+                    .aop = rad(40.0),
+                    .tra = rad(25.0)};
         el.slr = el.sma;
         const StateVector sv = stateFromElements(el, kMuEarth);
         const Elements back = elementsFromState(sv, kMuEarth);
 
         std::print("  circular inclined\n");
-        checkNear ("    aop folded to zero", back.aop, 0.0, 1e-12);
+        checkNear("    aop folded to zero", back.aop, 0.0, 1e-12);
         // aop + tra is the argument of latitude, and that is preserved.
         checkAngle("    argument of latitude", back.tra, el.aop + el.tra, 1e-10);
-        checkVecRel("    position reproduced", stateFromElements(back, kMuEarth).pos, sv.pos, 1e-12);
+        checkVecRel(
+            "    position reproduced", stateFromElements(back, kMuEarth).pos, sv.pos, 1e-12);
     }
 
     {
-        Elements el{.sma = 42164e3, .ecc = 0.001, .inc = 0.0,
-                    .lan = 0.0, .aop = rad(60.0), .tra = rad(15.0)};
+        Elements el{.sma = 42164e3,
+                    .ecc = 0.001,
+                    .inc = 0.0,
+                    .lan = 0.0,
+                    .aop = rad(60.0),
+                    .tra = rad(15.0)};
         el.slr = el.sma * (1.0 - el.ecc * el.ecc);
         const StateVector sv = stateFromElements(el, kMuEarth);
         const Elements back = elementsFromState(sv, kMuEarth);
 
         std::print("  equatorial (geostationary)\n");
-        checkNear ("    lan folded to zero", back.lan, 0.0, 1e-12);
-        checkNear ("    inc", back.inc, 0.0, 1e-12);
+        checkNear("    lan folded to zero", back.lan, 0.0, 1e-12);
+        checkNear("    inc", back.inc, 0.0, 1e-12);
         checkAngle("    aop from x-axis", back.aop, el.aop, 1e-10);
-        checkVecRel("    position reproduced", stateFromElements(back, kMuEarth).pos, sv.pos, 1e-12);
+        checkVecRel(
+            "    position reproduced", stateFromElements(back, kMuEarth).pos, sv.pos, 1e-12);
     }
 }
 
@@ -159,8 +197,7 @@ void testKnownValues() {
     checkNear("  period is ~5554 s", info.period, 5554.0, 5.0);
 
     // Vis-viva on an eccentric orbit, checked at periapsis.
-    Elements e2{.sma = 10000e3, .ecc = 0.3, .inc = rad(20.0),
-                .lan = 0.0, .aop = 0.0, .tra = 0.0};
+    Elements e2{.sma = 10000e3, .ecc = 0.3, .inc = rad(20.0), .lan = 0.0, .aop = 0.0, .tra = 0.0};
     e2.slr = e2.sma * (1.0 - e2.ecc * e2.ecc);
     const StateVector p = stateFromElements(e2, kMuEarth);
     const f64 rp = e2.sma * (1.0 - e2.ecc);
@@ -174,14 +211,32 @@ void testKnownValues() {
 void testPropagatorsAgree() {
     section("universal-variable vs Kepler-element propagation");
 
-    struct Case { const char* name; Elements el; };
+    struct Case {
+        const char* name;
+        Elements el;
+    };
     const Case cases[] = {
-        {"near-circular LEO", {.sma = 6878e3, .ecc = 0.001, .inc = rad(51.6),
-                               .lan = rad(30.0), .aop = rad(10.0), .tra = rad(0.0)}},
-        {"GTO",               {.sma = 24582e3, .ecc = 0.7306, .inc = rad(28.5),
-                               .lan = rad(10.0), .aop = rad(178.0), .tra = rad(5.0)}},
-        {"very eccentric",    {.sma = 100000e3, .ecc = 0.95, .inc = rad(63.4),
-                               .lan = rad(90.0), .aop = rad(270.0), .tra = rad(120.0)}},
+        {"near-circular LEO",
+         {.sma = 6878e3,
+          .ecc = 0.001,
+          .inc = rad(51.6),
+          .lan = rad(30.0),
+          .aop = rad(10.0),
+          .tra = rad(0.0)}},
+        {"GTO",
+         {.sma = 24582e3,
+          .ecc = 0.7306,
+          .inc = rad(28.5),
+          .lan = rad(10.0),
+          .aop = rad(178.0),
+          .tra = rad(5.0)}},
+        {"very eccentric",
+         {.sma = 100000e3,
+          .ecc = 0.95,
+          .inc = rad(63.4),
+          .lan = rad(90.0),
+          .aop = rad(270.0),
+          .tra = rad(120.0)}},
     };
 
     for (const auto& c : cases) {
@@ -207,8 +262,12 @@ void testPropagatorsAgree() {
 void testPropagationInvariants() {
     section("propagation invariants");
 
-    Elements el{.sma = 12000e3, .ecc = 0.4, .inc = rad(35.0),
-                .lan = rad(140.0), .aop = rad(25.0), .tra = rad(80.0)};
+    Elements el{.sma = 12000e3,
+                .ecc = 0.4,
+                .inc = rad(35.0),
+                .lan = rad(140.0),
+                .aop = rad(25.0),
+                .tra = rad(80.0)};
     el.slr = el.sma * (1.0 - el.ecc * el.ecc);
     const StateVector sv0 = stateFromElements(el, kMuEarth);
     const OrbitInfo info = orbitInfo(el, kMuEarth);
@@ -229,7 +288,8 @@ void testPropagationInvariants() {
     // Half a period from periapsis lands exactly on apoapsis.
     Elements atPeri = el;
     atPeri.tra = 0.0;
-    const StateVector apo = propagate(stateFromElements(atPeri, kMuEarth), kMuEarth, 0.5 * info.period);
+    const StateVector apo =
+        propagate(stateFromElements(atPeri, kMuEarth), kMuEarth, 0.5 * info.period);
     checkRel("  half period from periapsis reaches apoapsis", length(apo.pos), info.apoapsis, 1e-9);
 
     // A quarter period on a circular orbit is a quarter turn.
@@ -238,7 +298,7 @@ void testPropagationInvariants() {
     const OrbitInfo ci = orbitInfo(elementsFromState(c0, kMuEarth), kMuEarth);
     const StateVector c1 = propagate(c0, kMuEarth, 0.25 * ci.period);
     checkNear("  quarter period is a quarter turn", angleBetween(c0.pos, c1.pos), kPi / 2, 1e-9);
-    checkRel ("  circular radius unchanged", length(c1.pos), rc, 1e-12);
+    checkRel("  circular radius unchanged", length(c1.pos), rc, 1e-12);
 }
 
 // Escape trajectories are not a special case in this code, so they need the
@@ -255,12 +315,24 @@ void testHyperbolic() {
     const OrbitInfo info = orbitInfo(el, kMuEarth);
 
     ++g_checks;
-    if (!(el.ecc > 1.0)) { ++g_failures; --g_checks; std::print("  FAIL not hyperbolic: ecc = {:g}\n", el.ecc); }
+    if (!(el.ecc > 1.0)) {
+        ++g_failures;
+        --g_checks;
+        std::print("  FAIL not hyperbolic: ecc = {:g}\n", el.ecc);
+    }
     checkRel("  sma is negative", el.sma < 0.0 ? 1.0 : 0.0, 1.0, 1e-12);
     ++g_checks;
-    if (!std::isinf(info.apoapsis)) { ++g_failures; --g_checks; std::print("  FAIL apoapsis should be infinite\n"); }
+    if (!std::isinf(info.apoapsis)) {
+        ++g_failures;
+        --g_checks;
+        std::print("  FAIL apoapsis should be infinite\n");
+    }
     ++g_checks;
-    if (!(info.energy > 0.0)) { ++g_failures; --g_checks; std::print("  FAIL energy should be positive\n"); }
+    if (!(info.energy > 0.0)) {
+        ++g_failures;
+        --g_checks;
+        std::print("  FAIL energy should be positive\n");
+    }
 
     // Round trip through the elements.
     const StateVector rebuilt = stateFromElements(el, kMuEarth);
@@ -273,7 +345,8 @@ void testHyperbolic() {
 
     ++g_checks;
     if (!(length(out.pos) > length(sv.pos))) {
-        ++g_failures; --g_checks;
+        ++g_failures;
+        --g_checks;
         std::print("  FAIL should be receding\n");
     }
 

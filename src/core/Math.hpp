@@ -19,7 +19,7 @@ namespace orb {
 using f32 = float;
 using f64 = double;
 
-inline constexpr f64 kPi  = std::numbers::pi_v<f64>;
+inline constexpr f64 kPi = std::numbers::pi_v<f64>;
 inline constexpr f64 kTau = 2.0 * kPi;
 
 inline constexpr f64 deg(f64 radians) { return radians * (180.0 / kPi); }
@@ -51,10 +51,30 @@ struct Vec3 {
     constexpr Vec3 operator*(f64 s) const { return {x * s, y * s, z * s}; }
     constexpr Vec3 operator/(f64 s) const { return {x / s, y / s, z / s}; }
 
-    constexpr Vec3& operator+=(const Vec3& v) { x += v.x; y += v.y; z += v.z; return *this; }
-    constexpr Vec3& operator-=(const Vec3& v) { x -= v.x; y -= v.y; z -= v.z; return *this; }
-    constexpr Vec3& operator*=(f64 s) { x *= s; y *= s; z *= s; return *this; }
-    constexpr Vec3& operator/=(f64 s) { x /= s; y /= s; z /= s; return *this; }
+    constexpr Vec3& operator+=(const Vec3& v) {
+        x += v.x;
+        y += v.y;
+        z += v.z;
+        return *this;
+    }
+    constexpr Vec3& operator-=(const Vec3& v) {
+        x -= v.x;
+        y -= v.y;
+        z -= v.z;
+        return *this;
+    }
+    constexpr Vec3& operator*=(f64 s) {
+        x *= s;
+        y *= s;
+        z *= s;
+        return *this;
+    }
+    constexpr Vec3& operator/=(f64 s) {
+        x /= s;
+        y /= s;
+        z /= s;
+        return *this;
+    }
 
     constexpr bool operator==(const Vec3&) const = default;
 };
@@ -64,9 +84,7 @@ constexpr Vec3 operator*(f64 s, const Vec3& v) { return v * s; }
 constexpr f64 dot(const Vec3& a, const Vec3& b) { return a.x * b.x + a.y * b.y + a.z * b.z; }
 
 constexpr Vec3 cross(const Vec3& a, const Vec3& b) {
-    return {a.y * b.z - a.z * b.y,
-            a.z * b.x - a.x * b.z,
-            a.x * b.y - a.y * b.x};
+    return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
 }
 
 constexpr f64 lengthSq(const Vec3& v) { return dot(v, v); }

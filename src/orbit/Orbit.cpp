@@ -10,9 +10,9 @@ constexpr f64 kInf = std::numeric_limits<f64>::infinity();
 
 // An orbit is treated as circular / equatorial below these thresholds, at which
 // point the periapsis direction / ascending node stops being meaningful.
-constexpr f64 kCircularTol   = 1e-9;
+constexpr f64 kCircularTol = 1e-9;
 constexpr f64 kEquatorialTol = 1e-9;
-constexpr f64 kParabolicTol  = 1e-9;
+constexpr f64 kParabolicTol = 1e-9;
 
 constexpr f64 clampUnit(f64 v) { return std::clamp(v, -1.0, 1.0); }
 constexpr f64 sign(f64 v) { return v < 0.0 ? -1.0 : 1.0; }
@@ -47,9 +47,9 @@ Elements elementsFromState(const StateVector& sv, f64 mu) {
     const f64 vmag = length(v);
     const f64 rdotv = dot(r, v);
 
-    const Vec3 h = cross(r, v);                 // specific angular momentum
+    const Vec3 h = cross(r, v); // specific angular momentum
     const f64 hmag = length(h);
-    const Vec3 node = cross(Vec3{0, 0, 1}, h);  // points at the ascending node
+    const Vec3 node = cross(Vec3{0, 0, 1}, h); // points at the ascending node
     const f64 nmag = length(node);
 
     // The eccentricity vector points from the focus toward periapsis.
@@ -63,7 +63,7 @@ Elements elementsFromState(const StateVector& sv, f64 mu) {
     const f64 energy = vmag * vmag * 0.5 - mu / rmag;
     el.sma = (std::abs(el.ecc - 1.0) > kParabolicTol) ? -mu / (2.0 * energy) : kInf;
 
-    const bool circular   = el.ecc < kCircularTol;
+    const bool circular = el.ecc < kCircularTol;
     const bool equatorial = nmag < kEquatorialTol * hmag;
 
     // Reference direction for angles measured in the orbital plane: the
@@ -76,7 +76,7 @@ Elements elementsFromState(const StateVector& sv, f64 mu) {
         // straight to the spacecraft: argument of latitude, or true longitude.
         el.aop = 0.0;
         f64 u = angleBetween(ref, r);
-        if (dot(cross(ref, r), h) < 0.0) u = kTau - u;   // resolve the half-turn
+        if (dot(cross(ref, r), h) < 0.0) u = kTau - u; // resolve the half-turn
         el.tra = wrapTau(u);
     } else {
         f64 aop = angleBetween(ref, evec);
@@ -84,7 +84,7 @@ Elements elementsFromState(const StateVector& sv, f64 mu) {
         el.aop = wrapTau(aop);
 
         f64 tra = angleBetween(evec, r);
-        if (rdotv < 0.0) tra = kTau - tra;               // inbound half of the orbit
+        if (rdotv < 0.0) tra = kTau - tra; // inbound half of the orbit
         el.tra = wrapTau(tra);
     }
 
@@ -106,9 +106,9 @@ StateVector stateFromElements(const Elements& el, f64 mu) {
     const Vec3 vPerifocal{-k * sinNu, k * (el.ecc + cosNu), 0.0};
 
     // Perifocal -> inertial: Rz(lan) * Rx(inc) * Rz(aop), applied right to left.
-    const Quat rot = Quat::fromAxisAngle({0, 0, 1}, el.lan)
-                   * Quat::fromAxisAngle({1, 0, 0}, el.inc)
-                   * Quat::fromAxisAngle({0, 0, 1}, el.aop);
+    const Quat rot = Quat::fromAxisAngle({0, 0, 1}, el.lan) *
+                     Quat::fromAxisAngle({1, 0, 0}, el.inc) *
+                     Quat::fromAxisAngle({0, 0, 1}, el.aop);
 
     return {rot.rotate(rPerifocal), rot.rotate(vPerifocal)};
 }
@@ -118,20 +118,20 @@ OrbitInfo orbitInfo(const Elements& el, f64 mu) {
     info.closed = el.ecc < 1.0 - kParabolicTol;
 
     info.periapsis = el.slr / (1.0 + el.ecc);
-    info.apoapsis  = info.closed ? el.slr / (1.0 - el.ecc) : kInf;
-    info.radius    = el.slr / (1.0 + el.ecc * std::cos(el.tra));
+    info.apoapsis = info.closed ? el.slr / (1.0 - el.ecc) : kInf;
+    info.radius = el.slr / (1.0 + el.ecc * std::cos(el.tra));
 
     if (info.closed) {
         const f64 a = el.sma;
         info.meanMotion = std::sqrt(mu / (a * a * a));
-        info.period     = kTau / info.meanMotion;
-        info.energy     = -mu / (2.0 * a);
-        info.speed      = std::sqrt(std::max(0.0, mu * (2.0 / info.radius - 1.0 / a)));
+        info.period = kTau / info.meanMotion;
+        info.energy = -mu / (2.0 * a);
+        info.speed = std::sqrt(std::max(0.0, mu * (2.0 / info.radius - 1.0 / a)));
     } else {
         info.meanMotion = 0.0;
-        info.period     = kInf;
-        info.energy     = std::isinf(el.sma) ? 0.0 : -mu / (2.0 * el.sma);
-        info.speed      = std::sqrt(std::max(0.0, 2.0 * (info.energy + mu / info.radius)));
+        info.period = kInf;
+        info.energy = std::isinf(el.sma) ? 0.0 : -mu / (2.0 * el.sma);
+        info.speed = std::sqrt(std::max(0.0, 2.0 * (info.energy + mu / info.radius)));
     }
     return info;
 }
@@ -201,7 +201,7 @@ StateVector propagate(const StateVector& sv, f64 mu, f64 dt) {
 
     const f64 rdotv = dot(sv.pos, sv.vel);
     const f64 sqrtMu = std::sqrt(mu);
-    const f64 alpha = 2.0 / r0 - v0 * v0 / mu;   // reciprocal of the semi-major axis
+    const f64 alpha = 2.0 / r0 - v0 * v0 / mu; // reciprocal of the semi-major axis
 
     // Whole revolutions of a closed orbit are a no-op. Folding them away keeps
     // the universal anomaly small, which is what keeps Newton convergent when
@@ -216,7 +216,7 @@ StateVector propagate(const StateVector& sv, f64 mu, f64 dt) {
     if (alpha > 1e-12) {
         chi = sqrtMu * dt * alpha;
     } else if (alpha < -1e-12) {
-        const f64 a = 1.0 / alpha;   // negative on a hyperbola
+        const f64 a = 1.0 / alpha; // negative on a hyperbola
         const f64 denom = rdotv + sign(dt) * std::sqrt(-mu * a) * (1.0 - r0 * alpha);
         chi = sign(dt) * std::sqrt(-a) * std::log(-2.0 * mu * alpha * dt / denom);
     } else {
@@ -232,14 +232,11 @@ StateVector propagate(const StateVector& sv, f64 mu, f64 dt) {
         psi = chi * chi * alpha;
         stumpff(psi, c2, c3);
 
-        r = chi * chi * c2
-          + (rdotv / sqrtMu) * chi * (1.0 - psi * c3)
-          + r0 * (1.0 - psi * c2);
+        r = chi * chi * c2 + (rdotv / sqrtMu) * chi * (1.0 - psi * c3) + r0 * (1.0 - psi * c2);
 
-        const f64 dchi = (sqrtMu * dt
-                          - chi * chi * chi * c3
-                          - (rdotv / sqrtMu) * chi * chi * c2
-                          - r0 * chi * (1.0 - psi * c3)) / r;
+        const f64 dchi = (sqrtMu * dt - chi * chi * chi * c3 - (rdotv / sqrtMu) * chi * chi * c2 -
+                          r0 * chi * (1.0 - psi * c3)) /
+                         r;
         chi += dchi;
         if (std::abs(dchi) < 1e-10) break;
     }

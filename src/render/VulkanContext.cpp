@@ -38,30 +38,33 @@ VkFence makeFence(VkDevice device, bool signalled) {
 
 // ---------------------------------------------------------------------------
 
-void transitionImage(VkCommandBuffer cmd, VkImage image,
-                     VkImageLayout from, VkImageLayout to,
+void transitionImage(VkCommandBuffer cmd,
+                     VkImage image,
+                     VkImageLayout from,
+                     VkImageLayout to,
                      VkImageAspectFlags aspect) {
     VkImageMemoryBarrier2 barrier{
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
         // ALL_COMMANDS is heavier than necessary, but this renderer makes only
         // a couple of transitions per frame and correctness is worth more here
         // than shaving a pipeline stall.
-        .srcStageMask  = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+        .srcStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
         .srcAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT,
-        .dstStageMask  = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+        .dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
         .dstAccessMask = VK_ACCESS_2_MEMORY_WRITE_BIT | VK_ACCESS_2_MEMORY_READ_BIT,
         .oldLayout = from,
         .newLayout = to,
         .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
         .image = image,
-        .subresourceRange = {
-            .aspectMask = aspect,
-            .baseMipLevel = 0,
-            .levelCount = VK_REMAINING_MIP_LEVELS,
-            .baseArrayLayer = 0,
-            .layerCount = VK_REMAINING_ARRAY_LAYERS,
-        },
+        .subresourceRange =
+            {
+                .aspectMask = aspect,
+                .baseMipLevel = 0,
+                .levelCount = VK_REMAINING_MIP_LEVELS,
+                .baseArrayLayer = 0,
+                .layerCount = VK_REMAINING_ARRAY_LAYERS,
+            },
     };
 
     const VkDependencyInfo dep{
@@ -88,10 +91,9 @@ bool VulkanContext::init(SDL_Window* window, bool enableValidation, std::string&
 
     auto buildInstance = [&](bool validation) {
         vkb::InstanceBuilder builder;
-        builder.set_app_name("orbsim")
-               .set_engine_name("orbsim")
-               .require_api_version(1, 3, 0);
-        for (uint32_t i = 0; i < sdlExtCount; ++i) builder.enable_extension(sdlExts[i]);
+        builder.set_app_name("orbsim").set_engine_name("orbsim").require_api_version(1, 3, 0);
+        for (uint32_t i = 0; i < sdlExtCount; ++i)
+            builder.enable_extension(sdlExts[i]);
         if (validation) builder.request_validation_layers().use_default_debug_messenger();
         return builder.build();
     };
@@ -130,17 +132,17 @@ bool VulkanContext::init(SDL_Window* window, bool enableValidation, std::string&
         .bufferDeviceAddress = VK_TRUE,
     };
     VkPhysicalDeviceFeatures features10{
-        .fillModeNonSolid = VK_TRUE,   // wireframe, for debugging meshes
-        .wideLines = VK_FALSE,         // widely unsupported; lines stay 1px
+        .fillModeNonSolid = VK_TRUE, // wireframe, for debugging meshes
+        .wideLines = VK_FALSE,       // widely unsupported; lines stay 1px
     };
 
     vkb::PhysicalDeviceSelector selector{vkbInstance};
     auto physRet = selector.set_surface(surface_)
-                           .set_minimum_version(1, 3)
-                           .set_required_features(features10)
-                           .set_required_features_12(features12)
-                           .set_required_features_13(features13)
-                           .select();
+                       .set_minimum_version(1, 3)
+                       .set_required_features(features10)
+                       .set_required_features_12(features12)
+                       .set_required_features_13(features13)
+                       .select();
     if (!physRet) {
         error = "No suitable Vulkan 1.3 device: " + physRet.error().message();
         return false;
@@ -234,21 +236,21 @@ bool VulkanContext::createSwapchain(std::string& error) {
         return false;
     }
 
-    vkb::SwapchainBuilder builder{physicalDevice_, device_, surface_,
-                                  graphicsQueueFamily_, graphicsQueueFamily_};
+    vkb::SwapchainBuilder builder{
+        physicalDevice_, device_, surface_, graphicsQueueFamily_, graphicsQueueFamily_};
 
     // UNORM rather than SRGB: the shaders write display-ready colours directly,
     // so an automatic linear-to-sRGB conversion would wash them out.
     auto swapRet = builder
-        .set_desired_format(VkSurfaceFormatKHR{VK_FORMAT_B8G8R8A8_UNORM,
-                                               VK_COLOR_SPACE_SRGB_NONLINEAR_KHR})
-        // Mailbox keeps latency low without tearing. FIFO is the required
-        // fallback and is always present.
-        .set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
-        .add_fallback_present_mode(VK_PRESENT_MODE_FIFO_KHR)
-        .set_desired_extent(static_cast<uint32_t>(w), static_cast<uint32_t>(h))
-        .add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
-        .build();
+                       .set_desired_format(VkSurfaceFormatKHR{VK_FORMAT_B8G8R8A8_UNORM,
+                                                              VK_COLOR_SPACE_SRGB_NONLINEAR_KHR})
+                       // Mailbox keeps latency low without tearing. FIFO is the required
+                       // fallback and is always present.
+                       .set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
+                       .add_fallback_present_mode(VK_PRESENT_MODE_FIFO_KHR)
+                       .set_desired_extent(static_cast<uint32_t>(w), static_cast<uint32_t>(h))
+                       .add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+                       .build();
     if (!swapRet) {
         error = "Swapchain creation failed: " + swapRet.error().message();
         return false;
@@ -262,7 +264,8 @@ bool VulkanContext::createSwapchain(std::string& error) {
     swapchainViews_ = vkbSwapchain.get_image_views().value();
 
     renderFinished_.resize(swapchainImages_.size());
-    for (auto& sem : renderFinished_) sem = makeSemaphore(device_);
+    for (auto& sem : renderFinished_)
+        sem = makeSemaphore(device_);
 
     // Depth attachment, sized to match.
     const VkImageCreateInfo depthInfo{
@@ -282,8 +285,9 @@ bool VulkanContext::createSwapchain(std::string& error) {
         .usage = VMA_MEMORY_USAGE_AUTO,
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     };
-    if (vmaCreateImage(allocator_, &depthInfo, &depthAlloc, &depthImage_,
-                       &depthAllocation_, nullptr) != VK_SUCCESS) {
+    if (vmaCreateImage(
+            allocator_, &depthInfo, &depthAlloc, &depthImage_, &depthAllocation_, nullptr) !=
+        VK_SUCCESS) {
         error = "Depth image allocation failed";
         return false;
     }
@@ -316,10 +320,12 @@ void VulkanContext::destroySwapchain() noexcept {
         depthImage_ = VK_NULL_HANDLE;
         depthAllocation_ = nullptr;
     }
-    for (VkSemaphore sem : renderFinished_) vkDestroySemaphore(device_, sem, nullptr);
+    for (VkSemaphore sem : renderFinished_)
+        vkDestroySemaphore(device_, sem, nullptr);
     renderFinished_.clear();
 
-    for (VkImageView view : swapchainViews_) vkDestroyImageView(device_, view, nullptr);
+    for (VkImageView view : swapchainViews_)
+        vkDestroyImageView(device_, view, nullptr);
     swapchainViews_.clear();
     swapchainImages_.clear();
 
@@ -380,10 +386,14 @@ std::optional<FrameContext> VulkanContext::beginFrame() {
     };
     vkBeginCommandBuffer(cmd, &begin);
 
-    transitionImage(cmd, swapchainImages_[imageIndex],
-                    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
-    transitionImage(cmd, depthImage_,
-                    VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+    transitionImage(cmd,
+                    swapchainImages_[imageIndex],
+                    VK_IMAGE_LAYOUT_UNDEFINED,
+                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+    transitionImage(cmd,
+                    depthImage_,
+                    VK_IMAGE_LAYOUT_UNDEFINED,
+                    VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
                     VK_IMAGE_ASPECT_DEPTH_BIT);
 
     const VkRenderingAttachmentInfo colorAttachment{
@@ -435,8 +445,10 @@ std::optional<FrameContext> VulkanContext::beginFrame() {
 void VulkanContext::endFrame(const FrameContext& frame) {
     vkCmdEndRendering(frame.cmd);
 
-    transitionImage(frame.cmd, swapchainImages_[frame.imageIndex],
-                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL, VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+    transitionImage(frame.cmd,
+                    swapchainImages_[frame.imageIndex],
+                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
     vkEndCommandBuffer(frame.cmd);
 
     const VkSemaphoreSubmitInfo waitInfo{
@@ -498,13 +510,14 @@ Buffer VulkanContext::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, 
     };
     VmaAllocationCreateInfo allocInfo{.usage = VMA_MEMORY_USAGE_AUTO};
     if (hostVisible) {
-        allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT
-                        | VMA_ALLOCATION_CREATE_MAPPED_BIT;
+        allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
+                          VMA_ALLOCATION_CREATE_MAPPED_BIT;
     }
 
     VmaAllocationInfo info{};
-    if (vmaCreateBuffer(allocator_, &bufferInfo, &allocInfo,
-                        &buffer.handle, &buffer.allocation, &info) != VK_SUCCESS) {
+    if (vmaCreateBuffer(
+            allocator_, &bufferInfo, &allocInfo, &buffer.handle, &buffer.allocation, &info) !=
+        VK_SUCCESS) {
         return {};
     }
     buffer.mapped = info.pMappedData;
@@ -518,7 +531,9 @@ void VulkanContext::destroyBuffer(Buffer& buffer) noexcept {
     buffer = {};
 }
 
-bool VulkanContext::uploadBuffer(Buffer& dst, const void* data, VkDeviceSize size,
+bool VulkanContext::uploadBuffer(Buffer& dst,
+                                 const void* data,
+                                 VkDeviceSize size,
                                  std::string& error) {
     if (size == 0) return true;
     if (size > dst.size) {
@@ -624,9 +639,11 @@ void VulkanContext::shutdown() {
     if (uploadPool_ != VK_NULL_HANDLE) vkDestroyCommandPool(device_, uploadPool_, nullptr);
 
     for (uint32_t i = 0; i < kFramesInFlight; ++i) {
-        if (imageAvailable_[i] != VK_NULL_HANDLE) vkDestroySemaphore(device_, imageAvailable_[i], nullptr);
+        if (imageAvailable_[i] != VK_NULL_HANDLE)
+            vkDestroySemaphore(device_, imageAvailable_[i], nullptr);
         if (inFlight_[i] != VK_NULL_HANDLE) vkDestroyFence(device_, inFlight_[i], nullptr);
-        if (commandPools_[i] != VK_NULL_HANDLE) vkDestroyCommandPool(device_, commandPools_[i], nullptr);
+        if (commandPools_[i] != VK_NULL_HANDLE)
+            vkDestroyCommandPool(device_, commandPools_[i], nullptr);
         imageAvailable_[i] = VK_NULL_HANDLE;
         inFlight_[i] = VK_NULL_HANDLE;
         commandPools_[i] = VK_NULL_HANDLE;

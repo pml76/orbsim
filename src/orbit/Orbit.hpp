@@ -21,8 +21,8 @@ namespace orb {
 
 // Position and velocity relative to the central body's inertial frame.
 struct StateVector {
-    Vec3 pos;   // m
-    Vec3 vel;   // m/s
+    Vec3 pos; // m
+    Vec3 vel; // m/s
 };
 
 // Classical (Keplerian) orbital elements.
@@ -32,35 +32,35 @@ struct StateVector {
 // argument of latitude; an equatorial orbit has no ascending node, so `lan` is
 // zero and in-plane angles are measured from the x-axis instead.
 struct Elements {
-    f64 sma{};        // semi-major axis, m. Negative for hyperbolic orbits.
-    f64 ecc{};        // eccentricity, dimensionless
-    f64 inc{};        // inclination, rad, [0, pi]
-    f64 lan{};        // longitude of ascending node, rad, [0, tau)
-    f64 aop{};        // argument of periapsis, rad, [0, tau)
-    f64 tra{};        // true anomaly, rad, [0, tau)
-    f64 slr{};        // semi-latus rectum, m. Kept explicitly so parabolic
-                      // orbits (where sma is infinite) remain representable.
+    f64 sma{}; // semi-major axis, m. Negative for hyperbolic orbits.
+    f64 ecc{}; // eccentricity, dimensionless
+    f64 inc{}; // inclination, rad, [0, pi]
+    f64 lan{}; // longitude of ascending node, rad, [0, tau)
+    f64 aop{}; // argument of periapsis, rad, [0, tau)
+    f64 tra{}; // true anomaly, rad, [0, tau)
+    f64 slr{}; // semi-latus rectum, m. Kept explicitly so parabolic
+               // orbits (where sma is infinite) remain representable.
 };
 
 // Quantities derived from the elements that the HUD and MFDs ask for
 // constantly. Computed together because they share intermediate terms.
 struct OrbitInfo {
-    f64 periapsis{};      // radius at periapsis, m
-    f64 apoapsis{};       // radius at apoapsis, m. Infinity if not closed.
-    f64 period{};         // orbital period, s. Infinity if not closed.
-    f64 meanMotion{};     // rad/s. Zero if not closed.
-    f64 energy{};         // specific orbital energy, J/kg
-    f64 radius{};         // current radius, m
-    f64 speed{};          // current speed, m/s
-    bool closed{};        // true for elliptic orbits (ecc < 1)
+    f64 periapsis{};  // radius at periapsis, m
+    f64 apoapsis{};   // radius at apoapsis, m. Infinity if not closed.
+    f64 period{};     // orbital period, s. Infinity if not closed.
+    f64 meanMotion{}; // rad/s. Zero if not closed.
+    f64 energy{};     // specific orbital energy, J/kg
+    f64 radius{};     // current radius, m
+    f64 speed{};      // current speed, m/s
+    bool closed{};    // true for elliptic orbits (ecc < 1)
 };
 
 // --- conversions -----------------------------------------------------------
 
 // `mu` is the standard gravitational parameter GM of the central body, m^3/s^2.
-Elements   elementsFromState(const StateVector& sv, f64 mu);
+Elements elementsFromState(const StateVector& sv, f64 mu);
 StateVector stateFromElements(const Elements& el, f64 mu);
-OrbitInfo  orbitInfo(const Elements& el, f64 mu);
+OrbitInfo orbitInfo(const Elements& el, f64 mu);
 
 // --- anomaly conversions ---------------------------------------------------
 

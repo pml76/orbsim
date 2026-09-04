@@ -21,16 +21,19 @@ int main(int argc, char** argv) {
 #else
     bool validation = true;
 #endif
-    double runSeconds = 0.0;   // 0 means run until the user quits
+    double runSeconds = 0.0; // 0 means run until the user quits
 
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
-        if (arg == "--validate") validation = true;
-        else if (arg == "--no-validate") validation = false;
+        if (arg == "--validate")
+            validation = true;
+        else if (arg == "--no-validate")
+            validation = false;
         // Runs the loop for a fixed wall-clock time and exits cleanly. Gives
         // an automated smoke test a way to exercise startup, the frame loop
         // and teardown -- the teardown path is where validation errors hide.
-        else if (arg == "--seconds" && i + 1 < argc) runSeconds = std::stod(argv[++i]);
+        else if (arg == "--seconds" && i + 1 < argc)
+            runSeconds = std::stod(argv[++i]);
     }
 
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) {
@@ -38,9 +41,11 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    SDL_Window* window = SDL_CreateWindow(
-        "orbsim", 1600, 900,
-        SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+    SDL_Window* window =
+        SDL_CreateWindow("orbsim",
+                         1600,
+                         900,
+                         SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
     if (window == nullptr) {
         std::print(stderr, "SDL_CreateWindow failed: {}\n", SDL_GetError());
         SDL_Quit();
@@ -93,14 +98,16 @@ int main(int argc, char** argv) {
             gfx.endFrame(*frame);
             ++frames;
         } else {
-            SDL_Delay(16);   // minimised or mid-rebuild
+            SDL_Delay(16); // minimised or mid-rebuild
         }
     }
 
     const uint64_t elapsed = SDL_GetTicks() - startTicks;
     if (elapsed > 0) {
         std::print("{} frames in {} ms ({:.1f} fps)\n",
-                   frames, elapsed, 1000.0 * static_cast<double>(frames) / static_cast<double>(elapsed));
+                   frames,
+                   elapsed,
+                   1000.0 * static_cast<double>(frames) / static_cast<double>(elapsed));
     }
 
     gfx.shutdown();
