@@ -16,6 +16,10 @@
 // are ordinary here, not a special case.
 //
 #include "core/Math.hpp"
+#include "core/Units.hpp"
+
+#include <expected>
+#include <string_view>
 
 namespace orb {
 
@@ -32,56 +36,89 @@ struct StateVector {
 // argument of latitude; an equatorial orbit has no ascending node, so `lan` is
 // zero and in-plane angles are measured from the x-axis instead.
 struct Elements {
-    f64 sma{}; // semi-major axis, m. Negative for hyperbolic orbits.
-    f64 ecc{}; // eccentricity, dimensionless
-    f64 inc{}; // inclination, rad, [0, pi]
-    f64 lan{}; // longitude of ascending node, rad, [0, tau)
-    f64 aop{}; // argument of periapsis, rad, [0, tau)
-    f64 tra{}; // true anomaly, rad, [0, tau)
-    f64 slr{}; // semi-latus rectum, m. Kept explicitly so parabolic
-               // orbits (where sma is infinite) remain representable.
+    Metres sma{};       // semi-major axis. Negative for hyperbolic orbits.
+    Eccentricity ecc{}; // dimensionless
+    Radians inc{};      // inclination, [0, pi]
+    Radians lan{};      // longitude of ascending node, [0, tau)
+    Radians aop{};      // argument of periapsis, [0, tau)
+    Radians tra{};      // true anomaly, [0, tau)
+    Metres slr{};       // semi-latus rectum. Kept explicitly so parabolic
+                        // orbits (where sma is infinite) remain representable.
 };
 
 // Quantities derived from the elements that the HUD and MFDs ask for
 // constantly. Computed together because they share intermediate terms.
 struct OrbitInfo {
-    f64 periapsis{};  // radius at periapsis, m
-    f64 apoapsis{};   // radius at apoapsis, m. Infinity if not closed.
-    f64 period{};     // orbital period, s. Infinity if not closed.
-    f64 meanMotion{}; // rad/s. Zero if not closed.
-    f64 energy{};     // specific orbital energy, J/kg
-    f64 radius{};     // current radius, m
-    f64 speed{};      // current speed, m/s
-    bool closed{};    // true for elliptic orbits (ecc < 1)
+    Metres periapsis{};  // radius at periapsis
+    Metres apoapsis{};   // radius at apoapsis. Infinity if not closed.
+    Seconds period{};    // orbital period. Infinity if not closed.
+    f64 meanMotion{};    // rad/s. Zero if not closed.
+    f64 energy{};        // specific orbital energy, J/kg
+    Metres radius{};     // current radius
+    f64 speed{};         // current speed, m/s
+    bool closed{};       // true for elliptic orbits (ecc < 1)
 };
+
+// --- errors ----------------------------------------------------------------
+
+// Conditions a caller can legitimately produce. Conditions that can only arise
+// from a bug in this file are asserted instead; see core/Contract.hpp.
+enum class OrbitError {
+    DegenerateState,      // zero radius: a vessel at the exact centre of a body
+    NonPositiveGravity,   // mu <= 0 is not a central body
+    SolverDidNotConverge, // Newton reached its iteration cap
+};
+
+[[nodiscard]] constexpr std::string_view describe(OrbitError error) noexcept {
+    switch (error) {
+    case OrbitError::DegenerateState:
+        return "state vector has zero radius; there is no orbit to describe";
+    case OrbitError::NonPositiveGravity:
+        return "gravitational parameter must be positive";
+    case OrbitError::SolverDidNotConverge:
+        return "Kepler solver reached its iteration limit without converging";
+    }
+    return "unknown orbit error";
+}
 
 // --- conversions -----------------------------------------------------------
 
-// `mu` is the standard gravitational parameter GM of the central body, m^3/s^2.
-Elements elementsFromState(const StateVector& sv, f64 mu);
-StateVector stateFromElements(const Elements& el, f64 mu);
-OrbitInfo orbitInfo(const Elements& el, f64 mu);
+// `mu` is the standard gravitational parameter GM of the central body.
+[[nodiscard]] std::expected<Elements, OrbitError> elementsFromState(const StateVector& sv,
+                                                                    GravParam mu);
+[[nodiscard]] StateVector stateFromElements(const Elements& el, GravParam mu);
+[[nodiscard]] OrbitInfo orbitInfo(const Elements& el, GravParam mu);
 
 // --- anomaly conversions ---------------------------------------------------
 
 // Elliptic orbits use eccentric anomaly E, hyperbolic orbits use H; each pair
 // is selected on `ecc` so callers can work in mean anomaly regardless of conic.
-f64 trueToEccentricAnomaly(f64 trueAnomaly, f64 ecc);
-f64 eccentricToTrueAnomaly(f64 eccAnomaly, f64 ecc);
-f64 eccentricToMeanAnomaly(f64 eccAnomaly, f64 ecc);
+[[nodiscard]] Radians trueToEccentricAnomaly(Radians trueAnomaly, Eccentricity ecc);
+[[nodiscard]] Radians eccentricToTrueAnomaly(Radians eccAnomaly, Eccentricity ecc);
+[[nodiscard]] Radians eccentricToMeanAnomaly(Radians eccAnomaly, Eccentricity ecc);
 
 // Solves Kepler's equation for the eccentric (or hyperbolic) anomaly.
+//
 // Newton-Raphson with a conic-appropriate starting guess; converges to ~1e-13
-// in a handful of iterations even at ecc = 0.999.
-f64 meanToEccentricAnomaly(f64 meanAnomaly, f64 ecc);
+// in a handful of iterations even at ecc = 0.999. The iteration is bounded
+// (JPL Power of Ten, rule 2) *and* reports failure when it runs out of steps
+// (rule 5) -- a silent wrong answer here becomes a spacecraft in the wrong
+// place twenty minutes later, for no visible reason.
+[[nodiscard]] std::expected<Radians, OrbitError> meanToEccentricAnomaly(Radians meanAnomaly,
+                                                                        Eccentricity ecc);
 
 // --- propagation -----------------------------------------------------------
 
-// Advance a state vector by `dt` seconds along its Kepler orbit. Exact for the
-// two-body problem at any dt, forward or backward.
-StateVector propagate(const StateVector& sv, f64 mu, f64 dt);
+// Advance a state vector by `dt` along its Kepler orbit. Exact for the two-body
+// problem at any dt, forward or backward.
+//
+// Preconditions, reported rather than asserted because a scenario file can
+// produce both: the state must have non-zero radius, and mu must be positive.
+[[nodiscard]] std::expected<StateVector, OrbitError> propagate(const StateVector& sv, GravParam mu,
+                                                               Seconds dt);
 
 // Advance only the anomaly of an element set, leaving the orbit shape intact.
-Elements propagateElements(const Elements& el, f64 mu, f64 dt);
+[[nodiscard]] std::expected<Elements, OrbitError> propagateElements(const Elements& el,
+                                                                    GravParam mu, Seconds dt);
 
 } // namespace orb

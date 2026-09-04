@@ -238,7 +238,9 @@ add_custom_command(TARGET orbsim POST_BUILD
 # include. If a header stops compiling on its own, the build stops.
 # ---------------------------------------------------------------------------
 set(ORBSIM_CORE_HEADERS
+        core/Contract.hpp
         core/Math.hpp
+        core/Units.hpp
         orbit/Orbit.hpp
 )
 
