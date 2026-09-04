@@ -12,29 +12,44 @@
 #include <print>
 #include <string>
 
-int main(int argc, char** argv) {
+namespace {
+
+struct Options {
     // Validation defaults on in a debug build, but stays reachable from a
     // release build too: most Vulkan synchronisation bugs only reproduce at
     // release timings, and needing a separate build to see them wastes time.
 #ifdef NDEBUG
-    bool validation = false;
+    orb::gfx::Validation validation{orb::gfx::Validation::Disabled};
 #else
-    bool validation = true;
+    orb::gfx::Validation validation{orb::gfx::Validation::Enabled};
 #endif
-    double runSeconds = 0.0; // 0 means run until the user quits
 
+    // Runs the loop for a fixed wall-clock time and exits cleanly. Gives an
+    // automated smoke test a way to exercise startup, the frame loop and
+    // teardown -- the teardown path is where validation errors hide.
+    double runSeconds{0.0}; // 0 means run until the user quits
+};
+
+[[nodiscard]] Options parseArguments(int argc, char** argv) {
+    Options options;
     for (int i = 1; i < argc; ++i) {
         const std::string arg = argv[i];
         if (arg == "--validate")
-            validation = true;
+            options.validation = orb::gfx::Validation::Enabled;
         else if (arg == "--no-validate")
-            validation = false;
-        // Runs the loop for a fixed wall-clock time and exits cleanly. Gives
-        // an automated smoke test a way to exercise startup, the frame loop
-        // and teardown -- the teardown path is where validation errors hide.
+            options.validation = orb::gfx::Validation::Disabled;
         else if (arg == "--seconds" && i + 1 < argc)
-            runSeconds = std::stod(argv[++i]);
+            options.runSeconds = std::stod(argv[++i]);
     }
+    return options;
+}
+
+} // namespace
+
+int main(int argc, char** argv) {
+    const Options options = parseArguments(argc, argv);
+    const orb::gfx::Validation validation = options.validation;
+    const double runSeconds = options.runSeconds;
 
     if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) {
         std::print(stderr, "SDL_Init failed: {}\n", SDL_GetError());

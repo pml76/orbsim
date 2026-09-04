@@ -49,14 +49,14 @@ struct Elements {
 // Quantities derived from the elements that the HUD and MFDs ask for
 // constantly. Computed together because they share intermediate terms.
 struct OrbitInfo {
-    Metres periapsis{};  // radius at periapsis
-    Metres apoapsis{};   // radius at apoapsis. Infinity if not closed.
-    Seconds period{};    // orbital period. Infinity if not closed.
-    f64 meanMotion{};    // rad/s. Zero if not closed.
-    f64 energy{};        // specific orbital energy, J/kg
-    Metres radius{};     // current radius
-    f64 speed{};         // current speed, m/s
-    bool closed{};       // true for elliptic orbits (ecc < 1)
+    Metres periapsis{}; // radius at periapsis
+    Metres apoapsis{};  // radius at apoapsis. Infinity if not closed.
+    Seconds period{};   // orbital period. Infinity if not closed.
+    f64 meanMotion{};   // rad/s. Zero if not closed.
+    f64 energy{};       // specific orbital energy, J/kg
+    Metres radius{};    // current radius
+    f64 speed{};        // current speed, m/s
+    bool closed{};      // true for elliptic orbits (ecc < 1)
 };
 
 // --- errors ----------------------------------------------------------------
@@ -114,11 +114,11 @@ enum class OrbitError {
 //
 // Preconditions, reported rather than asserted because a scenario file can
 // produce both: the state must have non-zero radius, and mu must be positive.
-[[nodiscard]] std::expected<StateVector, OrbitError> propagate(const StateVector& sv, GravParam mu,
-                                                               Seconds dt);
+[[nodiscard]] std::expected<StateVector, OrbitError>
+propagate(const StateVector& sv, GravParam mu, Seconds dt);
 
 // Advance only the anomaly of an element set, leaving the orbit shape intact.
-[[nodiscard]] std::expected<Elements, OrbitError> propagateElements(const Elements& el,
-                                                                    GravParam mu, Seconds dt);
+[[nodiscard]] std::expected<Elements, OrbitError>
+propagateElements(const Elements& el, GravParam mu, Seconds dt);
 
 } // namespace orb

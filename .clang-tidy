@@ -30,15 +30,17 @@ Checks: >
   -misc-include-cleaner,
   -readability-braces-around-statements,
   -modernize-use-nodiscard,
+  -performance-enum-size,
 
 # Only our code. The dependency tree under _deps is not ours to lint, and
 # linting it buries every finding that matters.
 HeaderFilterRegex: '.*/(src|tests)/.*\.(hpp|h)$'
 
-# Nothing is an error yet, deliberately. Turn the highest-signal families into
-# errors once the existing findings are cleared -- starting with
-# bugprone-* -- so the count can only go down.
-WarningsAsErrors: ''
+# The tree is clean under this configuration, so the findings are errors: the
+# count can now only go down. If that ever becomes impractical, narrow this to
+# the highest-signal families rather than emptying it -- a lint config nobody
+# has to satisfy is a lint config nobody reads.
+WarningsAsErrors: '*'
 
 CheckOptions:
   # Matches the naming rules in section 15 of CODING_GUIDELINES.md.
@@ -61,8 +63,9 @@ CheckOptions:
   - key: readability-identifier-naming.ConstexprVariablePrefix
     value: k
 
-  # Section 17: functions should fit on a screen. VulkanContext::init() is
-  # currently 149 lines and will trip this, which is the intended outcome.
+  # Section 17: functions should fit on a screen. VulkanContext::init() used to
+  # be 149 lines doing eight jobs; it is now 29 and delegates to five named
+  # steps, which is what this threshold is here to keep true.
   - key: readability-function-size.LineThreshold
     value: '80'
   - key: readability-function-size.StatementThreshold
@@ -102,6 +105,12 @@ CheckOptions:
 # readability-braces-around-statements
 #   `if (cond) return x;` on one line is used deliberately for guard clauses.
 #
+# performance-enum-size
+#   Suggests giving every enum an explicit uint8_t base. These enums are
+#   function parameters and members of structs dominated by pointers and
+#   64-bit handles, so shrinking them changes nothing measurable -- and
+#   section 10 says do not optimize without a measurement.
+#
 # modernize-use-nodiscard
 #   Suggests [[nodiscard]] on almost every const member function. Section 5
 #   asks for it where the return value IS the point, which is a judgement call.
@@ -109,7 +118,7 @@ CheckOptions:
 # --- deliberately ENABLED, despite being noisy -------------------------------
 #
 # bugprone-easily-swappable-parameters
-#   This is the mechanical enforcement of I.24 and section 2. It will fire on
-#   propagate(sv, mu, dt) and on the test helpers. That is not a false
-#   positive -- it is the finding. Fix it with strong types rather than
-#   suppressing the check.
+#   The mechanical enforcement of I.24 and section 2. It fired on
+#   propagate(sv, mu, dt) and on three test helpers, which is exactly what it is
+#   for: those were real defects, and they were fixed by introducing Radians,
+#   Seconds, GravParam and Tolerance rather than by suppressing the check.
