@@ -1,0 +1,121 @@
+# [S1][S17] Static analysis for the example.
+#
+# This file is what turns the advice in CODING_GUIDELINES.md into something a
+# machine enforces on every build. Advice that relies on everyone remembering
+# decays; advice a tool checks does not.
+#
+# The example currently produces ZERO findings under this configuration. That is
+# a property worth keeping: the moment it produces one, either the code drifted
+# or the rule changed, and both are worth a look.
+#
+# Every disabled check below carries the reason it is disabled. A suppression
+# list without reasons is how a lint config quietly stops meaning anything.
+---
+Checks: >
+  bugprone-*,
+  cppcoreguidelines-*,
+  misc-*,
+  modernize-*,
+  performance-*,
+  portability-*,
+  readability-*,
+
+  -bugprone-narrowing-conversions,
+  -cppcoreguidelines-narrowing-conversions,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -readability-magic-numbers,
+  -readability-identifier-length,
+  -modernize-use-trailing-return-type,
+  -misc-non-private-member-variables-in-classes,
+  -misc-include-cleaner,
+  -readability-braces-around-statements,
+  -modernize-use-nodiscard,
+
+HeaderFilterRegex: '.*/(src|tests)/.*\.hpp$'
+
+# [S1] The example is required to stay clean, so the checks are errors rather
+# than suggestions. In a codebase with an existing backlog you would ratchet
+# this on family by family instead; here there is no backlog to ratchet.
+WarningsAsErrors: '*'
+
+CheckOptions:
+  # [S15] The naming rules from section 15, mechanised.
+  - key: readability-identifier-naming.NamespaceCase
+    value: lower_case
+  - key: readability-identifier-naming.ClassCase
+    value: CamelCase
+  - key: readability-identifier-naming.StructCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumCase
+    value: CamelCase
+  - key: readability-identifier-naming.EnumConstantCase
+    value: CamelCase
+  - key: readability-identifier-naming.FunctionCase
+    value: camelBack
+  - key: readability-identifier-naming.VariableCase
+    value: camelBack
+  - key: readability-identifier-naming.PrivateMemberSuffix
+    value: _
+  - key: readability-identifier-naming.ConstexprVariablePrefix
+    value: k
+  - key: readability-identifier-naming.GlobalConstantPrefix
+    value: k
+  - key: readability-identifier-naming.MacroDefinitionCase
+    value: UPPER_CASE
+
+  # [S17] Functions fit on a screen. The largest here is OrbitPath::sample.
+  - key: readability-function-size.LineThreshold
+    value: '80'
+  - key: readability-function-size.StatementThreshold
+    value: '50'
+  - key: readability-function-size.NestingThreshold
+    value: '4'
+
+# --- why each disabled check is disabled ------------------------------------
+#
+# bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions
+#   The compiler's -Wconversion already flags every narrowing, and CMakeLists
+#   turns it into an error. Two tools reporting the same thing is noise, and the
+#   compiler's version is the one nobody can forget to run.
+#
+# *-magic-numbers
+#   In orbital mechanics 2.0, 0.5 and 180.0 are mathematics, not magic. The
+#   constants that DO deserve names have them (kHighEccentricity,
+#   kConvergence, kMaxIterations), each with a comment saying where its value
+#   came from -- which is section 16, and which no linter can check.
+#
+# readability-identifier-length
+#   e, m, nu, c, s are the standard symbols of the domain. Renaming them to
+#   satisfy a linter would make the code harder to check against a textbook.
+#
+# modernize-use-trailing-return-type
+#   Pure style, and not the style used here or in the parent project.
+#
+# misc-non-private-member-variables-in-classes
+#   Vec3, PathVertex and the unit types are aggregates with no invariant to
+#   protect: their members ARE the interface. The check is aimed at classes that
+#   have an invariant and leak it, which is a different thing. OrbitPath, which
+#   does have an invariant, keeps its data private.
+#
+# misc-include-cleaner
+#   Valuable, but it disagrees with itself across standard-library
+#   implementations. include-what-you-use as a periodic job is the better tool;
+#   see the Toolbox appendix.
+#
+# readability-braces-around-statements
+#   Section 15 documents this deviation explicitly: single-line guard clauses
+#   like `if (!path) return;` are used deliberately and consistently.
+#
+# modernize-use-nodiscard
+#   Suggests [[nodiscard]] on nearly every const member function. Section 5 asks
+#   for it where the return value IS the point, which is a judgement a tool
+#   cannot make. Every function here that warrants it has it.
+#
+# --- deliberately ENABLED, despite being noisy -------------------------------
+#
+# bugprone-easily-swappable-parameters
+#   The mechanical enforcement of I.24 and section 2. It found a real defect in
+#   this example -- nearlyEqual(f64, f64, f64) -- which was fixed by introducing
+#   the Tolerance type rather than by suppressing the check. The one place it is
+#   silenced is on nearlyEqual's remaining two parameters, which are genuinely
+#   commutative, and the NOLINT there says so.

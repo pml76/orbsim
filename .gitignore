@@ -1,6 +1,7 @@
 # Build output. Generated artefacts do not belong in history: they make diffs
 # unreadable and the repository enormous.
 build/
+build-*/
 cmake-build-*/
 out/
 

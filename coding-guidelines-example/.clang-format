@@ -1,0 +1,52 @@
+# Formatting is settled here so it is never discussed again. Any consistent
+# style applied automatically beats the best style applied by hand.
+#
+# These values were chosen to match the code that already exists, so adopting
+# the file causes minimal churn. If you disagree with one, change it once, run
+# it over the tree in a single commit that does nothing else, and move on.
+---
+Language: Cpp
+BasedOnStyle: LLVM
+
+ColumnLimit: 100
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+AccessModifierOffset: -4
+NamespaceIndentation: None
+
+PointerAlignment: Left
+ReferenceAlignment: Left
+DerivePointerAlignment: false
+
+AllowShortFunctionsOnASingleLine: All
+AllowShortIfStatementsOnASingleLine: WithoutElse
+AllowShortCaseLabelsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+
+BreakBeforeBraces: Attach
+IndentCaseLabels: false
+SeparateDefinitionBlocks: Leave
+
+# Include order is deliberate: a .cpp includes its own header first (SF.5),
+# which is what continuously proves that header is self-contained (SF.11).
+# Preserve the author's blocks rather than resorting across them.
+IncludeBlocks: Preserve
+SortIncludes: CaseSensitive
+
+AlignAfterOpenBracket: Align
+AlignTrailingComments:
+  Kind: Always
+  OverEmptyLines: 0
+BinPackArguments: false
+BinPackParameters: false
+PackConstructorInitializers: NextLine
+
+# Designated initialisers are used heavily for Vulkan structs; one per line is
+# far more readable than packing them.
+Cpp11BracedListStyle: true
+
+FixNamespaceComments: true
+ShortNamespaceLines: 0
+
+Standard: Latest
