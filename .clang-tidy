@@ -9,7 +9,10 @@
 # quietly becomes meaningless.
 ---
 Checks: >
+  clang-analyzer-*,
   bugprone-*,
+  cert-*,
+  concurrency-*,
   cppcoreguidelines-*,
   modernize-*,
   performance-*,
@@ -31,10 +34,21 @@ Checks: >
   -readability-braces-around-statements,
   -modernize-use-nodiscard,
   -performance-enum-size,
+  -portability-avoid-pragma-once,
+  -readability-redundant-member-init,
 
 # Only our code. The dependency tree under _deps is not ours to lint, and
 # linting it buries every finding that matters.
-HeaderFilterRegex: '.*/(src|tests)/.*\.(hpp|h)$'
+#
+# Both separators, deliberately. clang-tidy on Windows reports a header as
+# `src\core/Math.hpp` -- the compile database's forward slashes up to the
+# include directory, then the backslash the driver joined the include path
+# with. A regex that only accepts `/` matched nothing, and every header in
+# this tree went unlinted for the first sixteen commits while the .cpp files
+# reported clean. If this ever regresses, `--header-filter='.*'` on one
+# translation unit will show findings this filter does not.
+HeaderFilterRegex: '.*[/\\](src|tests)[/\\].*\.(hpp|h)$'
+ExcludeHeaderFilterRegex: '.*_deps.*'
 
 # The tree is clean under this configuration, so the findings are errors: the
 # count can now only go down. If that ever becomes impractical, narrow this to
@@ -72,6 +86,18 @@ CheckOptions:
     value: '60'
   - key: readability-function-size.NestingThreshold
     value: '5'
+
+  # Vec3, Quat and every unit type are value types with all-public data, by
+  # design (C.131: avoid trivial getters and setters). The check still fires on
+  # a class that mixes public data with private data or invariants, which is
+  # the case it exists for.
+  - key: misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic
+    value: true
+
+  # The two assertion macros are the only macros this codebase permits; section
+  # 2 endorses them until C++26 contracts arrive. Anything else still fires.
+  - key: cppcoreguidelines-macro-usage.AllowedRegexp
+    value: '^ORBSIM_(EXPECTS|ENSURES)$'
 
 # --- notes on the disabled checks -------------------------------------------
 #
@@ -115,7 +141,25 @@ CheckOptions:
 #   Suggests [[nodiscard]] on almost every const member function. Section 5
 #   asks for it where the return value IS the point, which is a judgement call.
 #
+# portability-avoid-pragma-once
+#   Every compiler this project builds with honours #pragma once, and include
+#   guards are a hazard of their own: a guard that is not renamed when a file
+#   moves silently drops the second header. Section 14 settled on pragma once.
+#
+# readability-redundant-member-init
+#   Fires on `Metres sma{};` because Metres already zero-initialises itself.
+#   Section 6 asks for the explicit `{}` on every member anyway, so that a
+#   reader does not have to know the member's type to know it is initialised.
+#   The visible habit is worth more than the four characters.
+#
 # --- deliberately ENABLED, despite being noisy -------------------------------
+#
+# clang-analyzer-*, cert-*, concurrency-*
+#   Not on by default once a Checks list is given, and they were missing here
+#   until the first pass with a working header filter. The static analyzer is
+#   path-sensitive -- it found a dead store the syntactic checks cannot see --
+#   and cert-err33-c is rule 7 of the Power of Ten (check every return value)
+#   for the C library, which [[nodiscard]] cannot reach.
 #
 # bugprone-easily-swappable-parameters
 #   The mechanical enforcement of I.24 and section 2. It fired on

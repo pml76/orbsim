@@ -110,11 +110,11 @@ struct Vec3 {
 constexpr Vec3 operator*(f64 s, const Vec3& v) { return v * s; }
 
 [[nodiscard]] constexpr f64 dot(const Vec3& a, const Vec3& b) {
-    return a.x * b.x + a.y * b.y + a.z * b.z;
+    return (a.x * b.x) + (a.y * b.y) + (a.z * b.z);
 }
 
 [[nodiscard]] constexpr Vec3 cross(const Vec3& a, const Vec3& b) {
-    return {a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x};
+    return {(a.y * b.z) - (a.z * b.y), (a.z * b.x) - (a.x * b.z), (a.x * b.y) - (a.y * b.x)};
 }
 
 [[nodiscard]] constexpr f64 lengthSq(const Vec3& v) { return dot(v, v); }
@@ -139,8 +139,9 @@ constexpr Vec3 operator*(f64 s, const Vec3& v) { return v * s; }
 
 // Rotate v about a unit axis by `angle` radians (Rodrigues' formula).
 [[nodiscard]] inline Vec3 rotateAxis(const Vec3& v, const Vec3& axis, f64 angle) {
-    const f64 c = std::cos(angle), s = std::sin(angle);
-    return v * c + cross(axis, v) * s + axis * (dot(axis, v) * (1.0 - c));
+    const f64 c = std::cos(angle);
+    const f64 s = std::sin(angle);
+    return (v * c) + (cross(axis, v) * s) + (axis * (dot(axis, v) * (1.0 - c)));
 }
 
 // ---------------------------------------------------------------- Quat -----
@@ -154,31 +155,32 @@ struct Quat {
 
     static Quat fromAxisAngle(const Vec3& axis, f64 angle) {
         const Vec3 a = normalize(axis);
-        const f64 h = angle * 0.5, s = std::sin(h);
+        const f64 h = angle * 0.5;
+        const f64 s = std::sin(h);
         return {std::cos(h), a.x * s, a.y * s, a.z * s};
     }
 
     constexpr Quat conjugate() const { return {w, -x, -y, -z}; }
 
     constexpr Quat operator*(const Quat& q) const {
-        return {w * q.w - x * q.x - y * q.y - z * q.z,
-                w * q.x + x * q.w + y * q.z - z * q.y,
-                w * q.y - x * q.z + y * q.w + z * q.x,
-                w * q.z + x * q.y - y * q.x + z * q.w};
+        return {(w * q.w) - (x * q.x) - (y * q.y) - (z * q.z),
+                (w * q.x) + (x * q.w) + (y * q.z) - (z * q.y),
+                (w * q.y) - (x * q.z) + (y * q.w) + (z * q.x),
+                (w * q.z) + (x * q.y) - (y * q.x) + (z * q.w)};
     }
 
     // Rotate a vector from body space into world space.
     Vec3 rotate(const Vec3& v) const {
         const Vec3 u{x, y, z};
         const Vec3 t = cross(u, v) * 2.0;
-        return v + t * w + cross(u, t);
+        return v + (t * w) + cross(u, t);
     }
 
     Vec3 inverseRotate(const Vec3& v) const { return conjugate().rotate(v); }
 };
 
 [[nodiscard]] inline Quat normalize(const Quat& q) {
-    const f64 n = std::sqrt(q.w * q.w + q.x * q.x + q.y * q.y + q.z * q.z);
+    const f64 n = std::sqrt((q.w * q.w) + (q.x * q.x) + (q.y * q.y) + (q.z * q.z));
     return n > 0.0 ? Quat{q.w / n, q.x / n, q.y / n, q.z / n} : Quat{};
 }
 

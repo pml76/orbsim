@@ -300,18 +300,19 @@ std::expected<StateVector, OrbitError> propagate(const StateVector& sv, GravPara
 
     f64 chi = initialUniversalAnomaly(sv, m, r0, rdotv, alpha, seconds);
 
+    // psi, c2 and c3 outlive the loop: the Lagrange coefficients below use their
+    // values from the final iteration.
     f64 psi = 0.0;
     f64 c2 = 0.5;
     f64 c3 = 1.0 / 6.0;
-    f64 r = r0;
     bool converged = false;
 
     for (int i = 0; i < kMaxUniversalIterations; ++i) {
         psi = chi * chi * alpha;
         stumpff(psi, c2, c3);
 
-        r = (chi * chi * c2) + ((rdotv / sqrtMu) * chi * (1.0 - (psi * c3))) +
-            (r0 * (1.0 - (psi * c2)));
+        const f64 r = (chi * chi * c2) + ((rdotv / sqrtMu) * chi * (1.0 - (psi * c3))) +
+                      (r0 * (1.0 - (psi * c2)));
 
         const f64 dchi = ((sqrtMu * seconds) - (chi * chi * chi * c3) -
                           ((rdotv / sqrtMu) * chi * chi * c2) - (r0 * chi * (1.0 - (psi * c3)))) /
