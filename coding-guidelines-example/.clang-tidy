@@ -12,7 +12,10 @@
 # list without reasons is how a lint config quietly stops meaning anything.
 ---
 Checks: >
+  clang-analyzer-*,
   bugprone-*,
+  cert-*,
+  concurrency-*,
   cppcoreguidelines-*,
   misc-*,
   modernize-*,
@@ -30,8 +33,15 @@ Checks: >
   -misc-include-cleaner,
   -readability-braces-around-statements,
   -modernize-use-nodiscard,
+  -portability-avoid-pragma-once,
+  -readability-redundant-member-init,
+  -performance-enum-size,
 
-HeaderFilterRegex: '.*/(src|tests)/.*\.hpp$'
+# Both separators, deliberately: clang-tidy on Windows reports a header as
+# `src\core/Vec3.hpp`, and a regex that accepts only `/` matches nothing --
+# which is how the parent project's headers went unlinted while its .cpp files
+# reported clean. `--header-filter='.*'` on one translation unit is the test.
+HeaderFilterRegex: '.*[/\\](src|tests)[/\\].*\.hpp$'
 
 # [S1] The example is required to stay clean, so the checks are errors rather
 # than suggestions. In a codebase with an existing backlog you would ratchet
@@ -62,6 +72,11 @@ CheckOptions:
     value: k
   - key: readability-identifier-naming.MacroDefinitionCase
     value: UPPER_CASE
+
+  # [S2] The two assertion macros are the only macros the example permits;
+  # section 2 endorses them until C++26 contracts arrive. Anything else fires.
+  - key: cppcoreguidelines-macro-usage.AllowedRegexp
+    value: '^ORBEX_(EXPECTS|ENSURES)$'
 
   # [S17] Functions fit on a screen. The largest here is OrbitPath::sample.
   - key: readability-function-size.LineThreshold
@@ -111,7 +126,29 @@ CheckOptions:
 #   for it where the return value IS the point, which is a judgement a tool
 #   cannot make. Every function here that warrants it has it.
 #
+# portability-avoid-pragma-once
+#   Every compiler this builds with honours #pragma once, and include guards
+#   are a hazard of their own: a guard not renamed when a file moves silently
+#   drops the second header. Section 14 settled on pragma once.
+#
+# readability-redundant-member-init
+#   Fires on `Metres semiMajorAxis{};` because Metres already zero-initialises
+#   itself. Section 6 asks for the explicit `{}` on every member anyway, so a
+#   reader does not have to know the member's type to know it is initialised.
+#
+# performance-enum-size
+#   Suggests a uint8_t base for every enum. These enums are function
+#   parameters and members of structs dominated by 64-bit values, so shrinking
+#   them changes nothing measurable -- and section 10 says do not optimise
+#   without a measurement.
+#
 # --- deliberately ENABLED, despite being noisy -------------------------------
+#
+# clang-analyzer-*, cert-*, concurrency-*
+#   Not on by default once a Checks list is given. The analyzer is
+#   path-sensitive and finds what the syntactic checks cannot; cert-err33-c is
+#   rule 7 of the Power of Ten for the C library, which [[nodiscard]] cannot
+#   reach.
 #
 # bugprone-easily-swappable-parameters
 #   The mechanical enforcement of I.24 and section 2. It found a real defect in

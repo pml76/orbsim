@@ -255,12 +255,14 @@ int main() {
 
         return orbex::test::report(run, "orbit path");
     } catch (const std::exception& error) {
-        std::fputs("unhandled exception: ", stderr);
-        std::fputs(error.what(), stderr);
-        std::fputs("\n", stderr);
+        // Discarded on purpose: if stderr is gone too there is nobody left to
+        // tell, and the exit code still says "failed".
+        static_cast<void>(std::fputs("unhandled exception: ", stderr));
+        static_cast<void>(std::fputs(error.what(), stderr));
+        static_cast<void>(std::fputs("\n", stderr));
         return 2;
     } catch (...) {
-        std::fputs("unhandled exception of unknown type\n", stderr);
+        static_cast<void>(std::fputs("unhandled exception of unknown type\n", stderr));
         return 2;
     }
 }

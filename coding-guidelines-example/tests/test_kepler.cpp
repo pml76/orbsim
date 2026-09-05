@@ -72,14 +72,14 @@ void testRandomisedOrbitsAllSolve(test::Run& run) {
 
     constexpr std::uint64_t kSeed = 0x5EED'0B17'C0DEULL;
 
-    // [S19] A fixed seed is the whole point, so bugprone-random-generator-seed
-    // is inverted here: it warns that the sequence is predictable, and
-    // predictable is precisely what a reproducible test requires. A failure
-    // you cannot reproduce is a failure you cannot fix. This is the one
-    // suppression in the example, and this comment is why it is allowed --
-    // a suppression list without reasons is how a lint config stops meaning
-    // anything.
-    // NOLINTNEXTLINE(bugprone-random-generator-seed)
+    // [S19] A fixed seed is the whole point, so the random-seed checks (the
+    // bugprone one and its two CERT aliases) are inverted here: they warn that
+    // the sequence is predictable, and predictable is precisely what a
+    // reproducible test requires. A failure you cannot reproduce is a failure
+    // you cannot fix. This is the one suppression in the example, and this
+    // comment is why it is allowed -- a suppression list without reasons is
+    // how a lint config stops meaning anything.
+    // NOLINTNEXTLINE(bugprone-random-generator-seed,cert-msc32-c,cert-msc51-cpp)
     std::mt19937_64 generator{kSeed};
     std::uniform_real_distribution<f64> eccentricities{0.0, 0.9999};
     std::uniform_real_distribution<f64> anomalies{-10.0 * kPi, 10.0 * kPi};
@@ -175,12 +175,14 @@ int main() {
 
         return orbex::test::report(run, "kepler");
     } catch (const std::exception& error) {
-        std::fputs("unhandled exception: ", stderr);
-        std::fputs(error.what(), stderr);
-        std::fputs("\n", stderr);
+        // Discarded on purpose: if stderr is gone too there is nobody left to
+        // tell, and the exit code still says "failed".
+        static_cast<void>(std::fputs("unhandled exception: ", stderr));
+        static_cast<void>(std::fputs(error.what(), stderr));
+        static_cast<void>(std::fputs("\n", stderr));
         return 2;
     } catch (...) {
-        std::fputs("unhandled exception of unknown type\n", stderr);
+        static_cast<void>(std::fputs("unhandled exception of unknown type\n", stderr));
         return 2;
     }
 }

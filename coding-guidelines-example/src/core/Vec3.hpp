@@ -59,16 +59,18 @@ struct Vec3 {
     f64 y{};
     f64 z{};
 
+    // [S6] Designated initialisers even here, where the order is obvious: the
+    // habit is what keeps `{y, x, z}` from compiling somewhere it is not.
     [[nodiscard]] constexpr Vec3 operator+(const Vec3& other) const noexcept {
-        return {x + other.x, y + other.y, z + other.z};
+        return {.x = x + other.x, .y = y + other.y, .z = z + other.z};
     }
 
     [[nodiscard]] constexpr Vec3 operator-(const Vec3& other) const noexcept {
-        return {x - other.x, y - other.y, z - other.z};
+        return {.x = x - other.x, .y = y - other.y, .z = z - other.z};
     }
 
     [[nodiscard]] constexpr Vec3 operator*(f64 scale) const noexcept {
-        return {x * scale, y * scale, z * scale};
+        return {.x = x * scale, .y = y * scale, .z = z * scale};
     }
 
     // [S19] Bit-exact equality, which is precisely what a determinism test
@@ -82,7 +84,9 @@ struct Vec3 {
 }
 
 [[nodiscard]] constexpr Vec3 cross(const Vec3& a, const Vec3& b) noexcept {
-    return {(a.y * b.z) - (a.z * b.y), (a.z * b.x) - (a.x * b.z), (a.x * b.y) - (a.y * b.x)};
+    return {.x = (a.y * b.z) - (a.z * b.y),
+            .y = (a.z * b.x) - (a.x * b.z),
+            .z = (a.x * b.y) - (a.y * b.x)};
 }
 
 [[nodiscard]] constexpr f64 lengthSquared(const Vec3& v) noexcept { return dot(v, v); }
@@ -94,10 +98,17 @@ struct Vec3 {
 
 // [S3] A static_assert is a unit test that costs nothing at runtime, runs on
 // every build whether or not anyone invokes the test suite, and cannot rot.
-static_assert(cross(Vec3{1.0, 0.0, 0.0}, Vec3{0.0, 1.0, 0.0}) == Vec3{0.0, 0.0, 1.0});
-static_assert(nearlyEqual(dot(Vec3{1.0, 2.0, 3.0}, Vec3{4.0, 5.0, 6.0}), 32.0, Tolerance{0.0}));
-static_assert(nearlyEqual(lengthSquared(Vec3{3.0, 4.0, 0.0}), 25.0, Tolerance{0.0}));
-static_assert(Vec3{1.0, 2.0, 3.0} - Vec3{1.0, 2.0, 3.0} == Vec3{});
-static_assert(Vec3{1.0, 2.0, 3.0} * 2.0 == Vec3{2.0, 4.0, 6.0});
+inline constexpr Vec3 kUnitX{.x = 1.0, .y = 0.0, .z = 0.0};
+inline constexpr Vec3 kUnitY{.x = 0.0, .y = 1.0, .z = 0.0};
+inline constexpr Vec3 kUnitZ{.x = 0.0, .y = 0.0, .z = 1.0};
+inline constexpr Vec3 kOneTwoThree{.x = 1.0, .y = 2.0, .z = 3.0};
+
+static_assert(cross(kUnitX, kUnitY) == kUnitZ);
+static_assert(nearlyEqual(dot(kOneTwoThree, Vec3{.x = 4.0, .y = 5.0, .z = 6.0}),
+                          32.0,
+                          Tolerance{0.0}));
+static_assert(nearlyEqual(lengthSquared(Vec3{.x = 3.0, .y = 4.0, .z = 0.0}), 25.0, Tolerance{0.0}));
+static_assert(kOneTwoThree - Vec3{.x = 1.0, .y = 2.0, .z = 3.0} == Vec3{});
+static_assert(kOneTwoThree * 2.0 == Vec3{.x = 2.0, .y = 4.0, .z = 6.0});
 
 } // namespace orbex
