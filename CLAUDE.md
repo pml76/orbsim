@@ -47,6 +47,33 @@ cmake -S coding-guidelines-example -B coding-guidelines-example/build -G Ninja \
       -DCMAKE_CXX_COMPILER=clang++
 ```
 
+## Current work
+
+[Milestone 1](docs/plan/milestone-1-earth.md): Earth, orbit track, Orbit MFD.
+Phases run **A → B → D → C → E → F → G** — atmosphere deliberately before the
+quadtree, because it is what makes the image read as Earth and it gives a
+correct reference while debugging tile seams.
+
+## Reference source, and a licence boundary
+
+Orbiter's source is worth reading and is **not** uniformly licensed. Reference
+clones live at `C:\Reference\`, deliberately outside this repository, so that
+the boundary is a directory rather than a matter of remembering.
+
+| Repository | Licence | How it may be used |
+|---|---|---|
+| `orbitersim/orbiter` | MIT | Read and borrow, with attribution |
+| `D3D9Client` (inside it) | LGPL | Different terms — and it is Direct3D, not Vulkan |
+| `mschweiger/orbiter-tileedit` | **GPL v3** | **Read to understand. Copy nothing.** |
+
+`tileedit` is simultaneously the clearest reference for Orbiter's tile format
+and the one file you must not lift code from. `Doc/PlanetTextures.pdf` in an
+Orbiter installation is the actual format specification — read it before any
+source.
+
+Planetary imagery lives in `data/textures/`, gitignored, with
+[a README](data/textures/README.md) saying where to obtain it.
+
 ## Non-negotiables
 
 These are the ones that get violated most often. The rest are in

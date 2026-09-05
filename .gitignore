@@ -35,3 +35,12 @@ callgrind.out.*
 # OS noise
 Thumbs.db
 .DS_Store
+
+# Planetary imagery. Source data and generated tile pyramids are hundreds of
+# megabytes to tens of gigabytes and are reproducible from the source archives,
+# so they are never committed. data/textures/README.md IS tracked and says where
+# to get them.
+data/textures/source/
+data/textures/tiles/
+*.dds
+*.ktx2
