@@ -124,15 +124,15 @@ std::expected<Elements, OrbitError> elementsFromState(const StateVector& sv, Gra
         // No periapsis to point at, so angles run from the reference direction
         // straight to the spacecraft: argument of latitude, or true longitude.
         el.aop = Radians{0.0};
-        f64 u = angleBetween(ref, r);
+        f64 u = angleBetween(ref, r).value;
         if (dot(cross(ref, r), h) < 0.0) u = kTau - u; // resolve the half-turn
         el.tra = wrapTau(Radians{u});
     } else {
-        f64 aop = angleBetween(ref, evec);
+        f64 aop = angleBetween(ref, evec).value;
         if (dot(cross(ref, evec), h) < 0.0) aop = kTau - aop;
         el.aop = wrapTau(Radians{aop});
 
-        f64 tra = angleBetween(evec, r);
+        f64 tra = angleBetween(evec, r).value;
         if (rdotv < 0.0) tra = kTau - tra; // inbound half of the orbit
         el.tra = wrapTau(Radians{tra});
     }
@@ -162,9 +162,9 @@ StateVector stateFromElements(const Elements& el, GravParam mu) {
     const Vec3 vPerifocal{-k * sinNu, k * (e + cosNu), 0.0};
 
     // Perifocal -> inertial: Rz(lan) * Rx(inc) * Rz(aop), applied right to left.
-    const Quat rot = Quat::fromAxisAngle({0, 0, 1}, el.lan.value) *
-                     Quat::fromAxisAngle({1, 0, 0}, el.inc.value) *
-                     Quat::fromAxisAngle({0, 0, 1}, el.aop.value);
+    const Quat rot = Quat::fromAxisAngle({0, 0, 1}, el.lan) *
+                     Quat::fromAxisAngle({1, 0, 0}, el.inc) *
+                     Quat::fromAxisAngle({0, 0, 1}, el.aop);
 
     return {.pos = rot.rotate(rPerifocal), .vel = rot.rotate(vPerifocal)};
 }
@@ -184,15 +184,19 @@ OrbitInfo orbitInfo(const Elements& el, GravParam mu) {
 
     if (info.closed) {
         const f64 a = el.sma.value;
-        info.meanMotion = std::sqrt(m / (a * a * a));
-        info.period = Seconds{kTau / info.meanMotion};
-        info.energy = -m / (2.0 * a);
-        info.speed = std::sqrt(std::max(0.0, m * ((2.0 / info.radius.value) - (1.0 / a))));
+        info.meanMotion = RadiansPerSecond{std::sqrt(m / (a * a * a))};
+        info.period = Seconds{kTau / info.meanMotion.value};
+        info.energy = SpecificEnergy{-m / (2.0 * a)};
+        // Vis-viva. Clamped at zero because rounding can push the radicand a
+        // hair negative at the apoapsis of a near-circular orbit.
+        info.speed =
+            MetresPerSecond{std::sqrt(std::max(0.0, m * ((2.0 / info.radius.value) - (1.0 / a))))};
     } else {
-        info.meanMotion = 0.0;
+        info.meanMotion = RadiansPerSecond{0.0};
         info.period = Seconds{kInf};
-        info.energy = std::isinf(el.sma.value) ? 0.0 : -m / (2.0 * el.sma.value);
-        info.speed = std::sqrt(std::max(0.0, 2.0 * (info.energy + (m / info.radius.value))));
+        info.energy = SpecificEnergy{std::isinf(el.sma.value) ? 0.0 : -m / (2.0 * el.sma.value)};
+        info.speed = MetresPerSecond{
+            std::sqrt(std::max(0.0, 2.0 * (info.energy.value + (m / info.radius.value))))};
     }
     return info;
 }

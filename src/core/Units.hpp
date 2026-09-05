@@ -15,69 +15,67 @@
 // They also close I.24 for free: `propagate(state, mu, dt)` used to take two
 // adjacent f64 parameters that transposed in silence.
 //
-#include "core/Math.hpp"
+// Each type is four lines because the behaviour lives in Quantity (see
+// core/Scalar.hpp). Adding a unit is adding one of these blocks; nothing else
+// needs to change. See docs/adr/0001 for why this and not a units library.
+//
+#include "core/Scalar.hpp"
 
-#include <compare>
+#include <type_traits>
 
 namespace orb {
 
-struct Radians {
-    f64 value{};
-
+struct Radians : Quantity<Radians> {
     constexpr Radians() noexcept = default;
-    // explicit, or the type converts back to a bare f64 on its own and rebuilds
+    // explicit, or the type converts from a bare f64 on its own and rebuilds
     // the exact problem it was introduced to solve.
-    explicit constexpr Radians(f64 v) noexcept : value(v) {}
-
-    [[nodiscard]] constexpr auto operator<=>(const Radians&) const noexcept = default;
+    explicit constexpr Radians(f64 v) noexcept : Quantity{v} {}
 };
 
-struct Degrees {
-    f64 value{};
-
+struct Degrees : Quantity<Degrees> {
     constexpr Degrees() noexcept = default;
-    explicit constexpr Degrees(f64 v) noexcept : value(v) {}
-
-    [[nodiscard]] constexpr auto operator<=>(const Degrees&) const noexcept = default;
+    explicit constexpr Degrees(f64 v) noexcept : Quantity{v} {}
 };
 
-struct Metres {
-    f64 value{};
-
+struct Metres : Quantity<Metres> {
     constexpr Metres() noexcept = default;
-    explicit constexpr Metres(f64 v) noexcept : value(v) {}
-
-    [[nodiscard]] constexpr auto operator<=>(const Metres&) const noexcept = default;
+    explicit constexpr Metres(f64 v) noexcept : Quantity{v} {}
 };
 
-struct Seconds {
-    f64 value{};
-
+struct Seconds : Quantity<Seconds> {
     constexpr Seconds() noexcept = default;
-    explicit constexpr Seconds(f64 v) noexcept : value(v) {}
+    explicit constexpr Seconds(f64 v) noexcept : Quantity{v} {}
+};
 
-    [[nodiscard]] constexpr auto operator<=>(const Seconds&) const noexcept = default;
+struct MetresPerSecond : Quantity<MetresPerSecond> {
+    constexpr MetresPerSecond() noexcept = default;
+    explicit constexpr MetresPerSecond(f64 v) noexcept : Quantity{v} {}
+};
+
+// Angular rate. Mean motion is the one the orbital code hands out.
+struct RadiansPerSecond : Quantity<RadiansPerSecond> {
+    constexpr RadiansPerSecond() noexcept = default;
+    explicit constexpr RadiansPerSecond(f64 v) noexcept : Quantity{v} {}
+};
+
+// Specific orbital energy, J/kg (m^2/s^2). Negative for a bound orbit, zero
+// for a parabola, positive for an escape trajectory.
+struct SpecificEnergy : Quantity<SpecificEnergy> {
+    constexpr SpecificEnergy() noexcept = default;
+    explicit constexpr SpecificEnergy(f64 v) noexcept : Quantity{v} {}
 };
 
 // Dimensionless, but not interchangeable with any other dimensionless quantity.
 // This is what stops solveKepler(anomaly, eccentricity) compiling backwards.
-struct Eccentricity {
-    f64 value{};
-
+struct Eccentricity : Quantity<Eccentricity> {
     constexpr Eccentricity() noexcept = default;
-    explicit constexpr Eccentricity(f64 v) noexcept : value(v) {}
-
-    [[nodiscard]] constexpr auto operator<=>(const Eccentricity&) const noexcept = default;
+    explicit constexpr Eccentricity(f64 v) noexcept : Quantity{v} {}
 };
 
 // Standard gravitational parameter GM of a central body, m^3/s^2.
-struct GravParam {
-    f64 value{};
-
+struct GravParam : Quantity<GravParam> {
     constexpr GravParam() noexcept = default;
-    explicit constexpr GravParam(f64 v) noexcept : value(v) {}
-
-    [[nodiscard]] constexpr auto operator<=>(const GravParam&) const noexcept = default;
+    explicit constexpr GravParam(f64 v) noexcept : Quantity{v} {}
 };
 
 [[nodiscard]] constexpr Radians toRadians(Degrees d) noexcept {
@@ -88,7 +86,7 @@ struct GravParam {
     return Degrees{r.value * (180.0 / kPi)};
 }
 
-// Strong-typed overloads of the wrap helpers in core/Math.hpp. Overloads
+// Strong-typed overloads of the wrap helpers in core/Scalar.hpp. Overloads
 // rather than reimplementations: one behaviour, two spellings.
 [[nodiscard]] inline Radians wrapTau(Radians a) noexcept { return Radians{wrapTau(a.value)}; }
 [[nodiscard]] inline Radians wrapPi(Radians a) noexcept { return Radians{wrapPi(a.value)}; }
@@ -122,5 +120,17 @@ static_assert(nearlyEqual(toDegrees(Radians{kPi}).value, 180.0, Tolerance{1e-13}
 static_assert(nearlyEqual(toRadians(toDegrees(Radians{1.0})).value, 1.0, Tolerance{1e-15}));
 static_assert(nearlyEqual((1.0_km).value, 1000.0, Tolerance{0.0}));
 static_assert(180.0_deg == Degrees{180.0});
+
+// The unit-preserving arithmetic from Quantity, and the conversions it refuses.
+static_assert(Radians{1.0} + Radians{2.0} == Radians{3.0});
+static_assert(Seconds{3.0} - Seconds{1.0} == Seconds{2.0});
+static_assert(-Seconds{1.0} == Seconds{-1.0});
+static_assert(Seconds{2.0} * 3.0 == Seconds{6.0});
+static_assert(Metres{1.0} < Metres{2.0});
+static_assert(!std::is_convertible_v<f64, Radians>);
+static_assert(!std::is_convertible_v<Radians, f64>);
+static_assert(!std::is_convertible_v<Degrees, Radians>, "conversion is toRadians(), by name");
+static_assert(sizeof(Radians) == sizeof(f64));
+static_assert(std::is_trivially_copyable_v<Radians>);
 
 } // namespace orb

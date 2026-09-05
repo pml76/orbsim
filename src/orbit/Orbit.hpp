@@ -49,14 +49,14 @@ struct Elements {
 // Quantities derived from the elements that the HUD and MFDs ask for
 // constantly. Computed together because they share intermediate terms.
 struct OrbitInfo {
-    Metres periapsis{}; // radius at periapsis
-    Metres apoapsis{};  // radius at apoapsis. Infinity if not closed.
-    Seconds period{};   // orbital period. Infinity if not closed.
-    f64 meanMotion{};   // rad/s. Zero if not closed.
-    f64 energy{};       // specific orbital energy, J/kg
-    Metres radius{};    // current radius
-    f64 speed{};        // current speed, m/s
-    bool closed{};      // true for elliptic orbits (ecc < 1)
+    Metres periapsis{};            // radius at periapsis
+    Metres apoapsis{};             // radius at apoapsis. Infinity if not closed.
+    Seconds period{};              // orbital period. Infinity if not closed.
+    RadiansPerSecond meanMotion{}; // zero if not closed
+    SpecificEnergy energy{};       // specific orbital energy
+    Metres radius{};               // current radius
+    MetresPerSecond speed{};       // current speed
+    bool closed{};                 // true for elliptic orbits (ecc < 1)
 };
 
 // --- errors ----------------------------------------------------------------

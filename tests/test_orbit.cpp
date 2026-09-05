@@ -95,7 +95,7 @@ void checkVecRel(
 // Angles compare modulo a full turn: 0 and tau are the same angle.
 void checkAngle(Run& run, std::string_view what, Radians got, Radians want, Tolerance tol) {
     ++run.checks;
-    if (!(std::abs(wrapPi(Radians{got.value - want.value}).value) <= tol.value)) {
+    if (!(std::abs(wrapPi(got - want).value) <= tol.value)) {
         ++run.failures;
         reportMismatch(what, got.value, want.value, tol.value);
     }
@@ -206,11 +206,8 @@ void testDegenerateOrbits(Run& run) {
         if (expectOk(run, back, "elementsFromState")) {
             checkNear(run, "    aop folded to zero", back->aop.value, 0.0, Tolerance{1e-12});
             // aop + tra is the argument of latitude, and that is preserved.
-            checkAngle(run,
-                       "    argument of latitude",
-                       back->tra,
-                       Radians{el.aop.value + el.tra.value},
-                       Tolerance{1e-10});
+            checkAngle(
+                run, "    argument of latitude", back->tra, el.aop + el.tra, Tolerance{1e-10});
             checkVecRel(run,
                         "    position reproduced",
                         stateFromElements(*back, kMuEarth).pos,
@@ -321,7 +318,7 @@ void testPropagatorsAgree(Run& run) {
 
         std::print("  {}\n", c.name);
         for (const f64 frac : {0.05, 0.25, 0.5, 0.77, 0.99}) {
-            const Seconds dt{frac * info.period.value};
+            const Seconds dt = info.period * frac;
 
             const auto viaUniversal = propagate(sv0, kMuEarth, dt);
             const auto viaElementSet = propagateElements(c.el, kMuEarth, dt);
@@ -350,11 +347,11 @@ void testPropagationInvariants(Run& run) {
     const StateVector sv0 = stateFromElements(el, kMuEarth);
     const OrbitInfo info = orbitInfo(el, kMuEarth);
 
-    const Seconds dt{0.37 * info.period.value};
+    const Seconds dt = info.period * 0.37;
     const auto fwd = propagate(sv0, kMuEarth, dt);
     if (!expectOk(run, fwd, "propagate forward")) return;
 
-    const auto back = propagate(*fwd, kMuEarth, Seconds{-dt.value});
+    const auto back = propagate(*fwd, kMuEarth, -dt);
     if (!expectOk(run, back, "propagate backward")) return;
 
     checkVecRel(
@@ -364,7 +361,7 @@ void testPropagationInvariants(Run& run) {
 
     // Energy and angular momentum are constants of the two-body motion, so a
     // long propagation must not move them.
-    const auto distant = propagate(sv0, kMuEarth, Seconds{500.0 * info.period.value});
+    const auto distant = propagate(sv0, kMuEarth, info.period * 500.0);
     if (expectOk(run, distant, "propagate 500 revolutions")) {
         const auto far = elementsFromState(*distant, kMuEarth);
         if (expectOk(run, far, "elementsFromState after 500 revolutions")) {
@@ -386,8 +383,7 @@ void testPropagationInvariants(Run& run) {
     // Half a period from periapsis lands exactly on apoapsis.
     Elements atPeri = el;
     atPeri.tra = Radians{0.0};
-    const auto apo =
-        propagate(stateFromElements(atPeri, kMuEarth), kMuEarth, Seconds{0.5 * info.period.value});
+    const auto apo = propagate(stateFromElements(atPeri, kMuEarth), kMuEarth, info.period * 0.5);
     if (expectOk(run, apo, "propagate half a period")) {
         checkRel(run,
                  "  half period from periapsis reaches apoapsis",
@@ -403,13 +399,13 @@ void testPropagationInvariants(Run& run) {
     if (!expectOk(run, circular, "elementsFromState circular")) return;
 
     const OrbitInfo ci = orbitInfo(*circular, kMuEarth);
-    const auto c1 = propagate(c0, kMuEarth, Seconds{0.25 * ci.period.value});
+    const auto c1 = propagate(c0, kMuEarth, ci.period * 0.25);
     if (expectOk(run, c1, "propagate a quarter period")) {
-        checkNear(run,
-                  "  quarter period is a quarter turn",
-                  angleBetween(c0.pos, c1->pos),
-                  kPi / 2,
-                  Tolerance{1e-9});
+        checkAngle(run,
+                   "  quarter period is a quarter turn",
+                   angleBetween(c0.pos, c1->pos),
+                   Radians{kPi / 2},
+                   Tolerance{1e-9});
         checkRel(run, "  circular radius unchanged", length(c1->pos), rc, Tolerance{1e-12});
     }
 }
@@ -432,7 +428,7 @@ void testHyperbolic(Run& run) {
     check(run, el->ecc.value > 1.0, "  trajectory is hyperbolic");
     check(run, el->sma.value < 0.0, "  sma is negative");
     check(run, std::isinf(info.apoapsis.value), "  apoapsis is infinite");
-    check(run, info.energy > 0.0, "  energy is positive");
+    check(run, info.energy.value > 0.0, "  energy is positive");
 
     // Round trip through the elements.
     const StateVector rebuilt = stateFromElements(*el, kMuEarth);
@@ -443,7 +439,7 @@ void testHyperbolic(Run& run) {
     const auto out = propagate(sv, kMuEarth, 3600.0_s);
     if (!expectOk(run, out, "propagate hyperbolic")) return;
 
-    const auto returned = propagate(*out, kMuEarth, Seconds{-3600.0});
+    const auto returned = propagate(*out, kMuEarth, -3600.0_s);
     if (expectOk(run, returned, "propagate hyperbolic backward")) {
         checkVecRel(run, "  outbound then back (pos)", returned->pos, sv.pos, Tolerance{1e-9});
     }
@@ -478,8 +474,7 @@ void testKeplerSolver(Run& run) {
                 break;
             }
             const Radians backAgain = eccentricToMeanAnomaly(*solved, Eccentricity{ecc});
-            worst = std::max(worst,
-                             std::abs(wrapPi(Radians{backAgain.value - meanAnomaly.value}).value));
+            worst = std::max(worst, std::abs(wrapPi(backAgain - meanAnomaly).value));
         }
 
         check(run, allSolved, "  every mean anomaly solved");

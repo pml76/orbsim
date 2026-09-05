@@ -239,8 +239,9 @@ add_custom_command(TARGET orbsim POST_BUILD
 # ---------------------------------------------------------------------------
 set(ORBSIM_CORE_HEADERS
         core/Contract.hpp
-        core/Math.hpp
+        core/Scalar.hpp
         core/Units.hpp
+        core/Math.hpp
         orbit/Orbit.hpp
 )
 
