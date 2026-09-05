@@ -64,17 +64,24 @@ struct OrbitInfo {
 // Conditions a caller can legitimately produce. Conditions that can only arise
 // from a bug in this file are asserted instead; see core/Contract.hpp.
 enum class OrbitError {
+    NotFinite,            // NaN or infinity in an input: a corrupt scenario, not an orbit
     DegenerateState,      // zero radius: a vessel at the exact centre of a body
     NonPositiveGravity,   // mu <= 0 is not a central body
+    ParabolicElements,    // element propagation needs a finite semi-major axis
     SolverDidNotConverge, // Newton reached its iteration cap
 };
 
 [[nodiscard]] constexpr std::string_view describe(OrbitError error) noexcept {
     switch (error) {
+    case OrbitError::NotFinite:
+        return "input contains NaN or infinity";
     case OrbitError::DegenerateState:
         return "state vector has zero radius; there is no orbit to describe";
     case OrbitError::NonPositiveGravity:
         return "gravitational parameter must be positive";
+    case OrbitError::ParabolicElements:
+        return "parabolic elements have no finite semi-major axis; propagate the state vector "
+               "instead";
     case OrbitError::SolverDidNotConverge:
         return "Kepler solver reached its iteration limit without converging";
     }
@@ -110,14 +117,21 @@ enum class OrbitError {
 // --- propagation -----------------------------------------------------------
 
 // Advance a state vector by `dt` along its Kepler orbit. Exact for the two-body
-// problem at any dt, forward or backward.
+// problem at any dt, forward or backward, at any scale from a lunar orbit to
+// the outer solar system -- the convergence criterion is relative, and the
+// conic thresholds are dimensionless, so nothing here has a built-in size.
 //
 // Preconditions, reported rather than asserted because a scenario file can
-// produce both: the state must have non-zero radius, and mu must be positive.
+// produce all of them: every input must be finite, the state must have
+// non-zero radius, and mu must be positive.
 [[nodiscard]] std::expected<StateVector, OrbitError>
 propagate(const StateVector& sv, GravParam mu, Seconds dt);
 
 // Advance only the anomaly of an element set, leaving the orbit shape intact.
+//
+// Needs a finite semi-major axis: a parabolic element set is reported as such
+// rather than fed to the Kepler solver, and should be propagated as a state
+// vector instead.
 [[nodiscard]] std::expected<Elements, OrbitError>
 propagateElements(const Elements& el, GravParam mu, Seconds dt);
 

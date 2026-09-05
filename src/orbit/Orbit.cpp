@@ -3,12 +3,21 @@
 #include "core/Contract.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 
 namespace orb {
 namespace {
 
 constexpr f64 kInf = std::numeric_limits<f64>::infinity();
+
+[[nodiscard]] bool isFinite(const Vec3& v) noexcept {
+    return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z);
+}
+
+[[nodiscard]] bool isFinite(const StateVector& sv) noexcept {
+    return isFinite(sv.pos) && isFinite(sv.vel);
+}
 
 // An orbit is treated as circular / equatorial below these thresholds, at which
 // point the periapsis direction / ascending node stops being meaningful.
@@ -24,10 +33,24 @@ constexpr int kMaxAnomalyIterations = 100;
 constexpr int kMaxUniversalIterations = 200;
 
 // One ulp of a double near pi is about 4.4e-16; two orders above that converges
-// without the iteration chasing rounding noise. The universal-variable
-// iteration works in units of sqrt(metres), so its tolerance is looser.
+// without the iteration chasing rounding noise.
 constexpr f64 kAnomalyTolerance = 1e-14;
-constexpr f64 kUniversalTolerance = 1e-10;
+
+// The universal anomaly chi has units of sqrt(metres), and one revolution is
+// 2*pi*sqrt(a): about 1.7e4 in low Earth orbit and 2.4e6 at 1 AU. This used to
+// be an absolute 1e-10, which at 1 AU is below the rounding noise of the
+// update itself, so Newton ran to its cap and reported non-convergence for a
+// perfectly ordinary heliocentric orbit. It is relative to |chi| now, with
+// sqrt(r0) as the floor so that dt = 0 (chi = 0) still converges. 1e-13 is
+// the same two-orders-above-ulp margin the anomaly solver uses.
+constexpr f64 kUniversalRelTolerance = 1e-13;
+
+// alpha = 1/a has units of 1/metres, so a threshold on alpha alone encodes a
+// length: the old 1e-12 declared every orbit wider than 1e12 m parabolic, and
+// Jupiter is 7.8e11 m from the Sun. alpha * r0 is dimensionless -- 1 on a
+// circle, 1 - e at periapsis, 1 + e at apoapsis, 0 on a parabola -- and
+// separates the conics at every scale.
+constexpr f64 kParabolicAlphaTol = 1e-12;
 
 constexpr f64 clampUnit(f64 v) { return std::clamp(v, -1.0, 1.0); }
 constexpr f64 sign(f64 v) { return v < 0.0 ? -1.0 : 1.0; }
@@ -58,12 +81,12 @@ void stumpff(f64 psi, f64& c2, f64& c3) {
 initialUniversalAnomaly(const StateVector& sv, f64 mu, f64 r0, f64 rdotv, f64 alpha, f64 seconds) {
     const f64 sqrtMu = std::sqrt(mu);
 
-    if (alpha > 1e-12) { // ellipse
+    if (alpha * r0 > kParabolicAlphaTol) { // ellipse
         return sqrtMu * seconds * alpha;
     }
 
-    if (alpha < -1e-12) {          // hyperbola
-        const f64 a = 1.0 / alpha; // negative
+    if (alpha * r0 < -kParabolicAlphaTol) { // hyperbola
+        const f64 a = 1.0 / alpha;          // negative
         const f64 denom = rdotv + (sign(seconds) * std::sqrt(-mu * a) * (1.0 - (r0 * alpha)));
         return sign(seconds) * std::sqrt(-a) * std::log(-2.0 * mu * alpha * seconds / denom);
     }
@@ -81,6 +104,7 @@ initialUniversalAnomaly(const StateVector& sv, f64 mu, f64 r0, f64 rdotv, f64 al
 // --- state <-> elements ----------------------------------------------------
 
 std::expected<Elements, OrbitError> elementsFromState(const StateVector& sv, GravParam mu) {
+    if (!isFinite(sv) || !std::isfinite(mu.value)) return std::unexpected(OrbitError::NotFinite);
     if (!(mu.value > 0.0)) return std::unexpected(OrbitError::NonPositiveGravity);
 
     const Vec3& r = sv.pos;
@@ -277,6 +301,12 @@ std::expected<Radians, OrbitError> meanToEccentricAnomaly(Radians meanAnomaly, E
 // --- propagation -----------------------------------------------------------
 
 std::expected<StateVector, OrbitError> propagate(const StateVector& sv, GravParam mu, Seconds dt) {
+    // Checked first and by name. NaN passes every comparison below unnoticed
+    // and then comes out of Newton as "did not converge", which is true but
+    // sends whoever reads the log looking at the solver instead of the file.
+    if (!isFinite(sv) || !std::isfinite(mu.value) || !std::isfinite(dt.value)) {
+        return std::unexpected(OrbitError::NotFinite);
+    }
     if (!(mu.value > 0.0)) return std::unexpected(OrbitError::NonPositiveGravity);
 
     const f64 r0 = length(sv.pos);
@@ -297,7 +327,7 @@ std::expected<StateVector, OrbitError> propagate(const StateVector& sv, GravPara
     // Whole revolutions of a closed orbit are a no-op. Folding them away keeps
     // the universal anomaly small, which is what keeps Newton convergent when
     // the sim runs at 100000x and a single dt spans months.
-    if (alpha > 1e-12) {
+    if (alpha * r0 > kParabolicAlphaTol) {
         const f64 period = kTau / (sqrtMu * alpha * std::sqrt(alpha));
         seconds = std::fmod(seconds, period);
     }
@@ -322,7 +352,7 @@ std::expected<StateVector, OrbitError> propagate(const StateVector& sv, GravPara
                           ((rdotv / sqrtMu) * chi * chi * c2) - (r0 * chi * (1.0 - (psi * c3)))) /
                          r;
         chi += dchi;
-        if (std::abs(dchi) < kUniversalTolerance) {
+        if (std::abs(dchi) <= kUniversalRelTolerance * std::max(std::abs(chi), std::sqrt(r0))) {
             converged = true;
             break;
         }
@@ -348,7 +378,16 @@ std::expected<StateVector, OrbitError> propagate(const StateVector& sv, GravPara
 
 std::expected<Elements, OrbitError>
 propagateElements(const Elements& el, GravParam mu, Seconds dt) {
+    if (!std::isfinite(mu.value) || !std::isfinite(dt.value)) {
+        return std::unexpected(OrbitError::NotFinite);
+    }
     if (!(mu.value > 0.0)) return std::unexpected(OrbitError::NonPositiveGravity);
+    // The mean motion below is sqrt(mu / a^3), and a parabola has no a. Saying
+    // so beats feeding infinity to the Kepler solver and reporting that it
+    // did not converge.
+    if (!std::isfinite(el.sma.value) || std::abs(el.ecc.value - 1.0) <= kParabolicTol) {
+        return std::unexpected(OrbitError::ParabolicElements);
+    }
 
     const Radians eccentricAtStart = trueToEccentricAnomaly(el.tra, el.ecc);
     const Radians meanAtStart = eccentricToMeanAnomaly(eccentricAtStart, el.ecc);

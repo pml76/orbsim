@@ -6,130 +6,19 @@
 // propagation, state->elements against elements->state. A sign error in one of
 // them cannot hide, because the other does not share it.
 //
-#include "core/Units.hpp"
-#include "orbit/Orbit.hpp"
+#include "tests/OrbitTestSupport.hpp"
+#include "tests/TestHarness.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <cstdio>
-#include <exception>
-#include <expected>
 #include <print>
-#include <string_view>
 
 using namespace orb;
 using namespace orb::literals;
+using namespace orb::test;
 
 namespace {
-
-// Earth, WGS-84 / EGM-96.
-constexpr GravParam kMuEarth{3.986004418e14};
-constexpr Metres kEarthRadius{6378137.0};
-
-// No mutable globals: initialization order across translation units is
-// unspecified, and a mutable static is a data race waiting for a second thread.
-// The counters are carried explicitly instead.
-struct Run {
-    int checks{};
-    int failures{};
-};
-
-void reportMismatch(std::string_view what, f64 got, f64 want, f64 tol) {
-    std::print("  FAIL {}\n        got  {:.12g}\n        want {:.12g}  (tol {:g})\n",
-               what,
-               got,
-               want,
-               tol);
-}
-
-void check(Run& run, bool condition, std::string_view what) {
-    ++run.checks;
-    if (!condition) {
-        ++run.failures;
-        std::print("  FAIL {}\n", what);
-    }
-}
-
-// The tolerance is a distinct type, so `checkNear(run, what, got, tol, want)`
-// no longer compiles. This used to take three adjacent f64 parameters that
-// transposed in silence -- I.24 exactly, and the reason Tolerance exists.
-void checkNear(Run& run, std::string_view what, f64 got, f64 want, Tolerance tol) {
-    ++run.checks;
-    if (!nearlyEqual(got, want, tol) || std::isnan(got)) {
-        ++run.failures;
-        reportMismatch(what, got, want, tol.value);
-    }
-}
-
-// Relative comparison, for quantities whose magnitude spans many orders (radii
-// in metres, speeds in m/s) where an absolute tolerance is meaningless.
-void checkRel(Run& run, std::string_view what, f64 got, f64 want, Tolerance relTol) {
-    ++run.checks;
-    const f64 scale = std::max(std::abs(want), 1e-30);
-    if (!nearlyEqual(got / scale, want / scale, relTol) || std::isnan(got)) {
-        ++run.failures;
-        reportMismatch(what, got, want, relTol.value * scale);
-    }
-}
-
-void checkVecRel(
-    Run& run, std::string_view what, const Vec3& got, const Vec3& want, Tolerance relTol) {
-    ++run.checks;
-    const f64 scale = std::max(length(want), 1e-30);
-    if (!(length(got - want) / scale <= relTol.value)) {
-        ++run.failures;
-        std::print("  FAIL {}\n        got  ({:.10g}, {:.10g}, {:.10g})\n"
-                   "        want ({:.10g}, {:.10g}, {:.10g})\n        rel err {:g}\n",
-                   what,
-                   got.x,
-                   got.y,
-                   got.z,
-                   want.x,
-                   want.y,
-                   want.z,
-                   length(got - want) / scale);
-    }
-}
-
-// Angles compare modulo a full turn: 0 and tau are the same angle.
-void checkAngle(Run& run, std::string_view what, Radians got, Radians want, Tolerance tol) {
-    ++run.checks;
-    if (!(std::abs(wrapPi(got - want).value) <= tol.value)) {
-        ++run.failures;
-        reportMismatch(what, got.value, want.value, tol.value);
-    }
-}
-
-void section(std::string_view name) { std::print("{}\n", name); }
-
-// Unwraps an expected, counting a failure instead when it holds an error. Every
-// orbital entry point can fail now, and a test that ignored that would be
-// testing nothing.
-template <typename T>
-[[nodiscard]] bool
-expectOk(Run& run, const std::expected<T, OrbitError>& result, std::string_view what) {
-    ++run.checks;
-    if (!result) {
-        ++run.failures;
-        std::print("  FAIL {}: {}\n", what, describe(result.error()));
-        return false;
-    }
-    return true;
-}
-
-[[nodiscard]] Elements
-makeElements(Metres sma, Eccentricity ecc, Degrees inc, Degrees lan, Degrees aop, Degrees tra) {
-    return Elements{.sma = sma,
-                    .ecc = ecc,
-                    .inc = toRadians(inc),
-                    .lan = toRadians(lan),
-                    .aop = toRadians(aop),
-                    .tra = toRadians(tra),
-                    .slr = Metres{sma.value * (1.0 - (ecc.value * ecc.value))}};
-}
-
-// --- tests -----------------------------------------------------------------
 
 // Elements -> state -> elements must be the identity for a well-conditioned
 // orbit (non-circular, non-equatorial), where every element is meaningful.
@@ -554,19 +443,8 @@ void testFailuresAreReported(Run& run) {
 
 } // namespace
 
-// main is the one function nothing may escape from: an exception leaving it is
-// std::terminate, with no message and no exit code worth reading. std::print can
-// throw if stdout is closed, so it is caught here and turned into a diagnostic
-// and a failing status -- the same "no error is silently ignored" rule the rest
-// of this codebase follows, applied at the top.
-//
-// The handlers use std::fputs rather than std::print, because a reporting path
-// that can itself throw is not a reporting path.
 int main() {
-    try {
-        std::print("orbsim :: two-body core\n\n");
-
-        Run run;
+    return runSuite("two-body core", [](Run& run) {
         testElementRoundTrip(run);
         testDegenerateOrbits(run);
         testKnownValues(run);
@@ -575,18 +453,5 @@ int main() {
         testHyperbolic(run);
         testKeplerSolver(run);
         testFailuresAreReported(run);
-
-        std::print("\n{} checks, {} failures\n", run.checks, run.failures);
-        return run.failures == 0 ? 0 : 1;
-    } catch (const std::exception& error) {
-        // The fputs results are discarded on purpose: if stderr is gone too
-        // there is nobody left to tell, and the exit code still says "failed".
-        static_cast<void>(std::fputs("unhandled exception: ", stderr));
-        static_cast<void>(std::fputs(error.what(), stderr));
-        static_cast<void>(std::fputs("\n", stderr));
-        return 2;
-    } catch (...) {
-        static_cast<void>(std::fputs("unhandled exception of unknown type\n", stderr));
-        return 2;
-    }
+    });
 }
