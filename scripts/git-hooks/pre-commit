@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+#
+# Refuses a commit whose staged C++ does not match .clang-format.
+#
+# Enable once per clone:
+#
+#     git config core.hooksPath scripts/git-hooks
+#
+# This is the cheap part of the definition of done, run at the moment the bad
+# commit would otherwise come into existence. The full job -- build, tests,
+# clang-tidy -- is the `check` target; it takes minutes, and a hook that takes
+# minutes gets bypassed with --no-verify and then forgotten.
+#
+set -euo pipefail
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR -- '*.cpp' '*.hpp')
+[ -z "$staged" ] && exit 0
+
+if ! clang-format --dry-run --Werror $staged; then
+    echo "pre-commit: the files above do not match .clang-format." >&2
+    echo "            run 'clang-format -i' on them, re-stage, and commit again." >&2
+    exit 1
+fi

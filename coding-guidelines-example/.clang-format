@@ -49,4 +49,9 @@ Cpp11BracedListStyle: true
 FixNamespaceComments: true
 ShortNamespaceLines: 0
 
+# LF, always. .gitattributes normalises the repository and .editorconfig the
+# editor; this makes the formatter the third line of defence, so a tool that
+# writes CRLF on Windows is corrected the moment the file is formatted.
+LineEnding: LF
+
 Standard: Latest
