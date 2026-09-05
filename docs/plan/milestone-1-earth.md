@@ -169,20 +169,42 @@ add-on ecosystem with it.
 This is the harder path and adds roughly two to three weeks before Earth first
 appears; it was chosen deliberately.
 
-**Reference source lives outside the repository**, at `C:\Reference\`:
+**Reference source lives outside the repository**, at `C:\Reference\orbiter`
+(shallow clone, 1.1 GB).
 
-| Repository | Licence | How it may be used |
+The licence picture turned out better than expected once the clone was
+inspected, and the earlier reading of it was wrong. What is actually there:
+
+| Path in the clone | Licence | How it may be used |
 |---|---|---|
-| `orbitersim/orbiter` | MIT | Read and borrow, with attribution |
-| `D3D9Client` (inside it) | LGPL | Different terms — and it is Direct3D |
-| `mschweiger/orbiter-tileedit` | **GPL v3** | **Read to understand. Copy nothing.** |
+| repository root | MIT (Schweiger, 2000–2026) | Read and borrow, with attribution |
+| `Utils/tileedit/qt/src/` | MIT — no GPL headers, covered by the root licence | **Usable.** The clearest tile-format reference there is |
+| `Utils/tileedit/qt/extern/fastdxt/` | **LGPL** (vendored third-party DXT codec, 78 KB) | Do not copy. We have BC support in Vulkan anyway |
+| `OVP/D3D9Client/` | **LGPL** | Where `TileManager2` actually lives — but it is Direct3D, and LGPL |
 
-`tileedit` is the clearest reference for the tile format and the one that must
-not be copied from. Keeping every reference clone outside the project tree makes
-that a directory boundary rather than a matter of remembering.
+The standalone `mschweiger/orbiter-tileedit` repository on GitHub is **GPL v3**:
+the same code under a different licence, which is entirely the author's
+prerogative. Since an MIT-licensed copy of it exists inside the monorepo, that
+clone was **deleted** rather than kept and carefully avoided. Removing a hazard
+beats managing one.
 
-`Doc/PlanetTextures.pdf` in the Orbiter distribution is the format
-specification, and should be read before any of its source.
+### The format specification
+
+`Doc/Orbiter Developer Manual/PLANETS.tex` — 881 lines of LaTeX in the MIT repo,
+with a section labelled `sssec:tile_file_layout`. It documents exactly what
+phase B needs:
+
+- `TileFormat = 2` in `Config/<planet>.cfg` selects the quadtree format
+- Resolution levels 1 to 21, in 2-digit subdirectories
+- Latitude bands in 6-digit subdirectories, longitude index as the 6-digit
+  filename, `ilng = 0` being the westernmost tile at 180° W
+- The `nlat` / `nlng` counts per level
+- `MaxPatchResolution` and `MaxCloudResolution`, including Orbiter's behaviour
+  of interpolating missing high-resolution tiles from the nearest ancestor
+
+There is no `PlanetTextures.pdf` in the source repository; the built PDFs ship
+with the Orbiter *distribution*. The LaTeX source is the same content and is
+already on disk.
 
 ---
 

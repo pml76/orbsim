@@ -56,20 +56,23 @@ correct reference while debugging tile seams.
 
 ## Reference source, and a licence boundary
 
-Orbiter's source is worth reading and is **not** uniformly licensed. Reference
-clones live at `C:\Reference\`, deliberately outside this repository, so that
-the boundary is a directory rather than a matter of remembering.
+Orbiter's source is worth reading and is **not** uniformly licensed. The
+reference clone lives at `C:\Reference\orbiter`, outside this repository.
 
-| Repository | Licence | How it may be used |
+| Path in the clone | Licence | Use |
 |---|---|---|
-| `orbitersim/orbiter` | MIT | Read and borrow, with attribution |
-| `D3D9Client` (inside it) | LGPL | Different terms — and it is Direct3D, not Vulkan |
-| `mschweiger/orbiter-tileedit` | **GPL v3** | **Read to understand. Copy nothing.** |
+| repository root | MIT | Read and borrow, with attribution |
+| `Utils/tileedit/qt/src/` | MIT | The clearest tile-format reference. Usable |
+| `Utils/tileedit/qt/extern/fastdxt/` | **LGPL** | Vendored DXT codec. Do not copy — Vulkan does BC natively |
+| `OVP/D3D9Client/` | **LGPL** | Where TileManager2 lives, but Direct3D and LGPL |
 
-`tileedit` is simultaneously the clearest reference for Orbiter's tile format
-and the one file you must not lift code from. `Doc/PlanetTextures.pdf` in an
-Orbiter installation is the actual format specification — read it before any
-source.
+The standalone `mschweiger/orbiter-tileedit` repo on GitHub is GPL v3 — the same
+code under a different licence. An MIT copy exists in the monorepo, so do not
+clone the GPL one; there is nothing to gain and a licence to lose.
+
+**The format specification is `Doc/Orbiter Developer Manual/PLANETS.tex`**,
+section `sssec:tile_file_layout`: levels, latitude bands, longitude indices,
+`TileFormat = 2`. Read it before any source.
 
 Planetary imagery lives in `data/textures/`, gitignored, with
 [a README](data/textures/README.md) saying where to obtain it.

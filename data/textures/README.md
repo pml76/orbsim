@@ -37,7 +37,11 @@ delete it whenever, and regenerate.
 
 ## Orbiter's own textures
 
-Not required. The plan adds a reader for Orbiter's `.tree` archives and
-`Surf`/`Mask` DDS tiles later, as a second `TileSource`, which brings the
-existing add-on texture ecosystem with it. That needs an Orbiter installation;
-Blue Marble does not.
+Not required to start. The plan adds a reader for Orbiter's quadtree tiles
+later, as a second `TileSource`, which brings the existing add-on texture
+ecosystem with it. That needs an Orbiter installation; Blue Marble does not.
+
+The format is documented in `Doc/Orbiter Developer Manual/PLANETS.tex` of the
+MIT-licensed source repository (cloned to `C:\Reference\orbiter`), under
+`sssec:tile_file_layout`: resolution levels 1–21 in 2-digit folders, latitude
+bands in 6-digit folders, longitude index as the 6-digit filename.
