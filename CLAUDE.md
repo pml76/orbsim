@@ -131,8 +131,12 @@ These are the ones that get violated most often. The rest are in
 
 ## Attribution
 
-Commits end with:
+Commits end with exactly this, and nothing else:
 
 ```
-Co-Authored-By: Claude Opus 5 (1M context) 
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 ```
+
+**Do not add a `Claude-Session:` URL.** This repository is public, and the user
+asked for that line to be dropped. Co-authorship is wanted; the session link is
+not.
