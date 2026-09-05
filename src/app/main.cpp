@@ -4,16 +4,35 @@
 // Current milestone: bring up the window, device and swapchain, and prove the
 // frame loop runs. The simulation and renderer land on top of this next.
 //
+#include "app/SdlHandle.hpp"
+#include "core/Units.hpp"
 #include "render/VulkanContext.hpp"
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 
+#include <charconv>
+#include <cstdint>
+#include <cstdio>
+#include <exception>
+#include <expected>
 #include <print>
 #include <string>
+#include <string_view>
+#include <system_error>
 #include <utility>
 
 namespace {
+
+using orb::Seconds;
+using orb::app::SdlError;
+
+constexpr std::string_view kUsage = "usage: orbsim [--validate | --no-validate] [--seconds <n>]\n";
+
+// How long to sleep when there is no frame to draw (minimised, or mid-rebuild):
+// about one frame at 60 Hz, long enough not to spin a core, short enough that
+// a restored window is noticed at once.
+constexpr Uint32 kIdleDelayMs = 16;
 
 struct Options {
     // Validation defaults on in a debug build, but stays reachable from a
@@ -28,54 +47,98 @@ struct Options {
     // Runs the loop for a fixed wall-clock time and exits cleanly. Gives an
     // automated smoke test a way to exercise startup, the frame loop and
     // teardown -- the teardown path is where validation errors hide.
-    double runSeconds{0.0}; // 0 means run until the user quits
+    Seconds runFor{0.0}; // zero means run until the user quits
 };
 
-[[nodiscard]] Options parseArguments(int argc, char** argv) {
+// std::from_chars rather than std::stod: a malformed argument is a user error
+// to explain, not a std::invalid_argument to terminate on.
+[[nodiscard]] std::expected<Seconds, SdlError> parseSeconds(std::string_view text) {
+    double value = 0.0;
+    const auto [end, ec] = std::from_chars(text.data(), text.data() + text.size(), value);
+    if (ec != std::errc{} || end != text.data() + text.size() || !(value >= 0.0)) {
+        return std::unexpected(SdlError{.message = "--seconds needs a non-negative number, got '" +
+                                                   std::string(text) + "'"});
+    }
+    return Seconds{value};
+}
+
+[[nodiscard]] std::expected<Options, SdlError> parseArguments(int argc, char** argv) {
     Options options;
     for (int i = 1; i < argc; ++i) {
-        const std::string arg = argv[i];
-        if (arg == "--validate")
+        const std::string_view arg = argv[i];
+        if (arg == "--validate") {
             options.validation = orb::gfx::Validation::Enabled;
-        else if (arg == "--no-validate")
+        } else if (arg == "--no-validate") {
             options.validation = orb::gfx::Validation::Disabled;
-        else if (arg == "--seconds" && i + 1 < argc)
-            options.runSeconds = std::stod(argv[++i]);
+        } else if (arg == "--seconds") {
+            if (i + 1 >= argc)
+                return std::unexpected(SdlError{.message = "--seconds needs a value"});
+            auto seconds = parseSeconds(argv[++i]);
+            if (!seconds) return std::unexpected(seconds.error());
+            options.runFor = *seconds;
+        } else {
+            return std::unexpected(
+                SdlError{.message = "unknown argument '" + std::string(arg) + "'"});
+        }
     }
     return options;
 }
 
-} // namespace
+// Drains the event queue. Returns false once the user has asked to quit.
+[[nodiscard]] bool handleEvents(orb::gfx::VulkanContext& gfx) {
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+        switch (event.type) {
+        case SDL_EVENT_QUIT:
+            return false;
+        case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+            gfx.requestSwapchainRebuild();
+            break;
+        case SDL_EVENT_KEY_DOWN:
+            if (event.key.key == SDLK_ESCAPE) return false;
+            break;
+        default:
+            break;
+        }
+    }
+    return true;
+}
 
-int main(int argc, char** argv) {
-    const Options options = parseArguments(argc, argv);
-    const orb::gfx::Validation validation = options.validation;
-    const double runSeconds = options.runSeconds;
+[[nodiscard]] int run(int argc, char** argv) {
+    const auto options = parseArguments(argc, argv);
+    if (!options) {
+        std::print(stderr, "orbsim: {}\n{}", options.error().message, kUsage);
+        return 2;
+    }
 
-    if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD)) {
-        std::print(stderr, "SDL_Init failed: {}\n", SDL_GetError());
+    // Declaration order is teardown order, reversed: the renderer goes before
+    // the window it draws into, and the window before SDL_Quit.
+    const auto sdl = orb::app::SdlRuntime::init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD);
+    if (!sdl) {
+        std::print(stderr, "{}\n", sdl.error().message);
         return 1;
     }
 
-    SDL_Window* window =
-        SDL_CreateWindow("orbsim",
-                         1600,
-                         900,
-                         SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
-    if (window == nullptr) {
-        std::print(stderr, "SDL_CreateWindow failed: {}\n", SDL_GetError());
-        SDL_Quit();
+    const auto window = orb::app::createWindow({
+        .title = "orbsim",
+        .width = 1600,
+        .height = 900,
+        .flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY,
+    });
+    if (!window) {
+        std::print(stderr, "{}\n", window.error().message);
         return 1;
     }
 
     // A factory, so there is no moment where `gfx` exists but is not usable.
-    auto created = orb::gfx::VulkanContext::create(window, validation);
+    auto created = orb::gfx::VulkanContext::create(window->get(), options->validation);
     if (!created) {
         const std::string& message = created.error().message;
         std::print(stderr, "Renderer initialisation failed: {}\n", message);
-        SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "orbsim", message.c_str(), window);
-        SDL_DestroyWindow(window);
-        SDL_Quit();
+        // stderr already has the message, so a message box that cannot be
+        // shown loses nothing worth reporting.
+        static_cast<void>(SDL_ShowSimpleMessageBox(
+            SDL_MESSAGEBOX_ERROR, "orbsim", message.c_str(), window->get()));
         return 1;
     }
     orb::gfx::VulkanContext gfx = std::move(*created);
@@ -83,53 +146,63 @@ int main(int argc, char** argv) {
     std::print("GPU: {}\n", gfx.deviceName());
     std::print("Swapchain: {}x{}\n", gfx.extent().width, gfx.extent().height);
 
-    bool running = true;
     uint64_t frames = 0;
     const uint64_t startTicks = SDL_GetTicks();
 
-    while (running) {
-        SDL_Event event;
-        while (SDL_PollEvent(&event)) {
-            switch (event.type) {
-            case SDL_EVENT_QUIT:
-                running = false;
-                break;
-            case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
-                gfx.requestSwapchainRebuild();
-                break;
-            case SDL_EVENT_KEY_DOWN:
-                if (event.key.key == SDLK_ESCAPE) running = false;
-                break;
-            default:
-                break;
-            }
+    while (handleEvents(gfx)) {
+        const Seconds elapsed{static_cast<double>(SDL_GetTicks() - startTicks) / 1000.0};
+        if (options->runFor.value > 0.0 && elapsed >= options->runFor) break;
+
+        const auto frame = gfx.beginFrame();
+        if (!frame) {
+            std::print(stderr, "Frame could not begin: {}\n", frame.error().message);
+            return 1;
+        }
+        if (!*frame) {
+            SDL_Delay(kIdleDelayMs); // minimised or mid-rebuild
+            continue;
         }
 
-        if (runSeconds > 0.0 &&
-            static_cast<double>(SDL_GetTicks() - startTicks) >= runSeconds * 1000.0) {
-            running = false;
+        // Nothing drawn yet; the clear colour is the whole frame.
+        if (const auto ended = gfx.endFrame(**frame); !ended) {
+            std::print(stderr, "Frame could not be presented: {}\n", ended.error().message);
+            return 1;
         }
-
-        if (auto frame = gfx.beginFrame()) {
-            // Nothing drawn yet; the clear colour is the whole frame.
-            gfx.endFrame(*frame);
-            ++frames;
-        } else {
-            SDL_Delay(16); // minimised or mid-rebuild
-        }
+        ++frames;
     }
 
-    const uint64_t elapsed = SDL_GetTicks() - startTicks;
-    if (elapsed > 0) {
+    const uint64_t elapsedMs = SDL_GetTicks() - startTicks;
+    if (elapsedMs > 0) {
         std::print("{} frames in {} ms ({:.1f} fps)\n",
                    frames,
-                   elapsed,
-                   1000.0 * static_cast<double>(frames) / static_cast<double>(elapsed));
+                   elapsedMs,
+                   1000.0 * static_cast<double>(frames) / static_cast<double>(elapsedMs));
     }
 
-    // No shutdown() call: ~VulkanContext does it, in reverse
-    // declaration order, without anyone having to remember.
-    SDL_DestroyWindow(window);
-    SDL_Quit();
+    // No shutdown() call: ~VulkanContext, ~UniqueWindow and ~SdlRuntime run in
+    // reverse declaration order, without anyone having to remember.
     return 0;
+}
+
+} // namespace
+
+// main is the one function nothing may escape from: an exception leaving it is
+// std::terminate, with no message and no exit code worth reading. Nothing here
+// throws on purpose, but std::print can if stdout is closed, and the standard
+// library can when memory runs out. The handlers use std::fputs because a
+// reporting path that can itself throw is not a reporting path; its results
+// are discarded on purpose, since if stderr is gone too there is nobody left
+// to tell.
+int main(int argc, char** argv) {
+    try {
+        return run(argc, argv);
+    } catch (const std::exception& error) {
+        static_cast<void>(std::fputs("orbsim: unhandled exception: ", stderr));
+        static_cast<void>(std::fputs(error.what(), stderr));
+        static_cast<void>(std::fputs("\n", stderr));
+        return 2;
+    } catch (...) {
+        static_cast<void>(std::fputs("orbsim: unhandled exception of unknown type\n", stderr));
+        return 2;
+    }
 }

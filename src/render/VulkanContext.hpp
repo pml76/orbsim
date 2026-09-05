@@ -10,13 +10,19 @@
 // Targets Vulkan 1.3 core, so dynamic rendering and synchronization2 are used
 // directly. There are no render pass or framebuffer objects anywhere.
 //
+// Every Vulkan call that returns a VkResult is checked, and every function
+// here that can fail says so in its return type. A dropped VkResult is how a
+// lost device turns into a hang three frames later.
+//
 #include "render/VulkanHandle.hpp"
 
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <expected>
 #include <filesystem>
 #include <optional>
+#include <span>
 #include <string>
 #include <vector>
 
@@ -44,21 +50,13 @@ enum class Memory {
     HostVisible, // mappable, so the CPU can write it directly
 };
 
-// Why a string here, when the orbital core reports an enum: device-creation
-// failures are reported *by the driver*, and the useful part is its text.
-// "No suitable GPU" tells a user less than the driver's own account of which
-// feature was missing. Section 7 asks for one strategy per layer -- one way of
-// signalling failure -- not one representation of it everywhere.
-struct InitError {
+// Why a string here, when the orbital core reports an enum: renderer failures
+// are reported *by the driver*, and the useful part is its text. "No suitable
+// GPU" tells a user less than the driver's own account of which feature was
+// missing. Section 7 asks for one strategy per layer -- one way of signalling
+// failure -- not one representation of it everywhere.
+struct RenderError {
     std::string message;
-};
-
-// A GPU buffer together with the allocation that backs it.
-struct Buffer {
-    VkBuffer handle{VK_NULL_HANDLE};
-    VmaAllocation allocation{nullptr};
-    void* mapped{nullptr}; // non-null for host-visible buffers
-    VkDeviceSize size{0};
 };
 
 // Everything a frame needs to record its commands. Handed out by beginFrame.
@@ -80,32 +78,37 @@ public:
     // write defensive code against, and therefore none to forget to write
     // defensive code against (E.5, NR.5). A failure part-way through unwinds on
     // its own, because every handle built so far destroys itself.
-    [[nodiscard]] static std::expected<VulkanContext, InitError> create(SDL_Window* window,
-                                                                        Validation validation);
+    [[nodiscard]] static std::expected<VulkanContext, RenderError> create(SDL_Window* window,
+                                                                          Validation validation);
 
     // Acquires a swapchain image and opens a command buffer with the colour and
-    // depth attachments already bound and cleared. Returns nullopt when the
-    // swapchain was out of date and got rebuilt, in which case the caller
-    // should simply skip the frame.
-    [[nodiscard]] std::optional<FrameContext> beginFrame();
+    // depth attachments already bound and cleared.
+    //
+    // Two layers of outcome, deliberately. The outer expected is failure: the
+    // device was lost, a fence could not be waited on, the swapchain could not
+    // be rebuilt. The inner optional is "no frame this time": the window is
+    // minimised, or the swapchain was out of date and has just been rebuilt.
+    // The second is routine and the caller should idle; the first is not.
+    [[nodiscard]] std::expected<std::optional<FrameContext>, RenderError> beginFrame();
 
     // Closes the render pass, transitions for presentation, submits, presents.
-    void endFrame(const FrameContext& frame);
+    [[nodiscard]] std::expected<void, RenderError> endFrame(const FrameContext& frame);
 
-    void waitIdle() const;
+    [[nodiscard]] std::expected<void, RenderError> waitIdle() const;
 
     // Marks the swapchain for rebuild at the next beginFrame. Called on resize.
     void requestSwapchainRebuild() noexcept { swapchainDirty_ = true; }
 
     // --- resources ---------------------------------------------------------
 
-    [[nodiscard]] Buffer createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory);
-    void destroyBuffer(Buffer& buffer) noexcept;
+    [[nodiscard]] std::expected<UniqueBuffer, RenderError>
+    createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory);
 
-    // Uploads through a host-visible staging buffer. Synchronous: intended for
-    // load-time data, not per-frame streaming.
-    [[nodiscard]] std::expected<void, InitError>
-    uploadBuffer(Buffer& dst, const void* data, VkDeviceSize size);
+    // Uploads through a host-visible staging buffer, or directly when the
+    // destination is host-visible itself. Synchronous: intended for load-time
+    // data, not per-frame streaming.
+    [[nodiscard]] std::expected<void, RenderError> uploadBuffer(UniqueBuffer& dst,
+                                                                std::span<const std::byte> data);
 
     // Loads a SPIR-V module from disk.
     //
@@ -113,7 +116,7 @@ public:
     // wchar_t, and a narrow string works right up until a user's account name
     // steps outside it -- then it fails in a way nobody can diagnose from a bug
     // report.
-    [[nodiscard]] std::expected<VkShaderModule, InitError>
+    [[nodiscard]] std::expected<UniqueShaderModule, RenderError>
     loadShaderModule(const std::filesystem::path& path) const;
 
     // --- accessors ---------------------------------------------------------
@@ -128,13 +131,13 @@ public:
 private:
     VulkanContext() = default;
 
-    [[nodiscard]] std::expected<void, InitError> createAllocator();
-    [[nodiscard]] std::expected<void, InitError> createFrameResources();
-    [[nodiscard]] std::expected<void, InitError> createUploadContext();
-    [[nodiscard]] std::expected<void, InitError> createSwapchain();
-    [[nodiscard]] std::expected<void, InitError> createDepthAttachment();
+    [[nodiscard]] std::expected<void, RenderError> createAllocator();
+    [[nodiscard]] std::expected<void, RenderError> createFrameResources();
+    [[nodiscard]] std::expected<void, RenderError> createUploadContext();
+    [[nodiscard]] std::expected<void, RenderError> createSwapchain();
+    [[nodiscard]] std::expected<void, RenderError> createDepthAttachment();
+    [[nodiscard]] std::expected<void, RenderError> recreateSwapchain();
     void beginRendering(VkCommandBuffer cmd, uint32_t imageIndex) const;
-    bool recreateSwapchain();
 
     // Non-owning: SDL owns the window, and it outlives this object.
     SDL_Window* window_{nullptr};

@@ -214,6 +214,18 @@ add_custom_target(orbsim_shaders DEPENDS ${SPIRV_OUTPUTS})
 # ---------------------------------------------------------------------------
 # Application
 # ---------------------------------------------------------------------------
+# What the renderer and the app see: the core, plus the graphics libraries.
+# One target, so that the header self-check below compiles those headers with
+# exactly the view of the world the application has.
+add_library(orbsim_render_deps INTERFACE)
+target_link_libraries(orbsim_render_deps INTERFACE
+        orbsim_core
+        vma_impl
+        vk-bootstrap::vk-bootstrap
+        Vulkan::Headers
+        SDL3::SDL3
+)
+
 add_executable(orbsim
         src/app/main.cpp
         src/render/VulkanContext.cpp
@@ -221,13 +233,9 @@ add_executable(orbsim
 add_dependencies(orbsim orbsim_shaders)
 
 target_link_libraries(orbsim PRIVATE
-        orbsim_core
+        orbsim_render_deps
         orbsim_warnings
         orbsim_sanitizers
-        vma_impl
-        vk-bootstrap::vk-bootstrap
-        Vulkan::Headers
-        SDL3::SDL3
         ${Vulkan_LIBRARY}
 )
 
@@ -277,3 +285,10 @@ orbsim_add_header_selfcheck(orbsim_test_header_selfcheck orbsim_test_support
         tests/OrbitTestSupport.hpp
 )
 add_dependencies(test_orbit orbsim_header_selfcheck orbsim_test_header_selfcheck)
+
+orbsim_add_header_selfcheck(orbsim_render_header_selfcheck orbsim_render_deps
+        render/VulkanHandle.hpp
+        render/VulkanContext.hpp
+        app/SdlHandle.hpp
+)
+add_dependencies(orbsim orbsim_render_header_selfcheck)

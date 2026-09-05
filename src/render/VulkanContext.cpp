@@ -4,9 +4,12 @@
 #include <SDL3/SDL_vulkan.h>
 #include <VkBootstrap.h>
 
+#include <cstddef>
 #include <cstring>
 #include <expected>
 #include <fstream>
+#include <string>
+#include <string_view>
 #include <utility>
 
 namespace orb::gfx {
@@ -16,7 +19,7 @@ namespace {
 // GREATER. Spreading float precision evenly across a range that runs from a
 // cockpit panel a metre away to a planet a hundred million kilometres out is
 // only possible this way; a conventional 0..1 depth buffer z-fights badly long
-// before it reaches those distances.
+// before it reaches those distances. See docs/adr/0003.
 constexpr float kDepthClear = 0.0F;
 
 enum class FenceState {
@@ -24,26 +27,141 @@ enum class FenceState {
     Signalled,
 };
 
-[[nodiscard]] std::unexpected<InitError> fail(std::string message) {
-    return std::unexpected(InitError{.message = std::move(message)});
+[[nodiscard]] std::unexpected<RenderError> fail(std::string message) {
+    return std::unexpected(RenderError{.message = std::move(message)});
 }
 
-[[nodiscard]] UniqueSemaphore makeSemaphore(VkDevice device) {
+[[nodiscard]] std::unexpected<RenderError> failSdl(std::string_view what) {
+    return fail(std::string(what) + " failed: " + SDL_GetError());
+}
+
+// The spec's name for a result, for messages. Vulkan-Headers no longer ships
+// vk_enum_string_helper.h (it moved to Vulkan-Utility-Libraries), and a
+// dependency for one function is not worth it. Only the results this renderer
+// can meet are named; anything else shows its number, which is still enough to
+// look up.
+[[nodiscard]] std::string resultName(VkResult result) {
+    switch (result) {
+    case VK_SUCCESS:
+        return "VK_SUCCESS";
+    case VK_NOT_READY:
+        return "VK_NOT_READY";
+    case VK_TIMEOUT:
+        return "VK_TIMEOUT";
+    case VK_INCOMPLETE:
+        return "VK_INCOMPLETE";
+    case VK_ERROR_OUT_OF_HOST_MEMORY:
+        return "VK_ERROR_OUT_OF_HOST_MEMORY";
+    case VK_ERROR_OUT_OF_DEVICE_MEMORY:
+        return "VK_ERROR_OUT_OF_DEVICE_MEMORY";
+    case VK_ERROR_INITIALIZATION_FAILED:
+        return "VK_ERROR_INITIALIZATION_FAILED";
+    case VK_ERROR_DEVICE_LOST:
+        return "VK_ERROR_DEVICE_LOST";
+    case VK_ERROR_MEMORY_MAP_FAILED:
+        return "VK_ERROR_MEMORY_MAP_FAILED";
+    case VK_ERROR_FEATURE_NOT_PRESENT:
+        return "VK_ERROR_FEATURE_NOT_PRESENT";
+    case VK_ERROR_TOO_MANY_OBJECTS:
+        return "VK_ERROR_TOO_MANY_OBJECTS";
+    case VK_ERROR_FORMAT_NOT_SUPPORTED:
+        return "VK_ERROR_FORMAT_NOT_SUPPORTED";
+    case VK_ERROR_OUT_OF_POOL_MEMORY:
+        return "VK_ERROR_OUT_OF_POOL_MEMORY";
+    case VK_ERROR_SURFACE_LOST_KHR:
+        return "VK_ERROR_SURFACE_LOST_KHR";
+    case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:
+        return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
+    case VK_SUBOPTIMAL_KHR:
+        return "VK_SUBOPTIMAL_KHR";
+    case VK_ERROR_OUT_OF_DATE_KHR:
+        return "VK_ERROR_OUT_OF_DATE_KHR";
+    case VK_ERROR_VALIDATION_FAILED_EXT:
+        return "VK_ERROR_VALIDATION_FAILED_EXT";
+    case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:
+        return "VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT";
+    default:
+        return "VkResult " + std::to_string(static_cast<int>(result));
+    }
+}
+
+// Every Vulkan and VMA call that returns a VkResult goes through here, so that
+// none is dropped. This is rule 7 of the Power of Ten -- check the return
+// value of every non-void function -- for the one API that [[nodiscard]]
+// cannot reach. The name of the result is the useful part of the message:
+// VK_ERROR_DEVICE_LOST and VK_ERROR_OUT_OF_DEVICE_MEMORY call for different
+// responses.
+[[nodiscard]] std::expected<void, RenderError> vkCheck(VkResult result, std::string_view what) {
+    if (result == VK_SUCCESS) return {};
+    return fail(std::string(what) + " failed: " + resultName(result));
+}
+
+[[nodiscard]] std::expected<UniqueSemaphore, RenderError> makeSemaphore(VkDevice device) {
     const VkSemaphoreCreateInfo ci{.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
     VkSemaphore semaphore = VK_NULL_HANDLE;
-    vkCreateSemaphore(device, &ci, nullptr, &semaphore);
+    if (auto ok = vkCheck(vkCreateSemaphore(device, &ci, nullptr, &semaphore), "vkCreateSemaphore");
+        !ok) {
+        return std::unexpected(ok.error());
+    }
     return UniqueSemaphore{device, semaphore};
 }
 
-[[nodiscard]] UniqueFence makeFence(VkDevice device, FenceState state) {
+[[nodiscard]] std::expected<UniqueFence, RenderError> makeFence(VkDevice device, FenceState state) {
     const VkFenceCreateInfo ci{
         .sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
         .flags =
             state == FenceState::Signalled ? VK_FENCE_CREATE_SIGNALED_BIT : VkFenceCreateFlags{0},
     };
     VkFence fence = VK_NULL_HANDLE;
-    vkCreateFence(device, &ci, nullptr, &fence);
+    if (auto ok = vkCheck(vkCreateFence(device, &ci, nullptr, &fence), "vkCreateFence"); !ok) {
+        return std::unexpected(ok.error());
+    }
     return UniqueFence{device, fence};
+}
+
+[[nodiscard]] std::expected<UniqueCommandPool, RenderError> makeCommandPool(VkDevice device,
+                                                                            uint32_t queueFamily) {
+    const VkCommandPoolCreateInfo poolInfo{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+        .queueFamilyIndex = queueFamily,
+    };
+    VkCommandPool pool = VK_NULL_HANDLE;
+    if (auto ok =
+            vkCheck(vkCreateCommandPool(device, &poolInfo, nullptr, &pool), "vkCreateCommandPool");
+        !ok) {
+        return std::unexpected(ok.error());
+    }
+    return UniqueCommandPool{device, pool};
+}
+
+// Resets a command buffer and opens it for a single submission. Both the frame
+// loop and the upload path record this way.
+[[nodiscard]] std::expected<void, RenderError> beginOneTimeCommandBuffer(VkCommandBuffer cmd) {
+    if (auto ok = vkCheck(vkResetCommandBuffer(cmd, 0), "vkResetCommandBuffer"); !ok) return ok;
+
+    const VkCommandBufferBeginInfo begin{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+    };
+    return vkCheck(vkBeginCommandBuffer(cmd, &begin), "vkBeginCommandBuffer");
+}
+
+[[nodiscard]] std::expected<VkCommandBuffer, RenderError>
+allocatePrimaryCommandBuffer(VkDevice device, VkCommandPool pool) {
+    const VkCommandBufferAllocateInfo info{
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .commandPool = pool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1,
+    };
+    VkCommandBuffer cmd = VK_NULL_HANDLE;
+    if (auto ok =
+            vkCheck(vkAllocateCommandBuffers(device, &info, &cmd), "vkAllocateCommandBuffers");
+        !ok) {
+        return std::unexpected(ok.error());
+    }
+    return cmd;
 }
 
 // The instance-creation and device-selection steps both need the vkb::Instance,
@@ -56,13 +174,11 @@ struct InstanceBundle {
     VkSurfaceKHR surface{VK_NULL_HANDLE};
 };
 
-[[nodiscard]] std::expected<InstanceBundle, InitError>
+[[nodiscard]] std::expected<InstanceBundle, RenderError>
 makeInstanceAndSurface(SDL_Window* window, Validation validation) {
     uint32_t sdlExtCount = 0;
     const char* const* sdlExts = SDL_Vulkan_GetInstanceExtensions(&sdlExtCount);
-    if (sdlExts == nullptr) {
-        return fail(std::string("SDL_Vulkan_GetInstanceExtensions failed: ") + SDL_GetError());
-    }
+    if (sdlExts == nullptr) return failSdl("SDL_Vulkan_GetInstanceExtensions");
 
     const auto build = [&](Validation requested) {
         vkb::InstanceBuilder builder;
@@ -87,7 +203,7 @@ makeInstanceAndSurface(SDL_Window* window, Validation validation) {
 
     InstanceBundle bundle{.instance = built.value(), .surface = VK_NULL_HANDLE};
     if (!SDL_Vulkan_CreateSurface(window, bundle.instance.instance, nullptr, &bundle.surface)) {
-        return fail(std::string("SDL_Vulkan_CreateSurface failed: ") + SDL_GetError());
+        return failSdl("SDL_Vulkan_CreateSurface");
     }
     return bundle;
 }
@@ -100,8 +216,8 @@ struct DeviceBundle {
     std::string name;
 };
 
-[[nodiscard]] std::expected<DeviceBundle, InitError> makeDevice(const vkb::Instance& instance,
-                                                                VkSurfaceKHR surface) {
+[[nodiscard]] std::expected<DeviceBundle, RenderError> makeDevice(const vkb::Instance& instance,
+                                                                  VkSurfaceKHR surface) {
     // Dynamic rendering and synchronization2 are the two 1.3 features this
     // renderer is built around; there is no fallback path for them.
     VkPhysicalDeviceVulkan13Features const features13{
@@ -187,8 +303,8 @@ void transitionImage(VkCommandBuffer cmd,
 
 // ---------------------------------------------------------------------------
 
-std::expected<VulkanContext, InitError> VulkanContext::create(SDL_Window* window,
-                                                              Validation validation) {
+std::expected<VulkanContext, RenderError> VulkanContext::create(SDL_Window* window,
+                                                                Validation validation) {
     VulkanContext ctx;
     ctx.window_ = window;
 
@@ -221,7 +337,7 @@ std::expected<VulkanContext, InitError> VulkanContext::create(SDL_Window* window
     return ctx;
 }
 
-std::expected<void, InitError> VulkanContext::createAllocator() {
+std::expected<void, RenderError> VulkanContext::createAllocator() {
     VmaVulkanFunctions const vulkanFunctions{
         .vkGetInstanceProcAddr = vkGetInstanceProcAddr,
         .vkGetDeviceProcAddr = vkGetDeviceProcAddr,
@@ -236,76 +352,68 @@ std::expected<void, InitError> VulkanContext::createAllocator() {
     };
 
     VmaAllocator allocator = nullptr;
-    if (vmaCreateAllocator(&allocatorInfo, &allocator) != VK_SUCCESS) {
-        return fail("vmaCreateAllocator failed");
+    if (auto ok = vkCheck(vmaCreateAllocator(&allocatorInfo, &allocator), "vmaCreateAllocator");
+        !ok) {
+        return ok;
     }
     allocator_ = UniqueAllocator{allocator};
     return {};
 }
 
-std::expected<void, InitError> VulkanContext::createFrameResources() {
-    const VkCommandPoolCreateInfo poolInfo{
-        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-        .queueFamilyIndex = graphicsQueueFamily_,
-    };
-
+std::expected<void, RenderError> VulkanContext::createFrameResources() {
     for (uint32_t i = 0; i < kFramesInFlight; ++i) {
-        VkCommandPool pool = VK_NULL_HANDLE;
-        if (vkCreateCommandPool(device_.get(), &poolInfo, nullptr, &pool) != VK_SUCCESS) {
-            return fail("vkCreateCommandPool failed");
-        }
-        commandPools_.at(i) = UniqueCommandPool{device_.get(), pool};
+        auto pool = makeCommandPool(device_.get(), graphicsQueueFamily_);
+        if (!pool) return std::unexpected(pool.error());
+        commandPools_.at(i) = std::move(*pool);
 
-        const VkCommandBufferAllocateInfo cbInfo{
-            .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-            .commandPool = commandPools_.at(i).get(),
-            .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-            .commandBufferCount = 1,
-        };
-        if (vkAllocateCommandBuffers(device_.get(), &cbInfo, &commandBuffers_.at(i)) !=
-            VK_SUCCESS) {
-            return fail("vkAllocateCommandBuffers failed");
-        }
+        auto cmd = allocatePrimaryCommandBuffer(device_.get(), commandPools_.at(i).get());
+        if (!cmd) return std::unexpected(cmd.error());
+        commandBuffers_.at(i) = *cmd;
 
-        imageAvailable_.at(i) = makeSemaphore(device_.get());
-        inFlight_.at(i) = makeFence(device_.get(), FenceState::Signalled);
+        auto available = makeSemaphore(device_.get());
+        if (!available) return std::unexpected(available.error());
+        imageAvailable_.at(i) = std::move(*available);
+
+        // Signalled, so that the first wait on each slot returns at once.
+        auto fence = makeFence(device_.get(), FenceState::Signalled);
+        if (!fence) return std::unexpected(fence.error());
+        inFlight_.at(i) = std::move(*fence);
     }
     return {};
 }
 
-std::expected<void, InitError> VulkanContext::createUploadContext() {
-    const VkCommandPoolCreateInfo poolInfo{
-        .sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-        .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
-        .queueFamilyIndex = graphicsQueueFamily_,
-    };
+std::expected<void, RenderError> VulkanContext::createUploadContext() {
+    auto pool = makeCommandPool(device_.get(), graphicsQueueFamily_);
+    if (!pool) return std::unexpected(pool.error());
+    uploadPool_ = std::move(*pool);
 
-    VkCommandPool pool = VK_NULL_HANDLE;
-    if (vkCreateCommandPool(device_.get(), &poolInfo, nullptr, &pool) != VK_SUCCESS) {
-        return fail("vkCreateCommandPool (upload) failed");
-    }
-    uploadPool_ = UniqueCommandPool{device_.get(), pool};
+    auto cmd = allocatePrimaryCommandBuffer(device_.get(), uploadPool_.get());
+    if (!cmd) return std::unexpected(cmd.error());
+    uploadCmd_ = *cmd;
 
-    const VkCommandBufferAllocateInfo uploadCbInfo{
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-        .commandPool = uploadPool_.get(),
-        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-        .commandBufferCount = 1,
-    };
-    if (vkAllocateCommandBuffers(device_.get(), &uploadCbInfo, &uploadCmd_) != VK_SUCCESS) {
-        return fail("vkAllocateCommandBuffers (upload) failed");
-    }
-
-    uploadFence_ = makeFence(device_.get(), FenceState::Unsignalled);
+    auto fence = makeFence(device_.get(), FenceState::Unsignalled);
+    if (!fence) return std::unexpected(fence.error());
+    uploadFence_ = std::move(*fence);
     return {};
 }
 
-std::expected<void, InitError> VulkanContext::createSwapchain() {
+std::expected<void, RenderError> VulkanContext::createSwapchain() {
     int width = 0;
     int height = 0;
-    SDL_GetWindowSizeInPixels(window_, &width, &height);
+    if (!SDL_GetWindowSizeInPixels(window_, &width, &height)) {
+        return failSdl("SDL_GetWindowSizeInPixels");
+    }
     if (width <= 0 || height <= 0) return fail("Window has zero size");
+
+    // Children before parents. The image views reference the swapchain and
+    // the depth view references the depth image; Vulkan wants them gone
+    // before the objects they were created from. Everything here is idle --
+    // recreateSwapchain waited for the device -- so the order is the only
+    // thing that matters.
+    swapchainViews_.clear();
+    renderFinished_.clear();
+    depthView_.reset();
+    depthImage_.reset();
 
     vkb::SwapchainBuilder builder{
         physicalDevice_, device_.get(), surface_.get(), graphicsQueueFamily_, graphicsQueueFamily_};
@@ -322,27 +430,35 @@ std::expected<void, InitError> VulkanContext::createSwapchain() {
             .add_fallback_present_mode(VK_PRESENT_MODE_FIFO_KHR)
             .set_desired_extent(static_cast<uint32_t>(width), static_cast<uint32_t>(height))
             .add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+            // A surface may have only one live swapchain. Handing the old one
+            // over retires it, which is what lets the new one be created while
+            // the old is still owned by swapchain_ below.
+            .set_old_swapchain(swapchain_.get())
             .build();
     if (!built) return fail("Swapchain creation failed: " + built.error().message());
 
     vkb::Swapchain vkbSwapchain = built.value();
-    swapchain_ = UniqueSwapchain{device_.get(), vkbSwapchain.swapchain};
+    swapchain_ = UniqueSwapchain{device_.get(), vkbSwapchain.swapchain}; // destroys the retired one
     swapchainFormat_ = vkbSwapchain.image_format;
     swapchainExtent_ = vkbSwapchain.extent;
-    swapchainImages_ = vkbSwapchain.get_images().value();
 
-    // vkb hands back raw views; wrap each one so the vector owns them, and
-    // clearing the vector destroys the previous set.
-    swapchainViews_.clear();
-    swapchainViews_.reserve(swapchainImages_.size());
-    for (VkImageView view : vkbSwapchain.get_image_views().value()) {
+    auto images = vkbSwapchain.get_images();
+    if (!images) return fail("Swapchain images unavailable: " + images.error().message());
+    swapchainImages_ = std::move(images.value());
+
+    // vkb hands back raw views; wrap each one so the vector owns them.
+    auto views = vkbSwapchain.get_image_views();
+    if (!views) return fail("Swapchain image views unavailable: " + views.error().message());
+    swapchainViews_.reserve(views.value().size());
+    for (VkImageView view : views.value()) {
         swapchainViews_.emplace_back(device_.get(), view);
     }
 
-    renderFinished_.clear();
     renderFinished_.reserve(swapchainImages_.size());
     for (size_t i = 0; i < swapchainImages_.size(); ++i) {
-        renderFinished_.push_back(makeSemaphore(device_.get()));
+        auto finished = makeSemaphore(device_.get());
+        if (!finished) return std::unexpected(finished.error());
+        renderFinished_.push_back(std::move(*finished));
     }
 
     if (auto depth = createDepthAttachment(); !depth) return depth;
@@ -354,7 +470,7 @@ std::expected<void, InitError> VulkanContext::createSwapchain() {
 // Split out of createSwapchain: the swapchain and its depth buffer are two
 // resources with two failure modes, and one function doing both could only
 // report them with the same undifferentiated failure.
-std::expected<void, InitError> VulkanContext::createDepthAttachment() {
+std::expected<void, RenderError> VulkanContext::createDepthAttachment() {
     const VkImageCreateInfo depthInfo{
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType = VK_IMAGE_TYPE_2D,
@@ -375,9 +491,11 @@ std::expected<void, InitError> VulkanContext::createDepthAttachment() {
 
     VkImage image = VK_NULL_HANDLE;
     VmaAllocation allocation = nullptr;
-    if (vmaCreateImage(allocator_.get(), &depthInfo, &depthAlloc, &image, &allocation, nullptr) !=
-        VK_SUCCESS) {
-        return fail("Depth image allocation failed");
+    if (auto ok = vkCheck(
+            vmaCreateImage(allocator_.get(), &depthInfo, &depthAlloc, &image, &allocation, nullptr),
+            "vmaCreateImage (depth)");
+        !ok) {
+        return ok;
     }
     depthImage_ = UniqueImage{allocator_.get(), image, allocation};
 
@@ -393,40 +511,48 @@ std::expected<void, InitError> VulkanContext::createDepthAttachment() {
                              .layerCount = 1},
     };
     VkImageView view = VK_NULL_HANDLE;
-    if (vkCreateImageView(device_.get(), &depthViewInfo, nullptr, &view) != VK_SUCCESS) {
-        return fail("Depth image view creation failed");
+    if (auto ok = vkCheck(vkCreateImageView(device_.get(), &depthViewInfo, nullptr, &view),
+                          "vkCreateImageView (depth)");
+        !ok) {
+        return ok;
     }
     depthView_ = UniqueImageView{device_.get(), view};
 
     return {};
 }
 
-bool VulkanContext::recreateSwapchain() {
-    vkDeviceWaitIdle(device_.get());
-
-    // There is no destroySwapchain() any more. Assigning over each handle
-    // destroys the old one, and createSwapchain reassigns every member it owns.
-    // That is the whole point of the wrappers.
-    if (auto rebuilt = createSwapchain(); !rebuilt) {
-        SDL_Log("Swapchain rebuild failed: %s", rebuilt.error().message.c_str());
-        return false;
+std::expected<void, RenderError> VulkanContext::recreateSwapchain() {
+    // Nothing may still be using the old swapchain when it is retired.
+    if (auto idle = vkCheck(vkDeviceWaitIdle(device_.get()), "vkDeviceWaitIdle"); !idle) {
+        return idle;
     }
-    return true;
+    // There is no destroySwapchain(). createSwapchain reassigns every member
+    // it owns, and assigning over a handle destroys the old one. That is the
+    // whole point of the wrappers.
+    return createSwapchain();
 }
 
-std::optional<FrameContext> VulkanContext::beginFrame() {
+std::expected<std::optional<FrameContext>, RenderError> VulkanContext::beginFrame() {
     // A minimised window has a zero-size swapchain, which cannot be created.
     // Report no frame and let the caller idle.
     int width = 0;
     int height = 0;
-    SDL_GetWindowSizeInPixels(window_, &width, &height);
+    if (!SDL_GetWindowSizeInPixels(window_, &width, &height)) {
+        return failSdl("SDL_GetWindowSizeInPixels");
+    }
     if (width <= 0 || height <= 0) return std::nullopt;
 
-    if (swapchainDirty_ && !recreateSwapchain()) return std::nullopt;
+    if (swapchainDirty_) {
+        if (auto rebuilt = recreateSwapchain(); !rebuilt) return std::unexpected(rebuilt.error());
+    }
 
     const uint32_t frame = frameIndex_;
     VkFence waitFence = inFlight_.at(frame).get();
-    vkWaitForFences(device_.get(), 1, &waitFence, VK_TRUE, UINT64_MAX);
+    if (auto ok = vkCheck(vkWaitForFences(device_.get(), 1, &waitFence, VK_TRUE, UINT64_MAX),
+                          "vkWaitForFences");
+        !ok) {
+        return std::unexpected(ok.error());
+    }
 
     uint32_t imageIndex = 0;
     const VkResult acquire = vkAcquireNextImageKHR(device_.get(),
@@ -435,29 +561,27 @@ std::optional<FrameContext> VulkanContext::beginFrame() {
                                                    imageAvailable_.at(frame).get(),
                                                    VK_NULL_HANDLE,
                                                    &imageIndex);
-
     if (acquire == VK_ERROR_OUT_OF_DATE_KHR) {
-        recreateSwapchain();
+        if (auto rebuilt = recreateSwapchain(); !rebuilt) return std::unexpected(rebuilt.error());
         return std::nullopt;
     }
-    if (acquire != VK_SUCCESS && acquire != VK_SUBOPTIMAL_KHR) {
-        SDL_Log("vkAcquireNextImageKHR failed: %d", static_cast<int>(acquire));
-        return std::nullopt;
+    // Suboptimal still hands back a usable image; the rebuild happens after
+    // this frame is presented.
+    if (acquire != VK_SUBOPTIMAL_KHR) {
+        if (auto ok = vkCheck(acquire, "vkAcquireNextImageKHR"); !ok) {
+            return std::unexpected(ok.error());
+        }
     }
 
     // Only reset the fence once the frame is definitely going to be submitted;
     // returning early above with the fence already reset would deadlock the
     // next wait on this slot.
-    vkResetFences(device_.get(), 1, &waitFence);
+    if (auto ok = vkCheck(vkResetFences(device_.get(), 1, &waitFence), "vkResetFences"); !ok) {
+        return std::unexpected(ok.error());
+    }
 
     VkCommandBuffer cmd = commandBuffers_.at(frame);
-    vkResetCommandBuffer(cmd, 0);
-
-    const VkCommandBufferBeginInfo begin{
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-    };
-    vkBeginCommandBuffer(cmd, &begin);
+    if (auto ok = beginOneTimeCommandBuffer(cmd); !ok) return std::unexpected(ok.error());
 
     transitionImage(cmd,
                     swapchainImages_.at(imageIndex),
@@ -523,14 +647,14 @@ void VulkanContext::beginRendering(VkCommandBuffer cmd, uint32_t imageIndex) con
     vkCmdSetScissor(cmd, 0, 1, &scissor);
 }
 
-void VulkanContext::endFrame(const FrameContext& frame) {
+std::expected<void, RenderError> VulkanContext::endFrame(const FrameContext& frame) {
     vkCmdEndRendering(frame.cmd);
 
     transitionImage(frame.cmd,
                     swapchainImages_.at(frame.imageIndex),
                     VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                     VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
-    vkEndCommandBuffer(frame.cmd);
+    if (auto ok = vkCheck(vkEndCommandBuffer(frame.cmd), "vkEndCommandBuffer"); !ok) return ok;
 
     const VkSemaphoreSubmitInfo waitInfo{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
@@ -555,7 +679,12 @@ void VulkanContext::endFrame(const FrameContext& frame) {
         .signalSemaphoreInfoCount = 1,
         .pSignalSemaphoreInfos = &signalInfo,
     };
-    vkQueueSubmit2(graphicsQueue_, 1, &submit, inFlight_.at(frame.frameIndex).get());
+    if (auto ok = vkCheck(
+            vkQueueSubmit2(graphicsQueue_, 1, &submit, inFlight_.at(frame.frameIndex).get()),
+            "vkQueueSubmit2");
+        !ok) {
+        return ok;
+    }
 
     VkSemaphore presentWait = renderFinished_.at(frame.imageIndex).get();
     VkSwapchainKHR swapchain = swapchain_.get();
@@ -567,24 +696,29 @@ void VulkanContext::endFrame(const FrameContext& frame) {
         .pSwapchains = &swapchain,
         .pImageIndices = &frame.imageIndex,
     };
-    const VkResult result = vkQueuePresentKHR(graphicsQueue_, &present);
-    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
-        swapchainDirty_ = true;
-    }
+    const VkResult presented = vkQueuePresentKHR(graphicsQueue_, &present);
 
+    // The work was submitted whatever present said, so the slot advances.
     frameIndex_ = (frameIndex_ + 1) % kFramesInFlight;
+
+    // Both mean the window changed under us; the next beginFrame rebuilds.
+    // Anything else is a real failure.
+    if (presented == VK_ERROR_OUT_OF_DATE_KHR || presented == VK_SUBOPTIMAL_KHR) {
+        swapchainDirty_ = true;
+        return {};
+    }
+    return vkCheck(presented, "vkQueuePresentKHR");
 }
 
-void VulkanContext::waitIdle() const {
-    if (device_) vkDeviceWaitIdle(device_.get());
+std::expected<void, RenderError> VulkanContext::waitIdle() const {
+    if (!device_) return {};
+    return vkCheck(vkDeviceWaitIdle(device_.get()), "vkDeviceWaitIdle");
 }
 
 // --- resources -------------------------------------------------------------
 
-Buffer VulkanContext::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory) {
-    Buffer buffer;
-    buffer.size = size;
-
+std::expected<UniqueBuffer, RenderError>
+VulkanContext::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory) {
     const VkBufferCreateInfo bufferInfo{
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .size = size,
@@ -597,54 +731,46 @@ Buffer VulkanContext::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, 
                           VMA_ALLOCATION_CREATE_MAPPED_BIT;
     }
 
+    VkBuffer buffer = VK_NULL_HANDLE;
+    VmaAllocation allocation = nullptr;
     VmaAllocationInfo info{};
-    if (vmaCreateBuffer(
-            allocator_.get(), &bufferInfo, &allocInfo, &buffer.handle, &buffer.allocation, &info) !=
-        VK_SUCCESS) {
-        return {};
+    if (auto ok = vkCheck(
+            vmaCreateBuffer(allocator_.get(), &bufferInfo, &allocInfo, &buffer, &allocation, &info),
+            "vmaCreateBuffer");
+        !ok) {
+        return std::unexpected(ok.error());
     }
-    buffer.mapped = info.pMappedData;
-    return buffer;
+    return UniqueBuffer{allocator_.get(), buffer, allocation, info.pMappedData, size};
 }
 
-void VulkanContext::destroyBuffer(Buffer& buffer) noexcept {
-    if (buffer.handle != VK_NULL_HANDLE) {
-        vmaDestroyBuffer(allocator_.get(), buffer.handle, buffer.allocation);
-    }
-    buffer = {};
-}
-
-std::expected<void, InitError>
-VulkanContext::uploadBuffer(Buffer& dst, const void* data, VkDeviceSize size) {
-    if (size == 0) return {};
-    if (size > dst.size) return fail("Upload larger than destination buffer");
+std::expected<void, RenderError> VulkanContext::uploadBuffer(UniqueBuffer& dst,
+                                                             std::span<const std::byte> data) {
+    if (data.empty()) return {};
+    if (data.size() > dst.size()) return fail("Upload larger than destination buffer");
 
     // A host-visible destination can be written directly; the staging round
     // trip is only needed for device-local memory.
-    if (dst.mapped != nullptr) {
-        std::memcpy(dst.mapped, data, size);
+    if (dst.mapped() != nullptr) {
+        std::memcpy(dst.mapped(), data.data(), data.size());
         return {};
     }
 
-    Buffer staging = createBuffer(size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT, Memory::HostVisible);
-    if (staging.handle == VK_NULL_HANDLE || staging.mapped == nullptr) {
-        destroyBuffer(staging);
-        return fail("Staging buffer allocation failed");
-    }
-    std::memcpy(staging.mapped, data, size);
+    auto staging = createBuffer(data.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, Memory::HostVisible);
+    if (!staging) return std::unexpected(staging.error());
+    if (staging->mapped() == nullptr) return fail("Staging buffer was not mapped");
+    std::memcpy(staging->mapped(), data.data(), data.size());
 
     VkFence fence = uploadFence_.get();
-    vkResetFences(device_.get(), 1, &fence);
-    vkResetCommandBuffer(uploadCmd_, 0);
+    if (auto ok = vkCheck(vkResetFences(device_.get(), 1, &fence), "vkResetFences (upload)"); !ok) {
+        return ok;
+    }
+    if (auto ok = beginOneTimeCommandBuffer(uploadCmd_); !ok) return ok;
 
-    const VkCommandBufferBeginInfo begin{
-        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-        .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-    };
-    vkBeginCommandBuffer(uploadCmd_, &begin);
-    const VkBufferCopy copy{.srcOffset = 0, .dstOffset = 0, .size = size};
-    vkCmdCopyBuffer(uploadCmd_, staging.handle, dst.handle, 1, &copy);
-    vkEndCommandBuffer(uploadCmd_);
+    const VkBufferCopy copy{.srcOffset = 0, .dstOffset = 0, .size = data.size()};
+    vkCmdCopyBuffer(uploadCmd_, staging->get(), dst.get(), 1, &copy);
+    if (auto ok = vkCheck(vkEndCommandBuffer(uploadCmd_), "vkEndCommandBuffer (upload)"); !ok) {
+        return ok;
+    }
 
     const VkCommandBufferSubmitInfo cmdInfo{
         .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_SUBMIT_INFO,
@@ -655,14 +781,18 @@ VulkanContext::uploadBuffer(Buffer& dst, const void* data, VkDeviceSize size) {
         .commandBufferInfoCount = 1,
         .pCommandBufferInfos = &cmdInfo,
     };
-    vkQueueSubmit2(graphicsQueue_, 1, &submit, fence);
-    vkWaitForFences(device_.get(), 1, &fence, VK_TRUE, UINT64_MAX);
-
-    destroyBuffer(staging);
-    return {};
+    if (auto ok =
+            vkCheck(vkQueueSubmit2(graphicsQueue_, 1, &submit, fence), "vkQueueSubmit2 (upload)");
+        !ok) {
+        return ok;
+    }
+    // The staging buffer destroys itself on return, so the copy must be
+    // complete before then, not merely submitted.
+    return vkCheck(vkWaitForFences(device_.get(), 1, &fence, VK_TRUE, UINT64_MAX),
+                   "vkWaitForFences (upload)");
 }
 
-std::expected<VkShaderModule, InitError>
+std::expected<UniqueShaderModule, RenderError>
 VulkanContext::loadShaderModule(const std::filesystem::path& path) const {
     std::ifstream file(path, std::ios::binary | std::ios::ate);
     if (!file) return fail("Cannot open shader: " + path.string());
@@ -674,7 +804,9 @@ VulkanContext::loadShaderModule(const std::filesystem::path& path) const {
 
     std::vector<uint32_t> code(static_cast<size_t>(size) / 4);
     file.seekg(0);
-    file.read(reinterpret_cast<char*>(code.data()), size);
+    if (!file.read(reinterpret_cast<char*>(code.data()), size)) {
+        return fail("Short read on shader: " + path.string());
+    }
 
     const VkShaderModuleCreateInfo info{
         .sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
@@ -682,10 +814,12 @@ VulkanContext::loadShaderModule(const std::filesystem::path& path) const {
         .pCode = code.data(),
     };
     VkShaderModule module = VK_NULL_HANDLE;
-    if (vkCreateShaderModule(device_.get(), &info, nullptr, &module) != VK_SUCCESS) {
-        return fail("vkCreateShaderModule failed for " + path.string());
+    if (auto ok = vkCheck(vkCreateShaderModule(device_.get(), &info, nullptr, &module),
+                          "vkCreateShaderModule");
+        !ok) {
+        return std::unexpected(ok.error());
     }
-    return module;
+    return UniqueShaderModule{device_.get(), module};
 }
 
 } // namespace orb::gfx

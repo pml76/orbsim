@@ -76,9 +76,12 @@ using UniqueImageView = OwnedHandle<VkImageView, VkDevice, vkDestroyImageView>;
 using UniqueSemaphore = OwnedHandle<VkSemaphore, VkDevice, vkDestroySemaphore>;
 using UniqueFence = OwnedHandle<VkFence, VkDevice, vkDestroyFence>;
 using UniqueCommandPool = OwnedHandle<VkCommandPool, VkDevice, vkDestroyCommandPool>;
+using UniqueShaderModule = OwnedHandle<VkShaderModule, VkDevice, vkDestroyShaderModule>;
+using UniquePipelineLayout = OwnedHandle<VkPipelineLayout, VkDevice, vkDestroyPipelineLayout>;
+using UniquePipeline = OwnedHandle<VkPipeline, VkDevice, vkDestroyPipeline>;
 
-// The remaining four do not fit that shape, so each gets its own small type
-// rather than a template contorted to cover them.
+// The rest do not fit that shape, so each gets its own small type rather than
+// a template contorted to cover them.
 
 // vkDestroyInstance takes no owner.
 class UniqueInstance {
@@ -213,8 +216,12 @@ public:
     DeviceIdleGuard() noexcept = default;
     explicit DeviceIdleGuard(VkDevice device) noexcept : device_(device) {}
 
+    // The wait's result is discarded on purpose: this is a destructor, and the
+    // only failure vkDeviceWaitIdle can report is a lost device, after which
+    // the handles below are going to be destroyed regardless. Every other
+    // vkDeviceWaitIdle in the renderer is checked.
     ~DeviceIdleGuard() {
-        if (device_ != VK_NULL_HANDLE) vkDeviceWaitIdle(device_);
+        if (device_ != VK_NULL_HANDLE) static_cast<void>(vkDeviceWaitIdle(device_));
     }
 
     DeviceIdleGuard(const DeviceIdleGuard&) = delete;
@@ -225,7 +232,7 @@ public:
 
     DeviceIdleGuard& operator=(DeviceIdleGuard&& other) noexcept {
         if (this != &other) {
-            if (device_ != VK_NULL_HANDLE) vkDeviceWaitIdle(device_);
+            if (device_ != VK_NULL_HANDLE) static_cast<void>(vkDeviceWaitIdle(device_));
             device_ = std::exchange(other.device_, VK_NULL_HANDLE);
         }
         return *this;
@@ -313,6 +320,75 @@ private:
     VmaAllocator allocator_{nullptr};
     VkImage image_{VK_NULL_HANDLE};
     VmaAllocation allocation_{nullptr};
+};
+
+// A VMA buffer: the buffer, its allocation, and -- for host-visible memory --
+// the persistent mapping VMA made when it was created. Freed together.
+//
+// This replaced a plain struct with a destroyBuffer() that every owner had to
+// remember to call. A vertex buffer that goes out of scope now frees itself,
+// which is the whole of section 4 applied to the one resource the renderer
+// will create most of.
+class UniqueBuffer {
+public:
+    UniqueBuffer() noexcept = default;
+    UniqueBuffer(VmaAllocator allocator,
+                 VkBuffer buffer,
+                 VmaAllocation allocation,
+                 void* mapped,
+                 VkDeviceSize size) noexcept
+        : allocator_(allocator),
+          buffer_(buffer),
+          allocation_(allocation),
+          mapped_(mapped),
+          size_(size) {}
+
+    ~UniqueBuffer() { reset(); }
+
+    UniqueBuffer(const UniqueBuffer&) = delete;
+    UniqueBuffer& operator=(const UniqueBuffer&) = delete;
+
+    UniqueBuffer(UniqueBuffer&& other) noexcept
+        : allocator_(std::exchange(other.allocator_, nullptr)),
+          buffer_(std::exchange(other.buffer_, VK_NULL_HANDLE)),
+          allocation_(std::exchange(other.allocation_, nullptr)),
+          mapped_(std::exchange(other.mapped_, nullptr)),
+          size_(std::exchange(other.size_, 0)) {}
+
+    UniqueBuffer& operator=(UniqueBuffer&& other) noexcept {
+        if (this != &other) {
+            reset();
+            allocator_ = std::exchange(other.allocator_, nullptr);
+            buffer_ = std::exchange(other.buffer_, VK_NULL_HANDLE);
+            allocation_ = std::exchange(other.allocation_, nullptr);
+            mapped_ = std::exchange(other.mapped_, nullptr);
+            size_ = std::exchange(other.size_, 0);
+        }
+        return *this;
+    }
+
+    [[nodiscard]] VkBuffer get() const noexcept { return buffer_; }
+    [[nodiscard]] VmaAllocation allocation() const noexcept { return allocation_; }
+    [[nodiscard]] void* mapped() const noexcept { return mapped_; } // null unless host-visible
+    [[nodiscard]] VkDeviceSize size() const noexcept { return size_; }
+    [[nodiscard]] explicit operator bool() const noexcept { return buffer_ != VK_NULL_HANDLE; }
+
+    void reset() noexcept {
+        if (buffer_ != VK_NULL_HANDLE) {
+            vmaDestroyBuffer(allocator_, buffer_, allocation_);
+            buffer_ = VK_NULL_HANDLE;
+            allocation_ = nullptr;
+            mapped_ = nullptr;
+            size_ = 0;
+        }
+    }
+
+private:
+    VmaAllocator allocator_{nullptr};
+    VkBuffer buffer_{VK_NULL_HANDLE};
+    VmaAllocation allocation_{nullptr};
+    void* mapped_{nullptr};
+    VkDeviceSize size_{0};
 };
 
 } // namespace orb::gfx
