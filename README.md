@@ -1,5 +1,7 @@
 # orbsim
 
+[![ci](https://github.com/pml76/orbsim/actions/workflows/ci.yml/badge.svg)](https://github.com/pml76/orbsim/actions/workflows/ci.yml)
+
 A space flight simulator in the spirit of [Orbiter](https://github.com/orbitersim/orbiter):
 real orbital mechanics, 6-DOF vessels, and MFD-style instrumentation. Written
 from scratch in C++23 with Vulkan.
@@ -14,15 +16,19 @@ a window, creates a device and paces frames. Nothing is drawn yet. See
 
 - **Two-body orbital mechanics** — state vectors, classical elements, and
   universal-variable propagation covering elliptic, parabolic and hyperbolic
-  trajectories through one code path. Escape trajectories are ordinary here, not
-  a special case.
-- **732 test assertions**, the useful ones crossing two independent
-  implementations against each other: universal-variable propagation against
-  Kepler-element propagation, state→elements against elements→state. A sign
-  error in one cannot hide behind the other.
+  trajectories through one code path, at every scale from a lunar orbit to the
+  outer solar system. Escape trajectories are ordinary here, not a special
+  case.
+- **Two test suites, about 3,500 checks**, the useful ones crossing the code
+  against something it did not produce: universal-variable propagation against
+  Kepler-element propagation, state→elements against elements→state, energy
+  and angular momentum before and after, and a seeded sweep of 300 random
+  orbits around the Moon, Earth, Jupiter and the Sun. A sign error in one path
+  cannot hide behind the other.
 - **Vulkan 1.3 renderer foundation** — dynamic rendering, synchronization2, VMA
-  allocation, reverse-Z depth. Runs clean under the validation layers through
-  startup, frame loop and teardown.
+  allocation, reverse-Z depth, every resource RAII and every `VkResult`
+  checked. Runs clean under the validation layers through startup, frame loop
+  and teardown, and that run is a test: a validation error fails it.
 
 ## Design
 
@@ -53,7 +59,18 @@ cmake --build build/relwithdebinfo
 ctest --test-dir build/relwithdebinfo --output-on-failure
 ```
 
-`orbsim --validate` enables the Vulkan validation layers from a release build.
+`orbsim --validate --seconds 3` runs the application under the Vulkan
+validation layers for three seconds and exits non-zero if they report an
+error. The `check` target is the full definition of done -- build, tests,
+clang-tidy, clang-format, and that validation run:
+
+```
+cmake --build build/relwithdebinfo --target check
+```
+
+`-DORBSIM_BUILD_APP=OFF` builds the simulation core and its tests without the
+Vulkan SDK, which is what the Linux CI jobs do, under AddressSanitizer and
+UndefinedBehaviorSanitizer with clang and again with gcc 14.
 
 ## Code standards
 
@@ -64,12 +81,15 @@ The project has an opinionated, enforced house style:
 - [`coding-guidelines-example/`](coding-guidelines-example/) — a small,
   standalone program in which every one of those rules is followed and none is
   violated, with a coverage map
+- [`docs/adr/`](docs/adr/) — the decisions that span files: units as types,
+  the error strategy, reverse-Z, pinned dependencies, and how correctness is
+  enforced
 - [`CLAUDE.md`](CLAUDE.md) — the short version
 
 The build treats the full warning set as errors, and clang-tidy runs at
-`WarningsAsErrors: '*'`. Units live in the type system: `Radians`, `Metres`,
-`Seconds` and `GravParam` are distinct types, so `propagate(state, dt, mu)` does
-not compile.
+`WarningsAsErrors: '*'` over every file, headers included. Units live in the
+type system: `Radians`, `Metres`, `Seconds` and `GravParam` are distinct types,
+so `propagate(state, dt, mu)` does not compile.
 
 ## Licence
 

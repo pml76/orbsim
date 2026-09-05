@@ -31,16 +31,36 @@ tests/        CTest suites
 and runs headless: no Vulkan, no SDL. Never push a renderer concept downward
 into the physics — push the dependency the other way instead.
 
-## Build and test
+## Build, test, and the definition of done
 
 ```
-cmake --preset relwithdebinfo          # use CLion's bundled cmake 4.3.1
-cmake --build build/relwithdebinfo
-ctest --test-dir build/relwithdebinfo --output-on-failure
+cmake --preset relwithdebinfo && cmake --preset debug    # CLion's bundled cmake 4.3.1
+cmake --build build/relwithdebinfo --target check
+cmake --build build/debug --target check
 ```
 
-`orbsim.exe --validate` enables the Vulkan validation layers from a release
-build. The example is a separate project:
+**Nothing is done until `check` passes in both trees.** It builds everything,
+runs `clang-format --dry-run --Werror` over every source and header, runs
+`clang-tidy` over every translation unit with headers included, and runs
+`ctest` -- including a two-second run of the application under the Vulkan
+validation layers (test `orbsim_smoke`, label `gpu`) that fails on any
+validation error. Both trees, because assertions are only live in Debug.
+Smaller targets exist for the loop: `lint`, `format-check`, `format`. Presets:
+`asan` (Debug + AddressSanitizer, run before a milestone lands),
+`linux-sanitize` and `linux-gcc` (what CI runs; see `.github/workflows/`).
+`docs/adr/0005` is the record of why it is set up this way.
+
+Formatting also happens without being asked: `.claude/settings.json` runs
+`clang-format` on every C++ file Claude Code edits, and the checked-in
+pre-commit hook refuses an unformatted commit once enabled per clone:
+
+```
+git config core.hooksPath scripts/git-hooks
+```
+
+`orbsim.exe --validate --seconds 3` runs the app under validation for three
+seconds. Exit codes: 1 failure, 2 usage, 3 validation errors reported. The
+example is a separate project with the same bar:
 
 ```
 cmake -S coding-guidelines-example -B coding-guidelines-example/build -G Ninja \
@@ -104,18 +124,43 @@ These are the ones that get violated most often. The rest are in
    from.
 10. **Zero warnings, zero clang-tidy findings.** Suppressions are allowed and
     must carry a written reason.
+11. **Every `VkResult` is checked**, through `vkCheck`, and every function
+    that can fail says so in its return type. A dropped result is how a lost
+    device becomes a hang three frames later.
+12. **Constants carry their units in their name or their type, and a comment
+    says where the number came from.** The propagator failed at 1 AU because a
+    tolerance was an absolute number in square-root metres and a threshold was
+    in reciprocal metres. Ask "in what?" of every bare number.
+
+## How to test physics
+
+Every new function in `src/orbit/` gets, in `tests/`:
+
+- a check against something that does not come from the code: an analytic
+  value, a constant of motion (energy, angular momentum), or the other
+  propagator;
+- a case at every scale the simulator flies -- the Moon, Earth, Jupiter, the
+  Sun as central bodies -- because a suite that only flew Earth orbits passed
+  732 checks while `propagate()` failed at 1 AU;
+- its failure paths, by name (`NotFinite`, not "did not converge");
+- for anything numerical, a seeded random sweep over the parameter space,
+  with the seed written down so a failure can be reproduced.
+
+`tests/TestHarness.hpp` has the checks, `tests/OrbitTestSupport.hpp` the
+bodies and fixtures, `tests/test_orbit_scales.cpp` the shape to copy.
 
 ## Before you finish
 
-- [ ] Builds clean — zero warnings, not "only the usual ones".
-- [ ] `ctest` is green.
-- [ ] New logic has a test, ideally one that checks it against something
-      independent rather than against itself.
-- [ ] `clang-tidy -p <build>` reports nothing new.
-- [ ] `clang-format` leaves the tree unchanged.
-- [ ] No new boolean parameters, raw owning pointers, or hand-written
-      destructors.
-- [ ] The renderer still does not leak into the physics.
+- [ ] `cmake --build build/relwithdebinfo --target check` passes, and so does
+      the same in `build/debug`. The target, not "the tests pass".
+- [ ] New logic has a test that checks it against something independent (see
+      above), and a new failure has a test that asks for it by name.
+- [ ] No new boolean parameters, raw owning pointers, bare `f64` across an
+      interface, or hand-written destructors outside `VulkanHandle.hpp` and
+      `SdlHandle.hpp`.
+- [ ] The renderer still does not leak into the physics:
+      `-DORBSIM_BUILD_APP=OFF` still builds the core and its tests.
+- [ ] A decision that spans files has a record in `docs/adr/`.
 
 ## Conventions worth knowing
 
@@ -127,14 +172,22 @@ These are the ones that get violated most often. The rest are in
   `readability-braces-around-statements` is off to match.
 - A formatting pass gets its own commit, doing nothing else.
 - Decisions that span files go in `docs/adr/` as short records: what was
-  decided, what was considered, why.
+  decided, what was considered, why. Five exist; read them before changing
+  anything they cover.
+- Line endings are LF everywhere (`.gitattributes`, `.editorconfig`, and
+  `LineEnding: LF` in `.clang-format`). An older Windows checkout may still
+  hold CRLF in files nobody has touched; leave those alone rather than
+  producing a diff in which every line changed.
+- The physics test suites are under `tests/` and link only `orbsim_core`.
+  Nothing in `tests/` may include a Vulkan or SDL header.
 
 ## Attribution
 
-Commits end with exactly this, and nothing else:
+Commits end with one `Co-Authored-By` line naming the Claude model that wrote
+them, and nothing else. At the time of writing:
 
 ```
-Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
 ```
 
 **Do not add a `Claude-Session:` URL.** This repository is public, and the user
