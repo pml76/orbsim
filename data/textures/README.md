@@ -13,21 +13,45 @@ data/textures/
 ## What to download
 
 **Blue Marble Next Generation**, from NASA Visible Earth:
-<https://visibleearth.nasa.gov/collection/1484/blue-marble>
+<https://visibleearth.nasa.gov/collection/1484/blue-marble>. Public domain.
 
-Public domain. The set worth having for milestone 1:
+BMNG ships at 5400 x 2700 and 21600 x 10800, and as eight 21600 x 21600 tiles —
+not at 8192 x 4096, which an earlier draft of this file claimed.
 
-| Layer | Why |
-|---|---|
-| Surface reflectance (monthly) | The base image. Pick one month to start; August is the usual choice for minimal snow cover. |
-| City lights | The night side. A large part of why Earth from orbit reads as inhabited. |
-| Specular / water mask | Sun glint on oceans. Cheap once the tile pipeline exists. |
-| Topography | Not needed until the camera descends far enough for relief to show — likely milestone 2. |
+These three are already downloaded (29 MB total) and are what phases A, B and D
+are built against:
 
-Full-resolution BMNG is eight tiles at 21600 × 21600, roughly 2.7 GB per layer.
-A single 8192 × 4096 global image is plenty to develop against and is a few tens
-of megabytes; start there and only fetch the full set when the quadtree needs
-the levels.
+```
+curl -L -O https://eoimages.gsfc.nasa.gov/images/imagerecords/73000/73776/world.topo.bathy.200408.3x5400x2700.jpg
+curl -L -O https://eoimages.gsfc.nasa.gov/images/imagerecords/73000/73776/world.topo.bathy.200408.3x21600x10800.jpg
+curl -L -O https://eoimages.gsfc.nasa.gov/images/imagerecords/55000/55167/earth_lights_lrg.jpg
+```
+
+| File | Size | What it is |
+|---|---|---|
+| `world.topo.bathy.200408.3x5400x2700.jpg` | 2.3 MB | August 2004 surface, topography and bathymetry. Small enough to iterate on quickly |
+| `world.topo.bathy.200408.3x21600x10800.jpg` | 26 MB | The same image at full single-file resolution. What the tile pyramid is generated from |
+| `earth_lights_lrg.jpg` | 535 KB | City lights. A large part of why Earth from orbit reads as inhabited |
+
+August is the conventional choice: minimal snow cover, so the coastlines and
+vegetation read clearly.
+
+### Still to find
+
+**A water / specular mask.** Sun glint on oceans is cheap once the tile pipeline
+exists and contributes a lot to realism. The obvious URL under `imagerecords`
+returns 404, so the right source has yet to be located. Not a blocker — it can
+be approximated from the bathymetry channel until then.
+
+**Topography as a separate elevation channel.** Not needed until the camera
+descends far enough for relief to show, which is milestone 2. The `topo.bathy`
+image above already has shading baked in, which is enough for orbit.
+
+### The full-resolution set
+
+Eight tiles at 21600 x 21600, roughly 2.7 GB per layer. Only worth fetching once
+the quadtree has levels deep enough to need them, and worth checking free disk
+space first.
 
 ## Generated pyramids
 
