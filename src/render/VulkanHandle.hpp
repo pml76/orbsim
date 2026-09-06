@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ORBSIM_RENDER_VULKANHANDLE_HPP
+#define ORBSIM_RENDER_VULKANHANDLE_HPP
 //
 // Move-only RAII wrappers for Vulkan handles.
 //
@@ -392,3 +393,5 @@ private:
 };
 
 } // namespace orb::gfx
+
+#endif // ORBSIM_RENDER_VULKANHANDLE_HPP

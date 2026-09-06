@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ORBSIM_ORBIT_ORBIT_HPP
+#define ORBSIM_ORBIT_ORBIT_HPP
 //
 // Two-body orbital mechanics: state vectors, classical elements, and Keplerian
 // propagation.
@@ -35,28 +36,37 @@ struct StateVector {
 // circular orbit has no periapsis, so `aop` is zero and `tra` becomes the
 // argument of latitude; an equatorial orbit has no ascending node, so `lan` is
 // zero and in-plane angles are measured from the x-axis instead.
+// Every member is a unit type, and Quantity gives each one a default member
+// initializer of its own (core/Scalar.hpp), so `Elements{}` is fully
+// zero-initialised without a `{}` written here. That is what section 6 asks
+// for -- the guarantee, not the punctuation -- and it is why the types earn
+// their keep beyond the units: a bare `f64 sma;` here would be an
+// uninitialised read waiting to happen, and this cannot be.
 struct Elements {
-    Metres sma{};       // semi-major axis. Negative for hyperbolic orbits.
-    Eccentricity ecc{}; // dimensionless
-    Radians inc{};      // inclination, [0, pi]
-    Radians lan{};      // longitude of ascending node, [0, tau)
-    Radians aop{};      // argument of periapsis, [0, tau)
-    Radians tra{};      // true anomaly, [0, tau)
-    Metres slr{};       // semi-latus rectum. Kept explicitly so parabolic
-                        // orbits (where sma is infinite) remain representable.
+    Metres sma;       // semi-major axis. Negative for hyperbolic orbits.
+    Eccentricity ecc; // dimensionless
+    Radians inc;      // inclination, [0, pi]
+    Radians lan;      // longitude of ascending node, [0, tau)
+    Radians aop;      // argument of periapsis, [0, tau)
+    Radians tra;      // true anomaly, [0, tau)
+    Metres slr;       // semi-latus rectum. Kept explicitly so parabolic
+                      // orbits (where sma is infinite) remain representable.
 };
 
 // Quantities derived from the elements that the HUD and MFDs ask for
 // constantly. Computed together because they share intermediate terms.
+// The unit types self-initialise, as in Elements above. `closed` is a bare
+// bool and keeps its `{}`, because that one genuinely would be uninitialised
+// without it -- which is the distinction the check is drawing.
 struct OrbitInfo {
-    Metres periapsis{};            // radius at periapsis
-    Metres apoapsis{};             // radius at apoapsis. Infinity if not closed.
-    Seconds period{};              // orbital period. Infinity if not closed.
-    RadiansPerSecond meanMotion{}; // zero if not closed
-    SpecificEnergy energy{};       // specific orbital energy
-    Metres radius{};               // current radius
-    MetresPerSecond speed{};       // current speed
-    bool closed{};                 // true for elliptic orbits (ecc < 1)
+    Metres periapsis;            // radius at periapsis
+    Metres apoapsis;             // radius at apoapsis. Infinity if not closed.
+    Seconds period;              // orbital period. Infinity if not closed.
+    RadiansPerSecond meanMotion; // zero if not closed
+    SpecificEnergy energy;       // specific orbital energy
+    Metres radius;               // current radius
+    MetresPerSecond speed;       // current speed
+    bool closed{};               // true for elliptic orbits (ecc < 1)
 };
 
 // --- errors ----------------------------------------------------------------
@@ -136,3 +146,5 @@ propagate(const StateVector& sv, GravParam mu, Seconds dt);
 propagateElements(const Elements& el, GravParam mu, Seconds dt);
 
 } // namespace orb
+
+#endif // ORBSIM_ORBIT_ORBIT_HPP

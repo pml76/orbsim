@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ORBSIM_CORE_SCALAR_HPP
+#define ORBSIM_CORE_SCALAR_HPP
 //
 // Scalar foundations for the simulation core: the floating-point aliases, the
 // circle constants, and the base every strong scalar type is built on.
@@ -36,6 +37,14 @@ inline constexpr f64 kTau = 2.0 * kPi;
 // a named function with a typed result is the whole point of the exercise;
 // a generic `operator/` returning f64 would quietly reopen the hole.
 template <typename Derived> struct Quantity {
+    // Public by design, and the suppression is here rather than in .clang-tidy
+    // so it is visible where it applies. `value` IS the interface of a unit
+    // type: there is no invariant to protect (every f64 is a valid number of
+    // metres, including NaN, which the orbital code checks for by name), and a
+    // getter would be the trivial accessor C.131 tells you not to write. The
+    // check earns its keep on a class that has an invariant and leaks it; this
+    // is not one.
+    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
     f64 value{};
 
     [[nodiscard]] constexpr auto operator<=>(const Quantity&) const noexcept = default;
@@ -129,3 +138,5 @@ static_assert(nearlyEqual(1.0, 1.0 + 1e-16, Tolerance{1e-15}));
 static_assert(!nearlyEqual(1.0, 1.1, Tolerance{1e-15}));
 
 } // namespace orb
+
+#endif // ORBSIM_CORE_SCALAR_HPP

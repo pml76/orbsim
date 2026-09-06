@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ORBSIM_CORE_MATH_HPP
+#define ORBSIM_CORE_MATH_HPP
 //
 // Vector and quaternion maths for the simulation core.
 //
@@ -26,9 +27,14 @@ namespace orb {
 // ---------------------------------------------------------------- Vec3 -----
 
 struct Vec3 {
+    // Public by design; see the note on Quantity::value in core/Scalar.hpp.
+    // A vector's components are its interface, there is no invariant to
+    // protect, and x() y() z() would be three trivial accessors (C.131).
+    // NOLINTBEGIN(misc-non-private-member-variables-in-classes)
     f64 x{};
     f64 y{};
     f64 z{};
+    // NOLINTEND(misc-non-private-member-variables-in-classes)
 
     constexpr Vec3() noexcept = default;
     constexpr Vec3(f64 x_, f64 y_, f64 z_) noexcept : x(x_), y(y_), z(z_) {}
@@ -115,10 +121,17 @@ struct Vec3 {
 
 // Unit quaternion, w + xi + yj + zk, representing a body->world rotation.
 struct Quat {
+    // Public by design; see the note on Quantity::value in core/Scalar.hpp.
+    // Unit length is a precondition of the rotation functions rather than an
+    // invariant this struct maintains -- normalize() is a free function, and
+    // integrateAngularVelocity re-normalises deliberately -- so there is
+    // nothing here for encapsulation to protect.
+    // NOLINTBEGIN(misc-non-private-member-variables-in-classes)
     f64 w{1.0};
     f64 x{};
     f64 y{};
     f64 z{};
+    // NOLINTEND(misc-non-private-member-variables-in-classes)
 
     constexpr Quat() noexcept = default;
     constexpr Quat(f64 w_, f64 x_, f64 y_, f64 z_) noexcept : w(w_), x(x_), y(y_), z(z_) {}
@@ -187,3 +200,5 @@ static_assert(Quat{} * Quat{0, 1, 0, 0} == Quat{0, 1, 0, 0}, "identity is the un
 static_assert(Quat{0, 1, 0, 0} * Quat{0, 1, 0, 0} == Quat{-1, 0, 0, 0}, "i * i = -1");
 
 } // namespace orb
+
+#endif // ORBSIM_CORE_MATH_HPP

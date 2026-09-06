@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ORBSIM_CORE_UNITS_HPP
+#define ORBSIM_CORE_UNITS_HPP
 //
 // Strong scalar types for the simulation domain.
 //
@@ -134,3 +135,5 @@ static_assert(sizeof(Radians) == sizeof(f64));
 static_assert(std::is_trivially_copyable_v<Radians>);
 
 } // namespace orb
+
+#endif // ORBSIM_CORE_UNITS_HPP

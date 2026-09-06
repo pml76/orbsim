@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ORBSIM_TESTS_TESTHARNESS_HPP
+#define ORBSIM_TESTS_TESTHARNESS_HPP
 //
 // A deliberately tiny test harness.
 //
@@ -149,3 +150,5 @@ template <std::invocable<Run&> Suite>
 }
 
 } // namespace orb::test
+
+#endif // ORBSIM_TESTS_TESTHARNESS_HPP

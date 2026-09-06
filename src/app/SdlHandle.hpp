@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ORBSIM_APP_SDLHANDLE_HPP
+#define ORBSIM_APP_SDLHANDLE_HPP
 //
 // RAII for what the application gets from SDL: the library itself, and a
 // window.
@@ -90,3 +91,5 @@ struct WindowSpec {
 }
 
 } // namespace orb::app
+
+#endif // ORBSIM_APP_SDLHANDLE_HPP

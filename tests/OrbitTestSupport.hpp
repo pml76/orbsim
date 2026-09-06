@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ORBSIM_TESTS_ORBITTESTSUPPORT_HPP
+#define ORBSIM_TESTS_ORBITTESTSUPPORT_HPP
 //
 // Fixtures shared by the orbit suites: the central bodies they fly around,
 // and an element builder that takes degrees so the cases read like a textbook.
@@ -52,3 +53,5 @@ makeElements(Metres sma, Eccentricity ecc, Degrees inc, Degrees lan, Degrees aop
 }
 
 } // namespace orb::test
+
+#endif // ORBSIM_TESTS_ORBITTESTSUPPORT_HPP

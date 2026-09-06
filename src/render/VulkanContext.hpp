@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ORBSIM_RENDER_VULKANCONTEXT_HPP
+#define ORBSIM_RENDER_VULKANCONTEXT_HPP
 //
 // Vulkan device, swapchain and frame pacing.
 //
@@ -210,3 +211,4 @@ void transitionImage(VkCommandBuffer cmd,
 
 } // namespace orb::gfx
 
+#endif // ORBSIM_RENDER_VULKANCONTEXT_HPP
