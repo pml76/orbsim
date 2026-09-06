@@ -56,10 +56,17 @@ Recorded because "it builds here" is only useful with the versions attached.
 | Python (for the format hook) | 3.14.0 | `C:\Program Files\PyManager` |
 | MSVC toolchain | VS2022 14.44 | clang targets the MSVC ABI and needs its headers and libs |
 
-**The GPU actually selected is the Intel UHD, not the RTX A2000.** vk-bootstrap
-picks the first device meeting the requirements. That is fine for a cleared
-screen and will need revisiting when there is something to render — see the
-open questions.
+**The renderer now requires a discrete GPU where one exists, and gets the RTX
+A2000.** Both devices satisfy every requirement, and until 2026-09-06 the Intel
+UHD won because vk-bootstrap's discrete *preference* is not binding while
+`allow_any_gpu_device_type` is left at its default of true. A machine with only
+an integrated GPU still runs, via a logged fallback.
+
+A visible side effect: the frame rate went from 60 to about 1000 fps. That is
+not the A2000 being seventeen times faster at clearing a screen — the Intel
+driver does not expose `VK_PRESENT_MODE_MAILBOX_KHR`, so it fell back to FIFO
+and blocked on vsync, while NVIDIA offers mailbox and does not. Worth knowing
+before reading anything into an fps number on this project.
 
 **The Orbiter reference clone is at `C:\Reference\orbiter`**, outside this
 repository, ~1.1 GB, shallow. It is not required to build. The licence
@@ -245,10 +252,9 @@ asked for.
 
 ## 7. Open questions — for the project owner, not for me
 
-1. **Which GPU should the renderer select?** It currently takes the Intel UHD.
-   Once there is geometry, the RTX A2000 is the one you want. vk-bootstrap can
-   prefer a discrete device; a `--gpu` flag or a preference in the selector are
-   both easy. Not yet decided.
+1. **Which GPU should the renderer select? Settled: always the discrete one.**
+   Decided 2026-09-06 and implemented in `makeDevice`. No flag; a machine
+   without a discrete GPU falls back and says so in the log.
 2. **CI: settled, and the answer is no.** The owner decided on 2026-09-06 that
    this project does not use continuous integration. Do not add it and do not
    spend time on it. Verification is the `check` target, run locally by a
@@ -263,9 +269,9 @@ asked for.
    and standard library disagreeing with clang is where a certain class of bug
    first shows itself.
 
-   `.github/workflows/ci.yml` still exists in the tree from commit `eb2a99b`.
-   It triggers only on a push to `master` or on a pull request, so it does
-   nothing while work happens on a branch. **Open: whether to delete it.**
+   `.github/workflows/ci.yml` was added in commit `eb2a99b` and deleted again
+   on 2026-09-06. It is recoverable from history if the decision is ever
+   revisited; nothing in the tree refers to it.
 3. **Tile format on disk: KTX2 with BC7, or DDS?** From the milestone plan,
    still open. KTX2 has the cleaner spec; DDS is what Orbiter uses, which
    matters for the later reader.

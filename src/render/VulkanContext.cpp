@@ -9,6 +9,7 @@
 #include <cstring>
 #include <expected>
 #include <fstream>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -258,16 +259,44 @@ struct DeviceBundle {
         .wideLines = VK_FALSE,       // widely unsupported; lines stay 1px
     };
 
-    vkb::PhysicalDeviceSelector selector{instance};
-    auto physical = selector.set_surface(surface)
-                        .set_minimum_version(1, 3)
-                        .set_required_features(features10)
-                        .set_required_features_12(features12)
-                        .set_required_features_13(features13)
-                        .select();
-    if (!physical) return fail("No suitable Vulkan 1.3 device: " + physical.error().message());
+    // Always the discrete GPU where there is one.
+    //
+    // vk-bootstrap already *prefers* discrete, but it also allows any other
+    // type by default, and that preference is not strong enough to matter on a
+    // laptop where both devices satisfy every requirement: this project spent
+    // its first sixteen commits rendering on an Intel UHD with an RTX A2000
+    // sitting idle beside it. allow_any_gpu_device_type(false) is what turns
+    // the preference into a requirement.
+    std::string selectionError;
+    const auto pick = [&](bool discreteOnly) -> std::optional<vkb::PhysicalDevice> {
+        vkb::PhysicalDeviceSelector selector{instance};
+        auto result = selector.set_surface(surface)
+                          .set_minimum_version(1, 3)
+                          .set_required_features(features10)
+                          .set_required_features_12(features12)
+                          .set_required_features_13(features13)
+                          .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
+                          .allow_any_gpu_device_type(!discreteOnly)
+                          .select();
+        if (!result) {
+            selectionError = result.error().message();
+            return std::nullopt;
+        }
+        return result.value();
+    };
 
-    vkb::DeviceBuilder const deviceBuilder{physical.value()};
+    auto physical = pick(true);
+    if (!physical) {
+        // A machine with only an integrated GPU is an ordinary machine, and the
+        // simulator should still run on it. Say which way it went, because
+        // "why is this slow" is otherwise a long afternoon.
+        SDL_Log("No suitable discrete GPU (%s); falling back to any device type.",
+                selectionError.c_str());
+        physical = pick(false);
+    }
+    if (!physical) return fail("No suitable Vulkan 1.3 device: " + selectionError);
+
+    vkb::DeviceBuilder const deviceBuilder{*physical};
     auto device = deviceBuilder.build();
     if (!device) return fail("Vulkan device creation failed: " + device.error().message());
 
@@ -277,10 +306,10 @@ struct DeviceBundle {
 
     return DeviceBundle{
         .device = device.value(),
-        .physicalDevice = physical.value().physical_device,
+        .physicalDevice = physical->physical_device,
         .graphicsQueue = queue.value(),
         .graphicsQueueFamily = family.value(),
-        .name = physical.value().name,
+        .name = physical->name,
     };
 }
 
