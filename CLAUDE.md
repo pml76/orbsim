@@ -48,9 +48,14 @@ validation error. Both trees, because assertions are only live in Debug.
 Smaller targets exist for the loop: `lint`, `format-check`, `format`. Presets:
 `asan` (AddressSanitizer with assertions live -- the release C runtime, not
 Debug, because ASan and the MSVC debug heap cannot coexist; run it before a
-milestone lands), `linux-sanitize` and `linux-gcc` (what CI runs; see
-`.github/workflows/`). `docs/adr/0005` is the record of why it is set up
-this way.
+milestone lands), and `linux-sanitize` and `linux-gcc` for anyone who has a
+Linux box to hand. `docs/adr/0005` is the record of why it is set up this way.
+
+**This project does not use CI. Do not add it, and do not spend time on it.**
+Verification is local and it is `check`. That is a deliberate deviation from
+the guidelines' Toolbox rule two, and its cost -- no UndefinedBehaviorSanitizer
+and no second compiler, since neither works on Windows -- is written down in
+`docs/adr/0005`.
 
 Formatting also happens without being asked: `.claude/settings.json` runs
 `clang-format` on every C++ file Claude Code edits, and the checked-in

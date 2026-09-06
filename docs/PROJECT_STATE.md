@@ -111,6 +111,7 @@ Eight commits on `review-fixes-2026-09`, branched from `master`. In order:
 4. **`b7dbc18` Finish Rule of Zero in the renderer, check every VkResult, harden main.**
 5. **`a73a54b` Format on edit and on commit.** Two hooks plus `LineEnding: LF`.
 6. **`eb2a99b` Add CI.** Windows clang, Linux clang with ASan+UBSan, Linux gcc 14.
+   **Superseded: the owner decided on 2026-09-06 not to use CI.** See section 7.
 7. **`1cae874` Record the decisions in docs/adr, and make CLAUDE.md describe the tools.**
 8. **`651a5cc` Hold the guidelines example to the bar it claims.**
 
@@ -168,7 +169,7 @@ Five architecture decision records now exist in [`docs/adr/`](adr/):
 | 0002 | `std::expected` for expected failures, assertions for impossible ones; one error representation per layer |
 | 0003 | Reverse-Z depth with an infinite far plane |
 | 0004 | Vulkan headers pinned by CMake; the SDK supplies only the loader and `glslc` |
-| 0005 | Correctness is enforced by a `check` target, two hooks and CI, not by a checklist |
+| 0005 | Correctness is enforced by a local `check` target and two hooks, not by a checklist and not by CI |
 
 Read the relevant one before changing anything it covers.
 
@@ -228,8 +229,9 @@ clang's ASan runtime is not on `PATH` and its absence kills every sanitized
 executable with `STATUS_DLL_NOT_FOUND` before it prints anything.
 
 The **`linux-sanitize` and `linux-gcc` presets have never been run** — there is
-no Linux on this machine. They are written, not proven. The first CI run is
-what will exercise them.
+no Linux on this machine. They are written, not proven, and with CI declined
+(section 7) nothing will run them automatically. They are there for whoever
+next has a Linux box to hand.
 
 ### 6.4 Scope that went beyond "fix the findings" — still unreviewed
 
@@ -247,9 +249,23 @@ asked for.
    Once there is geometry, the RTX A2000 is the one you want. vk-bootstrap can
    prefer a discrete device; a `--gpu` flag or a preference in the selector are
    both easy. Not yet decided.
-2. **Does CI actually run?** The workflow is written against the presets in
-   this tree and has never executed. It needs a push to prove out — the LunarG
-   unattended installer step is the most likely thing to need adjusting.
+2. **CI: settled, and the answer is no.** The owner decided on 2026-09-06 that
+   this project does not use continuous integration. Do not add it and do not
+   spend time on it. Verification is the `check` target, run locally by a
+   person before they call something done.
+
+   The cost is recorded in ADR 0005 and is worth knowing:
+   **UndefinedBehaviorSanitizer and a second compiler are now out of reach.**
+   UBSan's Windows support is partial, so `ORBSIM_SANITIZE_UNDEFINED` refuses
+   to configure there, and gcc cannot build this project on this machine.
+   Anyone with a Linux box can still run the `linux-sanitize` and `linux-gcc`
+   presets by hand, and it is worth doing occasionally: a different compiler
+   and standard library disagreeing with clang is where a certain class of bug
+   first shows itself.
+
+   `.github/workflows/ci.yml` still exists in the tree from commit `eb2a99b`.
+   It triggers only on a push to `master` or on a pull request, so it does
+   nothing while work happens on a branch. **Open: whether to delete it.**
 3. **Tile format on disk: KTX2 with BC7, or DDS?** From the milestone plan,
    still open. KTX2 has the cleaner spec; DDS is what Orbiter uses, which
    matters for the later reader.

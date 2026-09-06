@@ -1,7 +1,5 @@
 # orbsim
 
-[![ci](https://github.com/pml76/orbsim/actions/workflows/ci.yml/badge.svg)](https://github.com/pml76/orbsim/actions/workflows/ci.yml)
-
 A space flight simulator in the spirit of [Orbiter](https://github.com/orbitersim/orbiter):
 real orbital mechanics, 6-DOF vessels, and MFD-style instrumentation. Written
 from scratch in C++23 with Vulkan.
@@ -69,8 +67,10 @@ cmake --build build/relwithdebinfo --target check
 ```
 
 `-DORBSIM_BUILD_APP=OFF` builds the simulation core and its tests without the
-Vulkan SDK, which is what the Linux CI jobs do, under AddressSanitizer and
-UndefinedBehaviorSanitizer with clang and again with gcc 14.
+Vulkan SDK. Combined with the `linux-sanitize` or `linux-gcc` preset, that is
+how the core gets built under UndefinedBehaviorSanitizer or by a second
+compiler — neither of which works on Windows. There is no CI; verification is
+the `check` target, run locally.
 
 ## Code standards
 
