@@ -17,6 +17,7 @@
 #include "render/VulkanHandle.hpp"
 
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
 #include <expected>
@@ -78,8 +79,15 @@ public:
     // write defensive code against, and therefore none to forget to write
     // defensive code against (E.5, NR.5). A failure part-way through unwinds on
     // its own, because every handle built so far destroys itself.
-    [[nodiscard]] static std::expected<VulkanContext, RenderError> create(SDL_Window* window,
-                                                                          Validation validation);
+    //
+    // `validationErrors` is incremented for every error the validation layers
+    // report, from whichever thread the driver reports it on. It is the
+    // caller's and not a member because teardown is where validation errors
+    // hide, and teardown is after this object is gone: the caller reads the
+    // count once the context has been destroyed. Untouched when validation is
+    // disabled or unavailable.
+    [[nodiscard]] static std::expected<VulkanContext, RenderError>
+    create(SDL_Window* window, Validation validation, std::atomic<uint32_t>& validationErrors);
 
     // Acquires a swapchain image and opens a command buffer with the colour and
     // depth attachments already bound and cleared.
@@ -201,3 +209,4 @@ void transitionImage(VkCommandBuffer cmd,
                      VkImageAspectFlags aspect = VK_IMAGE_ASPECT_COLOR_BIT);
 
 } // namespace orb::gfx
+

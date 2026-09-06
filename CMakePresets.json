@@ -17,6 +17,7 @@
       "name": "debug",
       "inherits": "base",
       "displayName": "clang Debug",
+      "description": "Assertions live. Part of the definition of done alongside relwithdebinfo.",
       "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
     },
     {
@@ -30,12 +31,50 @@
       "inherits": "base",
       "displayName": "clang Release",
       "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
+      "name": "asan",
+      "inherits": "relwithdebinfo",
+      "displayName": "clang RelWithDebInfo + AddressSanitizer, assertions live",
+      "description": "Every test under ASan. Not Debug: ASan and the MSVC debug C runtime cannot share a heap (see CMakeLists.txt), so this is the release runtime with -DNDEBUG removed from the RelWithDebInfo flags. Run before a milestone lands.",
+      "cacheVariables": {
+        "ORBSIM_SANITIZE_ADDRESS": "ON",
+        "CMAKE_C_FLAGS_RELWITHDEBINFO": "-O2 -g",
+        "CMAKE_CXX_FLAGS_RELWITHDEBINFO": "-O2 -g"
+      }
+    },
+    {
+      "name": "linux-sanitize",
+      "inherits": "debug",
+      "displayName": "Linux: clang Debug + ASan + UBSan, core only",
+      "description": "What the Linux CI job runs. UBSan is the reason a Linux build exists.",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" },
+      "cacheVariables": {
+        "ORBSIM_SANITIZE_ADDRESS": "ON",
+        "ORBSIM_SANITIZE_UNDEFINED": "ON",
+        "ORBSIM_BUILD_APP": "OFF"
+      }
+    },
+    {
+      "name": "linux-gcc",
+      "inherits": "debug",
+      "displayName": "Linux: gcc 14 Debug, core only",
+      "description": "The second compiler. Where two compilers disagree is where the bugs live.",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" },
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "gcc-14",
+        "CMAKE_CXX_COMPILER": "g++-14",
+        "ORBSIM_BUILD_APP": "OFF"
+      }
     }
   ],
   "buildPresets": [
     { "name": "debug", "configurePreset": "debug" },
     { "name": "relwithdebinfo", "configurePreset": "relwithdebinfo" },
-    { "name": "release", "configurePreset": "release" }
+    { "name": "release", "configurePreset": "release" },
+    { "name": "asan", "configurePreset": "asan" },
+    { "name": "linux-sanitize", "configurePreset": "linux-sanitize" },
+    { "name": "linux-gcc", "configurePreset": "linux-gcc" }
   ],
   "testPresets": [
     {
@@ -46,6 +85,21 @@
     {
       "name": "relwithdebinfo",
       "configurePreset": "relwithdebinfo",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "asan",
+      "configurePreset": "asan",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "linux-sanitize",
+      "configurePreset": "linux-sanitize",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "linux-gcc",
+      "configurePreset": "linux-gcc",
       "output": { "outputOnFailure": true }
     }
   ]

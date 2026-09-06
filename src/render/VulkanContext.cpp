@@ -4,6 +4,7 @@
 #include <SDL3/SDL_vulkan.h>
 #include <VkBootstrap.h>
 
+#include <atomic>
 #include <cstddef>
 #include <cstring>
 #include <expected>
@@ -164,6 +165,25 @@ allocatePrimaryCommandBuffer(VkDevice device, VkCommandPool pool) {
     return cmd;
 }
 
+// Where the validation layers report. Errors are counted, so that a run can
+// fail on them -- that is what turns `orbsim --validate --seconds 2` into a
+// test rather than a log to read -- and everything at warning level and above
+// is logged. The counter is the caller's (see VulkanContext::create) and is
+// atomic because the specification allows this callback on any thread.
+VKAPI_ATTR VkBool32 VKAPI_CALL onValidationMessage(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
+                                                   VkDebugUtilsMessageTypeFlagsEXT /*types*/,
+                                                   const VkDebugUtilsMessengerCallbackDataEXT* data,
+                                                   void* userData) {
+    if ((severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) != 0) {
+        auto* errors = static_cast<std::atomic<uint32_t>*>(userData);
+        if (errors != nullptr) errors->fetch_add(1, std::memory_order_relaxed);
+    }
+    SDL_Log("[validation] %s", data != nullptr ? data->pMessage : "(no message)");
+    // The specification requires VK_FALSE from an application callback: VK_TRUE
+    // would abort the call that triggered the message.
+    return VK_FALSE;
+}
+
 // The instance-creation and device-selection steps both need the vkb::Instance,
 // but that type must not appear in the header -- a renderer header that drags
 // vk-bootstrap in makes every translation unit pay for it. Keeping these as
@@ -174,8 +194,8 @@ struct InstanceBundle {
     VkSurfaceKHR surface{VK_NULL_HANDLE};
 };
 
-[[nodiscard]] std::expected<InstanceBundle, RenderError>
-makeInstanceAndSurface(SDL_Window* window, Validation validation) {
+[[nodiscard]] std::expected<InstanceBundle, RenderError> makeInstanceAndSurface(
+    SDL_Window* window, Validation validation, std::atomic<uint32_t>& validationErrors) {
     uint32_t sdlExtCount = 0;
     const char* const* sdlExts = SDL_Vulkan_GetInstanceExtensions(&sdlExtCount);
     if (sdlExts == nullptr) return failSdl("SDL_Vulkan_GetInstanceExtensions");
@@ -186,7 +206,11 @@ makeInstanceAndSurface(SDL_Window* window, Validation validation) {
         for (uint32_t i = 0; i < sdlExtCount; ++i)
             builder.enable_extension(sdlExts[i]);
         if (requested == Validation::Enabled) {
-            builder.request_validation_layers().use_default_debug_messenger();
+            builder.request_validation_layers()
+                .set_debug_callback(onValidationMessage)
+                .set_debug_callback_user_data_pointer(&validationErrors)
+                .set_debug_messenger_severity(VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                                              VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT);
         }
         return builder.build();
     };
@@ -303,12 +327,12 @@ void transitionImage(VkCommandBuffer cmd,
 
 // ---------------------------------------------------------------------------
 
-std::expected<VulkanContext, RenderError> VulkanContext::create(SDL_Window* window,
-                                                                Validation validation) {
+std::expected<VulkanContext, RenderError> VulkanContext::create(
+    SDL_Window* window, Validation validation, std::atomic<uint32_t>& validationErrors) {
     VulkanContext ctx;
     ctx.window_ = window;
 
-    auto instance = makeInstanceAndSurface(window, validation);
+    auto instance = makeInstanceAndSurface(window, validation, validationErrors);
     if (!instance) return std::unexpected(instance.error());
 
     // Wrapped immediately, so that from here on an early return destroys them.

@@ -62,20 +62,74 @@ target_compile_options(orbsim_fp INTERFACE
 )
 
 # ---------------------------------------------------------------------------
-# AddressSanitizer, off by default and one flag away.
+# Sanitizers, off by default and one flag each away. See the asan and
+# linux-sanitize presets.
 #
-# UBSan is deliberately not offered here: its Windows support is partial, and a
-# build option that silently does less than its name promises is worse than no
-# option. On a Linux job, use -fsanitize=address,undefined.
+# On Windows, ASan and the MSVC *debug* C runtime (/MDd, what a Debug build
+# links) do not coexist: the debug heap frees blocks ASan never allocated, and
+# every sanitized executable dies at startup with "bad-free" inside
+# ucrtbased.dll before reaching main. The asan preset therefore builds
+# RelWithDebInfo with NDEBUG removed -- release runtime, optimiser on,
+# assertions live -- which is the combination that works.
+#
+# UBSan refuses to configure on Windows rather than quietly doing less than
+# its name promises: its support there is partial, and a build option that
+# silently under-delivers is worse than no option. The Linux CI job is where
+# it runs.
 # ---------------------------------------------------------------------------
 option(ORBSIM_SANITIZE_ADDRESS "Build with AddressSanitizer" OFF)
+option(ORBSIM_SANITIZE_UNDEFINED "Build with UndefinedBehaviorSanitizer (not on Windows)" OFF)
 add_library(orbsim_sanitizers INTERFACE)
 if(ORBSIM_SANITIZE_ADDRESS)
     target_compile_options(orbsim_sanitizers INTERFACE
             $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-fsanitize=address -fno-omit-frame-pointer>)
     target_link_options(orbsim_sanitizers INTERFACE
             $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-fsanitize=address>)
+    if(WIN32)
+        # The MSVC STL annotates std::string and std::vector for ASan and
+        # refuses (LNK2038 / lld "failifmismatch: annotate_string") to link an
+        # instrumented object against one that is not. vk-bootstrap is built
+        # without the sanitizer, so the annotations are switched off here.
+        # What is lost is overflow detection *inside* those two containers'
+        # spare capacity; heap, stack and use-after-free detection are intact.
+        target_compile_definitions(orbsim_sanitizers INTERFACE
+                _DISABLE_STRING_ANNOTATION _DISABLE_VECTOR_ANNOTATION)
+
+        # clang's ASan on Windows links against a runtime DLL that lives in the
+        # compiler's own tree, not on PATH. Without it every sanitized
+        # executable dies at startup with STATUS_DLL_NOT_FOUND (0xc0000135)
+        # before printing anything, which is a miserable way to learn this.
+        # The build tree is where the executables are, so the DLL goes there.
+        execute_process(
+                COMMAND ${CMAKE_CXX_COMPILER} -print-runtime-dir
+                OUTPUT_VARIABLE orbsim_runtime_dir
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                RESULT_VARIABLE orbsim_runtime_dir_result
+        )
+        file(GLOB orbsim_asan_dlls "${orbsim_runtime_dir}/clang_rt.asan_dynamic-*.dll")
+        if(NOT orbsim_runtime_dir_result EQUAL 0 OR NOT orbsim_asan_dlls)
+            message(FATAL_ERROR "ORBSIM_SANITIZE_ADDRESS: no clang_rt.asan_dynamic-*.dll under "
+                    "'${orbsim_runtime_dir}' (from '${CMAKE_CXX_COMPILER} -print-runtime-dir').")
+        endif()
+        file(COPY ${orbsim_asan_dlls} DESTINATION ${CMAKE_BINARY_DIR})
+    endif()
 endif()
+if(ORBSIM_SANITIZE_UNDEFINED)
+    if(WIN32)
+        message(FATAL_ERROR "ORBSIM_SANITIZE_UNDEFINED: UBSan has only partial support on Windows. "
+                "Use a Linux build (the linux-sanitize preset) rather than a build that checks less than it claims.")
+    endif()
+    # -fno-sanitize-recover: a UB report is a test failure, not a log line.
+    target_compile_options(orbsim_sanitizers INTERFACE
+            $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-fsanitize=undefined -fno-sanitize-recover=all -fno-omit-frame-pointer>)
+    target_link_options(orbsim_sanitizers INTERFACE
+            $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-fsanitize=undefined>)
+endif()
+
+# The application needs the Vulkan SDK for the loader and glslc, which a
+# headless CI runner does not have. The core and its tests never did (section
+# 12), and this option is what makes that claim checkable.
+option(ORBSIM_BUILD_APP "Build the Vulkan renderer and application" ON)
 
 # ---------------------------------------------------------------------------
 # Simulation core
@@ -83,9 +137,10 @@ endif()
 # Deliberately free of any dependency on the renderer or on SDL: the physics
 # must run headless, both for tests and for a future scenario batch-runner.
 # ---------------------------------------------------------------------------
-add_library(orbsim_core STATIC
+set(ORBSIM_CORE_SOURCES
         src/orbit/Orbit.cpp
 )
+add_library(orbsim_core STATIC ${ORBSIM_CORE_SOURCES})
 target_include_directories(orbsim_core PUBLIC src)
 target_link_libraries(orbsim_core
         PUBLIC orbsim_fp
@@ -114,12 +169,15 @@ foreach(test_name IN LISTS ORBSIM_TESTS)
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()
 
+if(ORBSIM_BUILD_APP)
+
 # ---------------------------------------------------------------------------
 # Graphics dependencies
 #
 # Vulkan headers are fetched at a pinned version rather than taken from
 # whatever SDK happens to be installed, so the build is reproducible across
 # machines. Only the loader library and the shader compiler come from the SDK.
+# See docs/adr/0004.
 #
 # SYSTEM on every dependency: their headers are not our code, and 640 warnings
 # from vk_mem_alloc.h would bury the one that matters.
@@ -226,10 +284,11 @@ target_link_libraries(orbsim_render_deps INTERFACE
         SDL3::SDL3
 )
 
-add_executable(orbsim
+set(ORBSIM_APP_SOURCES
         src/app/main.cpp
         src/render/VulkanContext.cpp
 )
+add_executable(orbsim ${ORBSIM_APP_SOURCES})
 add_dependencies(orbsim orbsim_shaders)
 
 target_link_libraries(orbsim PRIVATE
@@ -251,6 +310,16 @@ add_custom_command(TARGET orbsim POST_BUILD
         $<TARGET_FILE:SDL3::SDL3> $<TARGET_FILE_DIR:orbsim>
         VERBATIM
 )
+
+# Runs the application under the validation layers for two seconds: startup,
+# the frame loop, and teardown, which is where validation errors hide. A
+# validation error makes it exit non-zero, so on a machine with a GPU this is
+# the renderer's regression test. Labelled so that CI, which has no GPU, can
+# leave it out with --label-exclude gpu.
+add_test(NAME orbsim_smoke COMMAND orbsim --validate --seconds 2)
+set_tests_properties(orbsim_smoke PROPERTIES LABELS gpu)
+
+endif() # ORBSIM_BUILD_APP
 
 # ---------------------------------------------------------------------------
 # Header self-containment (SF.11), enforced rather than assumed.
@@ -286,9 +355,113 @@ orbsim_add_header_selfcheck(orbsim_test_header_selfcheck orbsim_test_support
 )
 add_dependencies(test_orbit orbsim_header_selfcheck orbsim_test_header_selfcheck)
 
-orbsim_add_header_selfcheck(orbsim_render_header_selfcheck orbsim_render_deps
-        render/VulkanHandle.hpp
-        render/VulkanContext.hpp
-        app/SdlHandle.hpp
+if(ORBSIM_BUILD_APP)
+    orbsim_add_header_selfcheck(orbsim_render_header_selfcheck orbsim_render_deps
+            render/VulkanHandle.hpp
+            render/VulkanContext.hpp
+            app/SdlHandle.hpp
+    )
+    add_dependencies(orbsim orbsim_render_header_selfcheck)
+endif()
+
+# ---------------------------------------------------------------------------
+# The definition of done.
+#
+# `cmake --build <tree> --target check` is what "finished" means here:
+# everything builds, every test passes, clang-tidy finds nothing, and
+# clang-format would change nothing. CLAUDE.md points at this target. Run it
+# in both build/relwithdebinfo and build/debug -- the assertions are only
+# live in the second.
+#
+# lint is one stamp per translation unit, so Ninja runs clang-tidy in
+# parallel and re-lints only what changed. Every header is a dependency of
+# every stamp, which is correct (a header change can surface anywhere) and
+# still far cheaper than the serial run it replaces.
+# ---------------------------------------------------------------------------
+find_program(ORBSIM_CLANG_TIDY clang-tidy)
+find_program(ORBSIM_CLANG_FORMAT clang-format)
+
+set(ORBSIM_LINT_SOURCES ${ORBSIM_CORE_SOURCES})
+foreach(test_name IN LISTS ORBSIM_TESTS)
+    list(APPEND ORBSIM_LINT_SOURCES tests/${test_name}.cpp)
+endforeach()
+if(ORBSIM_BUILD_APP)
+    list(APPEND ORBSIM_LINT_SOURCES ${ORBSIM_APP_SOURCES})
+endif()
+
+# Formatting covers everything that is ours, whether or not it is built in
+# this tree; VmaImpl.cpp is excluded because its one include is third-party.
+file(GLOB_RECURSE ORBSIM_OWN_HEADERS CONFIGURE_DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.hpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/*.hpp
 )
-add_dependencies(orbsim orbsim_render_header_selfcheck)
+file(GLOB_RECURSE ORBSIM_OWN_SOURCES CONFIGURE_DEPENDS
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/*.cpp
+)
+list(FILTER ORBSIM_OWN_SOURCES EXCLUDE REGEX "VmaImpl\\.cpp$")
+
+if(ORBSIM_CLANG_TIDY)
+    file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lint)
+    set(orbsim_lint_stamps "")
+    foreach(source IN LISTS ORBSIM_LINT_SOURCES)
+        string(REPLACE "/" "_" stem "${source}")
+        set(stamp "${CMAKE_CURRENT_BINARY_DIR}/lint/${stem}.ok")
+        add_custom_command(
+                OUTPUT ${stamp}
+                COMMAND ${ORBSIM_CLANG_TIDY} --quiet -p ${CMAKE_BINARY_DIR}
+                        ${CMAKE_CURRENT_SOURCE_DIR}/${source}
+                COMMAND ${CMAKE_COMMAND} -E touch ${stamp}
+                DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${source}
+                        ${ORBSIM_OWN_HEADERS}
+                        ${CMAKE_CURRENT_SOURCE_DIR}/.clang-tidy
+                COMMENT "clang-tidy ${source}"
+                VERBATIM
+        )
+        list(APPEND orbsim_lint_stamps ${stamp})
+    endforeach()
+    add_custom_target(lint DEPENDS ${orbsim_lint_stamps})
+else()
+    # A lint target that cannot lint must fail, not pass by doing nothing.
+    add_custom_target(lint
+            COMMAND ${CMAKE_COMMAND} -E false
+            COMMENT "clang-tidy was not found on PATH; lint cannot run"
+            VERBATIM
+    )
+endif()
+
+if(ORBSIM_CLANG_FORMAT)
+    add_custom_target(format-check
+            COMMAND ${ORBSIM_CLANG_FORMAT} --dry-run --Werror ${ORBSIM_OWN_SOURCES} ${ORBSIM_OWN_HEADERS}
+            COMMENT "clang-format: checking every source and header"
+            VERBATIM
+    )
+    add_custom_target(format
+            COMMAND ${ORBSIM_CLANG_FORMAT} -i ${ORBSIM_OWN_SOURCES} ${ORBSIM_OWN_HEADERS}
+            COMMENT "clang-format: formatting every source and header"
+            VERBATIM
+    )
+else()
+    add_custom_target(format-check
+            COMMAND ${CMAKE_COMMAND} -E false
+            COMMENT "clang-format was not found on PATH; format-check cannot run"
+            VERBATIM
+    )
+endif()
+
+add_custom_target(check
+        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        COMMENT "ctest: every suite, and the GPU smoke test where there is a GPU"
+        VERBATIM
+)
+add_dependencies(check
+        ${ORBSIM_TESTS}
+        orbsim_header_selfcheck
+        orbsim_test_header_selfcheck
+        lint
+        format-check
+)
+if(ORBSIM_BUILD_APP)
+    add_dependencies(check orbsim orbsim_render_header_selfcheck)
+endif()

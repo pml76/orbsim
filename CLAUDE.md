@@ -46,9 +46,11 @@ runs `clang-format --dry-run --Werror` over every source and header, runs
 validation layers (test `orbsim_smoke`, label `gpu`) that fails on any
 validation error. Both trees, because assertions are only live in Debug.
 Smaller targets exist for the loop: `lint`, `format-check`, `format`. Presets:
-`asan` (Debug + AddressSanitizer, run before a milestone lands),
-`linux-sanitize` and `linux-gcc` (what CI runs; see `.github/workflows/`).
-`docs/adr/0005` is the record of why it is set up this way.
+`asan` (AddressSanitizer with assertions live -- the release C runtime, not
+Debug, because ASan and the MSVC debug heap cannot coexist; run it before a
+milestone lands), `linux-sanitize` and `linux-gcc` (what CI runs; see
+`.github/workflows/`). `docs/adr/0005` is the record of why it is set up
+this way.
 
 Formatting also happens without being asked: `.claude/settings.json` runs
 `clang-format` on every C++ file Claude Code edits, and the checked-in

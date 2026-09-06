@@ -11,6 +11,7 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_main.h>
 
+#include <atomic>
 #include <charconv>
 #include <cstdint>
 #include <cstdio>
@@ -28,6 +29,13 @@ using orb::Seconds;
 using orb::app::SdlError;
 
 constexpr std::string_view kUsage = "usage: orbsim [--validate | --no-validate] [--seconds <n>]\n";
+
+// Exit codes. 0 is a clean run; anything else says which kind of failure, so
+// that a script (the smoke test, CI) can tell a usage error from a lost device
+// from a validation layer complaint without parsing the log.
+constexpr int kExitFailure = 1;
+constexpr int kExitUsage = 2;
+constexpr int kExitValidationErrors = 3;
 
 // How long to sleep when there is no frame to draw (minimised, or mid-rebuild):
 // about one frame at 60 Hz, long enough not to spin a core, short enough that
@@ -104,42 +112,21 @@ struct Options {
     return true;
 }
 
-[[nodiscard]] int run(int argc, char** argv) {
-    const auto options = parseArguments(argc, argv);
-    if (!options) {
-        std::print(stderr, "orbsim: {}\n{}", options.error().message, kUsage);
-        return 2;
-    }
-
-    // Declaration order is teardown order, reversed: the renderer goes before
-    // the window it draws into, and the window before SDL_Quit.
-    const auto sdl = orb::app::SdlRuntime::init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD);
-    if (!sdl) {
-        std::print(stderr, "{}\n", sdl.error().message);
-        return 1;
-    }
-
-    const auto window = orb::app::createWindow({
-        .title = "orbsim",
-        .width = 1600,
-        .height = 900,
-        .flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY,
-    });
-    if (!window) {
-        std::print(stderr, "{}\n", window.error().message);
-        return 1;
-    }
-
+// Creates the renderer, runs the frame loop, and destroys the renderer on
+// return -- which is the point of it being a separate function: the caller
+// reads the validation error count only once teardown has happened.
+[[nodiscard]] int
+runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& validationErrors) {
     // A factory, so there is no moment where `gfx` exists but is not usable.
-    auto created = orb::gfx::VulkanContext::create(window->get(), options->validation);
+    auto created = orb::gfx::VulkanContext::create(window, options.validation, validationErrors);
     if (!created) {
         const std::string& message = created.error().message;
         std::print(stderr, "Renderer initialisation failed: {}\n", message);
         // stderr already has the message, so a message box that cannot be
         // shown loses nothing worth reporting.
-        static_cast<void>(SDL_ShowSimpleMessageBox(
-            SDL_MESSAGEBOX_ERROR, "orbsim", message.c_str(), window->get()));
-        return 1;
+        static_cast<void>(
+            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "orbsim", message.c_str(), window));
+        return kExitFailure;
     }
     orb::gfx::VulkanContext gfx = std::move(*created);
 
@@ -151,12 +138,12 @@ struct Options {
 
     while (handleEvents(gfx)) {
         const Seconds elapsed{static_cast<double>(SDL_GetTicks() - startTicks) / 1000.0};
-        if (options->runFor.value > 0.0 && elapsed >= options->runFor) break;
+        if (options.runFor.value > 0.0 && elapsed >= options.runFor) break;
 
         const auto frame = gfx.beginFrame();
         if (!frame) {
             std::print(stderr, "Frame could not begin: {}\n", frame.error().message);
-            return 1;
+            return kExitFailure;
         }
         if (!*frame) {
             SDL_Delay(kIdleDelayMs); // minimised or mid-rebuild
@@ -166,7 +153,7 @@ struct Options {
         // Nothing drawn yet; the clear colour is the whole frame.
         if (const auto ended = gfx.endFrame(**frame); !ended) {
             std::print(stderr, "Frame could not be presented: {}\n", ended.error().message);
-            return 1;
+            return kExitFailure;
         }
         ++frames;
     }
@@ -179,8 +166,47 @@ struct Options {
                    1000.0 * static_cast<double>(frames) / static_cast<double>(elapsedMs));
     }
 
-    // No shutdown() call: ~VulkanContext, ~UniqueWindow and ~SdlRuntime run in
-    // reverse declaration order, without anyone having to remember.
+    // No shutdown() call: ~VulkanContext runs here, in reverse declaration
+    // order, without anyone having to remember.
+    return 0;
+}
+
+[[nodiscard]] int run(int argc, char** argv) {
+    const auto options = parseArguments(argc, argv);
+    if (!options) {
+        std::print(stderr, "orbsim: {}\n{}", options.error().message, kUsage);
+        return kExitUsage;
+    }
+
+    // Declaration order is teardown order, reversed: the window goes before
+    // SDL_Quit, and the renderer -- inside runRenderer -- before both.
+    const auto sdl = orb::app::SdlRuntime::init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD);
+    if (!sdl) {
+        std::print(stderr, "{}\n", sdl.error().message);
+        return kExitFailure;
+    }
+
+    const auto window = orb::app::createWindow({
+        .title = "orbsim",
+        .width = 1600,
+        .height = 900,
+        .flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY,
+    });
+    if (!window) {
+        std::print(stderr, "{}\n", window.error().message);
+        return kExitFailure;
+    }
+
+    // Counted outside the renderer's lifetime, because teardown is where
+    // validation errors hide and the count has to survive it.
+    std::atomic<uint32_t> validationErrors{0};
+    if (const int status = runRenderer(window->get(), *options, validationErrors); status != 0) {
+        return status;
+    }
+    if (const uint32_t errors = validationErrors.load(); errors > 0) {
+        std::print(stderr, "orbsim: {} validation error(s) reported; see the log above\n", errors);
+        return kExitValidationErrors;
+    }
     return 0;
 }
 
@@ -200,9 +226,9 @@ int main(int argc, char** argv) {
         static_cast<void>(std::fputs("orbsim: unhandled exception: ", stderr));
         static_cast<void>(std::fputs(error.what(), stderr));
         static_cast<void>(std::fputs("\n", stderr));
-        return 2;
+        return kExitFailure;
     } catch (...) {
         static_cast<void>(std::fputs("orbsim: unhandled exception of unknown type\n", stderr));
-        return 2;
+        return kExitFailure;
     }
 }
