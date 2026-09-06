@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ORBEX_ORBIT_ORBITPATH_HPP
+#define ORBEX_ORBIT_ORBITPATH_HPP
 //
 // Sampling a closed orbit into a polyline.
 //
@@ -16,6 +17,7 @@
 #include "core/Vec3.hpp"
 
 #include <cstddef>
+#include <cstdint>
 #include <expected>
 #include <span>
 #include <string_view>
@@ -25,29 +27,33 @@ namespace orbex {
 
 // [S2] Strong types all the way into the aggregate, so an Elements cannot be
 // filled in with degrees where radians belong.
-// [S6] Every member default-initialized; `Elements{}` is a valid, if useless,
-// object rather than a lap of undefined behaviour.
+// [S6] Every member is default-initialized, so `Elements{}` is a valid, if
+// useless, object rather than a lap of undefined behaviour. No `{}` is written
+// here because each unit type already carries its own default member
+// initializer (core/Units.hpp) -- section 6 asks for the guarantee, not the
+// punctuation, and a bare `f64 semiMajorAxis;` could not make it.
 struct Elements {
-    Metres semiMajorAxis{};
-    Eccentricity eccentricity{};
-    Radians inclination{};
-    Radians ascendingNode{};
-    Radians periapsisArgument{};
+    Metres semiMajorAxis;
+    Eccentricity eccentricity;
+    Radians inclination;
+    Radians ascendingNode;
+    Radians periapsisArgument;
 };
 
 // [S2] Neither of these is a bool, so neither is a mystery at the call site.
 // `sample(elements, mu, {64, true, false})` would be three mysteries in a row.
-enum class PathClosure {
+// [S8] The explicit base type is interface, not optimisation; see KeplerError.
+enum class PathClosure : std::uint8_t {
     OpenEnded,  // the last point stops one step short of the first
     ClosedLoop, // the last point repeats the first, ready for a line strip
 };
 
-enum class Spacing {
+enum class Spacing : std::uint8_t {
     UniformInAngle, // even geometry: what the drawn ellipse wants
     UniformInTime,  // even time: what tick marks along the path want
 };
 
-enum class PathError {
+enum class PathError : std::uint8_t {
     NotAClosedOrbit,
     NonPositiveGravity,
     NonPositiveSemiMajorAxis,
@@ -128,3 +134,5 @@ private:
 };
 
 } // namespace orbex
+
+#endif // ORBEX_ORBIT_ORBITPATH_HPP

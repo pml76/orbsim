@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ORBEX_RENDER_PATHUPLOAD_HPP
+#define ORBEX_RENDER_PATHUPLOAD_HPP
 //
 // The boundary between the simulation and the GPU.
 //
@@ -43,3 +44,5 @@ struct PathVertex {
                                                        const Vec3& cameraWorld);
 
 } // namespace orbex::gfx
+
+#endif // ORBEX_RENDER_PATHUPLOAD_HPP

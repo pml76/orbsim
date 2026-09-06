@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ORBEX_TESTS_TESTHARNESS_HPP
+#define ORBEX_TESTS_TESTHARNESS_HPP
 //
 // A deliberately tiny test harness.
 //
@@ -52,3 +53,5 @@ inline void section(std::string_view name) { std::print("{}\n", name); }
 }
 
 } // namespace orbex::test
+
+#endif // ORBEX_TESTS_TESTHARNESS_HPP

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ORBEX_CORE_VEC3_HPP
+#define ORBEX_CORE_VEC3_HPP
 //
 // A double-precision 3-vector, and the one float comparison this example
 // permits.
@@ -112,3 +113,5 @@ static_assert(kOneTwoThree - Vec3{.x = 1.0, .y = 2.0, .z = 3.0} == Vec3{});
 static_assert(kOneTwoThree * 2.0 == Vec3{.x = 2.0, .y = 4.0, .z = 6.0});
 
 } // namespace orbex
+
+#endif // ORBEX_CORE_VEC3_HPP

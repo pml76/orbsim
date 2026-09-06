@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ORBEX_CORE_CONTRACT_HPP
+#define ORBEX_CORE_CONTRACT_HPP
 //
 // Preconditions and postconditions, until C++26 contracts arrive.
 //
@@ -24,5 +25,16 @@
 //
 // [S15] ALL_CAPS is correct here and nowhere else: NL.9 reserves it for macros
 // exactly so a reader can tell a macro from a function at the call site.
+//
+// [S8] These two are the only macros the example permits, and they have to be
+// macros: a function cannot capture the source text of its own argument --
+// which is the whole value of the assertion message -- and it would evaluate
+// the condition even under NDEBUG. C++26 contracts replace them. The
+// suppression sits on the definitions rather than in .clang-tidy, so it covers
+// exactly these two and not the next macro somebody adds.
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define ORBEX_EXPECTS(condition) assert((condition) && "precondition violated")
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
 #define ORBEX_ENSURES(condition) assert((condition) && "postcondition violated")
+
+#endif // ORBEX_CORE_CONTRACT_HPP

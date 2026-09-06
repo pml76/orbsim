@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ORBEX_CORE_UNITS_HPP
+#define ORBEX_CORE_UNITS_HPP
 //
 // Strong scalar types for the simulation domain.
 //
@@ -113,3 +114,5 @@ static_assert(nearlyEqual((1.0_km).value, 1000.0, Tolerance{0.0}));
 static_assert(180.0_deg == Degrees{180.0});
 
 } // namespace orbex
+
+#endif // ORBEX_CORE_UNITS_HPP

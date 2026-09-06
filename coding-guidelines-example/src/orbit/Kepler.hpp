@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ORBEX_ORBIT_KEPLER_HPP
+#define ORBEX_ORBIT_KEPLER_HPP
 //
 // Kepler's equation, M = E - e*sin(E), solved for the eccentric anomaly.
 //
@@ -11,13 +12,20 @@
 //
 #include "core/Units.hpp"
 
+#include <cstdint>
 #include <expected>
 #include <string_view>
 
 namespace orbex {
 
 // [S8] enum class: scoped, typed, no surprise conversions to int.
-enum class KeplerError {
+//
+// The explicit std::uint8_t base is not an optimisation -- section 10 would
+// want a measurement for that, and two enumerators inside a std::expected
+// change nothing measurable. It is here because an explicit underlying type
+// makes the representation part of the declared interface rather than a
+// compiler default, which is also what lets the enum be forward-declared.
+enum class KeplerError : std::uint8_t {
     EccentricityOutOfRange,
     DidNotConverge,
 };
@@ -53,3 +61,5 @@ enum class KeplerError {
 [[nodiscard]] Radians wrapToPi(Radians angle) noexcept;
 
 } // namespace orbex
+
+#endif // ORBEX_ORBIT_KEPLER_HPP

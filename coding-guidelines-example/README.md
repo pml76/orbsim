@@ -22,7 +22,7 @@ Every claim below was checked before it was written down.
 | Builds under the full §1 warning set, **as errors** | `cmake --build build` | zero warnings |
 | Same, with assertions live | `cmake --build build-debug` | zero warnings |
 | Tests | `ctest --test-dir build` | **47 checks, 0 failures** |
-| Static analysis, `WarningsAsErrors: '*'` | `clang-tidy -p build …` | **zero findings** |
+| Static analysis, `WarningsAsErrors: '*'`, **headers included** | `clang-tidy -p build …` | **zero findings** |
 | Every header compiles standalone (SF.11) | `orbex_header_selfcheck` target | 6 / 6 |
 | Formatting matches `.clang-format` | `clang-format --dry-run` | zero diffs |
 
@@ -108,9 +108,22 @@ scenario exactly.** `testDeterminism` uses `==` deliberately. §11 forbids
 being tested for.
 
 **§19 requires a fixed RNG seed. `bugprone-random-generator-seed` warns about
-exactly that.** This is the single lint suppression in the example, and the
-comment above it explains why the check's premise is inverted here: a failure
-you cannot reproduce is a failure you cannot fix.
+exactly that.** The check's premise is inverted here: a failure you cannot
+reproduce is a failure you cannot fix.
+
+**§2 endorses an assertion macro. `cppcoreguidelines-macro-usage` warns about
+every macro.** The check is right in general and cannot be right here: a
+function cannot capture the source text of its own argument, and it would
+evaluate the condition under `NDEBUG` too. C++26 contracts settle it.
+
+Those are the only three places the example silences a check, and each is
+silenced at the site rather than in `.clang-tidy`, with the reason written
+above it. That placement is the point: a suppression in the config file covers
+whatever comes along later, while a suppression on the line covers only the
+line. Nothing here is disabled project-wide that the code could have satisfied
+instead — the enums carry an explicit `std::uint8_t` base, the headers carry
+include guards, and the redundant `{}` initializers are gone, because fixing
+those was cheaper than arguing with the tool.
 
 Knowing which rule applies beats knowing the rules.
 
