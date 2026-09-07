@@ -31,14 +31,15 @@ write.
 | `src/render/` | Vulkan 1.3 device, swapchain, frame pacing, RAII handles, buffer upload, shader loading. **No pipelines, no drawing.** |
 | `src/app/` | Window, event loop, argument parsing, frame loop. |
 | `shaders/` | Four GLSL shaders compile to SPIR-V at build time and are **never loaded**. They are placeholders for phase A. |
-| `tests/` | Two suites, 3,577 checks, plus a GPU smoke test. |
+| `tests/` | Two suites, 3,617 checks, plus a GPU smoke test and a libFuzzer target. |
 
 ### Test suites
 
 | Suite | Checks | What it covers |
 |---|---|---|
 | `test_orbit` | 732 | Earth-orbit round trips, degenerate orbits, analytic values, propagator agreement, invariants, hyperbolic, Kepler solver, reported failures |
-| `test_orbit_scales` | 2845 | Heliocentric circles, parabolic trajectories, non-finite inputs, a zero time step on every conic, propagation composing, canonical scale invariance, and a seeded sweep of 200 closed + 100 hyperbolic orbits around the Moon, Earth, Jupiter and the Sun |
+| `test_orbit_scales` | 2885 | Heliocentric circles, parabolic trajectories, non-finite inputs, states that are finite but are not orbits, states with no orbital plane, a zero time step on every conic, near-rectilinear orbits, propagation composing, canonical scale invariance, bit-identical determinism, and a seeded sweep of 200 closed + 100 hyperbolic orbits around the Moon, Earth, Jupiter and the Sun |
+| `fuzz_orbit` | — | libFuzzer over the core under ASan and UBSan. Not a CTest test: run deliberately with a time budget, `cmake --preset linux-fuzz`. |
 | `orbsim_smoke` | — | Runs the app under the Vulkan validation layers for 2 s; fails on any validation error. Labelled `gpu`. |
 
 The seed for the random sweep is `20260905` and is written into
@@ -156,6 +157,31 @@ Four commits, all documentation. No C++ changed.
 A fifth commit amends the milestone 1 plan for all of the above and sweeps the
 documentation for the inconsistencies that accumulated along the way.
 
+Then the code was read against the documents, which found and fixed **six
+defects in `src/orbit/`**, all of them in code that had passed 3,513 checks,
+zero warnings and zero clang-tidy findings:
+
+1. `propagate()` reported non-convergence for a **hyperbolic orbit at dt = 0**,
+   because the hyperbolic starting guess takes `log(0)`. Found by writing the
+   singularity test rule 5 asks for. A fixed-step accumulator emits zero-length
+   steps, so phase E would have hit this on the first paused frame of an escape
+   trajectory.
+2. A state with finite components but an **infinite `|r|`**, because squaring
+   overflows above 1.3e154 and `rmag > 0.0` is true of infinity.
+3. A **radial trajectory** — zero angular momentum, inclination `acos(0/0)`.
+   Now `OrbitError::RectilinearOrbit`.
+4. `mu` tiny relative to the state, overflowing the eccentricity vector. Fixed
+   by a postcondition on the answer rather than a fourth guard on the inputs.
+5. **`propagate`'s postcondition was an assertion**, so a Debug build aborted
+   the process on user input instead of reporting it — the wrong half of ADR
+   0002's split.
+6. `|h|` nonzero while `|h|^2` underflows, so the semi-latus rectum is zero and
+   `orbitInfo`'s radius is `0/0`.
+
+Numbers 2 to 6 were found by the fuzzer, in a few thousand executions each.
+After the fixes it ran 77.4 million executions clean. See
+[`VERIFICATION.md`](VERIFICATION.md) rule 13.
+
 The branch is pushed to `origin/review-fixes-2026-09`.
 
 ---
@@ -271,7 +297,7 @@ executable with `STATUS_DLL_NOT_FOUND` before it prints anything.
 The `linux-sanitize` and `linux-gcc` presets **have now been run, and both pass**
 (2026-09-07). WSL 2 turned out to be enabled already with no distribution
 installed, so the Linux box was one `wsl --install -d Ubuntu` away. Each preset
-reports 3,577 checks and zero failures, matching Windows exactly, and UBSan was
+reports 3,617 checks and zero failures, matching Windows exactly, and UBSan was
 confirmed genuinely active rather than merely configured. Nothing runs them
 automatically — with CI declined they are a deliberate act before a milestone
 lands. See `VERIFICATION.md` rule 20.

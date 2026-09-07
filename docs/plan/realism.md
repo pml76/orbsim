@@ -51,7 +51,7 @@ Three consequences worth stating before the lists:
 
 Today `src/orbit/` solves exactly one problem: a massless particle around a
 single point mass, in closed form, with no forces other than that one. It solves
-it very well — 3,577 checks, two independent formulations cross-validated, correct
+it very well — 3,617 checks, two independent formulations cross-validated, correct
 from lunar to heliocentric scale. Nothing below is a criticism of that code. It
 is the foundation; it is simply not the building.
 
@@ -105,6 +105,25 @@ The decisions that need making, in order:
   makes the equations stiff. Sundman or KS regularisation is the answer, and the
   propagator already has half the idea in it — `propagate()` uses the Sundman
   transformation today.
+
+**A measured constraint on the Encke choice, found 2026-09-07.** The reference
+conic Encke would integrate deviations from is `propagate()`, and it **does not
+converge for near-rectilinear orbits**: above about `e = 0.999` the
+universal-variable Newton fails on a quarter-period backward step and reports
+`SolverDidNotConverge`. Raising the iteration cap from 200 to 20000 changes
+nothing, so it is not converging slowly — it is not converging.
+
+Two things follow. First, the reporting is correct behaviour and not the
+problem: a refused answer beats a wrong one, which is rule 8. Second, **an
+integrator cannot use a reference that declines part of its domain**, so
+regularisation stops being an optional refinement for close approaches and
+becomes a prerequisite of the Encke decision in section 4. Cowell does not have
+this constraint, which is a point in its favour that was not visible before.
+
+The case is in `test_orbit_scales.cpp` under "near-rectilinear orbits", and it
+is also the first thing the second compiler caught: gcc-14 and clang-on-Linux
+both fail at `e = 0.9999` where Windows clang succeeds, same source, different
+libm, a case sitting exactly on the edge.
 
 ### 1.3 Ephemeris and reference frames — **[S]**
 
@@ -330,7 +349,7 @@ phase A did its job. The Earth-first priority still holds.
 The two-body propagator does not go away and is not superseded. It becomes the
 *reference conic* that Encke integrates deviations from, and it keeps its three
 existing jobs: drawing paths, high time acceleration, and MFD prediction. The
-3,577 checks behind it are the reason that reference can be trusted.
+3,617 checks behind it are the reason that reference can be trusted.
 
 ---
 

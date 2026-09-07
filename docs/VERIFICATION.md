@@ -196,15 +196,51 @@ failure you cannot fix.
 
 ### Rule 13. Fuzzing
 
-`libFuzzer` is one flag away on this toolchain (`-fsanitize=fuzzer`) and the
-guidelines already call it a superb fit that the project has not taken up. Throw
-arbitrary bytes at `elementsFromState`, round-trip them, and assert the
-invariants. The fuzzer finds the degenerate orbit nobody thought of; it always
-does.
+**Built and run, 2026-09-07.** `tests/fuzz_orbit.cpp` throws arbitrary bytes at
+`elementsFromState`, `orbitInfo` and `propagate` under ASan and UBSan, and
+asserts the one thing a fuzzer can know without knowing the right answer: a
+reported failure is always acceptable, but a **success must not be NaN**.
 
-Highest value once there is a **file parser** — a scenario loader, a DE440
+```
+cmake --preset linux-fuzz          # Linux/WSL: libFuzzer has no MSVC-ABI target
+cmake --build build/linux-fuzz
+./build/linux-fuzz/fuzz_orbit -max_total_time=240
+```
+
+It is not a CTest test and not part of `check`: a fuzzer has no natural exit, so
+it is run deliberately with a time budget.
+
+The guidelines predicted this would find the degenerate orbit nobody thought of.
+**It found five distinct defects**, none reachable by any test anyone had
+written, each in a few thousand executions:
+
+1. A state whose components are all finite while `|r|` is not, because squaring
+   overflows above about 1.3e154 — and `rmag > 0.0` is true of infinity, so the
+   precondition waved it through. The elements came back claiming success with
+   an infinite eccentricity and a NaN argument of periapsis.
+2. A **radial trajectory** — velocity parallel to position, zero angular
+   momentum, inclination computed as `acos(0/0)`. Not exotic at all: a probe
+   released with no horizontal velocity falls straight down. Now
+   `OrbitError::RectilinearOrbit`, reported rather than parameterised, because
+   unlike a circular or equatorial orbit there is no canonical answer.
+3. `mu` tiny relative to the state, so the division by it in the eccentricity
+   vector overflows. This is the one that argued for **checking the answer**
+   rather than adding a third input guard: guarding inputs would have meant
+   inventing a smallest believable `mu`, and a threshold carrying a hidden
+   scale is the exact defect this project already shipped once.
+4. **`propagate`'s postcondition was an assertion**, so a Debug build *aborted
+   the process* on user input rather than reporting it. That is the wrong half
+   of ADR 0002's split, and no amount of reading had caught it.
+5. `|h|` nonzero but `|h|^2` underflowing, so the semi-latus rectum is zero and
+   `orbitInfo`'s radius becomes `0 / (1 + e·cos π)` = `0/0`. The ratio test from
+   (2) cannot see this one, because it never squares anything.
+
+After the fixes: **77.4 million executions, 241 seconds, zero findings** — the
+same fuzzer that previously hit a defect within a few thousand runs.
+
+Highest value still to come is a **file parser** — a scenario loader, a DE440
 reader, a DDS/KTX2 header parser — because those consume untrusted bytes and are
-the classic memory-safety surface.
+the classic memory-safety surface. The harness is there for them now.
 
 ### Rule 14. Differential testing between implementations
 
@@ -252,9 +288,36 @@ This is a real cost and a real benefit; it belongs in an ADR, not in a commit.
 
 ### Rule 18. Coverage is a map of what has not been tested
 
-`llvm-cov` ships with the clang already installed. Coverage is not a target to
-hit — 100% proves nothing — but the *uncovered* lines are a list of code no test
-has ever executed, and that list is worth reading after every feature.
+**Measured, 2026-09-07.** Coverage is not a target to hit — 100% proves nothing
+— but the *uncovered* lines are a list of code no test has ever executed, and
+that list is worth reading after every feature.
+
+| File | Lines | Regions |
+|---|---|---|
+| `orbit/Orbit.cpp` | **99.2%** | 86.0% |
+| `orbit/Orbit.hpp` | 93.8% | 85.7% |
+| `core/Units.hpp` | 75.0% | 90.9% |
+| `core/Scalar.hpp` | 80.6% | 91.3% |
+| `core/Math.hpp` | 50.6% | 64.1% |
+
+`Orbit.cpp` has no unexecuted lines. `Math.hpp` is half covered because `Quat`
+and most of `Vec3`'s operators are written and not yet used by anything — which
+is the map doing its job rather than a gap to close: the 6-DOF work in
+[`plan/realism.md`](plan/realism.md) is what will exercise them.
+
+How to reproduce it, under WSL:
+
+```
+cmake -S . -B build/linux-cov -G Ninja -DCMAKE_BUILD_TYPE=Debug \
+      -DCMAKE_CXX_COMPILER=clang++ -DORBSIM_BUILD_APP=OFF \
+      -DCMAKE_CXX_FLAGS="-fprofile-instr-generate -fcoverage-mapping" \
+      -DCMAKE_EXE_LINKER_FLAGS="-fprofile-instr-generate"
+cmake --build build/linux-cov && cd build/linux-cov
+LLVM_PROFILE_FILE=a.profraw ./test_orbit && LLVM_PROFILE_FILE=b.profraw ./test_orbit_scales
+llvm-profdata merge -sparse a.profraw b.profraw -o merged.profdata
+llvm-cov report ./test_orbit_scales -object ./test_orbit \
+    -instr-profile=merged.profdata ../../src/
+```
 
 ### Rule 19. Mutation testing, occasionally
 
@@ -263,7 +326,7 @@ comparison — and confirm a test fails. If none does, the suite has a hole exac
 there.
 
 Expensive to automate, cheap to do by hand on the parts that matter most. Doing
-it once on `Orbit.cpp` would put a number on how much those 3,577 checks are
+it once on `Orbit.cpp` would put a number on how much those 3,617 checks are
 actually worth.
 
 ### Rule 20. Run the Linux presets — the second compiler and UBSan are back
@@ -283,8 +346,8 @@ built and passed on the first run:
 
 | Preset | What it is | Result |
 |---|---|---|
-| `linux-sanitize` | clang Debug + ASan + UBSan, core only | 3,577 checks, 0 failures |
-| `linux-gcc` | gcc 14 Debug, core only | 3,577 checks, 0 failures |
+| `linux-sanitize` | clang Debug + ASan + UBSan, core only | 3,617 checks, 0 failures |
+| `linux-gcc` | gcc 14 Debug, core only | 3,617 checks, 0 failures |
 
 Both match the Windows counts exactly (732 + 2,781), so the two compilers and
 the two platforms agree on every assertion in the suite.
@@ -309,6 +372,20 @@ wsl -d Ubuntu -u root -- bash -c "cd /mnt/c/Users/U439644/Projects/untitled && \
 Worth doing before a milestone lands, and mandatory the day the physics is
 threaded off the render loop — that is when ThreadSanitizer, also only
 available here, stops being optional.
+
+**It has already earned its keep, on the first change it saw.** A
+near-rectilinear test that passed under Windows clang failed under *both*
+gcc-14 and clang-on-Linux: same source, different libm, and a case sitting
+exactly on the edge of the universal-variable solver's convergence. That is not
+a tolerance to widen — raising the iteration cap from 200 to 20000 changes
+nothing, so Newton is not converging at all above about `e = 0.999`. The
+propagator reports it correctly, and the finding is now a documented constraint
+on the integrator choice in [`plan/realism.md`](plan/realism.md) section 1.2,
+because Encke cannot take its reference conic from a solver that declines part
+of its domain.
+
+One platform would have shipped that as a fact about the code. Two platforms
+made it a fact about the *algorithm*.
 
 This is entirely consistent with the no-CI decision: verification stays local
 and is run by a person. What changed is that "a person" no longer needs a
@@ -369,8 +446,8 @@ rules a machine checks and which depend on a person remembering.
 | 1 Test first | A person, visible in the diff | discipline |
 | 2 Never check code against itself | A person, at review | discipline |
 | 3 External truth | `check`, once Horizons fixtures exist | **to build** |
-| 4 Error budget | `check` — the test asserts the number | **to build** |
-| 5 Singularities | `check` — `testZeroTimeStep` and the cases in both suites | partial |
+| 4 Error budget | `check` — the test asserts the number | partial |
+| 5 Singularities | `check` — zero dt on every conic, near-rectilinear, e=0, i=0, i=pi, retrograde | **done** |
 | 6 Regression test per bug | A person, visible in the diff | discipline |
 | 7 Assert vs. report | `check` (clang-tidy, partially) + review | partial |
 | 8 Bounded loops, reported | Review; `[[nodiscard]]` on `expected` helps | partial |
@@ -378,21 +455,26 @@ rules a machine checks and which depend on a person remembering.
 | 10 Small commits | `scripts/git-hooks/pre-commit`, partially | partial |
 | 11 Property tests | `check` — reversal, composition, scale invariance, conservation | **done** |
 | 12 Seeded sweeps | `check` — already live | **done** |
-| 13 Fuzzing | A separate target, run deliberately | **to build** |
+| 13 Fuzzing | `tests/fuzz_orbit.cpp`, run deliberately with a time budget | **done** |
 | 14 Differential testing | `check` — already live for the two propagators | **done** |
 | 15 Runtime monitors | `check` in the Debug tree, via assertions | **to build** |
-| 16 Determinism | `check` | **to build** |
+| 16 Determinism | `check` — `testDeterminism`, bit-identical over 100 steps | **done** |
 | 17 Dimensional analysis | The compiler, if adopted | undecided |
-| 18 Coverage | By hand, periodically | **to build** |
+| 18 Coverage | By hand, periodically. Orbit.cpp 99.2% lines | **done** |
 | 19 Mutation testing | By hand, periodically | exercised 2026-09-07 |
 | 20 WSL, UBSan, second compiler | By hand, before a milestone | **done** |
 | 21 `check` is the definition of done | The build, both trees | **done** |
 | 22–24 The human rules | A person | discipline |
 
-Rule 5 is *partial* rather than done on purpose: the orbital singularities are
-covered (`e = 0`, either side of `e = 1`, `i = 0`, `i = pi`, retrograde, and a
-zero time step on every conic), but near-rectilinear orbits are not, and the
-attitude and rendering singularities have no code to test yet.
+Rule 4 is *partial*: one error budget is genuinely derived rather than tuned --
+the near-rectilinear round trip, whose tolerance is stated as the conditioning
+law `ulp / (1-e)^2` it was measured to follow. What is missing is the external
+half, which waits on rule 3.
+
+Rule 5's orbital singularities are now covered -- `e = 0`, either side of
+`e = 1`, `i = 0`, `i = pi`, retrograde, near-rectilinear to `e = 0.9999`, and a
+zero time step on every conic. The attitude and rendering singularities have no
+code to test yet and will need their own pass.
 
 Rule 19 says "exercised" rather than "done" because mutation testing is an act,
 not a state. It was run on 2026-09-07 against the two property tests added that
@@ -413,11 +495,11 @@ check whether a test is independent of the code it tests), and the honest
 response is to name them as the ones that need attention at review, rather than
 to pretend the list is self-enforcing.
 
-The order to build the missing ones in is the order they will catch something:
-**4 (error budgets), then 3 (Horizons fixtures), then 16 (determinism), then 15
-(runtime monitors), then 13 (fuzzing), then 18 (coverage).** Rules 4 and 3 come
-first because ADR 0006 makes every accuracy claim in the project depend on them,
-and 15 waits on there being a simulation loop to monitor.
+Three remain, and the order is the order they will catch something: **3
+(Horizons fixtures), then the external half of 4 (error budgets against them),
+then 15 (runtime monitors).** 3 and 4 are one piece of work really, and ADR 0006
+makes every accuracy claim in the project depend on it. 15 waits on there being
+a simulation loop to monitor, which is milestone 1 phase E.
 
 Rule 11 was the first one built, on 2026-09-07, and it paid immediately: adding
 the composition and scale-invariance properties is what turned rule 5 from a
