@@ -267,8 +267,17 @@ struct DeviceBundle {
     // its first sixteen commits rendering on an Intel UHD with an RTX A2000
     // sitting idle beside it. allow_any_gpu_device_type(false) is what turns
     // the preference into a requirement.
+    // Not a bool. `pick(true)` and `pick(false)` at the call sites below were a
+    // mystery that only the lambda's parameter name resolved, which is exactly
+    // the shape non-negotiable 2 names -- clang-tidy does not see it because it
+    // is a lambda, and the rule applies anyway.
+    enum class DeviceChoice {
+        DiscreteOnly,
+        AnyType,
+    };
+
     std::string selectionError;
-    const auto pick = [&](bool discreteOnly) -> std::optional<vkb::PhysicalDevice> {
+    const auto pick = [&](DeviceChoice choice) -> std::optional<vkb::PhysicalDevice> {
         vkb::PhysicalDeviceSelector selector{instance};
         auto result = selector.set_surface(surface)
                           .set_minimum_version(1, 3)
@@ -276,7 +285,7 @@ struct DeviceBundle {
                           .set_required_features_12(features12)
                           .set_required_features_13(features13)
                           .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
-                          .allow_any_gpu_device_type(!discreteOnly)
+                          .allow_any_gpu_device_type(choice == DeviceChoice::AnyType)
                           .select();
         if (!result) {
             selectionError = result.error().message();
@@ -285,14 +294,14 @@ struct DeviceBundle {
         return result.value();
     };
 
-    auto physical = pick(true);
+    auto physical = pick(DeviceChoice::DiscreteOnly);
     if (!physical) {
         // A machine with only an integrated GPU is an ordinary machine, and the
         // simulator should still run on it. Say which way it went, because
         // "why is this slow" is otherwise a long afternoon.
         SDL_Log("No suitable discrete GPU (%s); falling back to any device type.",
                 selectionError.c_str());
-        physical = pick(false);
+        physical = pick(DeviceChoice::AnyType);
     }
     if (!physical) return fail("No suitable Vulkan 1.3 device: " + selectionError);
 

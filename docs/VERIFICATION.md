@@ -263,7 +263,7 @@ comparison — and confirm a test fails. If none does, the suite has a hole exac
 there.
 
 Expensive to automate, cheap to do by hand on the parts that matter most. Doing
-it once on `Orbit.cpp` would put a number on how much those 3,513 checks are
+it once on `Orbit.cpp` would put a number on how much those 3,577 checks are
 actually worth.
 
 ### Rule 20. Run the Linux presets — the second compiler and UBSan are back
@@ -283,8 +283,8 @@ built and passed on the first run:
 
 | Preset | What it is | Result |
 |---|---|---|
-| `linux-sanitize` | clang Debug + ASan + UBSan, core only | 3,513 checks, 0 failures |
-| `linux-gcc` | gcc 14 Debug, core only | 3,513 checks, 0 failures |
+| `linux-sanitize` | clang Debug + ASan + UBSan, core only | 3,577 checks, 0 failures |
+| `linux-gcc` | gcc 14 Debug, core only | 3,577 checks, 0 failures |
 
 Both match the Windows counts exactly (732 + 2,781), so the two compilers and
 the two platforms agree on every assertion in the suite.
@@ -370,23 +370,35 @@ rules a machine checks and which depend on a person remembering.
 | 2 Never check code against itself | A person, at review | discipline |
 | 3 External truth | `check`, once Horizons fixtures exist | **to build** |
 | 4 Error budget | `check` — the test asserts the number | **to build** |
-| 5 Singularities | `check` — a test suite like `test_orbit_scales` | **to build** |
+| 5 Singularities | `check` — `testZeroTimeStep` and the cases in both suites | partial |
 | 6 Regression test per bug | A person, visible in the diff | discipline |
 | 7 Assert vs. report | `check` (clang-tidy, partially) + review | partial |
 | 8 Bounded loops, reported | Review; `[[nodiscard]]` on `expected` helps | partial |
 | 9 "In what?" | A person; rule 17 would mechanise it | discipline |
 | 10 Small commits | `scripts/git-hooks/pre-commit`, partially | partial |
-| 11 Property tests | `check` | **to build** |
+| 11 Property tests | `check` — reversal, composition, scale invariance, conservation | **done** |
 | 12 Seeded sweeps | `check` — already live | **done** |
 | 13 Fuzzing | A separate target, run deliberately | **to build** |
 | 14 Differential testing | `check` — already live for the two propagators | **done** |
 | 15 Runtime monitors | `check` in the Debug tree, via assertions | **to build** |
 | 16 Determinism | `check` | **to build** |
 | 17 Dimensional analysis | The compiler, if adopted | undecided |
-| 18 Coverage and mutation | By hand, periodically | discipline |
-| 19 `check` is the definition of done | The build, both trees | **done** |
-| 20 WSL, UBSan, second compiler | By hand, periodically | **done** |
-| 21–24 The human rules | A person | discipline |
+| 18 Coverage | By hand, periodically | **to build** |
+| 19 Mutation testing | By hand, periodically | exercised 2026-09-07 |
+| 20 WSL, UBSan, second compiler | By hand, before a milestone | **done** |
+| 21 `check` is the definition of done | The build, both trees | **done** |
+| 22–24 The human rules | A person | discipline |
+
+Rule 5 is *partial* rather than done on purpose: the orbital singularities are
+covered (`e = 0`, either side of `e = 1`, `i = 0`, `i = pi`, retrograde, and a
+zero time step on every conic), but near-rectilinear orbits are not, and the
+attitude and rendering singularities have no code to test yet.
+
+Rule 19 says "exercised" rather than "done" because mutation testing is an act,
+not a state. It was run on 2026-09-07 against the two property tests added that
+day, which is how they were shown not to be decoration: restoring the historical
+absolute-tolerance bug made scale invariance fail in 6 places and composition in
+4. It will need running again the next time a test passes on the first try.
 
 Two things follow from this table, and they are the reason it exists.
 
@@ -402,7 +414,15 @@ response is to name them as the ones that need attention at review, rather than
 to pretend the list is self-enforcing.
 
 The order to build the missing ones in is the order they will catch something:
-**4 (error budgets), then 3 (Horizons fixtures), then 11 (properties), then 16
-(determinism), then 15 (runtime monitors), then 5 (singularities), then 13
-(fuzzing).** Rules 4 and 3 come first because ADR 0006 makes every accuracy
-claim in the project depend on them.
+**4 (error budgets), then 3 (Horizons fixtures), then 16 (determinism), then 15
+(runtime monitors), then 13 (fuzzing), then 18 (coverage).** Rules 4 and 3 come
+first because ADR 0006 makes every accuracy claim in the project depend on them,
+and 15 waits on there being a simulation loop to monitor.
+
+Rule 11 was the first one built, on 2026-09-07, and it paid immediately: adding
+the composition and scale-invariance properties is what turned rule 5 from a
+list into `testZeroTimeStep`, which found that `propagate()` reported
+non-convergence for a hyperbolic orbit at `dt = 0` — a bug that had been in the
+tree since the propagator was written, that the elliptic case hid, and that a
+fixed-step accumulator handing out a zero-length step would have hit on the
+first paused frame of an escape trajectory.
