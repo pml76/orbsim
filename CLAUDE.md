@@ -41,7 +41,11 @@ Visual cost is answered by quality settings. The rule that keeps both true:
 **a quality setting must never reach the simulation state.** The same scenario
 at the lowest and highest settings puts the vessel in the same place, bit for
 bit; the quality controller may read the frame clock and the physics may not.
-See [`docs/plan/realism.md`](docs/plan/realism.md) section 6.
+The mechanism is a `RenderQuality` struct of per-feature settings that lives in
+`src/render/`, so the rule is enforced by the link graph -- physics code that
+reaches for a quality setting does not compile. See
+[`docs/adr/0007`](docs/adr/0007-render-quality-is-a-struct.md) and
+[`docs/plan/realism.md`](docs/plan/realism.md) section 6.
 
 ```
 src/core/     maths, units, contracts   — no dependencies
@@ -243,7 +247,7 @@ bodies and fixtures, `tests/test_orbit_scales.cpp` the shape to copy.
   `readability-braces-around-statements` is off to match.
 - A formatting pass gets its own commit, doing nothing else.
 - Decisions that span files go in `docs/adr/` as short records: what was
-  decided, what was considered, why. Five exist; read them before changing
+  decided, what was considered, why. Seven exist; read them before changing
   anything they cover.
 - Line endings are LF everywhere (`.gitattributes`, `.editorconfig`, and
   `LineEnding: LF` in `.clang-format`). An older Windows checkout may still

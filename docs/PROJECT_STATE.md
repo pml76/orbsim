@@ -179,6 +179,7 @@ Five architecture decision records now exist in [`docs/adr/`](adr/):
 | 0004 | Vulkan headers pinned by CMake; the SDK supplies only the loader and `glslc` |
 | 0005 | Correctness is enforced by a local `check` target and two hooks, not by a checklist and not by CI |
 | 0006 | orbsim is a simulation, not a sandbox: multi-body physics with perturbations, real time and frames, a radiometric renderer |
+| 0007 | Render quality is a `RenderQuality` struct of per-feature settings, living in the renderer where the physics cannot reach it |
 
 Read the relevant one before changing anything it covers.
 

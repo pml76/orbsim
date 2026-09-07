@@ -384,12 +384,20 @@ is managing.
 
 ### 6.4 The shape of the setting
 
+**Settled — [`../adr/0007`](../adr/0007-render-quality-is-a-struct.md).**
+
 Not a single global `enum class Quality { Low, High }`. A machine with a strong
 GPU and a weak CPU wants different knobs than the reverse, and one tier cannot
-express that. The shape that fits both the hardware and the house style is a
-**`RenderQuality` struct of per-feature settings, with named presets that
-construct it** — each field its own small `enum class` rather than a bool or a
-bare int, per non-negotiable 2.
+express that — terrain LOD is CPU- and IO-bound while scattering is almost pure
+GPU. The shape is a **`RenderQuality` struct of per-feature settings, with
+`constexpr` named presets that construct it**: discrete choices are their own
+small `enum class`, continuous quantities are strong types carrying their unit
+(`Texels`, `Pixels`, `Mebibytes`), and neither is a bool or a bare int, per
+non-negotiables 1 and 2. Settings arriving from a config file are validated and
+reported through `std::expected`; the presets cannot fail.
+
+The presets survive that choice — the tier becomes a *constructor* rather than
+the representation, so the one simple control is still there.
 
 ### 6.5 How it is verified
 
@@ -414,5 +422,9 @@ settings path through a renderer that assumed one fixed configuration is the sam
 class of expensive as retrofitting the HDR pipeline itself. The knobs can arrive
 empty and gain entries as each feature lands.
 
-This should become **ADR 0007** once the mechanism in 6.4 is chosen; the
-principle in 6.3 is what the record is actually for.
+The mechanism and the principle are both recorded in
+[`../adr/0007`](../adr/0007-render-quality-is-a-struct.md). The clause in 6.3
+is what that record is actually for: `RenderQuality` lives in `src/render/`,
+and because `orbsim_core` does not link the renderer, a physics translation
+unit that tries to read a quality setting **does not compile**. The rule is
+enforced by the link graph rather than by anyone remembering it.
