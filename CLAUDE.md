@@ -9,6 +9,10 @@ shape.
 - The rules and the reasoning: [`CODING_GUIDELINES.md`](CODING_GUIDELINES.md)
 - The rules applied to real code: [`coding-guidelines-example/`](coding-guidelines-example/)
   and its [README coverage map](coding-guidelines-example/README.md)
+- **How to know it is right: [`docs/VERIFICATION.md`](docs/VERIFICATION.md).**
+  Adopted 2026-09-06 and **binding on every change**, the same way
+  `CODING_GUIDELINES.md` is. Its Part 4 says which of its rules a machine
+  checks and which need a person; read it before writing a test, not after.
 
 The example builds clean under the full warning set as errors, passes 47 checks,
 and produces zero clang-tidy findings at `WarningsAsErrors: '*'`. That is the
@@ -18,6 +22,26 @@ bar for new code in `src/` too.
 
 A space flight simulator in the spirit of Orbiter: real orbital mechanics,
 6-DOF vessels, MFD-style instrumentation. C++23, clang, Vulkan 1.3, SDL3.
+
+**It is a simulation, not a sandbox** ([`docs/adr/0006`](docs/adr/0006-simulation-not-sandbox.md),
+decided 2026-09-06). Realism is the acceptance criterion for the physics and
+the image alike: multi-body gravity with perturbations, a real epoch with real
+time scales, real reference frames, 6-DOF attitude, and a radiometric renderer.
+A single point mass is ruled out explicitly. **Every accuracy claim carries a
+stated error budget validated against data this project did not produce** --
+"realistic" is not a test result. The gap list and the order to close it in is
+[`docs/plan/realism.md`](docs/plan/realism.md).
+
+**It must also be fluent, and only the visuals scale.** A stuttering view from
+orbit does not read as real however correct the scattering is, so frame time is
+part of the image. But physics fidelity is not a quality knob: dropping J2 to
+gain frames yields a different simulation, not a faster one. Physics cost is
+answered by decoupling -- fixed timestep, own clock, render-side interpolation.
+Visual cost is answered by quality settings. The rule that keeps both true:
+**a quality setting must never reach the simulation state.** The same scenario
+at the lowest and highest settings puts the vessel in the same place, bit for
+bit; the quality controller may read the frame clock and the physics may not.
+See [`docs/plan/realism.md`](docs/plan/realism.md) section 6.
 
 ```
 src/core/     maths, units, contracts   — no dependencies
@@ -81,6 +105,20 @@ Phases run **A → B → D → C → E → F → G** — atmosphere deliberately
 quadtree, because it is what makes the image read as Earth and it gives a
 correct reference while debugging tile seams.
 
+Three amendments follow from ADR 0006; the plan file itself is unchanged and
+[`docs/plan/realism.md`](docs/plan/realism.md) section 5 has the reasoning:
+
+- **Phase A also builds the linear HDR pipeline** — RGBA16F target, physical
+  exposure, one tonemap, sRGB encoded once at the end. It is a render
+  foundation in the literal sense: every shader written before it would have
+  to be rewritten after it.
+- **Phase C also does elevation**, rather than deferring it to milestone 2.
+  Relief reads most strongly at the terminator, and displacement is far
+  cheaper inside the quadtree than bolted on afterwards.
+- **Phase E is the integrator, not a `propagate()` loop.** This raises it from
+  low to medium risk and makes the time system its prerequisite. Do not read
+  the plan's "Low" for phase E as still current.
+
 ## Reference source, and a licence boundary
 
 Orbiter's source is worth reading and is **not** uniformly licensed. The
@@ -141,6 +179,14 @@ These are the ones that get violated most often. The rest are in
 
 ## How to test physics
 
+The full argument is [`docs/VERIFICATION.md`](docs/VERIFICATION.md), which is
+binding. This is the part that applies to every change, so it is here too.
+
+**Write the test first, and watch it fail before you make it pass.** A
+numerical test that passes the moment it is written is usually a tolerance
+loose enough to accept anything. Read the failure message and check that it
+would let somebody else diagnose the problem.
+
 Every new function in `src/orbit/` gets, in `tests/`:
 
 - a check against something that does not come from the code: an analytic
@@ -149,9 +195,23 @@ Every new function in `src/orbit/` gets, in `tests/`:
 - a case at every scale the simulator flies -- the Moon, Earth, Jupiter, the
   Sun as central bodies -- because a suite that only flew Earth orbits passed
   732 checks while `propagate()` failed at 1 AU;
+- a case at every *singularity*, which is the other axis: `e = 0`, `e` either
+  side of 1, `i = 0`, `i = pi`, retrograde, `dt = 0`. A random sweep visits
+  these with probability zero;
 - its failure paths, by name (`NotFinite`, not "did not converge");
 - for anything numerical, a seeded random sweep over the parameter space,
   with the seed written down so a failure can be reproduced.
+
+**Anything claiming accuracy states its error budget first**, as a number, and
+validates it against something external -- JPL Horizons vectors, a published
+worked example, the other implementation. A constant of motion proves the code
+is self-consistent, not that it is right: a wrong `mu` conserves energy
+perfectly. The budget goes in the test and in the commit message.
+
+**Ask "in what?" of every bare number.** Two bugs in this codebase were found
+by that one question: a tolerance compared against a quantity in sqrt(metres),
+and a threshold compared against one in 1/metres. Both were invisible at Earth
+scale.
 
 `tests/TestHarness.hpp` has the checks, `tests/OrbitTestSupport.hpp` the
 bodies and fixtures, `tests/test_orbit_scales.cpp` the shape to copy.
@@ -162,6 +222,10 @@ bodies and fixtures, `tests/test_orbit_scales.cpp` the shape to copy.
       the same in `build/debug`. The target, not "the tests pass".
 - [ ] New logic has a test that checks it against something independent (see
       above), and a new failure has a test that asks for it by name.
+- [ ] That test was written first and was seen to fail for the right reason.
+- [ ] Anything claiming accuracy states an error budget as a number, and the
+      test asserts it against external reference data.
+- [ ] A fixed bug leaves behind a regression test named after the symptom.
 - [ ] No new boolean parameters, raw owning pointers, bare `f64` across an
       interface, or hand-written destructors outside `VulkanHandle.hpp` and
       `SdlHandle.hpp`.

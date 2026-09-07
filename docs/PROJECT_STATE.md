@@ -132,7 +132,8 @@ Eight commits on `review-fixes-2026-09`, branched from `master`. In order:
 | `CLAUDE.md` | A note on why the asan preset is not a Debug build | n/a |
 | 9 other files | **Line-ending normalisation only — zero content diff.** `git diff` reports nothing for them | n/a |
 
-Nothing here has been pushed. `master` is untouched.
+`master` is untouched. The branch itself has since been pushed to
+`origin/review-fixes-2026-09`.
 
 ---
 
@@ -177,8 +178,16 @@ Five architecture decision records now exist in [`docs/adr/`](adr/):
 | 0003 | Reverse-Z depth with an infinite far plane |
 | 0004 | Vulkan headers pinned by CMake; the SDK supplies only the loader and `glslc` |
 | 0005 | Correctness is enforced by a local `check` target and two hooks, not by a checklist and not by CI |
+| 0006 | orbsim is a simulation, not a sandbox: multi-body physics with perturbations, real time and frames, a radiometric renderer |
 
 Read the relevant one before changing anything it covers.
+
+Two documents were added on 2026-09-06 alongside ADR 0006 and are binding:
+[`plan/realism.md`](plan/realism.md), the gap list between what exists and what
+that decision requires, ordered by structural risk; and
+[`VERIFICATION.md`](VERIFICATION.md), the rules for keeping bugs out, whose
+Part 4 records which of them a machine currently checks and which do not yet
+exist. `CLAUDE.md` points at both.
 
 ---
 
@@ -275,11 +284,21 @@ asked for.
 3. **Tile format on disk: KTX2 with BC7, or DDS?** From the milestone plan,
    still open. KTX2 has the cleaner spec; DDS is what Orbiter uses, which
    matters for the later reader.
-4. **Elevation and night lights** — milestone 2 or folded into phase B? The
-   plan leans toward folding night lights in.
-5. **Is `Vec3` staying unit-free?** Today a vector's unit is carried by the
+4. **Elevation and night lights — settled for elevation: it moves into phase
+   C.** ADR 0006 makes relief part of the realism bar, and it is much cheaper
+   inside the quadtree than after it. Night lights still fold into phase B.
+5. **The physics fidelity question is settled: a simulation, not a sandbox.**
+   ADR 0006, decided 2026-09-06. What remains open from that decision is the
+   *technical* fork list in [`plan/realism.md`](plan/realism.md) section 4 —
+   Encke or Cowell, which integrator, Cartesian or equinoctial state, DE440 or
+   VSOP87, and how far up the spherical-harmonic field to go. Each deserves
+   its own ADR when settled.
+6. **Is `Vec3` staying unit-free?** Today a vector's unit is carried by the
    struct holding it (`StateVector::pos` is metres). A `Vec3<Metres>` is
-   possible and much more invasive. ADR 0001 records the current answer.
+   possible and much more invasive. ADR 0001 records the current answer, and
+   ADR 0006 sharpens the question: with several frames in play, a `Vec3` that
+   knows it holds barycentric metres would prevent a class of bug that is
+   otherwise invisible.
 
 ---
 
