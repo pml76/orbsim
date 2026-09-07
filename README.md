@@ -30,7 +30,15 @@ a window, creates a device and paces frames. Nothing is drawn yet. See
 
 ## Design
 
-Three decisions that are expensive to reverse, so they were made early:
+**This is a simulation, not a sandbox.** Realism is the acceptance criterion
+for the physics and the image alike: multi-body gravity with perturbations, a
+real epoch with real time scales, real reference frames, and a radiometric
+renderer. A single point mass is ruled out. Today the core solves the two-body
+problem exactly and everything else is ahead — see
+[`docs/adr/0006`](docs/adr/0006-simulation-not-sandbox.md) for the decision and
+[`docs/plan/realism.md`](docs/plan/realism.md) for the distance still to go.
+
+Decisions that are expensive to reverse, so they were made early:
 
 **The simulation core knows nothing about rendering.** `orbsim_core` builds and
 runs headless — no Vulkan, no SDL. That is what makes the physics testable
@@ -69,8 +77,9 @@ cmake --build build/relwithdebinfo --target check
 `-DORBSIM_BUILD_APP=OFF` builds the simulation core and its tests without the
 Vulkan SDK. Combined with the `linux-sanitize` or `linux-gcc` preset, that is
 how the core gets built under UndefinedBehaviorSanitizer or by a second
-compiler — neither of which works on Windows. There is no CI; verification is
-the `check` target, run locally.
+compiler — neither of which works on Windows directly, both of which run under
+WSL. Both presets pass. There is no CI; verification is the `check` target,
+run locally, plus the Linux presets before a milestone lands.
 
 ## Code standards
 
@@ -82,8 +91,11 @@ The project has an opinionated, enforced house style:
   standalone program in which every one of those rules is followed and none is
   violated, with a coverage map
 - [`docs/adr/`](docs/adr/) — the decisions that span files: units as types,
-  the error strategy, reverse-Z, pinned dependencies, and how correctness is
-  enforced
+  the error strategy, reverse-Z, pinned dependencies, how correctness is
+  enforced, simulation-not-sandbox, and scalable render quality
+- [`docs/VERIFICATION.md`](docs/VERIFICATION.md) — how the project knows the
+  code is right, as distinct from how it is written. A physics bug does not
+  crash; it returns a plausible number
 - [`CLAUDE.md`](CLAUDE.md) — the short version
 
 The build treats the full warning set as errors, and clang-tidy runs at

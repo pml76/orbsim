@@ -35,7 +35,7 @@ Three consequences worth stating before the lists:
   nothing; "position error under 1 km after 24 hours in LEO, checked against
   JPL Horizons" is a claim that can fail. Every item below should acquire a
   number like that before it is called done. See
-  [`../VERIFICATION.md`](../VERIFICATION.md) rule 20.
+  [`../VERIFICATION.md`](../VERIFICATION.md) rule 4.
 - **Fidelity you cannot verify is decoration.** A J4 term nobody has validated
   against reference data is a liability: it is more code, more runtime, and no
   more truth. Fidelity and verification are bought together or not at all.
@@ -51,7 +51,7 @@ Three consequences worth stating before the lists:
 
 Today `src/orbit/` solves exactly one problem: a massless particle around a
 single point mass, in closed form, with no forces other than that one. It solves
-it very well — 3513 checks, two independent formulations cross-validated, correct
+it very well — 3,513 checks, two independent formulations cross-validated, correct
 from lunar to heliocentric scale. Nothing below is a criticism of that code. It
 is the foundation; it is simply not the building.
 
@@ -301,20 +301,36 @@ later — then by realism delivered per unit of effort.
 Milestone 1 as written (A → B → D → C → E → F → G) remains sound, with three
 amendments:
 
-- **Phase A absorbs the HDR pipeline** (item 1). It is a render foundation, and
-  it is the definition of one: everything after it depends on it.
+- **Phase A absorbs the HDR pipeline** (item 1), the `RenderQuality` plumbing
+  (section 6.6) and the time system (item 2). It is a render foundation, and
+  that is the definition of one: everything after it depends on it. The time
+  system is there rather than in phase E because B, D and C all come first, and
+  item 2 is ranked where it is for being cheapest at zero call sites.
 - **Phase E is no longer "call `propagate()` in a loop".** It becomes the
-  integrator (item 3), which raises it from Low to Medium risk and makes the
-  time system (item 2) its prerequisite.
+  integrator (item 3) plus the first perturbation, which raises it from Low to
+  Medium risk and makes the time system its prerequisite. Its acceptance
+  criterion gains an error budget against JPL Horizons, because "time
+  acceleration does not change where it ends up" is self-consistency and
+  section 0 rules that out as evidence on its own.
 - **Phase C absorbs elevation** (item 11).
+- **Phase F's acceptance criterion inverts.** This document's first version said
+  the orbit track was unaffected, and that was wrong: the phase was written to
+  require that the drawn ellipse *stays put* under time acceleration, which is
+  correct for two-body motion and exactly backwards once J2 exists. An ISS-like
+  orbit regresses about 5 degrees of node per day, so the track must precess,
+  at the analytic secular rate. It becomes the first place a perturbation error
+  is visible to the naked eye rather than only to a test.
+- **Phase G's elements become osculating**, and the MFD should show them
+  drifting rather than present a stillness somebody will later try to smooth.
 
-Everything else — the tile pipeline, the atmosphere, the orbit track, the MFD —
-is unaffected. The Earth-first priority still holds.
+The tile pipeline is genuinely unaffected. The atmosphere is affected only in
+that its output must be radiance rather than tuned colour, which is free if
+phase A did its job. The Earth-first priority still holds.
 
 The two-body propagator does not go away and is not superseded. It becomes the
 *reference conic* that Encke integrates deviations from, and it keeps its three
 existing jobs: drawing paths, high time acceleration, and MFD prediction. The
-3513 checks behind it are the reason that reference can be trusted.
+3,513 checks behind it are the reason that reference can be trusted.
 
 ---
 

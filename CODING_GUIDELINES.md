@@ -107,16 +107,16 @@ works and you should have a build configured with it:
 ```
 
 UndefinedBehaviorSanitizer has only partial support on Windows, so don't promise
-yourself more than you're getting. If this ever grows a Linux CI job, turn on
-`-fsanitize=address,undefined` there and let it find things the Windows build
-cannot.
+yourself more than you're getting. **Done, via WSL rather than CI** (2026-09-07):
+the `linux-sanitize` preset runs `-fsanitize=address,undefined` under Ubuntu and
+finds what the Windows build cannot. See `docs/VERIFICATION.md` rule 20.
 
 **Static analysis.** `clang-tidy` is right there. You already have a
 `compile_commands.json` being generated, which is the only hard part. Start with
 `bugprone-*`, `performance-*`, and `readability-*`, and add
 `cppcoreguidelines-*` when you are feeling strong.
 
-**Tests.** You already have 546 assertions on the two-body core, and — this is
+**Tests.** You already have 3,513 assertions on the two-body core, and — this is
 the part I want to highlight — they check two *independent* implementations
 against each other. Universal-variable propagation versus Kepler-element
 propagation. Neither one can hide a sign error behind the other. That is a
@@ -637,7 +637,7 @@ exists. It builds and runs headless.
 
 Protect this. It is worth more than it looks:
 
-- The physics is testable without a GPU, which is why you have 546 assertions
+- The physics is testable without a GPU, which is why you have 3,513 assertions
   and not six.
 - A scenario batch-runner, a dedicated server, or a headless CI job all become
   possible for free.
@@ -889,7 +889,9 @@ But some decisions are bigger than any one file: pinning Vulkan headers instead
 of using the installed SDK, targeting C++23, choosing error codes over
 exceptions, reverse-Z. Those belong in short **architecture decision records** —
 a `docs/adr/` folder, one file per decision, three paragraphs each: what we
-decided, what we considered, why. Two years from now somebody will ask "why are
+decided, what we considered, why. **Done:** seven of them exist, including the
+two biggest — 0006, that this is a simulation and not a sandbox, and 0007, how
+render quality scales without ever touching the physics. Two years from now somebody will ask "why are
 we pinning these headers?" and the answer will exist instead of being
 reconstructed from a stale memory.
 
@@ -901,11 +903,17 @@ You are Windows-only today. But look at what you chose: CMake, clang, SDL3,
 Vulkan. Every one of those is cross-platform, and that was not an accident. You
 have already paid for portability. Do not throw it away by accident.
 
-And to be clear about the motive: **a Linux CI job is not about shipping on
+And to be clear about the motive: **a Linux build is not about shipping on
 Linux.** It is about getting a second compiler, a second standard library, and
 UndefinedBehaviorSanitizer and ThreadSanitizer that actually work — the ones
 Windows cannot fully give you (section 1). Portability is a bug-finding tool
 that happens to also let you ship elsewhere.
+
+**This is no longer hypothetical.** Since 2026-09-07 the Linux build is a WSL
+Ubuntu box rather than a CI job, and it has already earned its keep by being
+run: `linux-sanitize` and `linux-gcc` both pass, so clang and gcc-14 agree on
+all 3,513 assertions. ThreadSanitizer is waiting there for the day the physics
+moves off the render thread.
 
 - **Know your types.** Container sizes and indices are `size_t`. Vulkan hands
   you `uint32_t`. Mixing them is exactly where 32-bit-versus-64-bit bugs hide,
@@ -1091,6 +1099,13 @@ job.
 someone runs manually when they remember is not a linter. It is a good
 intention.
 
+> **This project deliberately deviates from rule two.** The owner declined CI on
+> 2026-09-06; `docs/adr/0005` records the decision, its cost, and what replaces
+> it — a local `check` target that must pass in both build trees, a formatting
+> hook on every edit, and a pre-commit hook. Rule two's underlying point still
+> stands and is the reason `check` exists as a single command rather than as a
+> checklist. Read 0005 before adding a workflow file.
+
 Items marked ✅ are already on this machine.
 
 ### Build and configure
@@ -1109,8 +1124,8 @@ Items marked ✅ are already on this machine.
 | Tool | Notes |
 |---|---|
 | **clang 22** ✅ | Your primary. Targets `x86_64-pc-windows-msvc` |
-| **MSVC 14.44** ✅ | VS2022 is installed. This is your free second opinion — add a CI job |
-| **GCC** | MinGW 13.2 is installed ✅ but **lacks `<print>`** and cannot build this project. You need GCC 14+, realistically via a Linux CI job |
+| **MSVC 14.44** ✅ | VS2022 is installed and clang already targets its ABI. A third opinion if you want one, though gcc-14 under WSL is the second and it is already wired to a preset |
+| **GCC** ✅ | MinGW 13.2 lacks `<print>` and cannot build this project. **gcc-14 under WSL can, and does** — the `linux-gcc` preset passes. Not CI; run it by hand before a milestone |
 | **Compiler Explorer** | godbolt.org. When you wonder whether the optimizer did the thing, stop wondering and go look |
 | **C++ Insights** | cppinsights.io. Shows you what the compiler *actually* generated from your template or range-for. Wonderful teaching tool, wonderful debugging tool |
 
@@ -1129,7 +1144,7 @@ Items marked ✅ are already on this machine.
 | Tool | Notes |
 |---|---|
 | **AddressSanitizer** | `-fsanitize=address`. Works with clang on this toolchain. Set up a build config for it *today* |
-| **UndefinedBehaviorSanitizer** | Only partial support on Windows. Full value arrives when you add a Linux CI job |
+| **UndefinedBehaviorSanitizer** ✅ | Only partial support on Windows. Full value arrives under WSL, where the `linux-sanitize` preset runs it |
 | **ThreadSanitizer** | Not yet — but the moment you thread the physics off the render loop, this is mandatory |
 | **Application Verifier** | Ships with the Windows SDK. Catches handle and heap misuse ASan does not |
 | **Dr. Memory** | Valgrind-shaped tool that actually runs on Windows |
@@ -1175,7 +1190,7 @@ Items marked ✅ are already on this machine.
 | **clang-format** ✅ | Ships with clang. Write the config, check it in, stop discussing formatting forever |
 | **clangd** ✅ | Already configured against your compile database |
 | **pre-commit** | Runs format and lint before the bad commit exists rather than after |
-| **GitHub Actions** | Where rule two gets enforced. Matrix it across clang and MSVC, Debug and Release, sanitizers on |
+| **GitHub Actions** | **Declined for this project — see `docs/adr/0005`.** A workflow existed briefly and was deleted. Do not add one |
 
 ---
 

@@ -109,19 +109,19 @@ Phases run **A → B → D → C → E → F → G** — atmosphere deliberately
 quadtree, because it is what makes the image read as Earth and it gives a
 correct reference while debugging tile seams.
 
-Three amendments follow from ADR 0006; the plan file itself is unchanged and
-[`docs/plan/realism.md`](docs/plan/realism.md) section 5 has the reasoning:
+**The plan was amended in place on 2026-09-07** for ADR 0006 and 0007, so read
+it rather than this list; [`docs/plan/realism.md`](docs/plan/realism.md) section
+5 has the reasoning. The four changes, in case a stale copy is in front of you:
 
-- **Phase A also builds the linear HDR pipeline** — RGBA16F target, physical
-  exposure, one tonemap, sRGB encoded once at the end. It is a render
-  foundation in the literal sense: every shader written before it would have
-  to be rewritten after it.
+- **Phase A also builds the linear HDR pipeline, the `RenderQuality` plumbing,
+  and the time system.** The time system is there rather than in phase E
+  because B, D and C all come first, and it is cheapest at zero call sites.
 - **Phase C also does elevation**, rather than deferring it to milestone 2.
-  Relief reads most strongly at the terminator, and displacement is far
-  cheaper inside the quadtree than bolted on afterwards.
-- **Phase E is the integrator, not a `propagate()` loop.** This raises it from
-  low to medium risk and makes the time system its prerequisite. Do not read
-  the plan's "Low" for phase E as still current.
+- **Phase E is the integrator, not a `propagate()` loop**, and its acceptance
+  criterion gains an error budget against JPL Horizons.
+- **Phase F's criterion inverted.** The orbit track must *precess* at the J2
+  rate, not stay put. A track that stays put is now a failing test, and the
+  old wording would send someone hunting a bug that is the physics working.
 
 ## Reference source, and a licence boundary
 

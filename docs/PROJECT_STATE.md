@@ -1,7 +1,11 @@
 # orbsim — project state and handoff
 
-Last updated: 2026-09-05, end of the review-and-fix session on branch
-`review-fixes-2026-09`.
+Last updated: 2026-09-07. Sections 1 to 4 describe the review-and-fix session of
+2026-09-05; sections 5 to 8 have been kept current since. What happened after
+that session: the owner ruled that this is a simulation rather than a sandbox
+(ADR 0006), render quality became a struct that the physics cannot reach
+(ADR 0007), `VERIFICATION.md` was adopted as binding, the milestone 1 plan was
+amended for all of it, and WSL was installed so the Linux presets finally ran.
 
 This file exists so the project can be picked up on a different machine, or
 after a gap, without reconstructing anything from memory. It records what is
@@ -99,9 +103,13 @@ SDK, `-DORBSIM_BUILD_APP=OFF` builds the core and its tests.
 
 ---
 
-## 3. What changed in this session
+## 3. Change history
 
-Eight commits on `review-fixes-2026-09`, branched from `master`. In order:
+All of it on `review-fixes-2026-09`, branched from `master`, which is untouched.
+
+### The review-and-fix session, 2026-09-05
+
+Eight commits. In order:
 
 1. **`2f400cc` Make clang-tidy actually lint the headers, and enable the analyzer.**
    The header filter regex required a forward slash after `src`, but clang-tidy
@@ -123,18 +131,32 @@ Eight commits on `review-fixes-2026-09`, branched from `master`. In order:
 7. **`1cae874` Record the decisions in docs/adr, and make CLAUDE.md describe the tools.**
 8. **`651a5cc` Hold the guidelines example to the bar it claims.**
 
-### Uncommitted work in the tree
+Two further commits closed that session: `307bc45`, recording that the project
+does not use CI, and `92a94cc`, requiring the discrete GPU and deleting the
+workflow. Everything this section once listed as uncommitted has landed.
 
-| File | Change | Verified? |
-|---|---|---|
-| `CMakeLists.txt` | The `check` / `lint` / `format-check` / `format` targets; `ORBSIM_BUILD_APP`; `ORBSIM_SANITIZE_UNDEFINED`; ASan Windows fixes | `check` passes in both trees |
-| `CMakePresets.json` | `asan`, `linux-sanitize`, `linux-gcc` presets | asan: all 3 suites pass; `linux-*` **never run, no Linux here** |
-| `src/render/VulkanContext.*`, `src/app/main.cpp` | Validation errors counted through a callback; exit code 3 when any are reported | `check` passes in both trees |
-| `CLAUDE.md` | A note on why the asan preset is not a Debug build | n/a |
-| 9 other files | **Line-ending normalisation only — zero content diff.** `git diff` reports nothing for them | n/a |
+### The realism and verification session, 2026-09-06 to 09-07
 
-`master` is untouched. The branch itself has since been pushed to
-`origin/review-fixes-2026-09`.
+Four commits, all documentation. No C++ changed.
+
+1. **`22a27ca` Rule that orbsim is a simulation, and write down what that
+   costs.** ADR 0006, plus [`plan/realism.md`](plan/realism.md): the gap list
+   between a two-body core and the physics that decision requires, ordered by
+   structural risk. Its section 6 answers the fluency requirement — the visuals
+   scale, the physics does not.
+2. **`88ab370` Make the verification rules and the realism goal binding by
+   default.** [`VERIFICATION.md`](VERIFICATION.md), 24 rules, wired into
+   `CLAUDE.md` so it is loaded every session. Its Part 4 records which rules a
+   machine actually enforces — three, at the time of writing.
+3. **`85215cc` Make render quality a struct, and put it where the physics
+   cannot reach it.** ADR 0007.
+4. **`f8d465d` Run the Linux presets, and correct the cost ADR 0005 never
+   measured.** See the end of section 6.3.
+
+A fifth commit amends the milestone 1 plan for all of the above and sweeps the
+documentation for the inconsistencies that accumulated along the way.
+
+The branch is pushed to `origin/review-fixes-2026-09`.
 
 ---
 
@@ -170,7 +192,7 @@ handing an infinite semi-major axis to the Kepler solver.
 
 ## 5. Decisions taken, and where they are written down
 
-Five architecture decision records now exist in [`docs/adr/`](adr/):
+Seven architecture decision records now exist in [`docs/adr/`](adr/):
 
 | ADR | Decision |
 |---|---|

@@ -20,8 +20,10 @@ The premise, and the reason this document exists at all:
 > and you find out three hours of simulated flight later.**
 
 Every rule here is chosen to shorten that feedback loop. They are ordered by
-what they cost, not by importance: the first ten are habits, the rest are
-infrastructure.
+what they cost, not by importance: rules 1–10 are habits that cost nothing but
+attention, 11–21 are infrastructure worth building, and 22–24 are about people.
+Part 4 then records which of them a machine actually enforces today, which is
+the part to read if you only read one.
 
 ---
 
@@ -261,7 +263,7 @@ comparison — and confirm a test fails. If none does, the suite has a hole exac
 there.
 
 Expensive to automate, cheap to do by hand on the parts that matter most. Doing
-it once on `Orbit.cpp` would put a number on how much those 3513 checks are
+it once on `Orbit.cpp` would put a number on how much those 3,513 checks are
 actually worth.
 
 ### Rule 20. Run the Linux presets — the second compiler and UBSan are back
