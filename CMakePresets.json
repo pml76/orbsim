@@ -66,6 +66,17 @@
         "CMAKE_CXX_COMPILER": "g++-14",
         "ORBSIM_BUILD_APP": "OFF"
       }
+    },
+    {
+      "name": "linux-fuzz",
+      "inherits": "debug",
+      "displayName": "Linux: clang + libFuzzer + ASan + UBSan, core only",
+      "description": "The fuzz targets. Not part of check: a fuzzer has no natural exit, so it is run deliberately with a time budget. See VERIFICATION.md rule 13.",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" },
+      "cacheVariables": {
+        "ORBSIM_BUILD_FUZZERS": "ON",
+        "ORBSIM_BUILD_APP": "OFF"
+      }
     }
   ],
   "buildPresets": [
@@ -74,7 +85,8 @@
     { "name": "release", "configurePreset": "release" },
     { "name": "asan", "configurePreset": "asan" },
     { "name": "linux-sanitize", "configurePreset": "linux-sanitize" },
-    { "name": "linux-gcc", "configurePreset": "linux-gcc" }
+    { "name": "linux-gcc", "configurePreset": "linux-gcc" },
+    { "name": "linux-fuzz", "configurePreset": "linux-fuzz" }
   ],
   "testPresets": [
     {

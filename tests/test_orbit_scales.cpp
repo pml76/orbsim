@@ -187,6 +187,106 @@ void testNonFiniteInputs(Run& run) {
 
     check(run, !describe(OrbitError::NotFinite).empty(), "  NotFinite describes itself");
     check(run, !describe(OrbitError::ParabolicElements).empty(), "  ParabolicElements too");
+    check(run, !describe(OrbitError::RectilinearOrbit).empty(), "  RectilinearOrbit too");
+}
+
+// States that pass every input check and still do not describe an orbit. Both
+// of these came from the fuzzer rather than from anyone sitting down to think
+// of them, which is the argument for rule 13 in one paragraph.
+void testDegenerateStates(Run& run) {
+    section("states that are finite but are not orbits");
+
+    // Finite components whose magnitude is not. Squaring overflows above about
+    // 1.3e154, so lengthSq() reaches infinity from inputs that every isfinite()
+    // check passes -- and `rmag > 0.0` is then true of infinity, so the
+    // precondition let it through. A fuzzer found this (VERIFICATION.md rule
+    // 13): the elements came back reporting success, with an infinite
+    // eccentricity and a NaN argument of periapsis.
+    const StateVector overflowing{.pos = {-5.486124068796807e303, 0.0, 0.0},
+                                  .vel = {0.0, 7.418412301374917e-68, 0.0}};
+    const auto overflowElements = elementsFromState(overflowing, kMuEarth);
+    check(run,
+          !overflowElements.has_value() && overflowElements.error() == OrbitError::NotFinite,
+          "  position whose magnitude overflows");
+
+    const auto overflowPropagate = propagate(overflowing, kMuEarth, 60.0_s);
+    check(run,
+          !overflowPropagate.has_value() && overflowPropagate.error() == OrbitError::NotFinite,
+          "  propagate refuses the same state");
+
+    // The velocity side of the same hole.
+    const auto overflowSpeed =
+        elementsFromState({.pos = {7000e3, 0.0, 0.0}, .vel = {1e200, 1e200, 0.0}}, kMuEarth);
+    check(run,
+          !overflowSpeed.has_value() && overflowSpeed.error() == OrbitError::NotFinite,
+          "  velocity whose magnitude overflows");
+}
+
+// The other half: states with no orbital plane at all. Both of these came from
+// the fuzzer rather than from anyone sitting down to think of them, which is
+// the argument for rule 13 in one paragraph.
+void testNoOrbitalPlane(Run& run) {
+    section("states with no orbital plane");
+
+    // A radial trajectory: velocity parallel to position, so the specific
+    // angular momentum is zero and there is no orbital plane to incline. The
+    // inclination was acos(h.z / |h|) = acos(0/0) = NaN, returned as a success.
+    // Physically reachable -- a probe released with no horizontal velocity
+    // falls straight down -- and found by the fuzzer, not by anyone's
+    // imagination (VERIFICATION.md rule 13).
+    const auto straightDown =
+        elementsFromState({.pos = {7000e3, 0.0, 0.0}, .vel = {-100.0, 0.0, 0.0}}, kMuEarth);
+    check(run,
+          !straightDown.has_value() && straightDown.error() == OrbitError::RectilinearOrbit,
+          "  radial trajectory has no orbital plane");
+
+    const auto atRest =
+        elementsFromState({.pos = {7000e3, 0.0, 0.0}, .vel = {0.0, 0.0, 0.0}}, kMuEarth);
+    check(run,
+          !atRest.has_value() && atRest.error() == OrbitError::RectilinearOrbit,
+          "  a body at rest likewise");
+
+    // Magnitudes finite, mu positive, trajectory not radial -- and the derived
+    // elements still overflow, because mu is tiny relative to the state and the
+    // eccentricity vector divides by it. The elements came back reporting
+    // success with an infinite eccentricity and NaN in-plane angles. The third
+    // thing the fuzzer found, and the one that argued for checking the answer
+    // rather than adding another input guard.
+    const auto tinyMu = elementsFromState(
+        {.pos = {1.0e120, 0.0, 0.0}, .vel = {9.68e119, 1.0e118, 0.0}}, GravParam{6.8e-231});
+    check(run,
+          !tinyMu.has_value() && tinyMu.error() == OrbitError::NotFinite,
+          "  elements that overflow are not returned as a success");
+
+    // propagate's postcondition used to be an assertion, so a Debug build
+    // aborted the process on this input instead of reporting it -- the wrong
+    // half of the ADR 0002 split, since a caller can produce it. An enormous
+    // speed with a matching mu makes the Lagrange combination overflow.
+    const StateVector violent{
+        .pos = {1.5419835033e-313, 7.477078763343729e20, 4.483094976257099e-120},
+        .vel = {4.483094640249093e-120, 1.3792778605844018e40, 7.477080264543605e20}};
+    const auto overflowed = propagate(violent, GravParam{7.477080264551322e20}, 0.0_s);
+    check(run,
+          overflowed.has_value() || overflowed.error() == OrbitError::NotFinite ||
+              overflowed.error() == OrbitError::DegenerateState,
+          "  propagate reports rather than asserting when the result overflows");
+
+    // |h| is nonzero but |h|^2 underflows, so the semi-latus rectum is zero and
+    // orbitInfo's radius became slr / (1 + e cos v) = 0/0. The ratio test above
+    // cannot see this one, because it never squares anything.
+    const auto underflowedSlr =
+        elementsFromState({.pos = {-7.8804e115, -4.62693e-179, -1.60283e-180},
+                           .vel = {-1.60283e-180, -1.60283e-180, -1.60283e-180}},
+                          GravParam{3.01352e296});
+    check(run,
+          !underflowedSlr.has_value() && underflowedSlr.error() == OrbitError::RectilinearOrbit,
+          "  a semi-latus rectum that underflows is not an orbit");
+
+    // But a genuinely eccentric orbit is not rectilinear, however thin it is.
+    const Elements thin =
+        makeElements(Metres{2.0e7}, Eccentricity{0.9999}, 45.0_deg, 0.0_deg, 0.0_deg, 90.0_deg);
+    const auto stillAnOrbit = elementsFromState(stateFromElements(thin, kMuEarth), kMuEarth);
+    check(run, stillAnOrbit.has_value(), "  e = 0.9999 is still an orbit");
 }
 
 // A zero time step is the identity, on every conic and not just on the one the
@@ -342,6 +442,154 @@ void testScaleInvariance(Run& run) {
     std::print("  lambda from {:g} to {:g}\n", kLambdas.front(), kLambdas.back());
 }
 
+// Near-rectilinear orbits: eccentricity approaching 1 with the ellipse
+// collapsing toward a straight line through the focus. The remaining case from
+// VERIFICATION.md rule 5's list, and the hardest one for a Kepler solver --
+// almost all of the mean anomaly is spent near periapsis, which is why
+// meanToEccentricAnomaly switches its starting guess at e = 0.8.
+void checkOneEccentricity(Run& run, f64 e) {
+    {
+        constexpr Metres kSemiMajor{2.0e7};
+        const Elements el =
+            makeElements(kSemiMajor, Eccentricity{e}, 45.0_deg, 30.0_deg, 60.0_deg, 10.0_deg);
+        const StateVector sv = stateFromElements(el, kMuEarth);
+        const OrbitInfo info = orbitInfo(el, kMuEarth);
+
+        // A quarter period is enough to cross the fast part of the orbit.
+        const Seconds step{info.period.value * 0.25};
+
+        const auto moved = propagate(sv, kMuEarth, step);
+        if (!moved) {
+            check(run,
+                  moved.error() == OrbitError::SolverDidNotConverge && e > 0.999,
+                  "  forward non-convergence only above e = 0.999");
+            return;
+        }
+
+        // Against the constants of motion, not against the propagator.
+        const SpecificEnergy energyBefore = specificEnergy(sv, kMuEarth);
+        const SpecificEnergy energyAfter = specificEnergy(*moved, kMuEarth);
+        checkRel(run, "  energy conserved", energyAfter.value, energyBefore.value, Tolerance{1e-9});
+
+        const Vec3 momentumBefore = specificAngularMomentum(sv);
+        const Vec3 momentumAfter = specificAngularMomentum(*moved);
+        checkVecRel(
+            run, "  angular momentum conserved", momentumAfter, momentumBefore, Tolerance{1e-9});
+
+        // The round trip crosses periapsis, where a near-rectilinear orbit is
+        // worst conditioned, so a fixed tolerance would either pass everything
+        // or fail the extreme case for a reason that is arithmetic rather than
+        // a defect. The budget is therefore stated as the conditioning law it
+        // is bounded by, which was measured rather than guessed:
+        //
+        //     e = 0.9     4.3e-14        e = 0.999    3.3e-10
+        //     e = 0.99    4.3e-12        e = 0.9999   8.9e-08
+        //
+        // Divide each by 1/(1-e)^2 and the result is flat -- 4.3e-16, 4.3e-16,
+        // 3.3e-16, 8.9e-16, or one to four ulps of a double. 5e-15 is that law
+        // with roughly a factor of six of headroom over the worst case.
+        const Tolerance roundTrip{5e-15 / ((1.0 - e) * (1.0 - e))};
+
+        // **The contract here is "never a wrong answer", not "always an
+        // answer".** Above e = 0.999 the universal-variable Newton does not
+        // converge for this backward step, and it says so. That is rule 8
+        // working: a reported non-convergence is a legitimate outcome, and it
+        // is strictly better than the silent wrong number the same code would
+        // have returned before the solver learned to report.
+        //
+        // It is also not a tolerance question. gcc-14 and clang-on-Linux both
+        // fail to converge at e = 0.9999 where Windows clang succeeds -- the
+        // same source, a different libm, and a case sitting exactly on the
+        // edge. Raising the iteration cap from 200 to 20000 changes nothing,
+        // so Newton is not converging slowly, it is not converging at all.
+        // The second compiler found this; see docs/VERIFICATION.md rule 20.
+        //
+        // The limit matters beyond this test: ADR 0006 makes this propagator
+        // the reference conic an Encke integrator takes deviations from, and
+        // an integrator cannot use a reference that declines near-rectilinear
+        // orbits. Regularisation (plan/realism.md section 1.2) is the answer,
+        // and this is the case that will prove it.
+        const auto back = propagate(*moved, kMuEarth, -step);
+        if (!back) {
+            check(run,
+                  back.error() == OrbitError::SolverDidNotConverge && e > 0.999,
+                  "  non-convergence only above e = 0.999, and reported by name");
+            return;
+        }
+        checkVecRel(run, "  round trip", back->pos, sv.pos, roundTrip);
+
+        // The Kepler solver on its own, at the eccentricity that breaks the
+        // naive starting guess.
+        const Radians ecc = trueToEccentricAnomaly(el.tra, el.ecc);
+        const Radians mean = eccentricToMeanAnomaly(ecc, el.ecc);
+        const auto solved = meanToEccentricAnomaly(mean, el.ecc);
+        if (expectOk(run, solved, "  Kepler solver converges")) {
+            checkAngle(run, "  solver round trip", *solved, ecc, Tolerance{1e-9});
+        }
+    }
+}
+
+void testNearRectilinear(Run& run) {
+    section("near-rectilinear orbits, e approaching 1");
+
+    constexpr std::array kEccentricities = std::to_array<f64>({0.9, 0.99, 0.999, 0.9999});
+    for (const f64 e : kEccentricities)
+        checkOneEccentricity(run, e);
+
+    std::print("  e from {:g} to {:g}\n", kEccentricities.front(), kEccentricities.back());
+}
+
+// The same inputs must produce bit-identical outputs, every time.
+//
+// VERIFICATION.md rule 16, and the one place this codebase permits `==` on
+// floating point: bit identity is the actual claim, and a tolerance here would
+// hide precisely the drift being tested for. It catches a class of accidental
+// nondeterminism that no other test can see -- iteration over an unordered
+// container, uninitialised padding, a branch on wall-clock time, a solver that
+// reads a global. None of those exist today, which is the point: this test is
+// what notices when one arrives.
+void testDeterminism(Run& run) {
+    section("propagation is bit-identical across runs");
+
+    const StateVector start = circularState(kMuEarth, Metres{7000e3});
+
+    // A single step, twice.
+    const auto first = propagate(start, kMuEarth, 1234.5_s);
+    const auto second = propagate(start, kMuEarth, 1234.5_s);
+    if (expectOk(run, first, "  first run") && expectOk(run, second, "  second run")) {
+        check(run, first->pos == second->pos, "  single step: position bit-identical");
+        check(run, first->vel == second->vel, "  single step: velocity bit-identical");
+    }
+
+    // A long chain, where any drift would compound rather than cancel.
+    const auto chain = [&]() -> StateVector {
+        StateVector s = start;
+        for (int i = 0; i < 100; ++i) {
+            const auto next = propagate(s, kMuEarth, 60.0_s);
+            if (!next) return StateVector{};
+            s = *next;
+        }
+        return s;
+    };
+    const StateVector chainA = chain();
+    const StateVector chainB = chain();
+    check(run, chainA.pos == chainB.pos, "  100 steps: position bit-identical");
+    check(run, chainA.vel == chainB.vel, "  100 steps: velocity bit-identical");
+
+    // The conversions too, since a scenario reload goes through them.
+    const auto elA = elementsFromState(start, kMuEarth);
+    const auto elB = elementsFromState(start, kMuEarth);
+    if (expectOk(run, elA, "  elements first") && expectOk(run, elB, "  elements second")) {
+        check(run,
+              elA->sma == elB->sma && elA->ecc == elB->ecc && elA->inc == elB->inc &&
+                  elA->lan == elB->lan && elA->aop == elB->aop && elA->tra == elB->tra,
+              "  elementsFromState is bit-identical");
+        check(run,
+              stateFromElements(*elA, kMuEarth).pos == stateFromElements(*elB, kMuEarth).pos,
+              "  stateFromElements is bit-identical");
+    }
+}
+
 // One body's worth of the sweep's parameter space.
 struct Body {
     std::string_view name;
@@ -493,9 +741,13 @@ int main() {
         testHeliocentric(run);
         testParabolic(run);
         testNonFiniteInputs(run);
+        testDegenerateStates(run);
+        testNoOrbitalPlane(run);
         testZeroTimeStep(run);
+        testNearRectilinear(run);
         testComposition(run);
         testScaleInvariance(run);
+        testDeterminism(run);
         testRandomSweep(run);
     });
 }

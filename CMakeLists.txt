@@ -169,6 +169,32 @@ foreach(test_name IN LISTS ORBSIM_TESTS)
     add_test(NAME ${test_name} COMMAND ${test_name})
 endforeach()
 
+# ---------------------------------------------------------------------------
+# Fuzzing. See VERIFICATION.md rule 13 and tests/fuzz_orbit.cpp.
+#
+# Off by default and not a CTest test: a fuzzer has no natural exit, so it is
+# run deliberately with a time or run budget rather than as part of `check`.
+# clang's libFuzzer does not target the MSVC ABI, so this is a Linux/WSL
+# target; the option refuses to configure elsewhere rather than producing a
+# build that cannot link.
+# ---------------------------------------------------------------------------
+option(ORBSIM_BUILD_FUZZERS "Build the libFuzzer targets (Linux/WSL only)" OFF)
+if(ORBSIM_BUILD_FUZZERS)
+    if(WIN32)
+        message(FATAL_ERROR "ORBSIM_BUILD_FUZZERS: clang's libFuzzer does not target the MSVC ABI. "
+                "Use the linux-fuzz preset under WSL.")
+    endif()
+    add_executable(fuzz_orbit tests/fuzz_orbit.cpp)
+    target_link_libraries(fuzz_orbit PRIVATE orbsim_core orbsim_warnings)
+    # The sanitizers come with the fuzzer here rather than through
+    # orbsim_sanitizers, so that a fuzz build is always instrumented: an
+    # uninstrumented fuzzer finds only the crashes that would have crashed
+    # anyway, which is the smallest and least interesting class.
+    target_compile_options(fuzz_orbit PRIVATE
+            -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
+    target_link_options(fuzz_orbit PRIVATE -fsanitize=fuzzer,address,undefined)
+endif()
+
 if(ORBSIM_BUILD_APP)
 
 # ---------------------------------------------------------------------------

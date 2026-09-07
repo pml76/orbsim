@@ -74,17 +74,28 @@ struct OrbitInfo {
 // Conditions a caller can legitimately produce. Conditions that can only arise
 // from a bug in this file are asserted instead; see core/Contract.hpp.
 enum class OrbitError {
-    NotFinite,            // NaN or infinity in an input: a corrupt scenario, not an orbit
-    DegenerateState,      // zero radius: a vessel at the exact centre of a body
-    NonPositiveGravity,   // mu <= 0 is not a central body
-    ParabolicElements,    // element propagation needs a finite semi-major axis
+    // NaN or infinity, either in an input or in a magnitude derived from one.
+    // The second case is not obvious and a fuzzer found it: every component of
+    // a state can be finite while |r| is not, because squaring overflows above
+    // about 1.3e154. A corrupt scenario, not an orbit.
+    NotFinite,
+    DegenerateState,    // zero radius: a vessel at the exact centre of a body
+    NonPositiveGravity, // mu <= 0 is not a central body
+    ParabolicElements,  // element propagation needs a finite semi-major axis
+    // Velocity parallel to position, so the specific angular momentum is zero:
+    // the trajectory is a straight line through the centre and has no orbital
+    // plane, which means no inclination and no ascending node. Reachable in
+    // ordinary flight -- a probe released with no horizontal velocity falls
+    // straight down -- and reported rather than parameterised, because unlike a
+    // circular or equatorial orbit there is no canonical answer to fall back on.
+    RectilinearOrbit,
     SolverDidNotConverge, // Newton reached its iteration cap
 };
 
 [[nodiscard]] constexpr std::string_view describe(OrbitError error) noexcept {
     switch (error) {
     case OrbitError::NotFinite:
-        return "input contains NaN or infinity";
+        return "input is not finite, or a magnitude derived from it overflowed";
     case OrbitError::DegenerateState:
         return "state vector has zero radius; there is no orbit to describe";
     case OrbitError::NonPositiveGravity:
@@ -92,6 +103,8 @@ enum class OrbitError {
     case OrbitError::ParabolicElements:
         return "parabolic elements have no finite semi-major axis; propagate the state vector "
                "instead";
+    case OrbitError::RectilinearOrbit:
+        return "velocity is parallel to position; a radial trajectory has no orbital plane";
     case OrbitError::SolverDidNotConverge:
         return "Kepler solver reached its iteration limit without converging";
     }
