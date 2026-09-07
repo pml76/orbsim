@@ -189,6 +189,159 @@ void testNonFiniteInputs(Run& run) {
     check(run, !describe(OrbitError::ParabolicElements).empty(), "  ParabolicElements too");
 }
 
+// A zero time step is the identity, on every conic and not just on the one the
+// suite happened to reach. VERIFICATION.md rule 5: the singular cases are where
+// a formula divides by, or takes the log of, something that just became zero,
+// and a randomised sweep visits them with probability zero.
+//
+// The elliptic case was tested above and always passed. The hyperbolic one did
+// not: the hyperbolic starting guess takes the log of a quantity proportional
+// to dt, and log(0) is -infinity, so chi began at -infinity, the Stumpff series
+// produced NaN from it, and Newton spent its whole iteration budget on NaN
+// before reporting that it had not converged.
+void testZeroTimeStep(Run& run) {
+    section("a zero time step is the identity on every conic");
+
+    struct Case {
+        std::string_view name;
+        GravParam mu;
+        StateVector state;
+    };
+
+    constexpr f64 kLeoRadius = 7000e3;
+    const f64 escapeSpeed = std::sqrt(2.0 * kMuEarth.value / kLeoRadius);
+
+    // 1 AU, so the hyperbolic branch is exercised at two scales: a conic
+    // threshold and a starting guess can each be right at one and wrong at the
+    // other, which is the lesson this whole file exists to record.
+    constexpr f64 kAuRadius = 1.496e11;
+    const f64 solarEscape = std::sqrt(2.0 * kMuSun.value / kAuRadius);
+
+    const std::array kCases = std::to_array<Case>({
+        {.name = "ellipse, LEO",
+         .mu = kMuEarth,
+         .state = {.pos = {kLeoRadius, 0.0, 0.0}, .vel = {0.0, 7546.0, 0.0}}},
+        {.name = "parabola, LEO",
+         .mu = kMuEarth,
+         .state = {.pos = {kLeoRadius, 0.0, 0.0}, .vel = {0.0, escapeSpeed, 0.0}}},
+        {.name = "hyperbola, LEO",
+         .mu = kMuEarth,
+         .state = {.pos = {kLeoRadius, 0.0, 0.0}, .vel = {0.0, 12000.0, 0.0}}},
+        {.name = "hyperbola, 1 AU",
+         .mu = kMuSun,
+         .state = {.pos = {kAuRadius, 0.0, 0.0}, .vel = {0.0, solarEscape * 1.2, 0.0}}},
+        {.name = "retrograde hyperbola, LEO",
+         .mu = kMuEarth,
+         .state = {.pos = {kLeoRadius, 0.0, 0.0}, .vel = {0.0, -12000.0, 0.0}}},
+    });
+
+    for (const Case& c : kCases) {
+        const auto still = propagate(c.state, c.mu, 0.0_s);
+        if (!expectOk(run, still, c.name)) continue;
+        // Exactly, not nearly: the identity is the claim, so any tolerance at
+        // all would hide the difference between "returned the input" and
+        // "integrated to something indistinguishable from it".
+        checkVecRel(run, c.name, still->pos, c.state.pos, Tolerance{0.0});
+        checkVecRel(run, c.name, still->vel, c.state.vel, Tolerance{0.0});
+    }
+}
+
+// propagate(s, a + b) must agree with propagate(propagate(s, a), b). This is a
+// property rather than an example: it holds for every state and every pair of
+// steps, it says nothing about what the right answer is, and it therefore
+// cannot be satisfied by a propagator that is consistently wrong in one
+// direction. VERIFICATION.md rule 11.
+void testComposition(Run& run) {
+    section("propagation composes: one long step equals two short ones");
+
+    struct Case {
+        std::string_view name;
+        GravParam mu;
+        StateVector state;
+        Seconds first;
+        Seconds second;
+    };
+
+    const std::array kCases = std::to_array<Case>({
+        {.name = "  LEO, 600 s + 900 s",
+         .mu = kMuEarth,
+         .state = circularState(kMuEarth, Metres{7000e3}),
+         .first = 600.0_s,
+         .second = 900.0_s},
+        {.name = "  LEO, forward then backward",
+         .mu = kMuEarth,
+         .state = circularState(kMuEarth, Metres{7000e3}),
+         .first = 4000.0_s,
+         .second = -1500.0_s},
+        {.name = "  lunar orbit, two half days",
+         .mu = kMuMoon,
+         .state = circularState(kMuMoon, Metres{2000e3}),
+         .first = 43200.0_s,
+         .second = 43200.0_s},
+        {.name = "  1 AU, two quarter years",
+         .mu = kMuSun,
+         .state = circularState(kMuSun, Metres{1.496e11}),
+         .first = Seconds{7.9e6},
+         .second = Seconds{7.9e6}},
+        {.name = "  hyperbolic escape, 100 s + 250 s",
+         .mu = kMuEarth,
+         .state = {.pos = {7000e3, 0.0, 0.0}, .vel = {0.0, 12000.0, 0.0}},
+         .first = 100.0_s,
+         .second = 250.0_s},
+    });
+
+    for (const Case& c : kCases) {
+        const auto together = propagate(c.state, c.mu, c.first + c.second);
+        const auto once = propagate(c.state, c.mu, c.first);
+        if (!expectOk(run, together, c.name)) continue;
+        if (!expectOk(run, once, c.name)) continue;
+        const auto twice = propagate(*once, c.mu, c.second);
+        if (!expectOk(run, twice, c.name)) continue;
+
+        checkVecRel(run, c.name, twice->pos, together->pos, Tolerance{1e-9});
+        checkVecRel(run, c.name, twice->vel, together->vel, Tolerance{1e-9});
+    }
+}
+
+// Two-body motion has an exact scaling symmetry. Multiply every length by
+// lambda, divide every speed by sqrt(lambda) and multiply every duration by
+// lambda^(3/2), and the trajectory maps onto itself: the equation of motion
+// r'' = -mu*r/|r|^3 is invariant under it for fixed mu.
+//
+// Nothing in Orbit.cpp knows that, which is what makes this a check rather than
+// a tautology. It is also the property that would have found the 1 AU
+// convergence bug in one line, because it relates a low Earth orbit to a
+// heliocentric-sized one directly -- an absolute tolerance in sqrt(metres)
+// cannot survive it. VERIFICATION.md rule 11.
+void testScaleInvariance(Run& run) {
+    section("two-body motion is invariant under canonical rescaling");
+
+    const StateVector base = circularState(kMuEarth, Metres{7000e3});
+    constexpr Seconds kStep{1800.0};
+
+    // Spanning ten orders of magnitude in length, which is the range from a low
+    // orbit to the outer solar system.
+    constexpr std::array kLambdas = std::to_array<f64>({1e-3, 1.0, 1e2, 1e4, 1e7, 1e10});
+
+    for (const f64 lambda : kLambdas) {
+        const f64 speedScale = 1.0 / std::sqrt(lambda);
+        const f64 timeScale = lambda * std::sqrt(lambda);
+
+        const StateVector scaled{.pos = base.pos * lambda, .vel = base.vel * speedScale};
+
+        const auto plain = propagate(base, kMuEarth, kStep);
+        const auto rescaled = propagate(scaled, kMuEarth, Seconds{kStep.value * timeScale});
+        if (!expectOk(run, plain, "  unscaled propagation")) continue;
+        if (!expectOk(run, rescaled, "  rescaled propagation")) continue;
+
+        checkVecRel(run, "  position scales", rescaled->pos, plain->pos * lambda, Tolerance{1e-9});
+        checkVecRel(
+            run, "  velocity scales", rescaled->vel, plain->vel * speedScale, Tolerance{1e-9});
+    }
+
+    std::print("  lambda from {:g} to {:g}\n", kLambdas.front(), kLambdas.back());
+}
+
 // One body's worth of the sweep's parameter space.
 struct Body {
     std::string_view name;
@@ -340,6 +493,9 @@ int main() {
         testHeliocentric(run);
         testParabolic(run);
         testNonFiniteInputs(run);
+        testZeroTimeStep(run);
+        testComposition(run);
+        testScaleInvariance(run);
         testRandomSweep(run);
     });
 }

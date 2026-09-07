@@ -21,6 +21,17 @@ constexpr f64 kInf = std::numeric_limits<f64>::infinity();
 
 // An orbit is treated as circular / equatorial below these thresholds, at which
 // point the periapsis direction / ascending node stops being meaningful.
+//
+// Where 1e-9 comes from, since a bare number here is exactly what section 12
+// warns about. All three are dimensionless by construction -- an eccentricity,
+// a ratio |n|/|h|, and a distance from e = 1 -- so unlike the tolerances below
+// they carry no hidden length scale. The value is the point at which the angle
+// these quantities determine stops being computable to useful precision: the
+// periapsis direction of an orbit with e = 1e-9 is set by the ninth
+// significant digit of the eccentricity vector, and f64 subtraction in
+// `evec` leaves roughly seven behind it. Below that the canonical
+// parameterisation (aop = 0, tra = argument of latitude) is not an
+// approximation -- it is the only answer that is stable.
 constexpr f64 kCircularTol = 1e-9;
 constexpr f64 kEquatorialTol = 1e-9;
 constexpr f64 kParabolicTol = 1e-9;
@@ -79,6 +90,21 @@ void stumpff(f64 psi, f64& c2, f64& c3) {
 // function does one thing).
 [[nodiscard]] f64
 initialUniversalAnomaly(const StateVector& sv, f64 mu, f64 r0, f64 rdotv, f64 alpha, f64 seconds) {
+    // A zero-length step has zero universal anomaly on every conic, and saying
+    // so before the conic dispatch is a correctness fix rather than a shortcut.
+    // The hyperbolic guess below takes the log of a quantity proportional to
+    // `seconds`; log(0) is -infinity, which reaches the Stumpff series as NaN
+    // and spends the entire iteration budget there before reporting that it did
+    // not converge. The elliptic guess is a product and returned zero correctly,
+    // and the parabolic one survived by accident through atan(1/0) = pi/2, which
+    // is why only hyperbolic trajectories ever failed -- including at dt = 0
+    // after a whole revolution was folded out of a closed orbit.
+    //
+    // `== 0.0` is deliberate, and is the exception CODING_GUIDELINES section 11
+    // allows: the claim is exactly zero, not "small". A tolerance here would
+    // answer a different question and would make a very short step wrong.
+    if (seconds == 0.0) return 0.0;
+
     const f64 sqrtMu = std::sqrt(mu);
 
     if (alpha * r0 > kParabolicAlphaTol) { // ellipse
