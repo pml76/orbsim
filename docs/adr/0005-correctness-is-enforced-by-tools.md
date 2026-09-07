@@ -61,7 +61,9 @@ Windows clang, Linux clang with ASan and UBSan, Linux gcc 14 -- and the owner
 decided against running CI on this project. That is a deliberate deviation
 from the Toolbox's rule two, "the tool you do not run in CI is a tool you do
 not have", and it has a real cost worth writing down: **UndefinedBehaviorSanitizer
-and a second compiler are now unreachable.** UBSan's Windows support is
+and a second compiler are now unreachable.** *(Corrected on 2026-09-07 -- see
+the update at the end of this record. Both turned out to be one command away.)*
+UBSan's Windows support is
 partial, so the `ORBSIM_SANITIZE_UNDEFINED` option refuses to configure there,
 and gcc cannot build this project on this machine. Both remain available to
 anyone who runs the `linux-sanitize` or `linux-gcc` preset on a Linux box by
@@ -88,3 +90,33 @@ and a propagator that passed 732 checks failed at 1 AU because no test had
 ever flown further than Earth orbit. None of those was a failure of care. All
 of them were failures of a tool not being run, or a test not being written,
 which is what this decision makes harder to repeat.
+
+## Update, 2026-09-07: the cost was smaller than recorded
+
+**The decision stands. One of the costs written above no longer applies.**
+
+This record claimed UndefinedBehaviorSanitizer and a second compiler were
+"now unreachable" without CI. That was wrong, and it was wrong in the way this
+ADR is itself about: nobody had checked. **WSL 2 was already enabled on this
+machine with no distribution installed**, so both were one command away:
+
+```
+wsl --install -d Ubuntu --no-launch
+```
+
+Ubuntu 26.04 LTS, clang 21.1.8 and gcc-14 14.3.0. The `linux-sanitize` and
+`linux-gcc` presets — written and never once executed — both configured, built
+and passed on the first attempt, with 3,513 checks each, matching the Windows
+counts exactly. UBSan was verified to be genuinely active rather than merely
+configured: a deliberate signed overflow through the same flags aborts with the
+expected diagnostic.
+
+So the local bar is now higher than this record describes. What is still true,
+and still the point of the decision, is that nothing runs any of it
+automatically: `check` in both Windows trees remains the definition of done,
+and the Linux presets are a deliberate act before a milestone lands. See
+[`../VERIFICATION.md`](../VERIFICATION.md) rule 20 for how to run them.
+
+The lesson is the one already in the section above, arriving again: a cost
+recorded from reasoning rather than from a command is a cost nobody has
+measured.

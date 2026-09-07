@@ -55,6 +55,7 @@ Recorded because "it builds here" is only useful with the versions attached.
 | Vulkan SDK | 1.4.357.0 | `C:\VulkanSDK\1.4.357.0` |
 | Python (for the format hook) | 3.14.0 | `C:\Program Files\PyManager` |
 | MSVC toolchain | VS2022 14.44 | clang targets the MSVC ABI and needs its headers and libs |
+| WSL 2 + Ubuntu | 26.04 LTS | Installed 2026-09-07. clang 21.1.8, gcc-14 14.3.0, cmake 4.2.3, ninja 1.13.2. This is where UBSan and the second compiler live |
 
 **The renderer now requires a discrete GPU where one exists, and gets the RTX
 A2000.** Both devices satisfy every requirement, and until 2026-09-06 the Intel
@@ -245,10 +246,13 @@ annotations; the cost is overflow detection *inside* `std::string` and
 clang's ASan runtime is not on `PATH` and its absence kills every sanitized
 executable with `STATUS_DLL_NOT_FOUND` before it prints anything.
 
-The **`linux-sanitize` and `linux-gcc` presets have never been run** — there is
-no Linux on this machine. They are written, not proven, and with CI declined
-(section 7) nothing will run them automatically. They are there for whoever
-next has a Linux box to hand.
+The `linux-sanitize` and `linux-gcc` presets **have now been run, and both pass**
+(2026-09-07). WSL 2 turned out to be enabled already with no distribution
+installed, so the Linux box was one `wsl --install -d Ubuntu` away. Each preset
+reports 3,513 checks and zero failures, matching Windows exactly, and UBSan was
+confirmed genuinely active rather than merely configured. Nothing runs them
+automatically — with CI declined they are a deliberate act before a milestone
+lands. See `VERIFICATION.md` rule 20.
 
 ### 6.4 Scope that went beyond "fix the findings" — still unreviewed
 
@@ -270,14 +274,17 @@ asked for.
    spend time on it. Verification is the `check` target, run locally by a
    person before they call something done.
 
-   The cost is recorded in ADR 0005 and is worth knowing:
-   **UndefinedBehaviorSanitizer and a second compiler are now out of reach.**
-   UBSan's Windows support is partial, so `ORBSIM_SANITIZE_UNDEFINED` refuses
-   to configure there, and gcc cannot build this project on this machine.
-   Anyone with a Linux box can still run the `linux-sanitize` and `linux-gcc`
-   presets by hand, and it is worth doing occasionally: a different compiler
-   and standard library disagreeing with clang is where a certain class of bug
-   first shows itself.
+   ADR 0005 recorded the cost as **"UndefinedBehaviorSanitizer and a second
+   compiler are now out of reach"**. That turned out to be false, and it is
+   corrected in that ADR's 2026-09-07 update: WSL 2 was already enabled here,
+   so `wsl --install -d Ubuntu` bought back both. UBSan's Windows support is
+   still partial and `ORBSIM_SANITIZE_UNDEFINED` still refuses to configure
+   there; the difference is that "there" is no longer the only option.
+
+   What remains true is that nothing runs them automatically. The
+   `linux-sanitize` and `linux-gcc` presets are run by hand, and it is worth
+   doing before a milestone lands: a different compiler and standard library
+   disagreeing with clang is where a certain class of bug first shows itself.
 
    `.github/workflows/ci.yml` was added in commit `eb2a99b` and deleted again
    on 2026-09-06. It is recoverable from history if the decision is ever

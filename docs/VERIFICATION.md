@@ -264,35 +264,53 @@ Expensive to automate, cheap to do by hand on the parts that matter most. Doing
 it once on `Orbit.cpp` would put a number on how much those 3513 checks are
 actually worth.
 
-### Rule 20. Install a WSL distribution and get the second compiler back
+### Rule 20. Run the Linux presets — the second compiler and UBSan are back
 
-**This is the concrete, immediate one.**
-
-`PROJECT_STATE.md` section 7 and ADR 0005 both record that UndefinedBehaviorSanitizer
-and a second compiler are *out of reach*, because UBSan's Windows support is
-partial and gcc cannot build this project on this machine. That conclusion was
-correct at the time and is worth revisiting: **WSL 2 is already enabled here,
-with no distribution installed.**
+**Done on 2026-09-07.** `PROJECT_STATE.md` and ADR 0005 had recorded
+UndefinedBehaviorSanitizer and a second compiler as *out of reach*. WSL 2 was
+already enabled on this machine with no distribution installed, so the whole
+cost was one command:
 
 ```
-wsl --install -d Ubuntu
+wsl --install -d Ubuntu --no-launch
 ```
 
-That would unlock, on this machine and with no CI:
+Ubuntu 26.04 LTS, giving clang 21.1.8, gcc-14 14.3.0, cmake 4.2.3 and ninja
+1.13.2. Both presets — written months ago, never once executed — configured,
+built and passed on the first run:
 
-- **UndefinedBehaviorSanitizer**, working properly. Signed overflow, misaligned
-  access, invalid casts — the `linux-sanitize` preset is already written for it.
-- **ThreadSanitizer**, which becomes mandatory the moment the physics is threaded
-  off the render loop.
-- **gcc 14 as a second compiler**, via the `linux-gcc` preset, also already
-  written. Where two compilers disagree about your code is almost exactly where
-  the bugs live.
-- **`orbsim_core` builds headless there** — `-DORBSIM_BUILD_APP=OFF` is the
-  supported configuration and needs no GPU.
+| Preset | What it is | Result |
+|---|---|---|
+| `linux-sanitize` | clang Debug + ASan + UBSan, core only | 3,513 checks, 0 failures |
+| `linux-gcc` | gcc 14 Debug, core only | 3,513 checks, 0 failures |
 
-This is entirely consistent with the no-CI decision: verification stays local and
-run by a person. Both presets exist and have never been run. This is the cheapest
-large improvement available to the project today.
+Both match the Windows counts exactly (732 + 2,781), so the two compilers and
+the two platforms agree on every assertion in the suite.
+
+**And the tooling itself was checked, because rule 23 applies to tools too.**
+Tests passing under UBSan proves nothing if UBSan was never linked in — that is
+precisely how the clang-tidy header filter went sixteen commits doing nothing.
+So: `compile_commands.json` really carries `-fsanitize=address,undefined` and
+`-fno-sanitize-recover=all`; the test binary really contains 808 sanitizer
+symbols; `g++-14` really was gcc and not clang wearing its name; and a
+deliberate signed overflow compiled the same way really does abort with
+`runtime error: signed integer overflow`. The sanitizer is live, not nominal.
+
+How to run them again, from Windows:
+
+```
+wsl -d Ubuntu -u root -- bash -c "cd /mnt/c/Users/U439644/Projects/untitled && \
+    cmake --preset linux-sanitize && cmake --build build/linux-sanitize && \
+    ctest --test-dir build/linux-sanitize --output-on-failure"
+```
+
+Worth doing before a milestone lands, and mandatory the day the physics is
+threaded off the render loop — that is when ThreadSanitizer, also only
+available here, stops being optional.
+
+This is entirely consistent with the no-CI decision: verification stays local
+and is run by a person. What changed is that "a person" no longer needs a
+second machine.
 
 ### Rule 21. Keep `check` as the single definition of done, and let it grow
 
@@ -365,7 +383,7 @@ rules a machine checks and which depend on a person remembering.
 | 17 Dimensional analysis | The compiler, if adopted | undecided |
 | 18 Coverage and mutation | By hand, periodically | discipline |
 | 19 `check` is the definition of done | The build, both trees | **done** |
-| 20 WSL, UBSan, second compiler | By hand, periodically | **to install** |
+| 20 WSL, UBSan, second compiler | By hand, periodically | **done** |
 | 21–24 The human rules | A person | discipline |
 
 Two things follow from this table, and they are the reason it exists.
