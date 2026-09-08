@@ -53,14 +53,14 @@ Recorded because "it builds here" is only useful with the versions attached.
 
 | Tool | Version | Location on this machine |
 |---|---|---|
-| clang / clang-tidy / clang-format | 22.1.8 | `C:\GitHub\clang+llvm-22.1.8-x86_64-pc-windows-msvc\bin` |
+| clang / clang-tidy / clang-format | 23.1.0 | `C:\GitHub\clang+llvm-23.1.0-x86_64-pc-windows-msvc\bin` |
 | CMake (the one that works) | 4.3.1, CLion-bundled | `C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe` |
 | CMake (on PATH) | 3.31.2 | `C:\Program Files\CMake\bin` |
 | Ninja | 1.12.0 | `C:\Strawberry\c\bin` |
 | Vulkan SDK | 1.4.357.0 | `C:\VulkanSDK\1.4.357.0` |
 | Python (for the format hook) | 3.14.0 | `C:\Program Files\PyManager` |
 | MSVC toolchain | VS2022 14.44 | clang targets the MSVC ABI and needs its headers and libs |
-| WSL 2 + Ubuntu | 26.04 LTS | Installed 2026-09-07. clang 21.1.8, gcc-14 14.3.0, cmake 4.2.3, ninja 1.13.2. This is where UBSan and the second compiler live |
+| WSL 2 + Ubuntu | 26.04 LTS ("resolute") | Installed 2026-09-07. clang 23.1.1, gcc-14 14.3.0, cmake 4.2.3, ninja 1.13.2. This is where UBSan and the second compiler live |
 
 **The renderer now requires a discrete GPU where one exists, and gets the RTX
 A2000.** Both devices satisfy every requirement, and until 2026-09-06 the Intel
@@ -98,7 +98,7 @@ cmake --build build/relwithdebinfo --target check
 cmake --build build/debug --target check
 ```
 
-Needs clang 17+ (22 here), CMake 3.25+, Ninja, and a Vulkan SDK for the loader
+Needs clang 17+ (23 here), CMake 3.25+, Ninja, and a Vulkan SDK for the loader
 and `glslc`. Everything else is fetched and pinned by CMake. Without a Vulkan
 SDK, `-DORBSIM_BUILD_APP=OFF` builds the core and its tests.
 
@@ -110,7 +110,42 @@ be doing real work:
 ```
 wsl --install -d Ubuntu --no-launch
 wsl -d Ubuntu -u root -- apt-get update
-wsl -d Ubuntu -u root -- apt-get install -y build-essential cmake ninja-build clang g++-14 llvm git
+wsl -d Ubuntu -u root -- apt-get install -y build-essential cmake ninja-build g++-14 git
+```
+
+**Do not install Ubuntu's `clang` meta-package.** It tracks whatever the
+release ships (21.1.8 on 26.04), and this project wants one clang version
+across both operating systems, not two. Take it from LLVM's own archive
+instead, matching the major version installed on Windows:
+
+```
+codename=$(lsb_release -cs)          # "resolute" on 26.04
+curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key \
+  | gpg --dearmor -o /usr/share/keyrings/llvm-archive-keyring.gpg
+cat > /etc/apt/sources.list.d/llvm-23.list <<EOF
+deb [signed-by=/usr/share/keyrings/llvm-archive-keyring.gpg] \
+http://apt.llvm.org/$codename/ llvm-toolchain-$codename-23 main
+EOF
+apt-get update
+apt-get install -y clang-23 clang-tidy-23 clang-format-23 clangd-23 \
+                   lld-23 llvm-23 libclang-rt-23-dev
+apt-get remove -y clang-21 clang-tools-21 llvm-21 && apt-get autoremove -y
+```
+
+`libclang-rt-23-dev` is not optional: it carries the ASan, UBSan and libFuzzer
+runtimes, which is the entire reason a Linux box exists here. The presets ask
+for bare `clang` / `clang++`, so point those at 23 with one alternatives entry
+that slaves the rest to it:
+
+```
+u=/usr/bin
+update-alternatives --install $u/clang clang $u/clang-23 100 \
+  --slave $u/clang++       clang++       $u/clang++-23 \
+  --slave $u/clang-tidy    clang-tidy    $u/clang-tidy-23 \
+  --slave $u/clang-format  clang-format  $u/clang-format-23 \
+  --slave $u/clangd        clangd        $u/clangd-23 \
+  --slave $u/llvm-cov      llvm-cov      $u/llvm-cov-23 \
+  --slave $u/llvm-profdata llvm-profdata $u/llvm-profdata-23
 ```
 
 Then, from inside the distribution, in the repository:
@@ -252,6 +287,79 @@ the instability above, and then rejected `std::tie` without `<tuple>` — which
 clang's standard library pulls in transitively and libstdc++ does not.
 
 The branch is pushed to `origin/review-fixes-2026-09`.
+
+### The clang 23 upgrade, 2026-09-08
+
+clang went 22.1.8 -> 23.1.0 on this machine. **The C++ needed nothing**: fresh
+trees built the core, both suites, the header self-checks and the full Vulkan
+app with zero warnings under the whole `-Werror` set, and all 3,632 checks
+passed first time. `clang-format` 23 wanted no changes either.
+
+**clang-tidy 23 was the whole of it: 42 findings where 22 gave 0.** The cause
+is structural rather than local -- `.clang-tidy` lists check *families* with
+`WarningsAsErrors: '*'`, so the 25 checks new in LLVM 23 enrolled themselves as
+build-breaking errors. Five fired. That is the config working as designed, and
+worth keeping; it is also worth knowing that every clang upgrade is now a small
+triage.
+
+The owner then ruled that the suppression list itself should be emptied and
+everything that came out of it fixed rather than re-suppressed. Emptying all
+fourteen entries produced **1,476 findings**. Of those, 420 were fixed and the
+list is down to four entries:
+
+| Was suppressed | Findings | Outcome |
+|---|---|---|
+| `misc-include-cleaner` | 256 | Fixed. Worth the churn on its own: this is the check that would have caught the missing `<tuple>` only gcc found |
+| `readability-braces-around-statements` | 114 | `ShortStatementLines: 1` encodes the house style; 3 real findings remained and were fixed |
+| `performance-enum-size` | 9 | 5 enums given an explicit `std::uint8_t` base |
+| `cppcoreguidelines-pro-bounds-pointer-arithmetic` | 5 | `argv` is a `std::span`, the SDL extension list is iterated, `from_chars` takes `std::to_address(text.end())` |
+| `modernize-use-nodiscard` | 0 | Dead. Removed |
+| `bugprone-narrowing-conversions` (+ CG alias) | 0 | Dead. Removed |
+| `cppcoreguidelines-pro-bounds-array-to-pointer-decay` | 0 | Dead. Removed |
+| `cppcoreguidelines-pro-type-vararg` | 3 | **Check re-enabled.** `SDL_Log` is variadic because SDL's C API is; a `NOLINTNEXTLINE` with a reason sits on each of the 3 calls |
+| `cppcoreguidelines-pro-type-reinterpret-cast` | 2 sites | **Check re-enabled.** Both are the C API's own requirement -- the typed Vulkan entry point, and `istream::read` accepting only `char*` -- and carry a site `NOLINTNEXTLINE` |
+| `readability-identifier-length` | 408 (219 lines) | **Still open** |
+| `modernize-use-trailing-return-type` | 357 (172 lines) | **Still open** |
+| `*-magic-numbers` | 277 (151 lines) | **Still open** |
+
+The two `pro-type-*` entries came off the list on the principle in section 6.1:
+suppress at the site, not in the config, because a config suppression silently
+covers whatever gets written next while five `NOLINT`s cover five lines. The
+three that remain are open because none of them has a site-local answer that is
+cheaper than the disease -- see the counts in `.clang-tidy`, which quotes both
+the raw finding count and the number of distinct lines a `NOLINT` per site
+would touch.
+
+Plus the five new checks, of which four were fixed outright
+(`readability-trailing-comma` 32, `bugprone-signed-bitwise` 4,
+`readability-redundant-lambda-parameter-list` 1, `misc-const-correctness` 1) and
+one is an upstream false positive, worked around by naming a constant.
+
+The same treatment ran over `coding-guidelines-example/`: ten suppressions down
+to four, 0 findings, 47 checks, format clean.
+
+**Both toolchains were then unified on 23.1.** WSL was on Ubuntu's clang 21.1.8;
+it is now on LLVM's own 23.1.1 from apt.llvm.org, clang-21 removed, bare names
+pointed at 23 through `update-alternatives`. The recipe is in section 2. This
+matters for more than tidiness: with `misc-include-cleaner` newly enabled, the
+question is whether the includes it asked for are right on libstdc++ as well as
+on the MSVC STL -- the check's own documentation warns it disagrees with itself
+across implementations. **It does not here: clang-tidy 23.1.1 on libstdc++
+reports zero findings, and clang-format 23.1.1 agrees with the Windows one
+byte for byte.** `linux-sanitize` (3,632 checks, ASan and UBSan both confirmed
+linked rather than merely configured), `linux-gcc` (3,632, gcc-14 untouched --
+it is the second *implementation*, and upgrading clang does not weaken that) and
+`linux-fuzz` (29.7 million executions clean in 91 s) all pass.
+
+Two changes are worth knowing about because they are not cosmetic.
+`readability-trailing-comma` interacts with `clang-format`: a trailing comma
+makes it break a braced list one element per line, which inflated the test case
+tables by about 200 lines and pushed `testRandomSweep` past the 80-line
+function-size threshold. It is now two functions, `sweepClosedOrbits` and
+`sweepHyperbolicOrbits`, sharing one `Sampler`; **they draw from it in that
+order, and reordering the two calls changes every case in the sweep.** The
+suite still reports 2,900 checks from seed 20260905, which is the evidence the
+split was behaviour-preserving.
 
 ---
 
@@ -445,6 +553,32 @@ asked for.
   tree was configured with the former.
 - **The Epic Games overlay layer** logs a duplicate-layer warning at every
   Vulkan startup. It is noise, not a problem.
+- **There is one clang here now, and it is meant to stay that way.** 23.1.0 on
+  Windows, 23.1.1 in WSL -- the same release branch; apt.llvm.org publishes
+  branch builds rather than the exact tag. Everything resolves to it on both
+  sides, `clangd` and `llvm-cov` included. A standalone `clangd_22.1.0` used to
+  sit ahead of the LLVM directory on `PATH`, so the editor parsed this code with
+  a different front end from the one compiling it; it was deleted on 2026-09-08.
+  If diagnostics ever disagree with the build again, check `clangd --version`
+  first.
+- **`.clangd` points at `build/relwithdebinfo`.** That tree must exist and be
+  current, or the editor's diagnostics are fiction. During the 23.1 switch it
+  briefly pointed at a deleted tree and every file in
+  `coding-guidelines-example/` appeared to be full of unknown types.
+- **A clang upgrade leaves the old build trees pointing at the old clang.**
+  `CMakeCache.txt` stores the resolved compiler path, so a tree configured
+  before the upgrade keeps building with the previous compiler and reports
+  green while proving nothing. Delete and reconfigure the tree; do not trust a
+  `check` that ran in a stale one.
+- **Two clang-tidy 23 checks are wrong on this code, and one of them writes
+  code that does not compile.**
+  `readability-redundant-parentheses` flags `(1.0_km).value` -- but
+  `1.0_km.value` lexes as a single pp-number, so the suffix swallows `.value`
+  and the "fix" does not build. `readability-trailing-comma` reads the argument
+  separator after an empty braced initialiser (`f(T{}, "x")`) as that list's
+  trailing comma, and its fix-it **deletes the separator**. Both are avoided
+  here by naming the value instead. Neither fires under clang-tidy 22. If you
+  run `clang-tidy --fix` over this tree, build afterwards and read the diff.
 
 ---
 

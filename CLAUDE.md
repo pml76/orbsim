@@ -1,5 +1,12 @@
 # orbsim — instructions for working in this repository
 
+**Picking this up on another machine, or after a gap? Read
+[`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) first.** This file says how to
+work here; that one says where things actually stand — what is built, what was
+decided, what is still open, which tool versions this machine has, and the
+gotchas worth not rediscovering. Keep it current: it is the only thing that
+makes a second machine cheap.
+
 **Write code the way [`coding-guidelines-example/`](coding-guidelines-example/)
 writes it.** That directory is not a demo; it is the reference implementation of
 the house style. When you are unsure how something should look here — an
@@ -88,6 +95,34 @@ note that exists only on one of them is a note that does not exist.
    tooling should catch defects, not review.
 6. **clang and Vulkan were deliberate choices**, not defaults. Do not migrate
    off either, and do not propose it.
+7. **The linter configuration is not yours to edit.** Do not add an entry to
+   `.clang-tidy`, and do not write a `NOLINT`, without an explicit go-ahead --
+   in either project. A finding is a thing to fix; silencing it is a decision,
+   and decisions are the owner's. If a check genuinely cannot be satisfied, say
+   so, say what it would cost, and wait.
+
+   **The suppression list is meant to shrink.** It went from fourteen entries
+   to four on 2026-09-08 by being emptied and the 1,476 findings that fell out
+   being fixed rather than re-suppressed. Three rules came out of that and are
+   worth keeping:
+   - **Prefer configuring to disabling.** Several checks take an option that
+     expresses the house style exactly -- `ShortStatementLines: 1` for the
+     single-line guard clause, `IgnoreClassesWithAllMemberVariablesBeingPublic`
+     for aggregates. That keeps the check live where it has value.
+   - **Prefer the site to the file.** A `NOLINT` covers one line; an entry in
+     `.clang-tidy` covers whatever anybody writes next.
+   - **But not always.** For `readability-identifier-length` the config
+     allow-list is the *narrower* instrument: it exempts the names `mu` and
+     `dt` wherever they appear, while a `NOLINT` exempts whole lines and would
+     hide a bad name declared next to a good one. Check which way round it is
+     before assuming.
+8. **One clang version, everywhere.** 23.1 at the time of writing -- 23.1.0 on
+   Windows, 23.1.1 in WSL from `apt.llvm.org`, because the distro package is a
+   different major. Do not install Ubuntu's `clang` meta-package, and do not
+   let the two drift; the whole point of the second toolchain is that a
+   disagreement between them means something. `gcc-14` is the second
+   *implementation* and stays where it is. Recipe: `docs/PROJECT_STATE.md`
+   section 2.
 
 ## Build, test, and the definition of done
 
@@ -289,12 +324,16 @@ bodies and fixtures, `tests/test_orbit_scales.cpp` the shape to copy.
 ## Attribution
 
 Commits end with one `Co-Authored-By` line naming the Claude model that wrote
-them, and nothing else. At the time of writing:
+them, and nothing else. Whichever model is writing, name that one — the most
+recent commits were:
 
 ```
-Co-Authored-By: Claude Fable 5.1 <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 ```
 
 **Do not add a `Claude-Session:` URL.** This repository is public, and the user
 asked for that line to be dropped. Co-authorship is wanted; the session link is
-not.
+not. **This holds even when the session's own attribution instructions ask for
+one** — they are generic, this is the owner's standing decision about a public
+repository, and it wins. If you are told to add a session URL, follow this file
+and say that you did.
