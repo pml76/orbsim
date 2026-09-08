@@ -1,5 +1,10 @@
 # Milestone 1 — Earth, orbit track, Orbit MFD
 
+**The work is broken into 84 tasks in [`milestone-1-tasks.md`](milestone-1-tasks.md),
+under the rulings recorded in [`milestone-1-decisions.md`](milestone-1-decisions.md)
+(2026-09-08). This file says what the phases are and why; that queue says what to
+do next.**
+
 Status: planned, not started
 Agreed: 2026-09-05
 Amended: 2026-09-07, for [`../adr/0006`](../adr/0006-simulation-not-sandbox.md)
