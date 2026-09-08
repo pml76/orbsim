@@ -102,6 +102,39 @@ Needs clang 17+ (22 here), CMake 3.25+, Ninja, and a Vulkan SDK for the loader
 and `glslc`. Everything else is fetched and pinned by CMake. Without a Vulkan
 SDK, `-DORBSIM_BUILD_APP=OFF` builds the core and its tests.
 
+**The second toolchain, which is not optional before a milestone lands.** It
+has already caught two defects that Windows clang could not see -- an unstable
+solver and a missing `<tuple>` include -- so set it up on any machine that will
+be doing real work:
+
+```
+wsl --install -d Ubuntu --no-launch
+wsl -d Ubuntu -u root -- apt-get update
+wsl -d Ubuntu -u root -- apt-get install -y build-essential cmake ninja-build clang g++-14 llvm git
+```
+
+Then, from inside the distribution, in the repository:
+
+```
+cmake --preset linux-sanitize && cmake --build build/linux-sanitize   # ASan + UBSan
+cmake --preset linux-gcc      && cmake --build build/linux-gcc        # the second compiler
+cmake --preset linux-fuzz     && cmake --build build/linux-fuzz       # libFuzzer
+ctest --test-dir build/linux-sanitize --output-on-failure
+ctest --test-dir build/linux-gcc      --output-on-failure
+./build/linux-fuzz/fuzz_orbit -max_total_time=240
+```
+
+`llvm` is there for `llvm-cov` and `llvm-profdata`; `VERIFICATION.md` rule 18
+has the coverage invocation. The `--no-launch` matters: it skips the
+interactive account setup, so commands run as `-u root` and nothing blocks.
+
+**Nothing about this project lives outside the repository.** Working
+agreements are in `CLAUDE.md`, decisions in `docs/adr/`, verification practice
+in `docs/VERIFICATION.md`, and this file holds the state and the machine
+specifics. The only things a fresh clone lacks are build output and the Blue
+Marble imagery under `data/textures/`, and
+[`data/textures/README.md`](../data/textures/README.md) has the URLs for that.
+
 ---
 
 ## 3. Change history
@@ -189,8 +222,9 @@ A near-rectilinear test passed under Windows clang and failed under gcc-14 and
 clang-on-Linux. I relaxed the test and wrote the failure up as a property of
 the method. **The owner rejected that outright** — a result that depends on
 which library rounded a cosine is evidence of an unstable algorithm — and the
-instruction is now recorded in the project's memory: never change a test or
-take a design decision without an explicit go-ahead.
+instruction is now recorded where it will actually be found, in `CLAUDE.md`
+under "Working agreements": never change a test or take a design decision
+without an explicit go-ahead.
 
 Chasing it properly: plain Newton oscillates wherever the equation's slope
 collapses. The step is `residual / slope`, the slope is a radius near periapsis

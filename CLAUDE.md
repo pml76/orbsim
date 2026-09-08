@@ -59,6 +59,36 @@ tests/        CTest suites
 and runs headless: no Vulkan, no SDL. Never push a renderer concept downward
 into the physics — push the dependency the other way instead.
 
+## Working agreements
+
+Standing instructions from the project owner. They are here, in the repository,
+rather than in any assistant's memory, because **everything about this project
+must live in the project** -- it is developed on more than one machine, and a
+note that exists only on one of them is a note that does not exist.
+
+1. **Ask before deciding.** Never change a test, relax a tolerance, disable a
+   lint check, delete a case, refactor beyond the scope asked for, or choose
+   between design alternatives without an explicit go-ahead. State the finding,
+   propose the fix, and wait.
+2. **A failing test means fix the code.** If the test itself is genuinely
+   wrong, say so and ask -- do not quietly edit it. A test that passes under
+   one compiler and fails under another is evidence of an unstable algorithm,
+   and editing the test destroys exactly the signal a second toolchain exists
+   to produce. This has already happened once: see
+   [`docs/plan/realism.md`](docs/plan/realism.md) section 1.2.
+3. **Accuracy and numerical stability outrank speed, elegance and
+   convenience.** Prefer the safeguarded algorithm, the cancellation-free
+   formulation, the solve that runs to the resolution of the type. Never accept
+   "it reports a failure" as the end state when a closed-form answer exists --
+   that is a weakness of the method, not a property of the problem.
+4. **Prove every accuracy claim by measurement**, before and after, and write
+   the numbers down. Fit the error against a conditioning law where one exists,
+   so it is clear whether the residual belongs to the problem or to the method.
+5. **Error-free ranks first** among readable, maintainable and error-free. The
+   tooling should catch defects, not review.
+6. **clang and Vulkan were deliberate choices**, not defaults. Do not migrate
+   off either, and do not propose it.
+
 ## Build, test, and the definition of done
 
 ```
