@@ -116,7 +116,7 @@ finds what the Windows build cannot. See `docs/VERIFICATION.md` rule 20.
 `bugprone-*`, `performance-*`, and `readability-*`, and add
 `cppcoreguidelines-*` when you are feeling strong.
 
-**Tests.** You already have 3,617 assertions on the two-body core, and — this is
+**Tests.** You already have 3,625 assertions on the two-body core, and — this is
 the part I want to highlight — they check two *independent* implementations
 against each other. Universal-variable propagation versus Kepler-element
 propagation. Neither one can hide a sign error behind the other. That is a
@@ -637,7 +637,7 @@ exists. It builds and runs headless.
 
 Protect this. It is worth more than it looks:
 
-- The physics is testable without a GPU, which is why you have 3,617 assertions
+- The physics is testable without a GPU, which is why you have 3,625 assertions
   and not six.
 - A scenario batch-runner, a dedicated server, or a headless CI job all become
   possible for free.
@@ -912,7 +912,7 @@ that happens to also let you ship elsewhere.
 **This is no longer hypothetical.** Since 2026-09-07 the Linux build is a WSL
 Ubuntu box rather than a CI job, and it has already earned its keep by being
 run: `linux-sanitize` and `linux-gcc` both pass, so clang and gcc-14 agree on
-all 3,617 assertions. ThreadSanitizer is waiting there for the day the physics
+all 3,625 assertions. ThreadSanitizer is waiting there for the day the physics
 moves off the render thread.
 
 - **Know your types.** Container sizes and indices are `size_t`. Vulkan hands

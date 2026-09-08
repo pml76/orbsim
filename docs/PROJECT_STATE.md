@@ -31,14 +31,14 @@ write.
 | `src/render/` | Vulkan 1.3 device, swapchain, frame pacing, RAII handles, buffer upload, shader loading. **No pipelines, no drawing.** |
 | `src/app/` | Window, event loop, argument parsing, frame loop. |
 | `shaders/` | Four GLSL shaders compile to SPIR-V at build time and are **never loaded**. They are placeholders for phase A. |
-| `tests/` | Two suites, 3,617 checks, plus a GPU smoke test and a libFuzzer target. |
+| `tests/` | Two suites, 3,625 checks, plus a GPU smoke test and a libFuzzer target. |
 
 ### Test suites
 
 | Suite | Checks | What it covers |
 |---|---|---|
 | `test_orbit` | 732 | Earth-orbit round trips, degenerate orbits, analytic values, propagator agreement, invariants, hyperbolic, Kepler solver, reported failures |
-| `test_orbit_scales` | 2885 | Heliocentric circles, parabolic trajectories, non-finite inputs, states that are finite but are not orbits, states with no orbital plane, a zero time step on every conic, near-rectilinear orbits, propagation composing, canonical scale invariance, bit-identical determinism, and a seeded sweep of 200 closed + 100 hyperbolic orbits around the Moon, Earth, Jupiter and the Sun |
+| `test_orbit_scales` | 2893 | Heliocentric circles, parabolic trajectories, non-finite inputs, states that are finite but are not orbits, states with no orbital plane, a zero time step on every conic, near-rectilinear orbits, propagation composing, canonical scale invariance, bit-identical determinism, and a seeded sweep of 200 closed + 100 hyperbolic orbits around the Moon, Earth, Jupiter and the Sun |
 | `fuzz_orbit` | — | libFuzzer over the core under ASan and UBSan. Not a CTest test: run deliberately with a time budget, `cmake --preset linux-fuzz`. |
 | `orbsim_smoke` | — | Runs the app under the Vulkan validation layers for 2 s; fails on any validation error. Labelled `gpu`. |
 
@@ -182,6 +182,41 @@ Numbers 2 to 6 were found by the fuzzer, in a few thousand executions each.
 After the fixes it ran 77.4 million executions clean. See
 [`VERIFICATION.md`](VERIFICATION.md) rule 13.
 
+Then a seventh, which is the one worth reading, because it was nearly recorded
+as a limitation instead of fixed.
+
+A near-rectilinear test passed under Windows clang and failed under gcc-14 and
+clang-on-Linux. I relaxed the test and wrote the failure up as a property of
+the method. **The owner rejected that outright** — a result that depends on
+which library rounded a cosine is evidence of an unstable algorithm — and the
+instruction is now recorded in the project's memory: never change a test or
+take a design decision without an explicit go-ahead.
+
+Chasing it properly: plain Newton oscillates wherever the equation's slope
+collapses. The step is `residual / slope`, the slope is a radius near periapsis
+for the universal variable and `1 - e cos E` for Kepler's, and both go to zero
+as `e` approaches 1. The Kepler solver was much the worse of the two —
+**196 of 401 hyperbolic anomalies failed at `e = 1.0001`**, which is most
+near-parabolic escape trajectories, and nothing in the suite had ever asked.
+
+All three equations in `src/orbit/` are strictly monotonic, so each root is
+unique and can always be bracketed. They now share one safeguarded solver:
+Newton where its step stays inside the bracket *and* at least halves,
+bisection where it does not. The halving condition is the part that matters —
+for the hyperbolic Kepler equation at large `H` the Newton step is about 1
+regardless of distance, so it creeps rather than diverges, and a bracket test
+alone never fires.
+
+Measured after: zero failures across every eccentricity from 0 to 100, elliptic
+and hyperbolic, with accuracy at machine epsilon; the near-rectilinear round
+trip tracks the conic's conditioning law across six decades. `check` passes in
+both Windows trees, both Linux presets pass, and the fuzzer ran 99.9 million
+executions clean.
+
+The second compiler earned its keep twice more in the same session: it found
+the instability above, and then rejected `std::tie` without `<tuple>` — which
+clang's standard library pulls in transitively and libstdc++ does not.
+
 The branch is pushed to `origin/review-fixes-2026-09`.
 
 ---
@@ -297,7 +332,7 @@ executable with `STATUS_DLL_NOT_FOUND` before it prints anything.
 The `linux-sanitize` and `linux-gcc` presets **have now been run, and both pass**
 (2026-09-07). WSL 2 turned out to be enabled already with no distribution
 installed, so the Linux box was one `wsl --install -d Ubuntu` away. Each preset
-reports 3,617 checks and zero failures, matching Windows exactly, and UBSan was
+reports 3,625 checks and zero failures, matching Windows exactly, and UBSan was
 confirmed genuinely active rather than merely configured. Nothing runs them
 automatically — with CI declined they are a deliberate act before a milestone
 lands. See `VERIFICATION.md` rule 20.

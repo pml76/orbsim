@@ -106,7 +106,7 @@ wsl --install -d Ubuntu --no-launch
 
 Ubuntu 26.04 LTS, clang 21.1.8 and gcc-14 14.3.0. The `linux-sanitize` and
 `linux-gcc` presets — written and never once executed — both configured, built
-and passed on the first attempt, with 3,617 checks each, matching the Windows
+and passed on the first attempt, with 3,625 checks each, matching the Windows
 counts exactly. UBSan was verified to be genuinely active rather than merely
 configured: a deliberate signed overflow through the same flags aborts with the
 expected diagnostic.

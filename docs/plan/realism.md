@@ -51,7 +51,7 @@ Three consequences worth stating before the lists:
 
 Today `src/orbit/` solves exactly one problem: a massless particle around a
 single point mass, in closed form, with no forces other than that one. It solves
-it very well — 3,617 checks, two independent formulations cross-validated, correct
+it very well — 3,625 checks, two independent formulations cross-validated, correct
 from lunar to heliocentric scale. Nothing below is a criticism of that code. It
 is the foundation; it is simply not the building.
 
@@ -106,24 +106,37 @@ The decisions that need making, in order:
   propagator already has half the idea in it — `propagate()` uses the Sundman
   transformation today.
 
-**A measured constraint on the Encke choice, found 2026-09-07.** The reference
-conic Encke would integrate deviations from is `propagate()`, and it **does not
-converge for near-rectilinear orbits**: above about `e = 0.999` the
-universal-variable Newton fails on a quarter-period backward step and reports
-`SolverDidNotConverge`. Raising the iteration cap from 200 to 20000 changes
-nothing, so it is not converging slowly — it is not converging.
+**A constraint on the Encke choice was recorded here on 2026-09-07 and removed
+again on 2026-09-08, because the constraint was a defect rather than a limit.**
+The history is worth keeping, because it is the argument for the whole of
+`../VERIFICATION.md` in one episode.
 
-Two things follow. First, the reporting is correct behaviour and not the
-problem: a refused answer beats a wrong one, which is rule 8. Second, **an
-integrator cannot use a reference that declines part of its domain**, so
-regularisation stops being an optional refinement for close approaches and
-becomes a prerequisite of the Encke decision in section 4. Cowell does not have
-this constraint, which is a point in its favour that was not visible before.
+What was observed: `propagate()` failed to converge for near-rectilinear orbits
+above about `e = 0.999`, under gcc-14 and clang-on-Linux but not under Windows
+clang — same source, different libm. Raising the iteration cap from 200 to
+20000 changed nothing. The first response was to record it as a property of the
+method and relax the test, and **that was wrong**: a result that depends on
+which library rounded a cosine is evidence of an unstable algorithm, not of a
+hard limit.
 
-The case is in `test_orbit_scales.cpp` under "near-rectilinear orbits", and it
-is also the first thing the second compiler caught: gcc-14 and clang-on-Linux
-both fail at `e = 0.9999` where Windows clang succeeds, same source, different
-libm, a case sitting exactly on the edge.
+What it actually was: plain Newton on an equation whose slope collapses. The
+Newton step is `residual / r(chi)`, and `r` is tiny near the periapsis of a
+near-rectilinear orbit, so the step is enormous and the iteration oscillates.
+The same defect sat in the Kepler solver, where it was far worse — **196 of 401
+hyperbolic anomalies failed at `e = 1.0001`**, which is to say most
+near-parabolic escape trajectories.
+
+The fix is that all three equations in `src/orbit/` are strictly monotonic —
+`dt/dchi = r/sqrt(mu) > 0`, `dM/dE = 1 - e cos E > 0`, `dM/dH = e cosh H - 1 >
+0` — so each root is unique and can always be bracketed. They now share one
+safeguarded solver: Newton where its step both stays inside the bracket and at
+least halves, bisection where it does not. There is no input for which any of
+them reports non-convergence, and the residual error tracks the conic's own
+conditioning rather than the method's.
+
+**So Encke is not constrained by this after all**, and the point it briefly
+scored for Cowell is withdrawn. Regularisation returns to being what it was: a
+refinement for close approaches, not a prerequisite.
 
 ### 1.3 Ephemeris and reference frames — **[S]**
 
@@ -349,7 +362,7 @@ phase A did its job. The Earth-first priority still holds.
 The two-body propagator does not go away and is not superseded. It becomes the
 *reference conic* that Encke integrates deviations from, and it keeps its three
 existing jobs: drawing paths, high time acceleration, and MFD prediction. The
-3,617 checks behind it are the reason that reference can be trusted.
+3,625 checks behind it are the reason that reference can be trusted.
 
 ---
 

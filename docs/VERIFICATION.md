@@ -326,7 +326,7 @@ comparison — and confirm a test fails. If none does, the suite has a hole exac
 there.
 
 Expensive to automate, cheap to do by hand on the parts that matter most. Doing
-it once on `Orbit.cpp` would put a number on how much those 3,617 checks are
+it once on `Orbit.cpp` would put a number on how much those 3,625 checks are
 actually worth.
 
 ### Rule 20. Run the Linux presets — the second compiler and UBSan are back
@@ -346,8 +346,8 @@ built and passed on the first run:
 
 | Preset | What it is | Result |
 |---|---|---|
-| `linux-sanitize` | clang Debug + ASan + UBSan, core only | 3,617 checks, 0 failures |
-| `linux-gcc` | gcc 14 Debug, core only | 3,617 checks, 0 failures |
+| `linux-sanitize` | clang Debug + ASan + UBSan, core only | 3,625 checks, 0 failures |
+| `linux-gcc` | gcc 14 Debug, core only | 3,625 checks, 0 failures |
 
 Both match the Windows counts exactly (732 + 2,781), so the two compilers and
 the two platforms agree on every assertion in the suite.
@@ -373,19 +373,27 @@ Worth doing before a milestone lands, and mandatory the day the physics is
 threaded off the render loop — that is when ThreadSanitizer, also only
 available here, stops being optional.
 
-**It has already earned its keep, on the first change it saw.** A
-near-rectilinear test that passed under Windows clang failed under *both*
-gcc-14 and clang-on-Linux: same source, different libm, and a case sitting
-exactly on the edge of the universal-variable solver's convergence. That is not
-a tolerance to widen — raising the iteration cap from 200 to 20000 changes
-nothing, so Newton is not converging at all above about `e = 0.999`. The
-propagator reports it correctly, and the finding is now a documented constraint
-on the integrator choice in [`plan/realism.md`](plan/realism.md) section 1.2,
-because Encke cannot take its reference conic from a solver that declines part
-of its domain.
+**It has already earned its keep twice, on the first two changes it saw.**
 
-One platform would have shipped that as a fact about the code. Two platforms
-made it a fact about the *algorithm*.
+First: a near-rectilinear test passed under Windows clang and failed under
+*both* gcc-14 and clang-on-Linux — same source, different libm. My first
+response was to record it as a limit of the method and relax the test. **That
+was the wrong call**, and the owner rejected it: a result that depends on which
+library rounded a cosine is evidence of an unstable algorithm, not of a hard
+limit. Chasing it properly found plain Newton oscillating wherever the equation
+flattens, in the Kepler solver as well as the universal one — where it was far
+worse, failing on 196 of 401 hyperbolic anomalies at `e = 1.0001`. All three
+equations are now solved by one safeguarded Newton that cannot fail to
+converge. See rule 1: the failing test was the signal, and editing it destroyed
+exactly what the second compiler had been installed to buy.
+
+Second, on the very next build: gcc-14 rejected `std::tie` without `<tuple>`.
+clang's standard library pulls it in transitively and libstdc++ does not, so
+the missing include was invisible on one platform and a hard error on the
+other — an include-what-you-use defect that no amount of Windows testing would
+ever have surfaced.
+
+One platform tells you about your code. Two tell you about your *assumptions*.
 
 This is entirely consistent with the no-CI decision: verification stays local
 and is run by a person. What changed is that "a person" no longer needs a
