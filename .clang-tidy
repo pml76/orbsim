@@ -4,9 +4,14 @@
 # something a machine enforces on every build, because advice that relies on
 # everyone remembering decays and advice a tool checks does not.
 #
-# Every disabled check below has a reason next to it. If you disable one more,
-# write the reason too -- a bare list of suppressions is how a lint config
-# quietly becomes meaningless.
+# Every disabled check below has a reason next to it, and a count of what
+# turning it back on would cost. If you disable one more, write both -- a bare
+# list of suppressions is how a lint config quietly becomes meaningless.
+#
+# The list is meant to shrink. It was emptied on 2026-09-08 to see what was
+# actually in it; ten of the fourteen entries turned out to be either dead,
+# cheap to fix, or better expressed as a NOLINT at the handful of sites that
+# needed one, and are gone.
 ---
 Checks: >
   clang-analyzer-*,
@@ -20,20 +25,10 @@ Checks: >
   readability-*,
   misc-*,
 
-  -bugprone-narrowing-conversions,
-  -cppcoreguidelines-narrowing-conversions,
   -cppcoreguidelines-avoid-magic-numbers,
   -readability-magic-numbers,
   -readability-identifier-length,
   -modernize-use-trailing-return-type,
-  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
-  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-  -cppcoreguidelines-pro-type-reinterpret-cast,
-  -cppcoreguidelines-pro-type-vararg,
-  -misc-include-cleaner,
-  -readability-braces-around-statements,
-  -modernize-use-nodiscard,
-  -performance-enum-size,
 
 # Only our code. The dependency tree under _deps is not ours to lint, and
 # linting it buries every finding that matters.
@@ -85,47 +80,86 @@ CheckOptions:
   - key: readability-function-size.NestingThreshold
     value: '5'
 
+  # The single-line guard clause (`if (!path) return;`) is the documented house
+  # style; a body that runs onto its own line is not, and gets braces. This
+  # value expresses that distinction, which is why the check is configured here
+  # rather than disabled: it was disabled outright until 2026-09-08, and turning
+  # it back on with this threshold left exactly three real findings, all of them
+  # two-line bodies without braces, all now fixed.
+  - key: readability-braces-around-statements.ShortStatementLines
+    value: '1'
+
 # --- notes on the disabled checks -------------------------------------------
 #
-# bugprone-narrowing-conversions / cppcoreguidelines-narrowing-conversions
-#   This codebase computes in f64 and hands f32 to the GPU by design. The
-#   compiler's -Wconversion already flags every narrowing, and section 1 argues
-#   for keeping that on; two tools shouting the same thing is noise, and the
-#   compiler's version is the one that cannot be forgotten.
+# This list was fourteen checks long until 2026-09-08, when it was emptied and
+# every finding that came out of it was fixed rather than re-suppressed. Ten
+# entries went: the eight below, because they were dead or cheap to satisfy,
+# and two more (the pro-type-* pair at the end of this file) that moved to a
+# NOLINT at each of the five sites that actually needed one.
 #
-# *-magic-numbers
+# What the eight cost is recorded here so nobody re-adds them:
+#
+#   bugprone-narrowing-conversions            0 findings. -Wconversion already
+#   cppcoreguidelines-narrowing-conversions   0 findings.   covers this.
+#   cppcoreguidelines-pro-bounds-array-to-pointer-decay   0 findings.
+#   modernize-use-nodiscard                   0 findings; the attribute is
+#                                             already on everything it wants.
+#   performance-enum-size                     5 enums given an explicit
+#                                             std::uint8_t base, as interface
+#                                             rather than optimisation.
+#   cppcoreguidelines-pro-bounds-pointer-arithmetic
+#                                             5 findings, all fixed: argv is a
+#                                             std::span, the SDL extension list
+#                                             is iterated rather than indexed,
+#                                             and from_chars takes
+#                                             std::to_address(text.end()).
+#   readability-braces-around-statements      114 -> 3 with ShortStatementLines
+#                                             above; the 3 were real.
+#   misc-include-cleaner                      256 findings, all fixed. Worth the
+#                                             churn: this is the check that
+#                                             would have caught the missing
+#                                             <tuple> that only gcc found. See
+#                                             PROJECT_STATE.md section 3.
+#
+# The four below still fire. Each says why it is off and what it would cost.
+#
+# The cost is quoted two ways, because they differ a lot: the raw finding count
+# (headers are re-reported once per translation unit) and the number of distinct
+# source lines, which is what a NOLINT-per-site would actually cost.
+#
+# *-magic-numbers (277 findings, 151 distinct lines)
 #   In orbital mechanics, 2.0, 0.5 and 180.0 are mathematics, not magic. The
 #   constants that DO deserve names (tolerances, iteration caps) are covered by
 #   section 16, which asks for a comment saying where the number came from --
-#   a requirement no linter can check.
+#   a requirement no linter can check. Most of the 151 are literals in the
+#   static_asserts and the test case tables, where naming each one moves the
+#   value away from the assertion that gives it meaning.
 #
-# readability-identifier-length
-#   dt, mu, e, i, r0 are the standard symbols of the domain. Renaming them to
+# readability-identifier-length (408 findings, 219 distinct lines)
+#   dt, mu, e, r0, nu are the standard symbols of the domain. Renaming them to
 #   satisfy a linter would make the code harder to check against a textbook.
 #
-# modernize-use-trailing-return-type
-#   Pure style, and not the style used here.
+#   The alternative to this line is NOT a NOLINT per site. The check takes a
+#   name allow-list (IgnoredVariableNames / IgnoredParameterNames), and that is
+#   the *narrower* instrument of the two: a NOLINT exempts a whole line, so a
+#   badly named variable declared next to `mu` escapes with it, while the
+#   allow-list exempts only those exact spellings and still reports a new `q2`
+#   anywhere. The vocabulary it would have to spell out is 46 symbols:
+#     a b c c0 c1 c2 c3 ci d dt e e2 el f g h hi k lo m mu n na nb nu ok p q r
+#     r0 rc rp s sv t to u v v0 vp w w_ x x_ y_ z_
+#   Some of those are domain notation and some (ok, to, na, nb) are just short.
+#   Writing the list means deciding which is which, one name at a time.
 #
-# cppcoreguidelines-pro-bounds-* and pro-type-reinterpret-cast / pro-type-vararg
-#   Unavoidable when calling the Vulkan and SDL C APIs. Keep them suppressed at
-#   the renderer boundary, never in orbsim_core.
+# modernize-use-trailing-return-type (357 findings, 172 distinct lines)
+#   Pure style, and not the style used here. Satisfying it means rewriting
+#   every function signature in the project as `auto f() -> T`.
 #
-# misc-include-cleaner
-#   Valuable, but extremely noisy against the Vulkan headers. Run
-#   include-what-you-use as a periodic job instead (see the Toolbox).
-#
-# readability-braces-around-statements
-#   `if (cond) return x;` on one line is used deliberately for guard clauses.
-#
-# performance-enum-size
-#   Suggests giving every enum an explicit uint8_t base. These enums are
-#   function parameters and members of structs dominated by pointers and
-#   64-bit handles, so shrinking them changes nothing measurable -- and
-#   section 10 says do not optimize without a measurement.
-#
-# modernize-use-nodiscard
-#   Suggests [[nodiscard]] on almost every const member function. Section 5
-#   asks for it where the return value IS the point, which is a judgement call.
+# cppcoreguidelines-pro-type-reinterpret-cast and pro-type-vararg
+#   NOT disabled here. Both were on this list until 2026-09-08; both are now
+#   live, with a NOLINTNEXTLINE and a reason at each of the five sites that
+#   need one -- three SDL_Log calls, the typed Vulkan entry point, and the
+#   SPIR-V read. A suppression in this file would also cover the next
+#   reinterpret_cast anybody writes; five at the sites cover exactly five lines.
 #
 # bugprone-easily-swappable-parameters
 #   The mechanical enforcement of I.24 and section 2. It fired on

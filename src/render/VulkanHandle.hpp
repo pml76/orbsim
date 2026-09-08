@@ -188,6 +188,10 @@ public:
 
     void reset() noexcept {
         if (messenger_ != VK_NULL_HANDLE && instance_ != VK_NULL_HANDLE) {
+            // vkGetInstanceProcAddr returns PFN_vkVoidFunction; casting it to the
+            // typed entry point is how the Vulkan specification says to reach an
+            // extension function, not a choice this code makes.
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
             const auto destroy = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
                 vkGetInstanceProcAddr(instance_, "vkDestroyDebugUtilsMessengerEXT"));
             if (destroy != nullptr) destroy(instance_, messenger_, nullptr);

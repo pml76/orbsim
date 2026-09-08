@@ -8,20 +8,29 @@
 #include "core/Units.hpp"
 #include "render/VulkanContext.hpp"
 
-#include <SDL3/SDL.h>
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_init.h>
+#include <SDL3/SDL_keycode.h>
 #include <SDL3/SDL_main.h>
-
+#include <SDL3/SDL_messagebox.h>
+#include <SDL3/SDL_stdinc.h>
+#include <SDL3/SDL_timer.h>
+#include <SDL3/SDL_video.h>
 #include <atomic>
 #include <charconv>
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 #include <exception>
 #include <expected>
+#include <memory>
 #include <print>
+#include <span>
 #include <string>
 #include <string_view>
 #include <system_error>
 #include <utility>
+#include <vector>
 
 namespace {
 
@@ -62,26 +71,37 @@ struct Options {
 // to explain, not a std::invalid_argument to terminate on.
 [[nodiscard]] std::expected<Seconds, SdlError> parseSeconds(std::string_view text) {
     double value = 0.0;
-    const auto [end, ec] = std::from_chars(text.data(), text.data() + text.size(), value);
-    if (ec != std::errc{} || end != text.data() + text.size() || !(value >= 0.0)) {
-        return std::unexpected(SdlError{.message = "--seconds needs a non-negative number, got '" +
-                                                   std::string(text) + "'"});
+    // std::to_address rather than data() + size(): the same one-past-the-end
+    // pointer, obtained without pointer arithmetic the compiler cannot bound.
+    const char* const last = std::to_address(text.end());
+    const auto [end, ec] = std::from_chars(std::to_address(text.begin()), last, value);
+    if (ec != std::errc{} || end != last || !(value >= 0.0)) {
+        return std::unexpected(SdlError{
+            .message = "--seconds needs a non-negative number, got '" + std::string(text) + "'",
+        });
     }
     return Seconds{value};
 }
 
-[[nodiscard]] std::expected<Options, SdlError> parseArguments(int argc, char** argv) {
+// The arguments arrive as a span rather than the (int, char**) pair main is
+// handed: the count then travels with the pointer, so indexing is checked
+// rather than unchecked pointer arithmetic, and the elements are const.
+[[nodiscard]] std::expected<Options, SdlError> parseArguments(std::span<char* const> args) {
+    // Copied into views once so the loop indexes a container with a checked
+    // at(), rather than subscripting raw storage.
+    const std::vector<std::string_view> tokens(args.begin(), args.end());
     Options options;
-    for (int i = 1; i < argc; ++i) {
-        const std::string_view arg = argv[i];
+    for (std::size_t i = 1; i < tokens.size(); ++i) {
+        const std::string_view arg = tokens.at(i);
         if (arg == "--validate") {
             options.validation = orb::gfx::Validation::Enabled;
         } else if (arg == "--no-validate") {
             options.validation = orb::gfx::Validation::Disabled;
         } else if (arg == "--seconds") {
-            if (i + 1 >= argc)
+            if (i + 1 >= tokens.size()) {
                 return std::unexpected(SdlError{.message = "--seconds needs a value"});
-            auto seconds = parseSeconds(argv[++i]);
+            }
+            auto seconds = parseSeconds(tokens.at(++i));
             if (!seconds) return std::unexpected(seconds.error());
             options.runFor = *seconds;
         } else {
@@ -171,8 +191,8 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
     return 0;
 }
 
-[[nodiscard]] int run(int argc, char** argv) {
-    const auto options = parseArguments(argc, argv);
+[[nodiscard]] int run(std::span<char* const> args) {
+    const auto options = parseArguments(args);
     if (!options) {
         std::print(stderr, "orbsim: {}\n{}", options.error().message, kUsage);
         return kExitUsage;
@@ -220,8 +240,9 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
 // are discarded on purpose, since if stderr is gone too there is nobody left
 // to tell.
 int main(int argc, char** argv) {
+    const std::span<char* const> args(argv, static_cast<std::size_t>(argc));
     try {
-        return run(argc, argv);
+        return run(args);
     } catch (const std::exception& error) {
         static_cast<void>(std::fputs("orbsim: unhandled exception: ", stderr));
         static_cast<void>(std::fputs(error.what(), stderr));

@@ -1,10 +1,14 @@
 #include "orbit/Orbit.hpp"
 
 #include "core/Contract.hpp"
+#include "core/Math.hpp"
+#include "core/Scalar.hpp"
+#include "core/Units.hpp"
 
 #include <algorithm>
 #include <cmath>
 #include <concepts>
+#include <expected>
 #include <limits>
 #include <tuple>
 #include <utility>
@@ -347,14 +351,17 @@ solveUniversalAnomaly(const StateVector& sv, const UniversalContext& ctx, f64 se
     // time(chi) - target and the slope is the radius, which is what the
     // identity at the top of evaluateUniversal buys: one root-finder, one set
     // of guarantees, for all three equations in this file.
-    const auto solved = safeguardedRoot({.lo = std::min(near, far),
-                                         .hi = std::max(near, far),
-                                         .guess = 0.5 * (near + far),
-                                         .scaleFloor = std::sqrt(ctx.r0)},
-                                        [&ctx, target](f64 x) {
-                                            const UniversalTerms t = evaluateUniversal(x, ctx);
-                                            return std::pair{t.time - target, t.radius};
-                                        });
+    const auto solved = safeguardedRoot(
+        {
+            .lo = std::min(near, far),
+            .hi = std::max(near, far),
+            .guess = 0.5 * (near + far),
+            .scaleFloor = std::sqrt(ctx.r0),
+        },
+        [&ctx, target](f64 x) {
+            const UniversalTerms t = evaluateUniversal(x, ctx);
+            return std::pair{t.time - target, t.radius};
+        });
     if (!solved) return std::unexpected(solved.error());
 
     // The Lagrange coefficients need the Stumpff terms at the root, not just

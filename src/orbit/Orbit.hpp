@@ -19,6 +19,7 @@
 #include "core/Math.hpp"
 #include "core/Units.hpp"
 
+#include <cstdint>
 #include <expected>
 #include <string_view>
 
@@ -81,7 +82,11 @@ struct OrbitInfo {
 
 // Conditions a caller can legitimately produce. Conditions that can only arise
 // from a bug in this file are asserted instead; see core/Contract.hpp.
-enum class OrbitError {
+//
+// The explicit std::uint8_t base is interface, not optimisation: it makes the
+// representation part of the declaration rather than a compiler default, and it
+// is what lets the enum be forward-declared.
+enum class OrbitError : std::uint8_t {
     // NaN or infinity, either in an input or in a magnitude derived from one.
     // The second case is not obvious and a fuzzer found it: every component of
     // a state can be finite while |r| is not, because squaring overflows above

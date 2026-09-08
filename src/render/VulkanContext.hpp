@@ -42,12 +42,12 @@ inline constexpr VkFormat kDepthFormat = VK_FORMAT_D32_SFLOAT;
 // were mysteries at the call site, patched with /*name=*/ comments that the
 // compiler could not check -- and that comment was the evidence the type was
 // wrong. See CODING_GUIDELINES.md section 2.
-enum class Validation {
+enum class Validation : std::uint8_t {
     Disabled,
     Enabled,
 };
 
-enum class Memory {
+enum class Memory : std::uint8_t {
     DeviceLocal, // fastest for the GPU; needs a staging copy to write
     HostVisible, // mappable, so the CPU can write it directly
 };

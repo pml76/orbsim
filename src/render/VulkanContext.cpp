@@ -1,18 +1,28 @@
 #include "render/VulkanContext.hpp"
+#include "render/VulkanHandle.hpp"
 
-#include <SDL3/SDL.h>
+#include <SDL3/SDL_error.h>
+#include <SDL3/SDL_log.h>
+#include <SDL3/SDL_video.h>
 #include <SDL3/SDL_vulkan.h>
 #include <VkBootstrap.h>
+#include <vulkan/vk_platform.h>
+#include <vulkan/vulkan_core.h>
 
 #include <atomic>
 #include <cstddef>
+#include <cstdint>
 #include <cstring>
 #include <expected>
+#include <filesystem>
 #include <fstream>
+#include <ios>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <utility>
+#include <vector>
 
 namespace orb::gfx {
 namespace {
@@ -24,7 +34,7 @@ namespace {
 // before it reaches those distances. See docs/adr/0003.
 constexpr float kDepthClear = 0.0F;
 
-enum class FenceState {
+enum class FenceState : std::uint8_t {
     Unsignalled,
     Signalled,
 };
@@ -171,14 +181,25 @@ allocatePrimaryCommandBuffer(VkDevice device, VkCommandPool pool) {
 // test rather than a log to read -- and everything at warning level and above
 // is logged. The counter is the caller's (see VulkanContext::create) and is
 // atomic because the specification allows this callback on any thread.
+// Vulkan's *FlagBits enums carry a VK_..._MAX_ENUM = 0x7FFFFFFF enumerator,
+// which forces a signed underlying type, while the matching VkFlags typedef is
+// the unsigned bitmask type the API actually combines them in. Converting first
+// keeps the arithmetic unsigned and names the type that owns the result.
+[[nodiscard]] constexpr VkDebugUtilsMessageSeverityFlagsEXT
+severityBits(VkDebugUtilsMessageSeverityFlagBitsEXT bit) noexcept {
+    return static_cast<VkDebugUtilsMessageSeverityFlagsEXT>(bit);
+}
+
 VKAPI_ATTR VkBool32 VKAPI_CALL onValidationMessage(VkDebugUtilsMessageSeverityFlagBitsEXT severity,
                                                    VkDebugUtilsMessageTypeFlagsEXT /*types*/,
                                                    const VkDebugUtilsMessengerCallbackDataEXT* data,
                                                    void* userData) {
-    if ((severity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) != 0) {
+    if ((severityBits(severity) & severityBits(VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)) !=
+        0) {
         auto* errors = static_cast<std::atomic<uint32_t>*>(userData);
         if (errors != nullptr) errors->fetch_add(1, std::memory_order_relaxed);
     }
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg) -- SDL's C logging API is variadic
     SDL_Log("[validation] %s", data != nullptr ? data->pMessage : "(no message)");
     // The specification requires VK_FALSE from an application callback: VK_TRUE
     // would abort the call that triggered the message.
@@ -204,14 +225,16 @@ struct InstanceBundle {
     const auto build = [&](Validation requested) {
         vkb::InstanceBuilder builder;
         builder.set_app_name("orbsim").set_engine_name("orbsim").require_api_version(1, 3, 0);
-        for (uint32_t i = 0; i < sdlExtCount; ++i)
-            builder.enable_extension(sdlExts[i]);
+        for (const char* const extension : std::span(sdlExts, sdlExtCount)) {
+            builder.enable_extension(extension);
+        }
         if (requested == Validation::Enabled) {
             builder.request_validation_layers()
                 .set_debug_callback(onValidationMessage)
                 .set_debug_callback_user_data_pointer(&validationErrors)
-                .set_debug_messenger_severity(VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-                                              VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT);
+                .set_debug_messenger_severity(
+                    severityBits(VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) |
+                    severityBits(VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT));
         }
         return builder.build();
     };
@@ -220,6 +243,7 @@ struct InstanceBundle {
     // only a runtime will not have them. Fall back rather than refusing to run.
     auto built = build(validation);
     if (!built && validation == Validation::Enabled) {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg) -- SDL's C logging API is variadic
         SDL_Log("Validation layers unavailable (%s); continuing without them.",
                 built.error().message().c_str());
         built = build(Validation::Disabled);
@@ -271,7 +295,7 @@ struct DeviceBundle {
     // mystery that only the lambda's parameter name resolved, which is exactly
     // the shape non-negotiable 2 names -- clang-tidy does not see it because it
     // is a lambda, and the rule applies anyway.
-    enum class DeviceChoice {
+    enum class DeviceChoice : std::uint8_t {
         DiscreteOnly,
         AnyType,
     };
@@ -299,6 +323,7 @@ struct DeviceBundle {
         // A machine with only an integrated GPU is an ordinary machine, and the
         // simulator should still run on it. Say which way it went, because
         // "why is this slow" is otherwise a long afternoon.
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg) -- SDL's C logging API is variadic
         SDL_Log("No suitable discrete GPU (%s); falling back to any device type.",
                 selectionError.c_str());
         physical = pick(DeviceChoice::AnyType);
@@ -484,8 +509,10 @@ std::expected<void, RenderError> VulkanContext::createSwapchain() {
     // so an automatic linear-to-sRGB conversion would wash them out.
     auto built =
         builder
-            .set_desired_format(VkSurfaceFormatKHR{.format = VK_FORMAT_B8G8R8A8_UNORM,
-                                                   .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR})
+            .set_desired_format(VkSurfaceFormatKHR{
+                .format = VK_FORMAT_B8G8R8A8_UNORM,
+                .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
+            })
             // Mailbox keeps latency low without tearing. FIFO is the
             // required fallback and is always present.
             .set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
@@ -566,11 +593,14 @@ std::expected<void, RenderError> VulkanContext::createDepthAttachment() {
         .image = depthImage_.get(),
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
         .format = kDepthFormat,
-        .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
-                             .baseMipLevel = 0,
-                             .levelCount = 1,
-                             .baseArrayLayer = 0,
-                             .layerCount = 1},
+        .subresourceRange =
+            {
+                .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
     };
     VkImageView view = VK_NULL_HANDLE;
     if (auto ok = vkCheck(vkCreateImageView(device_.get(), &depthViewInfo, nullptr, &view),
@@ -658,7 +688,11 @@ std::expected<std::optional<FrameContext>, RenderError> VulkanContext::beginFram
     beginRendering(cmd, imageIndex);
 
     return FrameContext{
-        .cmd = cmd, .imageIndex = imageIndex, .frameIndex = frame, .extent = swapchainExtent_};
+        .cmd = cmd,
+        .imageIndex = imageIndex,
+        .frameIndex = frame,
+        .extent = swapchainExtent_,
+    };
 }
 
 // Split out of beginFrame: acquiring an image and describing a render pass are
@@ -789,8 +823,11 @@ VulkanContext::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory 
     };
     VmaAllocationCreateInfo allocInfo{.usage = VMA_MEMORY_USAGE_AUTO};
     if (memory == Memory::HostVisible) {
-        allocInfo.flags = VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT |
-                          VMA_ALLOCATION_CREATE_MAPPED_BIT;
+        // As above: VmaAllocationCreateFlags is the unsigned type these bits
+        // are meant to be combined in; the FlagBits enum itself is signed.
+        allocInfo.flags = static_cast<VmaAllocationCreateFlags>(
+                              VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT) |
+                          static_cast<VmaAllocationCreateFlags>(VMA_ALLOCATION_CREATE_MAPPED_BIT);
     }
 
     VkBuffer buffer = VK_NULL_HANDLE;
@@ -856,9 +893,12 @@ std::expected<void, RenderError> VulkanContext::uploadBuffer(UniqueBuffer& dst,
 
 std::expected<UniqueShaderModule, RenderError>
 VulkanContext::loadShaderModule(const std::filesystem::path& path) const {
-    std::ifstream file(path, std::ios::binary | std::ios::ate);
+    // Opened binary and seeked, rather than `binary | ate`: std::ios::openmode
+    // is a signed bitmask type, and one seek says the same thing.
+    std::ifstream file(path, std::ios::binary);
     if (!file) return fail("Cannot open shader: " + path.string());
 
+    file.seekg(0, std::ios::end);
     const std::streamsize size = file.tellg();
     if (size <= 0 || size % 4 != 0) {
         return fail("Shader is not valid SPIR-V (bad size): " + path.string());
@@ -866,6 +906,11 @@ VulkanContext::loadShaderModule(const std::filesystem::path& path) const {
 
     std::vector<uint32_t> code(static_cast<size_t>(size) / 4);
     file.seekg(0);
+    // The buffer is uint32_t because that is what VkShaderModuleCreateInfo::pCode
+    // takes, and reading into it needs char* because std::istream::read accepts
+    // nothing else. Reading into a byte buffer instead would move the cast to the
+    // other side, onto a pointer with weaker alignment.
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
     if (!file.read(reinterpret_cast<char*>(code.data()), size)) {
         return fail("Short read on shader: " + path.string());
     }

@@ -24,21 +24,25 @@ inline constexpr Metres kEarthRadius{6378137.0};
 
 [[nodiscard]] inline Elements
 makeElements(Metres sma, Eccentricity ecc, Degrees inc, Degrees lan, Degrees aop, Degrees tra) {
-    return Elements{.sma = sma,
-                    .ecc = ecc,
-                    .inc = toRadians(inc),
-                    .lan = toRadians(lan),
-                    .aop = toRadians(aop),
-                    .tra = toRadians(tra),
-                    .slr = Metres{sma.value * (1.0 - (ecc.value * ecc.value))}};
+    return Elements{
+        .sma = sma,
+        .ecc = ecc,
+        .inc = toRadians(inc),
+        .lan = toRadians(lan),
+        .aop = toRadians(aop),
+        .tra = toRadians(tra),
+        .slr = Metres{sma.value * (1.0 - (ecc.value * ecc.value))},
+    };
 }
 
 // A circular orbit of radius r about mu, starting on the x-axis: the one case
 // with a closed-form answer at every time, which makes it the right probe for
 // a propagator at an unfamiliar scale.
 [[nodiscard]] inline StateVector circularState(GravParam mu, Metres r) {
-    return StateVector{.pos = {r.value, 0.0, 0.0},
-                       .vel = {0.0, std::sqrt(mu.value / r.value), 0.0}};
+    return StateVector{
+        .pos = {r.value, 0.0, 0.0},
+        .vel = {0.0, std::sqrt(mu.value / r.value), 0.0},
+    };
 }
 
 // Specific orbital energy and angular momentum from a state: the two constants

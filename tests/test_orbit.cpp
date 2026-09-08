@@ -6,6 +6,10 @@
 // propagation, state->elements against elements->state. A sign error in one of
 // them cannot hide, because the other does not share it.
 //
+#include "core/Math.hpp"
+#include "core/Scalar.hpp"
+#include "core/Units.hpp"
+#include "orbit/Orbit.hpp"
 #include "tests/OrbitTestSupport.hpp"
 #include "tests/TestHarness.hpp"
 
@@ -30,34 +34,42 @@ void testElementRoundTrip(Run& run) {
         Elements el{};
     };
     const std::array cases = std::to_array<Case>({
-        {.name = "LEO, inclined, slightly eccentric",
-         .el = makeElements(Metres{kEarthRadius.value + 500e3},
-                            Eccentricity{0.01},
-                            Degrees{51.6},
-                            Degrees{120.0},
-                            Degrees{45.0},
-                            Degrees{200.0})},
-        {.name = "GTO, highly eccentric",
-         .el = makeElements(Metres{24582e3},
-                            Eccentricity{0.7306},
-                            Degrees{28.5},
-                            Degrees{10.0},
-                            Degrees{178.0},
-                            Degrees{30.0})},
-        {.name = "Polar",
-         .el = makeElements(Metres{7200e3},
-                            Eccentricity{0.02},
-                            Degrees{90.0},
-                            Degrees{300.0},
-                            Degrees{90.0},
-                            Degrees{45.0})},
-        {.name = "Retrograde",
-         .el = makeElements(Metres{8000e3},
-                            Eccentricity{0.15},
-                            Degrees{145.0},
-                            Degrees{200.0},
-                            Degrees{320.0},
-                            Degrees{275.0})},
+        {
+            .name = "LEO, inclined, slightly eccentric",
+            .el = makeElements(Metres{kEarthRadius.value + 500e3},
+                               Eccentricity{0.01},
+                               Degrees{51.6},
+                               Degrees{120.0},
+                               Degrees{45.0},
+                               Degrees{200.0}),
+        },
+        {
+            .name = "GTO, highly eccentric",
+            .el = makeElements(Metres{24582e3},
+                               Eccentricity{0.7306},
+                               Degrees{28.5},
+                               Degrees{10.0},
+                               Degrees{178.0},
+                               Degrees{30.0}),
+        },
+        {
+            .name = "Polar",
+            .el = makeElements(Metres{7200e3},
+                               Eccentricity{0.02},
+                               Degrees{90.0},
+                               Degrees{300.0},
+                               Degrees{90.0},
+                               Degrees{45.0}),
+        },
+        {
+            .name = "Retrograde",
+            .el = makeElements(Metres{8000e3},
+                               Eccentricity{0.15},
+                               Degrees{145.0},
+                               Degrees{200.0},
+                               Degrees{320.0},
+                               Degrees{275.0}),
+        },
     });
 
     for (const auto& c : cases) {
@@ -178,27 +190,33 @@ void testPropagatorsAgree(Run& run) {
         Elements el{};
     };
     const std::array cases = std::to_array<Case>({
-        {.name = "near-circular LEO",
-         .el = makeElements(Metres{6878e3},
-                            Eccentricity{0.001},
-                            Degrees{51.6},
-                            Degrees{30.0},
-                            Degrees{10.0},
-                            Degrees{0.0})},
-        {.name = "GTO",
-         .el = makeElements(Metres{24582e3},
-                            Eccentricity{0.7306},
-                            Degrees{28.5},
-                            Degrees{10.0},
-                            Degrees{178.0},
-                            Degrees{5.0})},
-        {.name = "very eccentric",
-         .el = makeElements(Metres{100000e3},
-                            Eccentricity{0.95},
-                            Degrees{63.4},
-                            Degrees{90.0},
-                            Degrees{270.0},
-                            Degrees{120.0})},
+        {
+            .name = "near-circular LEO",
+            .el = makeElements(Metres{6878e3},
+                               Eccentricity{0.001},
+                               Degrees{51.6},
+                               Degrees{30.0},
+                               Degrees{10.0},
+                               Degrees{0.0}),
+        },
+        {
+            .name = "GTO",
+            .el = makeElements(Metres{24582e3},
+                               Eccentricity{0.7306},
+                               Degrees{28.5},
+                               Degrees{10.0},
+                               Degrees{178.0},
+                               Degrees{5.0}),
+        },
+        {
+            .name = "very eccentric",
+            .el = makeElements(Metres{100000e3},
+                               Eccentricity{0.95},
+                               Degrees{63.4},
+                               Degrees{90.0},
+                               Degrees{270.0},
+                               Degrees{120.0}),
+        },
     });
 
     for (const auto& c : cases) {

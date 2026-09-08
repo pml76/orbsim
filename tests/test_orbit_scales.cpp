@@ -10,6 +10,10 @@
 // Moon, Earth, Jupiter and the Sun as central bodies -- and the sweep checks
 // each case against the constants of motion rather than against the code.
 //
+#include "core/Math.hpp"
+#include "core/Scalar.hpp"
+#include "core/Units.hpp"
+#include "orbit/Orbit.hpp"
 #include "tests/OrbitTestSupport.hpp"
 #include "tests/TestHarness.hpp"
 
@@ -17,6 +21,7 @@
 #include <cmath>
 #include <cstddef>
 #include <limits>
+#include <print>
 #include <random>
 #include <string_view>
 
@@ -103,8 +108,10 @@ void testParabolic(Run& run) {
     section("parabolic trajectories");
 
     const f64 r0 = 7.0e6;
-    const StateVector para{.pos = {r0, 0.0, 0.0},
-                           .vel = {0.0, std::sqrt(2.0 * kMuEarth.value / r0), 0.0}};
+    const StateVector para{
+        .pos = {r0, 0.0, 0.0},
+        .vel = {0.0, std::sqrt(2.0 * kMuEarth.value / r0), 0.0},
+    };
 
     const auto el = elementsFromState(para, kMuEarth);
     if (!expectOk(run, el, "  elementsFromState")) return;
@@ -202,8 +209,10 @@ void testDegenerateStates(Run& run) {
     // precondition let it through. A fuzzer found this (VERIFICATION.md rule
     // 13): the elements came back reporting success, with an infinite
     // eccentricity and a NaN argument of periapsis.
-    const StateVector overflowing{.pos = {-5.486124068796807e303, 0.0, 0.0},
-                                  .vel = {0.0, 7.418412301374917e-68, 0.0}};
+    const StateVector overflowing{
+        .pos = {-5.486124068796807e303, 0.0, 0.0},
+        .vel = {0.0, 7.418412301374917e-68, 0.0},
+    };
     const auto overflowElements = elementsFromState(overflowing, kMuEarth);
     check(run,
           !overflowElements.has_value() && overflowElements.error() == OrbitError::NotFinite,
@@ -264,7 +273,8 @@ void testNoOrbitalPlane(Run& run) {
     // speed with a matching mu makes the Lagrange combination overflow.
     const StateVector violent{
         .pos = {1.5419835033e-313, 7.477078763343729e20, 4.483094976257099e-120},
-        .vel = {4.483094640249093e-120, 1.3792778605844018e40, 7.477080264543605e20}};
+        .vel = {4.483094640249093e-120, 1.3792778605844018e40, 7.477080264543605e20},
+    };
     const auto overflowed = propagate(violent, GravParam{7.477080264551322e20}, 0.0_s);
     check(run,
           overflowed.has_value() || overflowed.error() == OrbitError::NotFinite ||
@@ -274,10 +284,12 @@ void testNoOrbitalPlane(Run& run) {
     // |h| is nonzero but |h|^2 underflows, so the semi-latus rectum is zero and
     // orbitInfo's radius became slr / (1 + e cos v) = 0/0. The ratio test above
     // cannot see this one, because it never squares anything.
-    const auto underflowedSlr =
-        elementsFromState({.pos = {-7.8804e115, -4.62693e-179, -1.60283e-180},
-                           .vel = {-1.60283e-180, -1.60283e-180, -1.60283e-180}},
-                          GravParam{3.01352e296});
+    const auto underflowedSlr = elementsFromState(
+        {
+            .pos = {-7.8804e115, -4.62693e-179, -1.60283e-180},
+            .vel = {-1.60283e-180, -1.60283e-180, -1.60283e-180},
+        },
+        GravParam{3.01352e296});
     check(run,
           !underflowedSlr.has_value() && underflowedSlr.error() == OrbitError::RectilinearOrbit,
           "  a semi-latus rectum that underflows is not an orbit");
@@ -318,21 +330,31 @@ void testZeroTimeStep(Run& run) {
     const f64 solarEscape = std::sqrt(2.0 * kMuSun.value / kAuRadius);
 
     const std::array kCases = std::to_array<Case>({
-        {.name = "ellipse, LEO",
-         .mu = kMuEarth,
-         .state = {.pos = {kLeoRadius, 0.0, 0.0}, .vel = {0.0, 7546.0, 0.0}}},
-        {.name = "parabola, LEO",
-         .mu = kMuEarth,
-         .state = {.pos = {kLeoRadius, 0.0, 0.0}, .vel = {0.0, escapeSpeed, 0.0}}},
-        {.name = "hyperbola, LEO",
-         .mu = kMuEarth,
-         .state = {.pos = {kLeoRadius, 0.0, 0.0}, .vel = {0.0, 12000.0, 0.0}}},
-        {.name = "hyperbola, 1 AU",
-         .mu = kMuSun,
-         .state = {.pos = {kAuRadius, 0.0, 0.0}, .vel = {0.0, solarEscape * 1.2, 0.0}}},
-        {.name = "retrograde hyperbola, LEO",
-         .mu = kMuEarth,
-         .state = {.pos = {kLeoRadius, 0.0, 0.0}, .vel = {0.0, -12000.0, 0.0}}},
+        {
+            .name = "ellipse, LEO",
+            .mu = kMuEarth,
+            .state = {.pos = {kLeoRadius, 0.0, 0.0}, .vel = {0.0, 7546.0, 0.0}},
+        },
+        {
+            .name = "parabola, LEO",
+            .mu = kMuEarth,
+            .state = {.pos = {kLeoRadius, 0.0, 0.0}, .vel = {0.0, escapeSpeed, 0.0}},
+        },
+        {
+            .name = "hyperbola, LEO",
+            .mu = kMuEarth,
+            .state = {.pos = {kLeoRadius, 0.0, 0.0}, .vel = {0.0, 12000.0, 0.0}},
+        },
+        {
+            .name = "hyperbola, 1 AU",
+            .mu = kMuSun,
+            .state = {.pos = {kAuRadius, 0.0, 0.0}, .vel = {0.0, solarEscape * 1.2, 0.0}},
+        },
+        {
+            .name = "retrograde hyperbola, LEO",
+            .mu = kMuEarth,
+            .state = {.pos = {kLeoRadius, 0.0, 0.0}, .vel = {0.0, -12000.0, 0.0}},
+        },
     });
 
     for (const Case& c : kCases) {
@@ -363,31 +385,41 @@ void testComposition(Run& run) {
     };
 
     const std::array kCases = std::to_array<Case>({
-        {.name = "  LEO, 600 s + 900 s",
-         .mu = kMuEarth,
-         .state = circularState(kMuEarth, Metres{7000e3}),
-         .first = 600.0_s,
-         .second = 900.0_s},
-        {.name = "  LEO, forward then backward",
-         .mu = kMuEarth,
-         .state = circularState(kMuEarth, Metres{7000e3}),
-         .first = 4000.0_s,
-         .second = -1500.0_s},
-        {.name = "  lunar orbit, two half days",
-         .mu = kMuMoon,
-         .state = circularState(kMuMoon, Metres{2000e3}),
-         .first = 43200.0_s,
-         .second = 43200.0_s},
-        {.name = "  1 AU, two quarter years",
-         .mu = kMuSun,
-         .state = circularState(kMuSun, Metres{1.496e11}),
-         .first = Seconds{7.9e6},
-         .second = Seconds{7.9e6}},
-        {.name = "  hyperbolic escape, 100 s + 250 s",
-         .mu = kMuEarth,
-         .state = {.pos = {7000e3, 0.0, 0.0}, .vel = {0.0, 12000.0, 0.0}},
-         .first = 100.0_s,
-         .second = 250.0_s},
+        {
+            .name = "  LEO, 600 s + 900 s",
+            .mu = kMuEarth,
+            .state = circularState(kMuEarth, Metres{7000e3}),
+            .first = 600.0_s,
+            .second = 900.0_s,
+        },
+        {
+            .name = "  LEO, forward then backward",
+            .mu = kMuEarth,
+            .state = circularState(kMuEarth, Metres{7000e3}),
+            .first = 4000.0_s,
+            .second = -1500.0_s,
+        },
+        {
+            .name = "  lunar orbit, two half days",
+            .mu = kMuMoon,
+            .state = circularState(kMuMoon, Metres{2000e3}),
+            .first = 43200.0_s,
+            .second = 43200.0_s,
+        },
+        {
+            .name = "  1 AU, two quarter years",
+            .mu = kMuSun,
+            .state = circularState(kMuSun, Metres{1.496e11}),
+            .first = Seconds{7.9e6},
+            .second = Seconds{7.9e6},
+        },
+        {
+            .name = "  hyperbolic escape, 100 s + 250 s",
+            .mu = kMuEarth,
+            .state = {.pos = {7000e3, 0.0, 0.0}, .vel = {0.0, 12000.0, 0.0}},
+            .first = 100.0_s,
+            .second = 250.0_s,
+        },
     });
 
     for (const Case& c : kCases) {
@@ -551,8 +583,9 @@ void testNearRectilinear(Run& run) {
     // own conditioning rather than a single number that has to serve four
     // decades of (1 - e).
     constexpr std::array kEccentricities = std::to_array<f64>({0.9, 0.99, 0.999, 0.9999, 0.99999});
-    for (const f64 e : kEccentricities)
+    for (const f64 e : kEccentricities) {
         checkOneEccentricity(run, e);
+    }
 
     std::print("  e from {:g} to {:g}\n", kEccentricities.front(), kEccentricities.back());
 }
@@ -580,7 +613,7 @@ void testDeterminism(Run& run) {
     }
 
     // A long chain, where any drift would compound rather than cancel.
-    const auto chain = [&]() -> StateVector {
+    const auto chain = [&] -> StateVector {
         StateVector s = start;
         for (int i = 0; i < 100; ++i) {
             const auto next = propagate(s, kMuEarth, 60.0_s);
@@ -672,35 +705,57 @@ void checkPropagation(
 // The seed is fixed and written down, because a failure you cannot reproduce
 // is a failure you cannot fix. That inverts the premise of the random-seed
 // lint checks, which exist for code that wants unpredictability.
-void testRandomSweep(Run& run) {
-    section("randomised sweep across bodies, shapes and time steps");
+constexpr std::size_t kClosedCases = 200;
+constexpr std::size_t kHyperbolicCases = 100;
+constexpr unsigned long long kSweepSeed = 20260905ULL; // the date this suite was written
 
-    constexpr std::size_t kClosedCases = 200;
-    constexpr std::size_t kHyperbolicCases = 100;
-    constexpr unsigned long long kSeed = 20260905ULL; // the date this suite was written
+// The two ends of a log-uniform draw, as one parameter rather than two: adjacent
+// f64 arguments can be transposed silently, and a transposed range here would
+// quietly sample the wrong decades. See CODING_GUIDELINES.md section 2.
+struct Decades {
+    f64 lo;
+    f64 hi;
+};
 
+// The one random source for the whole sweep. Both halves draw from it in turn,
+// so the sequence -- and therefore every case in the suite -- is reproducible
+// from kSweepSeed alone.
+// The generator is private because the draw sequence is the invariant: reading
+// from it anywhere but through these three functions would shift every case
+// that follows, and the seed would no longer describe the suite.
+class Sampler {
+public:
+    [[nodiscard]] f64 fraction() { return unit_(rng_); }
+    [[nodiscard]] f64 logUniform(Decades range) {
+        return range.lo * std::pow(range.hi / range.lo, unit_(rng_));
+    }
+    [[nodiscard]] Radians angle(f64 range) { return Radians{unit_(rng_) * range}; }
+
+private:
     // NOLINTNEXTLINE(cert-msc32-c,cert-msc51-cpp,bugprone-random-generator-seed)
-    std::mt19937_64 rng{kSeed};
-    std::uniform_real_distribution<f64> unit{0.0, 1.0};
-    const auto logUniform = [&](f64 lo, f64 hi) { return lo * std::pow(hi / lo, unit(rng)); };
-    const auto angle = [&](f64 range) { return Radians{unit(rng) * range}; };
+    std::mt19937_64 rng_{kSweepSeed};
+    std::uniform_real_distribution<f64> unit_{0.0, 1.0};
+};
 
+void sweepClosedOrbits(Run& run, Sampler& sampler) {
     for (std::size_t i = 0; i < kClosedCases; ++i) {
         const Body& body = kBodies.at(i % kBodies.size());
         const int failuresBefore = run.failures;
 
-        const Eccentricity ecc{unit(rng) * 0.95};
-        const Metres sma{
-            logUniform(body.minPeriapsis.value / (1.0 - ecc.value), body.maxSma.value)};
-        const Elements el{.sma = sma,
-                          .ecc = ecc,
-                          .inc = angle(kPi),
-                          .lan = angle(kTau),
-                          .aop = angle(kTau),
-                          .tra = angle(kTau),
-                          .slr = Metres{sma.value * (1.0 - (ecc.value * ecc.value))}};
+        const Eccentricity ecc{sampler.fraction() * 0.95};
+        const Metres sma{sampler.logUniform(
+            {.lo = body.minPeriapsis.value / (1.0 - ecc.value), .hi = body.maxSma.value})};
+        const Elements el{
+            .sma = sma,
+            .ecc = ecc,
+            .inc = sampler.angle(kPi),
+            .lan = sampler.angle(kTau),
+            .aop = sampler.angle(kTau),
+            .tra = sampler.angle(kTau),
+            .slr = Metres{sma.value * (1.0 - (ecc.value * ecc.value))},
+        };
         const OrbitInfo info = orbitInfo(el, body.mu);
-        const Seconds dt = info.period * ((unit(rng) * 6.0) - 3.0);
+        const Seconds dt = info.period * ((sampler.fraction() * 6.0) - 3.0);
 
         checkPropagation(run, el, body.mu, stateFromElements(el, body.mu), dt);
 
@@ -714,26 +769,31 @@ void testRandomSweep(Run& run) {
                        dt.value);
         }
     }
+}
 
+void sweepHyperbolicOrbits(Run& run, Sampler& sampler) {
     for (std::size_t i = 0; i < kHyperbolicCases; ++i) {
         const Body& body = kBodies.at(i % kBodies.size());
         const int failuresBefore = run.failures;
 
-        const Eccentricity ecc{1.05 + (unit(rng) * 4.0)};
-        const Metres periapsis{logUniform(body.minPeriapsis.value, body.maxSma.value / 10.0)};
+        const Eccentricity ecc{1.05 + (sampler.fraction() * 4.0)};
+        const Metres periapsis{
+            sampler.logUniform({.lo = body.minPeriapsis.value, .hi = body.maxSma.value / 10.0})};
         const Metres sma{-periapsis.value / (ecc.value - 1.0)}; // negative, by convention
-        const Elements el{.sma = sma,
-                          .ecc = ecc,
-                          .inc = angle(kPi),
-                          .lan = angle(kTau),
-                          .aop = angle(kTau),
-                          .tra = Radians{0.0}, // start at periapsis, where the state is tame
-                          .slr = Metres{periapsis.value * (1.0 + ecc.value)}};
+        const Elements el{
+            .sma = sma,
+            .ecc = ecc,
+            .inc = sampler.angle(kPi),
+            .lan = sampler.angle(kTau),
+            .aop = sampler.angle(kTau),
+            .tra = Radians{0.0}, // start at periapsis, where the state is tame
+            .slr = Metres{periapsis.value * (1.0 + ecc.value)},
+        };
         // The natural time scale at periapsis; fifty of them is well out on the
         // asymptote in either direction.
         const Seconds scale{
             std::sqrt(periapsis.value * periapsis.value * periapsis.value / body.mu.value)};
-        const Seconds dt = scale * (((unit(rng) * 2.0) - 1.0) * 50.0);
+        const Seconds dt = scale * (((sampler.fraction() * 2.0) - 1.0) * 50.0);
 
         checkPropagation(run, el, body.mu, stateFromElements(el, body.mu), dt);
 
@@ -747,9 +807,22 @@ void testRandomSweep(Run& run) {
                        dt.value);
         }
     }
+}
 
-    std::print(
-        "  {} closed and {} hyperbolic orbits, seed {}\n", kClosedCases, kHyperbolicCases, kSeed);
+// Both halves share one Sampler, drawn from in this order: the closed cases
+// consume the first part of the sequence and the hyperbolic ones continue it.
+// Reordering these two calls changes every case in the sweep.
+void testRandomSweep(Run& run) {
+    section("randomised sweep across bodies, shapes and time steps");
+
+    Sampler sampler;
+    sweepClosedOrbits(run, sampler);
+    sweepHyperbolicOrbits(run, sampler);
+
+    std::print("  {} closed and {} hyperbolic orbits, seed {}\n",
+               kClosedCases,
+               kHyperbolicCases,
+               kSweepSeed);
 }
 
 } // namespace
