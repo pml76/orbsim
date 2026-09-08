@@ -459,12 +459,7 @@ void checkOneEccentricity(Run& run, f64 e) {
         const Seconds step{info.period.value * 0.25};
 
         const auto moved = propagate(sv, kMuEarth, step);
-        if (!moved) {
-            check(run,
-                  moved.error() == OrbitError::SolverDidNotConverge && e > 0.999,
-                  "  forward non-convergence only above e = 0.999");
-            return;
-        }
+        if (!expectOk(run, moved, "  propagate near-rectilinear")) return;
 
         // Against the constants of motion, not against the propagator.
         const SpecificEnergy energyBefore = specificEnergy(sv, kMuEarth);
@@ -479,43 +474,31 @@ void checkOneEccentricity(Run& run, f64 e) {
         // The round trip crosses periapsis, where a near-rectilinear orbit is
         // worst conditioned, so a fixed tolerance would either pass everything
         // or fail the extreme case for a reason that is arithmetic rather than
-        // a defect. The budget is therefore stated as the conditioning law it
-        // is bounded by, which was measured rather than guessed:
+        // a defect. The budget is therefore stated as the conditioning law the
+        // error is bounded by, measured rather than guessed. With the
+        // safeguarded solver, across six decades of (1 - e):
         //
-        //     e = 0.9     4.3e-14        e = 0.999    3.3e-10
-        //     e = 0.99    4.3e-12        e = 0.9999   8.9e-08
+        //     e          rel err     err / [5e-15/(1-e)^2]
+        //     0.9        1.1e-13     0.22
+        //     0.99       3.7e-12     0.08
+        //     0.999      3.4e-10     0.07
+        //     0.9999     1.3e-08     0.03
+        //     0.99999    2.0e-05     0.39
+        //     0.999999   4.9e-03     0.97
         //
-        // Divide each by 1/(1-e)^2 and the result is flat -- 4.3e-16, 4.3e-16,
-        // 3.3e-16, 8.9e-16, or one to four ulps of a double. 5e-15 is that law
-        // with roughly a factor of six of headroom over the worst case.
+        // The ratio stays below one throughout, so this is the conic's
+        // conditioning showing through and not the solver giving up: the error
+        // grows as 1/(1-e)^2 because that is how the geometry conditions, and
+        // the method tracks it rather than adding to it.
         const Tolerance roundTrip{5e-15 / ((1.0 - e) * (1.0 - e))};
 
-        // **The contract here is "never a wrong answer", not "always an
-        // answer".** Above e = 0.999 the universal-variable Newton does not
-        // converge for this backward step, and it says so. That is rule 8
-        // working: a reported non-convergence is a legitimate outcome, and it
-        // is strictly better than the silent wrong number the same code would
-        // have returned before the solver learned to report.
-        //
-        // It is also not a tolerance question. gcc-14 and clang-on-Linux both
-        // fail to converge at e = 0.9999 where Windows clang succeeds -- the
-        // same source, a different libm, and a case sitting exactly on the
-        // edge. Raising the iteration cap from 200 to 20000 changes nothing,
-        // so Newton is not converging slowly, it is not converging at all.
-        // The second compiler found this; see docs/VERIFICATION.md rule 20.
-        //
-        // The limit matters beyond this test: ADR 0006 makes this propagator
-        // the reference conic an Encke integrator takes deviations from, and
-        // an integrator cannot use a reference that declines near-rectilinear
-        // orbits. Regularisation (plan/realism.md section 1.2) is the answer,
-        // and this is the case that will prove it.
+        // The backward step is the one that used to fail. A closed-form
+        // solution exists for every valid two-body input, so there is no
+        // eccentricity at which "did not converge" is an acceptable answer --
+        // it was a weakness of the solver, not a property of the problem, and
+        // the solver is safeguarded now. See solveUniversalAnomaly.
         const auto back = propagate(*moved, kMuEarth, -step);
-        if (!back) {
-            check(run,
-                  back.error() == OrbitError::SolverDidNotConverge && e > 0.999,
-                  "  non-convergence only above e = 0.999, and reported by name");
-            return;
-        }
+        if (!expectOk(run, back, "  propagate back")) return;
         checkVecRel(run, "  round trip", back->pos, sv.pos, roundTrip);
 
         // The Kepler solver on its own, at the eccentricity that breaks the
@@ -532,6 +515,17 @@ void checkOneEccentricity(Run& run, f64 e) {
 void testNearRectilinear(Run& run) {
     section("near-rectilinear orbits, e approaching 1");
 
+    // 0.9999 is the regression case. Plain Newton failed to converge on the
+    // backward step there -- under gcc-14 and clang-on-Linux but not under
+    // Windows clang, which is how it was exposed. The safeguarded solver
+    // answers on all three toolchains.
+    //
+    // e = 0.99999 now converges too, and is deliberately *not* in this list:
+    // its round trip is within budget, but the fixed 1e-9 tolerance on the
+    // angular-momentum check misses by 1.4x, and that tolerance would have to
+    // be scaled by the conic's conditioning the way the round-trip budget
+    // already is. That is a change to a test's terms, and it is the owner's
+    // call, not mine.
     constexpr std::array kEccentricities = std::to_array<f64>({0.9, 0.99, 0.999, 0.9999});
     for (const f64 e : kEccentricities)
         checkOneEccentricity(run, e);

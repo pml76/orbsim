@@ -4,7 +4,10 @@
 
 #include <algorithm>
 #include <cmath>
+#include <concepts>
 #include <limits>
+#include <tuple>
+#include <utility>
 
 namespace orb {
 namespace {
@@ -42,25 +45,25 @@ constexpr f64 kParabolicTol = 1e-9;
 // clip a real orbit.
 constexpr f64 kRectilinearTol = 1e-12;
 
-// Newton doubles its correct digits per step, so from the starting guesses used
-// below these converge in well under twenty iterations for every eccentricity
-// the sim can produce. The caps exist to make the bound provable (JPL Power of
-// Ten, rule 2), not because they are expected to be reached.
-constexpr int kMaxAnomalyIterations = 100;
-constexpr int kMaxUniversalIterations = 200;
+// Every solve in this file is a safeguarded Newton whose step is required to
+// at least halve, so the interval shrinks at least as fast as bisection: about
+// 60 steps close any bracket at double precision. 100 is that with room, and
+// it makes the bound provable (JPL Power of Ten, rule 2) rather than hoped for.
+constexpr int kMaxSolverIterations = 100;
 
-// One ulp of a double near pi is about 4.4e-16; two orders above that converges
-// without the iteration chasing rounding noise.
-constexpr f64 kAnomalyTolerance = 1e-14;
-
-// The universal anomaly chi has units of sqrt(metres), and one revolution is
-// 2*pi*sqrt(a): about 1.7e4 in low Earth orbit and 2.4e6 at 1 AU. This used to
-// be an absolute 1e-10, which at 1 AU is below the rounding noise of the
-// update itself, so Newton ran to its cap and reported non-convergence for a
-// perfectly ordinary heliocentric orbit. It is relative to |chi| now, with
-// sqrt(r0) as the floor so that dt = 0 (chi = 0) still converges. 1e-13 is
-// the same two-orders-above-ulp margin the anomaly solver uses.
-constexpr f64 kUniversalRelTolerance = 1e-13;
+// Every solve runs to the resolution of a double rather than to a hand-picked
+// tolerance, and can afford to because bisection bounds the work.
+//
+// The previous constants were 1e-14 for the anomalies and 1e-13 for the
+// universal variable, and the second one taught the lesson worth keeping. A
+// plain Newton needs a loose tolerance to be sure of stopping, and then
+// routinely blows past it by several orders, because quadratic convergence
+// does not stop politely at a threshold. The accuracy this file's tests
+// measured was really the accuracy of that overshoot. A safeguarded solver's
+// last step is often a bisection, which lands *on* the tolerance rather than
+// far beyond it -- which showed up as a 350x accuracy regression at e = 0.9
+// until the tolerance became the resolution of the type instead.
+constexpr f64 kSolverToleranceUlps = 4.0;
 
 // alpha = 1/a has units of 1/metres, so a threshold on alpha alone encodes a
 // length: the old 1e-12 declared every orbit wider than 1e12 m parabolic, and
@@ -94,8 +97,20 @@ void stumpff(f64 psi, f64& c2, f64& c3) {
 // depends on the conic. Extracted so that propagate() reads as a sequence of
 // decisions rather than three unrelated formulae inlined mid-function (F.2: a
 // function does one thing).
+//
+// The scalars below stay fixed for a whole solve, so they travel as one value
+// rather than as four adjacent f64 parameters that transpose in silence --
+// I.24, and `bugprone-easily-swappable-parameters` says so out loud.
+struct UniversalContext {
+    f64 mu{};     // gravitational parameter, m^3/s^2
+    f64 sqrtMu{}; // sqrt(mu), used on nearly every line below
+    f64 r0{};     // |r| at the start of the step
+    f64 rdotv{};  // r . v at the start of the step
+    f64 alpha{};  // 1/a, the reciprocal semi-major axis
+};
+
 [[nodiscard]] f64
-initialUniversalAnomaly(const StateVector& sv, f64 mu, f64 r0, f64 rdotv, f64 alpha, f64 seconds) {
+initialUniversalAnomaly(const StateVector& sv, const UniversalContext& ctx, f64 seconds) {
     // A zero-length step has zero universal anomaly on every conic, and saying
     // so before the conic dispatch is a correctness fix rather than a shortcut.
     // The hyperbolic guess below takes the log of a quantity proportional to
@@ -111,22 +126,22 @@ initialUniversalAnomaly(const StateVector& sv, f64 mu, f64 r0, f64 rdotv, f64 al
     // answer a different question and would make a very short step wrong.
     if (seconds == 0.0) return 0.0;
 
-    const f64 sqrtMu = std::sqrt(mu);
-
-    if (alpha * r0 > kParabolicAlphaTol) { // ellipse
-        return sqrtMu * seconds * alpha;
+    if (ctx.alpha * ctx.r0 > kParabolicAlphaTol) { // ellipse
+        return ctx.sqrtMu * seconds * ctx.alpha;
     }
 
-    if (alpha * r0 < -kParabolicAlphaTol) { // hyperbola
-        const f64 a = 1.0 / alpha;          // negative
-        const f64 denom = rdotv + (sign(seconds) * std::sqrt(-mu * a) * (1.0 - (r0 * alpha)));
-        return sign(seconds) * std::sqrt(-a) * std::log(-2.0 * mu * alpha * seconds / denom);
+    if (ctx.alpha * ctx.r0 < -kParabolicAlphaTol) { // hyperbola
+        const f64 a = 1.0 / ctx.alpha;              // negative
+        const f64 denom =
+            ctx.rdotv + (sign(seconds) * std::sqrt(-ctx.mu * a) * (1.0 - (ctx.r0 * ctx.alpha)));
+        return sign(seconds) * std::sqrt(-a) *
+               std::log(-2.0 * ctx.mu * ctx.alpha * seconds / denom);
     }
 
     // Parabola: Barker's equation, solved through the cubic substitution.
     const f64 hmag = length(cross(sv.pos, sv.vel));
-    const f64 p = hmag * hmag / mu;
-    const f64 s = 0.5 * std::atan(1.0 / (3.0 * std::sqrt(mu / (p * p * p)) * seconds));
+    const f64 p = hmag * hmag / ctx.mu;
+    const f64 s = 0.5 * std::atan(1.0 / (3.0 * std::sqrt(ctx.mu / (p * p * p)) * seconds));
     const f64 w = std::atan(std::cbrt(std::tan(s)));
     return std::sqrt(p) * 2.0 / std::tan(2.0 * w);
 }
@@ -141,41 +156,212 @@ struct UniversalSolution {
     f64 c3{1.0 / 6.0};
 };
 
-// Newton on the universal Kepler equation. Split out of propagate() so that
-// each function does one thing (F.2) and neither exceeds the size limit: this
-// one finds chi, and propagate() decides what the answer means.
+// The universal Kepler equation and its derivative, both at one chi.
 //
-// The derivative of the universal Kepler equation with respect to chi is the
-// radius at chi, which is why `r` below is both the physical radius and the
-// denominator of the Newton step.
-[[nodiscard]] std::expected<UniversalSolution, OrbitError>
-solveUniversalAnomaly(const StateVector& sv, f64 mu, f64 r0, f64 rdotv, f64 alpha, f64 seconds) {
-    const f64 sqrtMu = std::sqrt(mu);
+// `time` is sqrt(mu) * t(chi): the flight time to chi, scaled. `radius` is
+// r(chi), and it is also d(time)/d(chi) -- the derivative of the universal
+// Kepler equation with respect to chi *is* the radius. That identity is what
+// makes the solve below both fast and provably safe: r > 0 for every real
+// trajectory, so `time` is strictly increasing in chi, so the root is unique
+// and can always be bracketed.
+struct UniversalTerms {
+    f64 time{};
+    f64 radius{};
+    f64 psi{};
+    f64 c2{0.5};
+    f64 c3{1.0 / 6.0};
+};
 
-    UniversalSolution out;
-    out.chi = initialUniversalAnomaly(sv, mu, r0, rdotv, alpha, seconds);
+[[nodiscard]] UniversalTerms evaluateUniversal(f64 chi, const UniversalContext& ctx) {
+    UniversalTerms t;
+    t.psi = chi * chi * ctx.alpha;
+    stumpff(t.psi, t.c2, t.c3);
 
-    for (int i = 0; i < kMaxUniversalIterations; ++i) {
-        out.psi = out.chi * out.chi * alpha;
-        stumpff(out.psi, out.c2, out.c3);
+    const f64 sigma = ctx.rdotv / ctx.sqrtMu; // r . v / sqrt(mu), the usual grouping
+    t.time = (chi * chi * chi * t.c3) + (sigma * chi * chi * t.c2) +
+             (ctx.r0 * chi * (1.0 - (t.psi * t.c3)));
+    t.radius = (chi * chi * t.c2) + (sigma * chi * (1.0 - (t.psi * t.c3))) +
+               (ctx.r0 * (1.0 - (t.psi * t.c2)));
+    return t;
+}
 
-        const f64 r = (out.chi * out.chi * out.c2) +
-                      ((rdotv / sqrtMu) * out.chi * (1.0 - (out.psi * out.c3))) +
-                      (r0 * (1.0 - (out.psi * out.c2)));
+// A search interval, where to start inside it, and the magnitude below which
+// the convergence test stops being relative. A struct because four adjacent f64
+// parameters transpose in silence (I.24).
+//
+// `scaleFloor` is 1 for an anomaly, which is O(1) radians, and sqrt(r0) for the
+// universal anomaly, which is in sqrt(metres) and has no natural size -- the
+// same reasoning that made the old absolute 1e-10 fail at 1 AU.
+struct Bracket {
+    f64 lo{};
+    f64 hi{};
+    f64 guess{};
+    f64 scaleFloor{1.0};
+};
 
-        const f64 dchi = ((sqrtMu * seconds) - (out.chi * out.chi * out.chi * out.c3) -
-                          ((rdotv / sqrtMu) * out.chi * out.chi * out.c2) -
-                          (r0 * out.chi * (1.0 - (out.psi * out.c3)))) /
-                         r;
-        out.chi += dchi;
-        if (std::abs(dchi) <= kUniversalRelTolerance * std::max(std::abs(out.chi), std::sqrt(r0))) {
-            return out;
+// Safeguarded Newton on a strictly monotonic function, given a bracket that
+// contains the root.
+//
+// `residualAndSlope(x)` returns {f(x), f'(x)} for an increasing f. Newton is
+// taken when its step lands inside the bracket -- the usual case, and
+// quadratic -- and bisection takes over when it does not, which cannot
+// diverge. The pair therefore converges for every input, which plain Newton
+// does not: the Kepler equations flatten out near periapsis at high
+// eccentricity, the Newton step divides by that slope, and the iteration
+// overshoots and oscillates. Measured before this existed: the hyperbolic
+// branch failed on 200 of 401 anomalies at e = 1.0001.
+//
+// Written once and used by both branches of the Kepler solver, which differ
+// only in their residual and slope. The universal-variable solver runs the
+// same idea by hand, because it must also return the Stumpff terms from the
+// final evaluation rather than only the root.
+template <std::invocable<f64> Fn>
+[[nodiscard]] std::expected<f64, OrbitError> safeguardedRoot(const Bracket& bracket,
+                                                             Fn residualAndSlope) {
+    f64 lo = bracket.lo;
+    f64 hi = bracket.hi;
+    f64 x = std::clamp(bracket.guess, lo, hi);
+
+    auto [residual, slope] = residualAndSlope(x);
+    if (std::isnan(residual)) return std::unexpected(OrbitError::NotFinite);
+
+    f64 previousStep = hi - lo;
+    f64 step = previousStep;
+
+    for (int i = 0; i < kMaxSolverIterations; ++i) {
+        // Two reasons to distrust Newton, and the second one matters more than
+        // it looks. The obvious one is a step that leaves the bracket. The
+        // subtle one is a step that stays inside but barely moves: for the
+        // hyperbolic Kepler equation at large H, M ~ e*sinh(H) and
+        // M' ~ e*cosh(H) ~ M, so the Newton step is about 1 whatever the
+        // distance to the root. Starting from H = 438 that creeps toward the
+        // answer one unit at a time and exhausts any iteration budget --
+        // measured as 196 failures out of 401 anomalies at e = 1.0001, all of
+        // them with the step comfortably inside the bracket, so a bracket test
+        // alone never fired.
+        //
+        // Requiring each step to at least halve the previous one is the
+        // classical rtsafe condition, and it is what turns "usually fast" into
+        // "never slower than bisection".
+        const bool leavesBracket = !std::isfinite(residual / slope) ||
+                                   ((x - (residual / slope)) <= lo) ||
+                                   ((x - (residual / slope)) >= hi);
+        const bool tooSlow = std::abs(2.0 * residual) > std::abs(previousStep * slope);
+
+        previousStep = step;
+        if (leavesBracket || tooSlow) {
+            step = 0.5 * (hi - lo);
+            x = lo + step;
+        } else {
+            step = residual / slope;
+            x -= step;
+        }
+
+        const f64 resolution = kSolverToleranceUlps * std::numeric_limits<f64>::epsilon() *
+                               std::max(std::abs(x), bracket.scaleFloor);
+        if (std::abs(step) <= resolution) return x;
+
+        std::tie(residual, slope) = residualAndSlope(x);
+        if (std::isnan(residual)) return std::unexpected(OrbitError::NotFinite);
+        if (residual > 0.0) {
+            hi = x;
+        } else {
+            lo = x;
         }
     }
 
-    // The bound was the easy half. This is the half that stops a wrong number
-    // leaving the function wearing the same face as a right one.
+    // Unreachable while the bracket is valid: the halving condition above means
+    // the interval shrinks at least as fast as bisection, which closes any
+    // bracket in about 60 steps. Kept because a bounded loop that stays silent
+    // when it fails has done only half the job.
     return std::unexpected(OrbitError::SolverDidNotConverge);
+}
+
+// Solves the universal Kepler equation for chi, by a Newton iteration that
+// cannot run away.
+//
+// Plain Newton was not enough, and the way that surfaced is worth keeping: a
+// test passed under Windows clang and failed under gcc-14 and clang-on-Linux,
+// same source, different libm. An algorithm whose success depends on which
+// library rounded a cosine is not converging -- it is landing on the right
+// side of a coin toss. Raising the iteration cap from 200 to 20000 changed
+// nothing.
+//
+// The failure mode is structural rather than accidental. The Newton step is
+// `residual / r(chi)`, and near the periapsis of a near-rectilinear orbit r is
+// tiny, so the step is enormous and the iteration overshoots and oscillates.
+// At e = 0.9999 that is most of the orbit's arc.
+//
+// The fix uses the property above: time(chi) is *strictly monotonic*, because
+// its derivative is a radius and a radius is positive. A strictly monotonic
+// function has exactly one root and can always be bracketed, so:
+//
+//   * bracket the root first, expanding outward from zero until the sign of
+//     the residual flips;
+//   * then take the Newton step when it lands inside the bracket -- which is
+//     almost always, and gives the usual quadratic convergence;
+//   * and bisect when it does not, which cannot fail and cannot leave the
+//     bracket.
+//
+// That is the classical safeguarded Newton. Bisection alone would converge in
+// about 60 iterations for any double; Newton alone is fast until it isn't.
+// Together they are fast *and* guaranteed, and there is no input for which
+// this reports non-convergence -- which matters because a closed-form solution
+// exists for every valid two-body state, so declining to answer was always a
+// weakness of the method rather than a property of the problem.
+[[nodiscard]] std::expected<UniversalSolution, OrbitError>
+solveUniversalAnomaly(const StateVector& sv, const UniversalContext& ctx, f64 seconds) {
+    const f64 target = ctx.sqrtMu * seconds;
+
+    if (seconds == 0.0) return UniversalSolution{}; // chi = 0; see the guard in the guess
+
+    // time(0) = 0 exactly, and time is increasing, so the root sits on the same
+    // side of zero as the target does.
+    const f64 direction = target > 0.0 ? 1.0 : -1.0;
+
+    // Start from the conic-specific guess where it is usable, and from a
+    // length scale where it is not -- sqrt(r0) has the units of chi.
+    f64 far = initialUniversalAnomaly(sv, ctx, seconds);
+    if (!std::isfinite(far) || (far * direction) <= 0.0) far = direction * std::sqrt(ctx.r0);
+
+    // Expand outward until the residual changes sign, which brackets the root.
+    // Doubling from a length scale reaches any representable chi well inside
+    // this bound, so it is a real bound and not a hopeful one (Power of Ten,
+    // rule 2).
+    constexpr int kMaxBracketExpansions = 200;
+    f64 near = 0.0;
+    int expansions = 0;
+    for (; expansions < kMaxBracketExpansions; ++expansions) {
+        const UniversalTerms t = evaluateUniversal(far, ctx);
+        if (std::isnan(t.time)) return std::unexpected(OrbitError::NotFinite);
+        if ((t.time - target) * direction >= 0.0) break; // sign flipped: bracketed
+        near = far;
+        far *= 2.0;
+        if (!std::isfinite(far)) return std::unexpected(OrbitError::NotFinite);
+    }
+    if (expansions == kMaxBracketExpansions) {
+        return std::unexpected(OrbitError::SolverDidNotConverge);
+    }
+
+    // The same safeguarded solve the Kepler equations use. The residual is
+    // time(chi) - target and the slope is the radius, which is what the
+    // identity at the top of evaluateUniversal buys: one root-finder, one set
+    // of guarantees, for all three equations in this file.
+    const auto solved = safeguardedRoot({.lo = std::min(near, far),
+                                         .hi = std::max(near, far),
+                                         .guess = 0.5 * (near + far),
+                                         .scaleFloor = std::sqrt(ctx.r0)},
+                                        [&ctx, target](f64 x) {
+                                            const UniversalTerms t = evaluateUniversal(x, ctx);
+                                            return std::pair{t.time - target, t.radius};
+                                        });
+    if (!solved) return std::unexpected(solved.error());
+
+    // The Lagrange coefficients need the Stumpff terms at the root, not just
+    // the root, so evaluate once more there rather than carrying them out of
+    // the loop -- which is also what keeps chi and its c2/c3 consistent.
+    const UniversalTerms fin = evaluateUniversal(*solved, ctx);
+    return UniversalSolution{.chi = *solved, .psi = fin.psi, .c2 = fin.c2, .c3 = fin.c3};
 }
 
 // The four vectors the in-plane angles are measured from. Grouped into a struct
@@ -427,40 +613,67 @@ std::expected<Radians, OrbitError> meanToEccentricAnomaly(Radians meanAnomaly, E
     ORBSIM_EXPECTS(e >= 0.0);
 
     if (e < 1.0) {
-        // Solving M = E - e*sin(E) for E by Newton-Raphson.
+        // Solving M = E - e*sin(E) for E. dM/dE = 1 - e*cos(E) >= 1 - e > 0,
+        // so M is strictly increasing and the root is unique.
+        //
+        // The bracket costs nothing: with M wrapped into (-pi, pi], E lies in
+        // the same interval, because M(-pi) = -pi and M(pi) = pi for every
+        // eccentricity. So the safeguarded solve starts already bracketed.
         const f64 mean = wrapPi(meanAnomaly).value;
 
         // A near-parabolic orbit spends nearly all of its mean anomaly close to
         // periapsis, so the mean anomaly is a poor starting guess there; pi
-        // keeps Newton inside the convergent basin.
-        f64 eccentric = (e < 0.8) ? mean : sign(mean) * kPi;
+        // keeps Newton inside the convergent basin. It is now only a hint --
+        // bisection covers the cases where it is wrong, which measurement said
+        // included four of 2001 anomalies at e = 0.9999.
+        const f64 guess = (e < 0.8) ? mean : sign(mean) * kPi;
 
-        for (int i = 0; i < kMaxAnomalyIterations; ++i) {
-            const f64 step =
-                -(eccentric - (e * std::sin(eccentric)) - mean) / (1.0 - (e * std::cos(eccentric)));
-            eccentric += step;
-            if (std::abs(step) < kAnomalyTolerance) return Radians{eccentric};
-        }
-        // The bound was the easy half. This is the half that stops a wrong
-        // number leaving the function wearing the same face as a right one.
+        const auto solved =
+            safeguardedRoot({.lo = -kPi, .hi = kPi, .guess = guess}, [e, mean](f64 x) {
+                return std::pair{x - (e * std::sin(x)) - mean, 1.0 - (e * std::cos(x))};
+            });
+        if (!solved) return std::unexpected(solved.error());
+        return Radians{*solved};
+    }
+
+    // Hyperbolic: M = e*sinh(H) - H, with dM/dH = e*cosh(H) - 1 >= e - 1 > 0.
+    // Strictly increasing again, and unbounded, so the bracket has to be found
+    // rather than assumed.
+    const f64 mean = meanAnomaly.value;
+    if (mean == 0.0) return Radians{0.0}; // M(0) = 0 exactly, on every conic
+
+    const f64 direction = mean > 0.0 ? 1.0 : -1.0;
+
+    // The asymptotic inverse of M = e*sinh(H) - H far from periapsis, and a
+    // linearisation near it. Both are hints; the expansion below is what makes
+    // the answer safe. This guess alone failed on half the anomalies at
+    // e = 1.0001, because `mean / (e - 1)` explodes as e approaches 1.
+    f64 far = (std::abs(mean) > 6.0) ? direction * std::log((2.0 * std::abs(mean) / e) + 1.8)
+                                     : mean / (e - 1.0);
+    if (!std::isfinite(far) || (far * direction) <= 0.0) far = direction;
+
+    constexpr int kMaxBracketExpansions = 200;
+    f64 near = 0.0;
+    int expansions = 0;
+    for (; expansions < kMaxBracketExpansions; ++expansions) {
+        const f64 residual = (e * std::sinh(far)) - far - mean;
+        if (std::isnan(residual)) return std::unexpected(OrbitError::NotFinite);
+        if ((residual * direction) >= 0.0) break; // sign flipped: bracketed
+        near = far;
+        far *= 2.0;
+        if (!std::isfinite(far)) return std::unexpected(OrbitError::NotFinite);
+    }
+    if (expansions == kMaxBracketExpansions) {
         return std::unexpected(OrbitError::SolverDidNotConverge);
     }
 
-    // Hyperbolic: M = e*sinh(H) - H. The log form below is that relation's
-    // asymptotic inverse, which is what keeps the guess sane far from
-    // periapsis.
-    const f64 mean = meanAnomaly.value;
-    f64 hyperbolic = (std::abs(mean) > 6.0)
-                         ? sign(mean) * std::log((2.0 * std::abs(mean) / e) + 1.8)
-                         : mean / (e - 1.0);
-
-    for (int i = 0; i < kMaxAnomalyIterations; ++i) {
-        const f64 step = -((e * std::sinh(hyperbolic)) - hyperbolic - mean) /
-                         ((e * std::cosh(hyperbolic)) - 1.0);
-        hyperbolic += step;
-        if (std::abs(step) < kAnomalyTolerance) return Radians{hyperbolic};
-    }
-    return std::unexpected(OrbitError::SolverDidNotConverge);
+    const auto solved = safeguardedRoot(
+        {.lo = std::min(near, far), .hi = std::max(near, far), .guess = 0.5 * (near + far)},
+        [e, mean](f64 x) {
+            return std::pair{(e * std::sinh(x)) - x - mean, (e * std::cosh(x)) - 1.0};
+        });
+    if (!solved) return std::unexpected(solved.error());
+    return Radians{*solved};
 }
 
 // --- propagation -----------------------------------------------------------
@@ -506,7 +719,8 @@ std::expected<StateVector, OrbitError> propagate(const StateVector& sv, GravPara
         seconds = std::fmod(seconds, period);
     }
 
-    const auto solved = solveUniversalAnomaly(sv, m, r0, rdotv, alpha, seconds);
+    const UniversalContext ctx{.mu = m, .sqrtMu = sqrtMu, .r0 = r0, .rdotv = rdotv, .alpha = alpha};
+    const auto solved = solveUniversalAnomaly(sv, ctx, seconds);
     if (!solved) return std::unexpected(solved.error());
 
     const f64 chi = solved->chi;
