@@ -31,14 +31,14 @@ write.
 | `src/render/` | Vulkan 1.3 device, swapchain, frame pacing, RAII handles, buffer upload, shader loading. **No pipelines, no drawing.** |
 | `src/app/` | Window, event loop, argument parsing, frame loop. |
 | `shaders/` | Four GLSL shaders compile to SPIR-V at build time and are **never loaded**. They are placeholders for phase A. |
-| `tests/` | Two suites, 3,625 checks, plus a GPU smoke test and a libFuzzer target. |
+| `tests/` | Two suites, 3,632 checks, plus a GPU smoke test and a libFuzzer target. |
 
 ### Test suites
 
 | Suite | Checks | What it covers |
 |---|---|---|
 | `test_orbit` | 732 | Earth-orbit round trips, degenerate orbits, analytic values, propagator agreement, invariants, hyperbolic, Kepler solver, reported failures |
-| `test_orbit_scales` | 2893 | Heliocentric circles, parabolic trajectories, non-finite inputs, states that are finite but are not orbits, states with no orbital plane, a zero time step on every conic, near-rectilinear orbits, propagation composing, canonical scale invariance, bit-identical determinism, and a seeded sweep of 200 closed + 100 hyperbolic orbits around the Moon, Earth, Jupiter and the Sun |
+| `test_orbit_scales` | 2900 | Heliocentric circles, parabolic trajectories, non-finite inputs, states that are finite but are not orbits, states with no orbital plane, a zero time step on every conic, near-rectilinear orbits, propagation composing, canonical scale invariance, bit-identical determinism, and a seeded sweep of 200 closed + 100 hyperbolic orbits around the Moon, Earth, Jupiter and the Sun |
 | `fuzz_orbit` | — | libFuzzer over the core under ASan and UBSan. Not a CTest test: run deliberately with a time budget, `cmake --preset linux-fuzz`. |
 | `orbsim_smoke` | — | Runs the app under the Vulkan validation layers for 2 s; fails on any validation error. Labelled `gpu`. |
 
@@ -332,7 +332,7 @@ executable with `STATUS_DLL_NOT_FOUND` before it prints anything.
 The `linux-sanitize` and `linux-gcc` presets **have now been run, and both pass**
 (2026-09-07). WSL 2 turned out to be enabled already with no distribution
 installed, so the Linux box was one `wsl --install -d Ubuntu` away. Each preset
-reports 3,625 checks and zero failures, matching Windows exactly, and UBSan was
+reports 3,632 checks and zero failures, matching Windows exactly, and UBSan was
 confirmed genuinely active rather than merely configured. Nothing runs them
 automatically — with CI declined they are a deliberate act before a milestone
 lands. See `VERIFICATION.md` rule 20.

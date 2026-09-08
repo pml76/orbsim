@@ -326,7 +326,7 @@ comparison — and confirm a test fails. If none does, the suite has a hole exac
 there.
 
 Expensive to automate, cheap to do by hand on the parts that matter most. Doing
-it once on `Orbit.cpp` would put a number on how much those 3,625 checks are
+it once on `Orbit.cpp` would put a number on how much those 3,632 checks are
 actually worth.
 
 ### Rule 20. Run the Linux presets — the second compiler and UBSan are back
@@ -346,8 +346,8 @@ built and passed on the first run:
 
 | Preset | What it is | Result |
 |---|---|---|
-| `linux-sanitize` | clang Debug + ASan + UBSan, core only | 3,625 checks, 0 failures |
-| `linux-gcc` | gcc 14 Debug, core only | 3,625 checks, 0 failures |
+| `linux-sanitize` | clang Debug + ASan + UBSan, core only | 3,632 checks, 0 failures |
+| `linux-gcc` | gcc 14 Debug, core only | 3,632 checks, 0 failures |
 
 Both match the Windows counts exactly (732 + 2,781), so the two compilers and
 the two platforms agree on every assertion in the suite.

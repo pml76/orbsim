@@ -44,7 +44,7 @@ The concrete consequences, which are what this record exists to fix:
 - **The two-body propagator is retained and is not superseded.** It becomes the
   reference conic that Encke-style integration takes deviations from, and it
   keeps its three existing jobs: drawing orbit paths, high time acceleration,
-  and MFD prediction. The 3,625 checks behind it are what make that reference
+  and MFD prediction. The 3,632 checks behind it are what make that reference
   trustworthy, and they are the reason the cheap path stays available.
 
 ## What we considered

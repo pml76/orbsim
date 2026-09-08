@@ -447,6 +447,42 @@ void testScaleInvariance(Run& run) {
 // VERIFICATION.md rule 5's list, and the hardest one for a Kepler solver --
 // almost all of the mean anomaly is spent near periapsis, which is why
 // meanToEccentricAnomaly switches its starting guess at e = 0.8.
+// Energy and angular momentum before and after a step, against budgets that
+// scale with the conic's conditioning.
+//
+// A fixed tolerance is the wrong shape here: it is far too loose to mean
+// anything at e = 0.9 and too tight to pass at e = 0.99999. The scaling is
+// 1/(1-e) -- the same geometry that makes the round trip harder -- and the
+// constants come from measurement rather than from what happened to pass.
+// Drift multiplied by (1-e), which is flat if the law is right:
+//
+//     e          energy      angular momentum
+//     0.9        7.5e-17     1.5e-15
+//     0.99       2.1e-16     8.7e-16
+//     0.999      1.8e-17     1.7e-15
+//     0.9999     6.2e-17     8.2e-16
+//     0.99999    8.6e-17     1.4e-14
+//
+// 2e-15 and 5e-14 leave between three and thirty times headroom over the worst
+// measured ratio. Both are around six orders *tighter* than the fixed 1e-9
+// they replace, everywhere below e = 0.9999 -- so this is a stricter test than
+// it was, not a relaxed one.
+void checkConserved(Run& run, const StateVector& before, const StateVector& after, f64 e) {
+    const Tolerance energyBudget{2e-15 / (1.0 - e)};
+    const Tolerance momentumBudget{5e-14 / (1.0 - e)};
+
+    checkRel(run,
+             "  energy conserved",
+             specificEnergy(after, kMuEarth).value,
+             specificEnergy(before, kMuEarth).value,
+             energyBudget);
+    checkVecRel(run,
+                "  angular momentum conserved",
+                specificAngularMomentum(after),
+                specificAngularMomentum(before),
+                momentumBudget);
+}
+
 void checkOneEccentricity(Run& run, f64 e) {
     {
         constexpr Metres kSemiMajor{2.0e7};
@@ -461,15 +497,7 @@ void checkOneEccentricity(Run& run, f64 e) {
         const auto moved = propagate(sv, kMuEarth, step);
         if (!expectOk(run, moved, "  propagate near-rectilinear")) return;
 
-        // Against the constants of motion, not against the propagator.
-        const SpecificEnergy energyBefore = specificEnergy(sv, kMuEarth);
-        const SpecificEnergy energyAfter = specificEnergy(*moved, kMuEarth);
-        checkRel(run, "  energy conserved", energyAfter.value, energyBefore.value, Tolerance{1e-9});
-
-        const Vec3 momentumBefore = specificAngularMomentum(sv);
-        const Vec3 momentumAfter = specificAngularMomentum(*moved);
-        checkVecRel(
-            run, "  angular momentum conserved", momentumAfter, momentumBefore, Tolerance{1e-9});
+        checkConserved(run, sv, *moved, e);
 
         // The round trip crosses periapsis, where a near-rectilinear orbit is
         // worst conditioned, so a fixed tolerance would either pass everything
@@ -515,18 +543,14 @@ void checkOneEccentricity(Run& run, f64 e) {
 void testNearRectilinear(Run& run) {
     section("near-rectilinear orbits, e approaching 1");
 
-    // 0.9999 is the regression case. Plain Newton failed to converge on the
-    // backward step there -- under gcc-14 and clang-on-Linux but not under
-    // Windows clang, which is how it was exposed. The safeguarded solver
-    // answers on all three toolchains.
-    //
-    // e = 0.99999 now converges too, and is deliberately *not* in this list:
-    // its round trip is within budget, but the fixed 1e-9 tolerance on the
-    // angular-momentum check misses by 1.4x, and that tolerance would have to
-    // be scaled by the conic's conditioning the way the round-trip budget
-    // already is. That is a change to a test's terms, and it is the owner's
-    // call, not mine.
-    constexpr std::array kEccentricities = std::to_array<f64>({0.9, 0.99, 0.999, 0.9999});
+    // 0.9999 and 0.99999 are the regression cases. Plain Newton failed to
+    // converge on the backward step at both -- under gcc-14 and clang-on-Linux
+    // but not under Windows clang, which is how it was exposed. The
+    // safeguarded solver answers for every one of them, on all three
+    // toolchains, and each check below carries a budget scaled by the conic's
+    // own conditioning rather than a single number that has to serve four
+    // decades of (1 - e).
+    constexpr std::array kEccentricities = std::to_array<f64>({0.9, 0.99, 0.999, 0.9999, 0.99999});
     for (const f64 e : kEccentricities)
         checkOneEccentricity(run, e);
 
