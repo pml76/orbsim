@@ -1,11 +1,16 @@
 #include "orbit/OrbitPath.hpp" // [S14] SF.5: own header, first
 
 #include "core/Contract.hpp"
+#include "core/Units.hpp"
+#include "core/Vec3.hpp"
 #include "orbit/Kepler.hpp"
 
 #include <cmath>
+#include <cstddef>
+#include <expected>
 #include <ranges>
 #include <utility>
+#include <vector>
 
 namespace orbex {
 namespace {

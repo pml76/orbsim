@@ -9,6 +9,7 @@
 // It is also not a substitute for a profiler. It answers "did that change make
 // it slower", which is the question you can answer cheaply and often.
 //
+#include "core/Units.hpp"
 #include "orbit/OrbitPath.hpp"
 
 #include <chrono>
@@ -25,11 +26,13 @@ using namespace orbex::literals;
 constexpr GravParam kMuEarth{3.986004418e14};
 
 [[nodiscard]] Elements benchmarkOrbit() noexcept {
-    return Elements{.semiMajorAxis = Metres{8378137.0},
-                    .eccentricity = Eccentricity{0.35},
-                    .inclination = toRadians(28.5_deg),
-                    .ascendingNode = toRadians(120.0_deg),
-                    .periapsisArgument = toRadians(45.0_deg)};
+    return Elements{
+        .semiMajorAxis = Metres{8378137.0},
+        .eccentricity = Eccentricity{0.35},
+        .inclination = toRadians(28.5_deg),
+        .ascendingNode = toRadians(120.0_deg),
+        .periapsisArgument = toRadians(45.0_deg),
+    };
 }
 
 struct Timing {
@@ -39,9 +42,11 @@ struct Timing {
 
 [[nodiscard]] Timing measure(Spacing spacing, int repetitions) {
     const Elements elements = benchmarkOrbit();
-    const PathOptions options{.samples = SampleCount{std::size_t{1024}},
-                              .spacing = spacing,
-                              .closure = PathClosure::ClosedLoop};
+    const PathOptions options{
+        .samples = SampleCount{std::size_t{1024}},
+        .spacing = spacing,
+        .closure = PathClosure::ClosedLoop,
+    };
 
     // One untimed run first, so the measurement is not dominated by the first
     // allocation and by cold instruction cache.
@@ -62,9 +67,10 @@ struct Timing {
     const auto nanoseconds = std::chrono::duration_cast<std::chrono::nanoseconds>(elapsed).count();
 
     if (produced == 0) return {};
-    return Timing{.nanosecondsPerSample =
-                      static_cast<double>(nanoseconds) / static_cast<double>(produced),
-                  .pointsProduced = produced};
+    return Timing{
+        .nanosecondsPerSample = static_cast<double>(nanoseconds) / static_cast<double>(produced),
+        .pointsProduced = produced,
+    };
 }
 
 } // namespace

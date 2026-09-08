@@ -23,16 +23,10 @@ Checks: >
   portability-*,
   readability-*,
 
-  -bugprone-narrowing-conversions,
-  -cppcoreguidelines-narrowing-conversions,
   -cppcoreguidelines-avoid-magic-numbers,
   -readability-magic-numbers,
   -readability-identifier-length,
   -modernize-use-trailing-return-type,
-  -misc-non-private-member-variables-in-classes,
-  -misc-include-cleaner,
-  -readability-braces-around-statements,
-  -modernize-use-nodiscard,
 
 # Both separators, deliberately: clang-tidy on Windows reports a header as
 # `src\core/Vec3.hpp`, and a regex that accepts only `/` matches nothing --
@@ -78,45 +72,64 @@ CheckOptions:
   - key: readability-function-size.NestingThreshold
     value: '4'
 
+  # [S15] The single-line guard clause (`if (!path) return;`) is the documented
+  # house style; a body that runs onto its own line is not, and gets braces.
+  # Configured rather than disabled: at this threshold the example has zero
+  # findings, so the check is live and costs nothing.
+  - key: readability-braces-around-statements.ShortStatementLines
+    value: '1'
+
+  # [S8] Vec3, PathVertex and the unit types are aggregates with no invariant to
+  # protect: their members ARE the interface. This option says exactly that --
+  # exempt a class whose data is *entirely* public -- which leaves the check
+  # live for the case it is actually aimed at, a class that has an invariant and
+  # leaks part of it. It replaces a blanket suppression that could not tell the
+  # two apart. OrbitPath, which does have an invariant, keeps its data private
+  # and is still checked.
+  - key: misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic
+    value: 'true'
+
 # --- why each disabled check is disabled ------------------------------------
 #
-# bugprone-narrowing-conversions, cppcoreguidelines-narrowing-conversions
-#   The compiler's -Wconversion already flags every narrowing, and CMakeLists
-#   turns it into an error. Two tools reporting the same thing is noise, and the
-#   compiler's version is the one nobody can forget to run.
+# This list was ten checks long until 2026-09-08, when it was emptied and every
+# finding that came out of it was fixed rather than re-suppressed. Six went for
+# good; what they cost is recorded here so nobody re-adds them:
 #
-# *-magic-numbers
+#   bugprone-narrowing-conversions            0 findings. -Wconversion already
+#   cppcoreguidelines-narrowing-conversions   0 findings.   covers this.
+#   modernize-use-nodiscard                   0 findings; every function that
+#                                             warrants the attribute has it.
+#   readability-braces-around-statements      0 findings at ShortStatementLines
+#                                             1, which is the house style
+#                                             written as a number.
+#   misc-non-private-member-variables-in-classes
+#                                             73 -> 0 via the option above,
+#                                             which distinguishes an aggregate
+#                                             from a leaky class; the blanket
+#                                             suppression could not.
+#   misc-include-cleaner                      45 findings, all fixed. In the
+#                                             parent project this is the check
+#                                             that would have caught a missing
+#                                             <tuple> that only gcc found.
+#
+# The four below still fire. Each says why it is off and what it would cost.
+#
+# *-magic-numbers (211 findings)
 #   In orbital mechanics 2.0, 0.5 and 180.0 are mathematics, not magic. The
 #   constants that DO deserve names have them (kHighEccentricity,
 #   kConvergence, kMaxIterations), each with a comment saying where its value
 #   came from -- which is section 16, and which no linter can check.
 #
-# readability-identifier-length
+# readability-identifier-length (160 findings)
 #   e, m, nu, c, s are the standard symbols of the domain. Renaming them to
 #   satisfy a linter would make the code harder to check against a textbook.
+#   The check can take an allow-list instead (IgnoredVariableNames /
+#   IgnoredParameterNames), which would keep it live for names that are short
+#   AND meaningless.
 #
-# modernize-use-trailing-return-type
+# modernize-use-trailing-return-type (153 findings)
 #   Pure style, and not the style used here or in the parent project.
-#
-# misc-non-private-member-variables-in-classes
-#   Vec3, PathVertex and the unit types are aggregates with no invariant to
-#   protect: their members ARE the interface. The check is aimed at classes that
-#   have an invariant and leak it, which is a different thing. OrbitPath, which
-#   does have an invariant, keeps its data private.
-#
-# misc-include-cleaner
-#   Valuable, but it disagrees with itself across standard-library
-#   implementations. include-what-you-use as a periodic job is the better tool;
-#   see the Toolbox appendix.
-#
-# readability-braces-around-statements
-#   Section 15 documents this deviation explicitly: single-line guard clauses
-#   like `if (!path) return;` are used deliberately and consistently.
-#
-# modernize-use-nodiscard
-#   Suggests [[nodiscard]] on nearly every const member function. Section 5 asks
-#   for it where the return value IS the point, which is a judgement a tool
-#   cannot make. Every function here that warrants it has it.
+#   Satisfying it means rewriting every function signature as `auto f() -> T`.
 #
 # bugprone-easily-swappable-parameters
 #   The mechanical enforcement of I.24 and section 2. It found a real defect in

@@ -1,7 +1,10 @@
 #include "render/PathUpload.hpp" // [S14] SF.5: own header, first
+#include "core/Vec3.hpp"
 
 #include <algorithm>
 #include <iterator>
+#include <span>
+#include <vector>
 
 namespace orbex::gfx {
 
@@ -18,9 +21,11 @@ std::vector<PathVertex> toCameraRelative(std::span<const Vec3> pathWorld, const 
         // had a chance to remove the large magnitude.
         const Vec3 relative = point - cameraWorld;
 
-        return PathVertex{.x = static_cast<f32>(relative.x),
-                          .y = static_cast<f32>(relative.y),
-                          .z = static_cast<f32>(relative.z)};
+        return PathVertex{
+            .x = static_cast<f32>(relative.x),
+            .y = static_cast<f32>(relative.y),
+            .z = static_cast<f32>(relative.z),
+        };
     });
 
     return vertices;

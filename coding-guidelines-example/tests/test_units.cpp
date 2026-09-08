@@ -5,12 +5,14 @@
 // the point of a strong type is that the mistake stops compiling, and a
 // static_assert is how you prove that stayed true.
 //
+#include "core/Vec3.hpp"
 #include "tests/TestHarness.hpp"
 
 #include "core/Units.hpp"
 
 #include <cstdio>
 #include <exception>
+#include <print>
 #include <type_traits>
 
 namespace {
@@ -58,7 +60,10 @@ void testConversionsRoundTrip(test::Run& run) {
                     Tolerance{1e-15},
                     "radians -> degrees -> radians");
     test::checkNear(run, toRadians(180.0_deg).value, kPi, Tolerance{1e-15}, "180 deg is pi rad");
-    test::checkNear(run, (7.0_km).value, 7000.0, Tolerance{0.0}, "km literal is exact");
+    // Named, not (7.0_km).value: the parentheses are required -- 7.0_km.value
+    // lexes as a single pp-number -- and naming it avoids them entirely.
+    constexpr Metres kSevenKilometres = 7.0_km;
+    test::checkNear(run, kSevenKilometres.value, 7000.0, Tolerance{0.0}, "km literal is exact");
 }
 
 void testOrderingIsUsable(test::Run& run) {

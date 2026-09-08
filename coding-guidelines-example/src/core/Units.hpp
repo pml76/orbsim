@@ -110,7 +110,11 @@ inline namespace literals {
 static_assert(nearlyEqual(toRadians(180.0_deg).value, kPi, Tolerance{1e-15}));
 static_assert(nearlyEqual(toDegrees(Radians{kPi}).value, 180.0, Tolerance{1e-13}));
 static_assert(nearlyEqual(toRadians(toDegrees(Radians{1.0})).value, 1.0, Tolerance{1e-15}));
-static_assert(nearlyEqual((1.0_km).value, 1000.0, Tolerance{0.0}));
+// Named rather than written as (1.0_km).value. The parentheses are not
+// optional -- 1.0_km.value lexes as one pp-number and does not compile -- but
+// naming the quantity says what is under test and needs no parentheses at all.
+inline constexpr Metres kOneKilometre = 1.0_km;
+static_assert(nearlyEqual(kOneKilometre.value, 1000.0, Tolerance{0.0}));
 static_assert(180.0_deg == Degrees{180.0});
 
 } // namespace orbex

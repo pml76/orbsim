@@ -7,6 +7,8 @@
 // scratch. A sign error in the solver cannot hide behind a test that repeats
 // it, which is the whole reason this is worth more than a golden-value table.
 //
+#include "core/Units.hpp"
+#include "core/Vec3.hpp"
 #include "tests/TestHarness.hpp"
 
 #include "orbit/Kepler.hpp"
@@ -18,6 +20,7 @@
 #include <cstdio>
 #include <exception>
 #include <limits>
+#include <print>
 #include <random>
 #include <ranges>
 #include <type_traits>

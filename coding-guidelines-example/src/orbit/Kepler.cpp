@@ -4,9 +4,12 @@
 #include "orbit/Kepler.hpp"
 
 #include "core/Contract.hpp"
+#include "core/Units.hpp"
+#include "core/Vec3.hpp"
 
 #include <algorithm>
 #include <cmath>
+#include <expected>
 #include <limits>
 
 namespace orbex {

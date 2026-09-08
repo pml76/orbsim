@@ -1,6 +1,8 @@
 //
 // Tests for the orbit path sampler and the GPU boundary.
 //
+#include "core/Units.hpp"
+#include "core/Vec3.hpp"
 #include "tests/TestHarness.hpp"
 
 #include "orbit/OrbitPath.hpp"
@@ -12,7 +14,7 @@
 #include <exception>
 #include <numeric>
 #include <optional>
-#include <ranges>
+#include <print>
 #include <thread>
 #include <type_traits>
 #include <utility>
@@ -37,11 +39,13 @@ static_assert(std::is_destructible_v<OrbitPath>);
 [[nodiscard]] Elements testOrbit(Metres semiMajorAxis, Eccentricity eccentricity) noexcept {
     // [S6] Designated initializers: every field named at the point of use, and
     // no chance of filling in inclination where the node belongs.
-    return Elements{.semiMajorAxis = semiMajorAxis,
-                    .eccentricity = eccentricity,
-                    .inclination = toRadians(28.5_deg),
-                    .ascendingNode = toRadians(120.0_deg),
-                    .periapsisArgument = toRadians(45.0_deg)};
+    return Elements{
+        .semiMajorAxis = semiMajorAxis,
+        .eccentricity = eccentricity,
+        .inclination = toRadians(28.5_deg),
+        .ascendingNode = toRadians(120.0_deg),
+        .periapsisArgument = toRadians(45.0_deg),
+    };
 }
 
 void testGeometry(test::Run& run) {
@@ -50,9 +54,11 @@ void testGeometry(test::Run& run) {
     const Elements elements = testOrbit(Metres{kEarthRadius.value + 2000e3}, Eccentricity{0.35});
     const auto path = OrbitPath::sample(elements,
                                         kMuEarth,
-                                        PathOptions{.samples = SampleCount{std::size_t{128}},
-                                                    .spacing = Spacing::UniformInAngle,
-                                                    .closure = PathClosure::ClosedLoop});
+                                        PathOptions{
+                                            .samples = SampleCount{std::size_t{128}},
+                                            .spacing = Spacing::UniformInAngle,
+                                            .closure = PathClosure::ClosedLoop,
+                                        });
 
     test::check(run, path.has_value(), "sampling a closed orbit succeeds");
     if (!path) return; // [S21] an early return; NR.2
@@ -84,12 +90,16 @@ void testSpacingModesDiffer(test::Run& run) {
     test::section("time and angle spacing genuinely differ");
 
     const Elements elements = testOrbit(Metres{kEarthRadius.value + 5000e3}, Eccentricity{0.6});
-    constexpr PathOptions kByTime{.samples = SampleCount{std::size_t{64}},
-                                  .spacing = Spacing::UniformInTime,
-                                  .closure = PathClosure::OpenEnded};
-    constexpr PathOptions kByAngle{.samples = SampleCount{std::size_t{64}},
-                                   .spacing = Spacing::UniformInAngle,
-                                   .closure = PathClosure::OpenEnded};
+    constexpr PathOptions kByTime{
+        .samples = SampleCount{std::size_t{64}},
+        .spacing = Spacing::UniformInTime,
+        .closure = PathClosure::OpenEnded,
+    };
+    constexpr PathOptions kByAngle{
+        .samples = SampleCount{std::size_t{64}},
+        .spacing = Spacing::UniformInAngle,
+        .closure = PathClosure::OpenEnded,
+    };
 
     const auto byTime = OrbitPath::sample(elements, kMuEarth, kByTime);
     const auto byAngle = OrbitPath::sample(elements, kMuEarth, kByAngle);
@@ -151,9 +161,11 @@ void testDeterminism(test::Run& run) {
     test::section("determinism");
 
     const Elements elements = testOrbit(Metres{kEarthRadius.value + 800e3}, Eccentricity{0.2});
-    constexpr PathOptions kOptions{.samples = SampleCount{std::size_t{256}},
-                                   .spacing = Spacing::UniformInTime,
-                                   .closure = PathClosure::ClosedLoop};
+    constexpr PathOptions kOptions{
+        .samples = SampleCount{std::size_t{256}},
+        .spacing = Spacing::UniformInTime,
+        .closure = PathClosure::ClosedLoop,
+    };
 
     const auto first = OrbitPath::sample(elements, kMuEarth, kOptions);
     const auto second = OrbitPath::sample(elements, kMuEarth, kOptions);
@@ -221,7 +233,12 @@ void testCameraRelativeUpload(test::Run& run) {
     // The camera sits exactly on the first point, so that vertex must land on
     // the origin. Subtracting in f64 makes this exact; narrowing first would
     // leave a residue of tens of metres.
-    test::check(run, vertices.front() == gfx::PathVertex{}, "the point under the camera is exact");
+    // Named rather than written as `== gfx::PathVertex{},` inline: clang-tidy
+    // 23's readability-trailing-comma reads the argument separator after an
+    // empty braced initialiser as that list's trailing comma, and its fix-it
+    // deletes it, producing code that does not compile.
+    const gfx::PathVertex origin{};
+    test::check(run, vertices.front() == origin, "the point under the camera is exact");
 
     // Camera-relative magnitudes must stay in the range where an f32 still has
     // sub-metre resolution -- which is the entire reason for the subtraction.
