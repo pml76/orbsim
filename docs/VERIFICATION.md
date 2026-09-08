@@ -349,7 +349,7 @@ built and passed on the first run:
 | `linux-sanitize` | clang Debug + ASan + UBSan, core only | 3,632 checks, 0 failures |
 | `linux-gcc` | gcc 14 Debug, core only | 3,632 checks, 0 failures |
 
-Both match the Windows counts exactly (732 + 2,781), so the two compilers and
+Both match the Windows counts exactly (732 + 2,900), so the two compilers and
 the two platforms agree on every assertion in the suite.
 
 **And the tooling itself was checked, because rule 23 applies to tools too.**

@@ -1009,7 +1009,8 @@ squarely on code you have already written.
   **do not allocate in the hot path.** Size your vertex buffers once and reuse
   them.
 - **Rule 2: every loop must have a provable fixed upper bound.** The Newton
-  iterations always satisfied this — 100, 100, and 200 in `Orbit.cpp` — which is
+  iterations always satisfied this — one `kMaxSolverIterations` of 100 in
+  `Orbit.cpp`, shared by all three solves — which is
   genuinely good practice that most numerical code skips.
 
   But rule 2 is meant to be paired with rule 5, and that half used to be

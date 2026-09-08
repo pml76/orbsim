@@ -32,10 +32,18 @@ struct StateVector {
 
 // Classical (Keplerian) orbital elements.
 //
-// Degenerate orbits get a canonical parameterisation rather than NaN: a
-// circular orbit has no periapsis, so `aop` is zero and `tra` becomes the
-// argument of latitude; an equatorial orbit has no ascending node, so `lan` is
-// zero and in-plane angles are measured from the x-axis instead.
+// Degenerate orbits get a canonical parameterisation rather than NaN *where
+// one exists*: a circular orbit has no periapsis, so `aop` is zero and `tra`
+// becomes the argument of latitude; an equatorial orbit has no ascending node,
+// so `lan` is zero and in-plane angles are measured from the x-axis instead.
+//
+// Where no canonical answer exists, `elementsFromState` reports instead of
+// inventing one. A radial trajectory has no orbital plane at all, so there is
+// no inclination to fall back on -- that is `RectilinearOrbit`. A state whose
+// derived quantities overflow is `NotFinite`. Both were found by fuzzing, and
+// both used to come back as a success carrying NaN, which is the outcome this
+// paragraph exists to rule out.
+//
 // Every member is a unit type, and Quantity gives each one a default member
 // initializer of its own (core/Scalar.hpp), so `Elements{}` is fully
 // zero-initialised without a `{}` written here. That is what section 6 asks
@@ -114,6 +122,14 @@ enum class OrbitError {
 // --- conversions -----------------------------------------------------------
 
 // `mu` is the standard gravitational parameter GM of the central body.
+//
+// Reports, rather than returning elements a caller cannot use: `NotFinite` for
+// a non-finite input *or* a magnitude derived from one that overflows -- every
+// component can be finite while |r| is not, because squaring overflows above
+// about 1.3e154; `NonPositiveGravity`; `DegenerateState` for a vessel at the
+// exact centre of the body; and `RectilinearOrbit` for a radial trajectory,
+// which has no orbital plane and therefore no inclination. On success every
+// element is a usable number, which is checked before returning.
 [[nodiscard]] std::expected<Elements, OrbitError> elementsFromState(const StateVector& sv,
                                                                     GravParam mu);
 [[nodiscard]] StateVector stateFromElements(const Elements& el, GravParam mu);
@@ -129,11 +145,22 @@ enum class OrbitError {
 
 // Solves Kepler's equation for the eccentric (or hyperbolic) anomaly.
 //
-// Newton-Raphson with a conic-appropriate starting guess; converges to ~1e-13
-// in a handful of iterations even at ecc = 0.999. The iteration is bounded
-// (JPL Power of Ten, rule 2) *and* reports failure when it runs out of steps
-// (rule 5) -- a silent wrong answer here becomes a spacecraft in the wrong
-// place twenty minutes later, for no visible reason.
+// Safeguarded Newton, to the resolution of a double. The conic-appropriate
+// starting guess is only a hint: both Kepler equations are strictly increasing
+// (dM/dE = 1 - e cos E > 0, dM/dH = e cosh H - 1 > 0), so the root is unique
+// and bracketed, and bisection takes over whenever Newton would leave the
+// bracket or fail to halve its step.
+//
+// That matters at high eccentricity, where the slope collapses and a plain
+// Newton oscillates: this was a plain Newton until 2026-09-08, and it failed
+// on 196 of 401 hyperbolic anomalies at e = 1.0001 -- most near-parabolic
+// escape trajectories. It now converges for every eccentricity measured, from
+// 0 to 100, with a worst round-trip error of about 4e-15 radians.
+//
+// The iteration is still bounded (JPL Power of Ten, rule 2) and still reports
+// failure (rule 5). The difference is that the report is now unreachable: a
+// silent wrong answer here becomes a spacecraft in the wrong place twenty
+// minutes later, and so does a refusal to answer at all.
 [[nodiscard]] std::expected<Radians, OrbitError> meanToEccentricAnomaly(Radians meanAnomaly,
                                                                         Eccentricity ecc);
 
@@ -144,9 +171,15 @@ enum class OrbitError {
 // the outer solar system -- the convergence criterion is relative, and the
 // conic thresholds are dimensionless, so nothing here has a built-in size.
 //
-// Preconditions, reported rather than asserted because a scenario file can
-// produce all of them: every input must be finite, the state must have
-// non-zero radius, and mu must be positive.
+// The universal-variable solve is safeguarded: the equation it solves is
+// strictly monotonic, so the root is bracketed and bisection takes over
+// whenever Newton would leave the bracket or fail to halve its step. There is
+// no eccentricity or step length for which this reports non-convergence.
+//
+// Reported rather than asserted, because a scenario file can produce all of
+// them: `NotFinite` for a non-finite input, a magnitude that overflows, or a
+// *result* that does; `NonPositiveGravity`; and `DegenerateState` for a
+// zero-radius state, or for a result that lands on the centre.
 [[nodiscard]] std::expected<StateVector, OrbitError>
 propagate(const StateVector& sv, GravParam mu, Seconds dt);
 

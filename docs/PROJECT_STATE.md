@@ -1,6 +1,6 @@
 # orbsim — project state and handoff
 
-Last updated: 2026-09-07. Sections 1 to 4 describe the review-and-fix session of
+Last updated: 2026-09-08. Sections 1 to 4 describe the review-and-fix session of
 2026-09-05; sections 5 to 8 have been kept current since. What happened after
 that session: the owner ruled that this is a simulation rather than a sandbox
 (ADR 0006), render quality became a struct that the physics cannot reach
