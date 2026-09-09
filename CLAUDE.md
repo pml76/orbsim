@@ -77,6 +77,22 @@ note that exists only on one of them is a note that does not exist.
    lint check, delete a case, refactor beyond the scope asked for, or choose
    between design alternatives without an explicit go-ahead. State the finding,
    propose the fix, and wait.
+
+   Two refinements, added 2026-09-09:
+
+   **Bring every question at once, before the work starts.** Collect the open
+   points of a task -- including the ones the task's own document did not
+   foresee -- and put them all up front, each with its options, their costs,
+   and a recommendation. A question deferred until "we get there" is a
+   decision taken alone.
+
+   **Measure rather than assume.** Where a fact can be checked -- a
+   dependency's real latest tag, what a linter actually reports, whether two
+   predicates agree -- check it and quote the number instead of reasoning from
+   memory. A short spike whose only output is a measurement is cheap, and a
+   confident guess is not. This is rule 23 of `docs/VERIFICATION.md` applied
+   to the decision as well as to the code: a configuration that silently stops
+   checking looks exactly like one that passes.
 2. **A failing test means fix the code.** If the test itself is genuinely
    wrong, say so and ask -- do not quietly edit it. A test that passes under
    one compiler and fails under another is evidence of an unstable algorithm,
