@@ -149,15 +149,54 @@ target_link_libraries(orbsim_core
 
 # ---------------------------------------------------------------------------
 # Tests
+#
+# Catch2 replaced a hand-rolled harness on 2026-09-09. The harness was the
+# right call for one file and the wrong one for ten, which is what this
+# milestone adds (CODING_GUIDELINES.md section 17, and the Toolbox).
+#
+# Fetched and pinned exactly as the graphics dependencies below are, and
+# SYSTEM for the same reason: its headers are not our code, and this project
+# compiles with -Wconversion and -Werror. Licence: Boost Software License 1.0.
+#
+# Declared out here rather than inside ORBSIM_BUILD_APP, because the core
+# suites are precisely what must still build when the renderer does not.
 # ---------------------------------------------------------------------------
 include(CTest)
 
-# The harness and the fixtures are headers under tests/, included from the
-# repository root as "tests/TestHarness.hpp" so a test reads the same way as a
-# source file does.
+FetchContent_Declare(catch2
+        GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+        GIT_TAG        v3.16.0
+        GIT_SHALLOW    TRUE
+        SYSTEM
+)
+FetchContent_MakeAvailable(catch2)
+
+# Catch2 needs no ASan container-annotation workaround of its own, which is not
+# obvious and was measured rather than assumed: it is built without the
+# sanitizer and uses std::string throughout, which is exactly the shape that
+# breaks vk-bootstrap above. It links because the _DISABLE_*_ANNOTATION
+# definitions orbsim_sanitizers already puts on *our* instrumented translation
+# units make the MSVC STL emit detect_mismatch("annotate_string", "0") from our
+# side too -- the same value an uninstrumented library emits, so there is no
+# mismatch to resolve. Adding the definitions to Catch2 as well changes
+# nothing: the asan preset builds and passes 3,632 assertions either way, with
+# all 108 of Catch2's objects rebuilt each time to be sure the test was real.
+
+# catch_discover_tests lives in Catch2's extras, not on the default module path.
+list(APPEND CMAKE_MODULE_PATH ${catch2_SOURCE_DIR}/extras)
+include(Catch)
+
+# The fixtures are headers under tests/, included from the repository root as
+# "tests/OrbitTestSupport.hpp" so a test reads the same way as a source file
+# does. Catch2WithMain supplies main(), so no suite declares one.
 add_library(orbsim_test_support INTERFACE)
 target_include_directories(orbsim_test_support INTERFACE ${CMAKE_CURRENT_SOURCE_DIR})
-target_link_libraries(orbsim_test_support INTERFACE orbsim_core orbsim_warnings orbsim_sanitizers)
+target_link_libraries(orbsim_test_support INTERFACE
+        orbsim_core
+        orbsim_warnings
+        orbsim_sanitizers
+        Catch2::Catch2WithMain
+)
 
 set(ORBSIM_TESTS
         test_orbit
@@ -166,7 +205,9 @@ set(ORBSIM_TESTS
 foreach(test_name IN LISTS ORBSIM_TESTS)
     add_executable(${test_name} tests/${test_name}.cpp)
     target_link_libraries(${test_name} PRIVATE orbsim_test_support)
-    add_test(NAME ${test_name} COMMAND ${test_name})
+    # One CTest test per TEST_CASE, so `ctest -R` can select a single case and
+    # a failure names the case rather than the executable.
+    catch_discover_tests(${test_name})
 endforeach()
 
 # ---------------------------------------------------------------------------
@@ -376,7 +417,6 @@ orbsim_add_header_selfcheck(orbsim_header_selfcheck orbsim_core
         orbit/Orbit.hpp
 )
 orbsim_add_header_selfcheck(orbsim_test_header_selfcheck orbsim_test_support
-        tests/TestHarness.hpp
         tests/OrbitTestSupport.hpp
 )
 add_dependencies(test_orbit orbsim_header_selfcheck orbsim_test_header_selfcheck)

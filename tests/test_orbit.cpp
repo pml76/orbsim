@@ -11,24 +11,41 @@
 #include "core/Units.hpp"
 #include "orbit/Orbit.hpp"
 #include "tests/OrbitTestSupport.hpp"
-#include "tests/TestHarness.hpp"
+
+#include <catch2/catch_message.hpp>
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers.hpp>
 
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <print>
 
 using namespace orb;
 using namespace orb::literals;
 using namespace orb::test;
 
-namespace {
+// A note on the readability-function-cognitive-complexity suppressions below.
+//
+// Catch2's REQUIRE and REQUIRE_THAT each expand to a do-while wrapping a
+// try/catch, so a case scores roughly three points per assertion whether or
+// not it branches at all: the cases suppressed here contain no `if`, and the
+// only loops are the ones walking a table of cases. The score measures the
+// framework, not the code.
+//
+// Ruled by the project owner on 2026-09-09, with the alternatives measured
+// first: the check offers an IgnoreMacros option that clears every one of
+// these while still scoring hand-written control flow (a probe function still
+// reported 35), and a NOLINTBEGIN/NOLINTEND region would cover a whole file in
+// one line. Both were rejected in favour of a suppression per function,
+// because that is the only one of the three that still reports a genuinely
+// over-complex helper added to this file later. Each new TEST_CASE that
+// crosses the threshold gets its own line, deliberately.
 
 // Elements -> state -> elements must be the identity for a well-conditioned
 // orbit (non-circular, non-equatorial), where every element is meaningful.
-void testElementRoundTrip(Run& run) {
-    section("elements <-> state round trip");
-
+// Catch2 macro expansion, not written complexity. See the note above.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("elements <-> state round trip", "[orbit]") {
     struct Case {
         const char* name{};
         Elements el{};
@@ -73,27 +90,26 @@ void testElementRoundTrip(Run& run) {
     });
 
     for (const auto& c : cases) {
+        CAPTURE(c.name);
         const StateVector sv = stateFromElements(c.el, kMuEarth);
         const auto back = elementsFromState(sv, kMuEarth);
 
-        std::print("  {}\n", c.name);
-        if (!expectOk(run, back, "elementsFromState")) continue;
+        INFO(errorName(back));
+        REQUIRE(back.has_value());
 
-        checkRel(run, "    sma", back->sma.value, c.el.sma.value, Tolerance{1e-12});
-        checkNear(run, "    ecc", back->ecc.value, c.el.ecc.value, Tolerance{1e-12});
-        checkAngle(run, "    inc", back->inc, c.el.inc, Tolerance{1e-12});
-        checkAngle(run, "    lan", back->lan, c.el.lan, Tolerance{1e-12});
-        checkAngle(run, "    aop", back->aop, c.el.aop, Tolerance{1e-11});
-        checkAngle(run, "    tra", back->tra, c.el.tra, Tolerance{1e-11});
+        REQUIRE_THAT(back->sma.value, WithinRelTo(c.el.sma.value, Tolerance{1e-12}));
+        REQUIRE_THAT(back->ecc.value, WithinAbsOf(c.el.ecc.value, Tolerance{1e-12}));
+        REQUIRE_THAT(wrapPi(back->inc - c.el.inc).value, WithinAbsOf(0.0, Tolerance{1e-12}));
+        REQUIRE_THAT(wrapPi(back->lan - c.el.lan).value, WithinAbsOf(0.0, Tolerance{1e-12}));
+        REQUIRE_THAT(wrapPi(back->aop - c.el.aop).value, WithinAbsOf(0.0, Tolerance{1e-11}));
+        REQUIRE_THAT(wrapPi(back->tra - c.el.tra).value, WithinAbsOf(0.0, Tolerance{1e-11}));
     }
 }
 
 // A circular orbit has no periapsis. The canonical form must fold aop into the
 // true anomaly rather than producing NaN, and still reproduce the same state.
-void testDegenerateOrbits(Run& run) {
-    section("degenerate orbits stay finite");
-
-    {
+TEST_CASE("degenerate orbits stay finite", "[orbit]") {
+    SECTION("circular inclined") {
         const Elements el = makeElements(Metres{7000e3},
                                          Eccentricity{0.0},
                                          Degrees{30.0},
@@ -103,21 +119,20 @@ void testDegenerateOrbits(Run& run) {
         const StateVector sv = stateFromElements(el, kMuEarth);
         const auto back = elementsFromState(sv, kMuEarth);
 
-        std::print("  circular inclined\n");
-        if (expectOk(run, back, "elementsFromState")) {
-            checkNear(run, "    aop folded to zero", back->aop.value, 0.0, Tolerance{1e-12});
-            // aop + tra is the argument of latitude, and that is preserved.
-            checkAngle(
-                run, "    argument of latitude", back->tra, el.aop + el.tra, Tolerance{1e-10});
-            checkVecRel(run,
-                        "    position reproduced",
-                        stateFromElements(*back, kMuEarth).pos,
-                        sv.pos,
-                        Tolerance{1e-12});
-        }
+        INFO(errorName(back));
+        REQUIRE(back.has_value());
+
+        INFO("aop folded to zero");
+        REQUIRE_THAT(back->aop.value, WithinAbsOf(0.0, Tolerance{1e-12}));
+        // aop + tra is the argument of latitude, and that is preserved.
+        INFO("argument of latitude");
+        REQUIRE_THAT(wrapPi(back->tra - (el.aop + el.tra)).value,
+                     WithinAbsOf(0.0, Tolerance{1e-10}));
+        REQUIRE_THAT(stateFromElements(*back, kMuEarth).pos,
+                     WithinRelVec(sv.pos, Tolerance{1e-12}));
     }
 
-    {
+    SECTION("equatorial (geostationary)") {
         const Elements el = makeElements(Metres{42164e3},
                                          Eccentricity{0.001},
                                          Degrees{0.0},
@@ -127,44 +142,39 @@ void testDegenerateOrbits(Run& run) {
         const StateVector sv = stateFromElements(el, kMuEarth);
         const auto back = elementsFromState(sv, kMuEarth);
 
-        std::print("  equatorial (geostationary)\n");
-        if (expectOk(run, back, "elementsFromState")) {
-            checkNear(run, "    lan folded to zero", back->lan.value, 0.0, Tolerance{1e-12});
-            checkNear(run, "    inc", back->inc.value, 0.0, Tolerance{1e-12});
-            checkAngle(run, "    aop from x-axis", back->aop, el.aop, Tolerance{1e-10});
-            checkVecRel(run,
-                        "    position reproduced",
-                        stateFromElements(*back, kMuEarth).pos,
-                        sv.pos,
-                        Tolerance{1e-12});
-        }
+        INFO(errorName(back));
+        REQUIRE(back.has_value());
+
+        INFO("lan folded to zero");
+        REQUIRE_THAT(back->lan.value, WithinAbsOf(0.0, Tolerance{1e-12}));
+        REQUIRE_THAT(back->inc.value, WithinAbsOf(0.0, Tolerance{1e-12}));
+        INFO("aop from the x-axis");
+        REQUIRE_THAT(wrapPi(back->aop - el.aop).value, WithinAbsOf(0.0, Tolerance{1e-10}));
+        REQUIRE_THAT(stateFromElements(*back, kMuEarth).pos,
+                     WithinRelVec(sv.pos, Tolerance{1e-12}));
     }
 }
 
 // Known closed-form values, independent of any of the code under test.
-void testKnownValues(Run& run) {
-    section("known analytic values");
-
+TEST_CASE("known analytic values", "[orbit]") {
     // 400 km circular orbit: period from the elements must match 2*pi*r/v.
     const f64 r = kEarthRadius.value + 400e3;
     const f64 v = std::sqrt(kMuEarth.value / r);
     const StateVector sv{.pos = {r, 0, 0}, .vel = {0, v, 0}};
     const auto el = elementsFromState(sv, kMuEarth);
-    if (!expectOk(run, el, "elementsFromState")) return;
+
+    INFO(errorName(el));
+    REQUIRE(el.has_value());
 
     const OrbitInfo info = orbitInfo(*el, kMuEarth);
 
-    checkRel(run, "  circular sma equals radius", el->sma.value, r, Tolerance{1e-12});
-    checkNear(run, "  circular ecc is zero", el->ecc.value, 0.0, Tolerance{1e-12});
-    checkRel(run,
-             "  period matches circumference / speed",
-             info.period.value,
-             kTau * r / v,
-             Tolerance{1e-10});
-    checkRel(run, "  periapsis", info.periapsis.value, r, Tolerance{1e-12});
-    checkRel(run, "  apoapsis", info.apoapsis.value, r, Tolerance{1e-12});
+    REQUIRE_THAT(el->sma.value, WithinRelTo(r, Tolerance{1e-12}));
+    REQUIRE_THAT(el->ecc.value, WithinAbsOf(0.0, Tolerance{1e-12}));
+    REQUIRE_THAT(info.period.value, WithinRelTo(kTau * r / v, Tolerance{1e-10}));
+    REQUIRE_THAT(info.periapsis.value, WithinRelTo(r, Tolerance{1e-12}));
+    REQUIRE_THAT(info.apoapsis.value, WithinRelTo(r, Tolerance{1e-12}));
     // Sanity anchor: a 400 km orbit takes a bit over 92 minutes.
-    checkNear(run, "  period is ~5554 s", info.period.value, 5554.0, Tolerance{5.0});
+    REQUIRE_THAT(info.period.value, WithinAbsOf(5554.0, Tolerance{5.0}));
 
     // Vis-viva on an eccentric orbit, checked at periapsis.
     const Elements e2 = makeElements(Metres{10000e3},
@@ -176,15 +186,16 @@ void testKnownValues(Run& run) {
     const StateVector p = stateFromElements(e2, kMuEarth);
     const f64 rp = e2.sma.value * (1.0 - e2.ecc.value);
     const f64 vp = std::sqrt(kMuEarth.value * ((2.0 / rp) - (1.0 / e2.sma.value)));
-    checkRel(run, "  periapsis radius", length(p.pos), rp, Tolerance{1e-12});
-    checkRel(run, "  periapsis speed (vis-viva)", length(p.vel), vp, Tolerance{1e-12});
+    REQUIRE_THAT(length(p.pos), WithinRelTo(rp, Tolerance{1e-12}));
+    INFO("periapsis speed (vis-viva)");
+    REQUIRE_THAT(length(p.vel), WithinRelTo(vp, Tolerance{1e-12}));
 }
 
 // The two propagators share no code. Agreeing to 1e-9 over a range of orbits
 // and time steps is strong evidence both are right.
-void testPropagatorsAgree(Run& run) {
-    section("universal-variable vs Kepler-element propagation");
-
+// Catch2 macro expansion, not written complexity. See the note above.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("universal-variable vs Kepler-element propagation", "[orbit]") {
     struct Case {
         const char* name{};
         Elements el{};
@@ -223,28 +234,26 @@ void testPropagatorsAgree(Run& run) {
         const OrbitInfo info = orbitInfo(c.el, kMuEarth);
         const StateVector sv0 = stateFromElements(c.el, kMuEarth);
 
-        std::print("  {}\n", c.name);
         for (const f64 frac : {0.05, 0.25, 0.5, 0.77, 0.99}) {
+            CAPTURE(c.name, frac);
             const Seconds dt = info.period * frac;
 
             const auto viaUniversal = propagate(sv0, kMuEarth, dt);
             const auto viaElementSet = propagateElements(c.el, kMuEarth, dt);
-            if (!expectOk(run, viaUniversal, "propagate")) continue;
-            if (!expectOk(run, viaElementSet, "propagateElements")) continue;
+            INFO(errorName(viaUniversal));
+            REQUIRE(viaUniversal.has_value());
+            INFO(errorName(viaElementSet));
+            REQUIRE(viaElementSet.has_value());
 
             const StateVector viaElements = stateFromElements(*viaElementSet, kMuEarth);
-            checkVecRel(
-                run, "    position agrees", viaUniversal->pos, viaElements.pos, Tolerance{1e-9});
-            checkVecRel(
-                run, "    velocity agrees", viaUniversal->vel, viaElements.vel, Tolerance{1e-9});
+            REQUIRE_THAT(viaUniversal->pos, WithinRelVec(viaElements.pos, Tolerance{1e-9}));
+            REQUIRE_THAT(viaUniversal->vel, WithinRelVec(viaElements.vel, Tolerance{1e-9}));
         }
     }
 }
 
 // Propagation must be time-reversible and must conserve the orbit itself.
-void testPropagationInvariants(Run& run) {
-    section("propagation invariants");
-
+TEST_CASE("propagation invariants", "[orbit]") {
     const Elements el = makeElements(Metres{12000e3},
                                      Eccentricity{0.4},
                                      Degrees{35.0},
@@ -256,120 +265,117 @@ void testPropagationInvariants(Run& run) {
 
     const Seconds dt = info.period * 0.37;
     const auto fwd = propagate(sv0, kMuEarth, dt);
-    if (!expectOk(run, fwd, "propagate forward")) return;
+    INFO(errorName(fwd));
+    REQUIRE(fwd.has_value());
 
     const auto back = propagate(*fwd, kMuEarth, -dt);
-    if (!expectOk(run, back, "propagate backward")) return;
+    INFO(errorName(back));
+    REQUIRE(back.has_value());
 
-    checkVecRel(
-        run, "  forward then back returns the start (pos)", back->pos, sv0.pos, Tolerance{1e-10});
-    checkVecRel(
-        run, "  forward then back returns the start (vel)", back->vel, sv0.vel, Tolerance{1e-10});
+    INFO("forward then back returns the start");
+    REQUIRE_THAT(back->pos, WithinRelVec(sv0.pos, Tolerance{1e-10}));
+    REQUIRE_THAT(back->vel, WithinRelVec(sv0.vel, Tolerance{1e-10}));
 
     // Energy and angular momentum are constants of the two-body motion, so a
     // long propagation must not move them.
     const auto distant = propagate(sv0, kMuEarth, info.period * 500.0);
-    if (expectOk(run, distant, "propagate 500 revolutions")) {
-        const auto far = elementsFromState(*distant, kMuEarth);
-        if (expectOk(run, far, "elementsFromState after 500 revolutions")) {
-            checkRel(run,
-                     "  sma conserved over 500 revolutions",
-                     far->sma.value,
-                     el.sma.value,
-                     Tolerance{1e-9});
-            checkRel(run,
-                     "  ecc conserved over 500 revolutions",
-                     far->ecc.value,
-                     el.ecc.value,
-                     Tolerance{1e-9});
-            checkAngle(
-                run, "  inc conserved over 500 revolutions", far->inc, el.inc, Tolerance{1e-9});
-        }
-    }
+    INFO(errorName(distant));
+    REQUIRE(distant.has_value());
+
+    const auto far = elementsFromState(*distant, kMuEarth);
+    INFO(errorName(far));
+    REQUIRE(far.has_value());
+
+    INFO("conserved over 500 revolutions");
+    REQUIRE_THAT(far->sma.value, WithinRelTo(el.sma.value, Tolerance{1e-9}));
+    REQUIRE_THAT(far->ecc.value, WithinRelTo(el.ecc.value, Tolerance{1e-9}));
+    REQUIRE_THAT(wrapPi(far->inc - el.inc).value, WithinAbsOf(0.0, Tolerance{1e-9}));
 
     // Half a period from periapsis lands exactly on apoapsis.
     Elements atPeri = el;
     atPeri.tra = Radians{0.0};
     const auto apo = propagate(stateFromElements(atPeri, kMuEarth), kMuEarth, info.period * 0.5);
-    if (expectOk(run, apo, "propagate half a period")) {
-        checkRel(run,
-                 "  half period from periapsis reaches apoapsis",
-                 length(apo->pos),
-                 info.apoapsis.value,
-                 Tolerance{1e-9});
-    }
+    INFO(errorName(apo));
+    REQUIRE(apo.has_value());
+
+    INFO("half a period from periapsis reaches apoapsis");
+    REQUIRE_THAT(length(apo->pos), WithinRelTo(info.apoapsis.value, Tolerance{1e-9}));
 
     // A quarter period on a circular orbit is a quarter turn.
     const f64 rc = 7500e3;
     const StateVector c0{.pos = {rc, 0, 0}, .vel = {0, std::sqrt(kMuEarth.value / rc), 0}};
     const auto circular = elementsFromState(c0, kMuEarth);
-    if (!expectOk(run, circular, "elementsFromState circular")) return;
+    INFO(errorName(circular));
+    REQUIRE(circular.has_value());
 
     const OrbitInfo ci = orbitInfo(*circular, kMuEarth);
     const auto c1 = propagate(c0, kMuEarth, ci.period * 0.25);
-    if (expectOk(run, c1, "propagate a quarter period")) {
-        checkAngle(run,
-                   "  quarter period is a quarter turn",
-                   angleBetween(c0.pos, c1->pos),
-                   Radians{kPi / 2},
-                   Tolerance{1e-9});
-        checkRel(run, "  circular radius unchanged", length(c1->pos), rc, Tolerance{1e-12});
-    }
+    INFO(errorName(c1));
+    REQUIRE(c1.has_value());
+
+    INFO("a quarter period is a quarter turn");
+    REQUIRE_THAT(wrapPi(angleBetween(c0.pos, c1->pos) - Radians{kPi / 2}).value,
+                 WithinAbsOf(0.0, Tolerance{1e-9}));
+    REQUIRE_THAT(length(c1->pos), WithinRelTo(rc, Tolerance{1e-12}));
 }
 
 // Escape trajectories are not a special case in this code, so they need the
 // same coverage as closed orbits.
-void testHyperbolic(Run& run) {
-    section("hyperbolic trajectories");
-
+TEST_CASE("hyperbolic trajectories", "[orbit]") {
     // Departing Earth well above escape speed.
     const f64 r0 = kEarthRadius.value + 300e3;
     const f64 vEsc = std::sqrt(2.0 * kMuEarth.value / r0);
     const StateVector sv{.pos = {r0, 0, 0}, .vel = {1200.0, vEsc * 1.15, 0}};
 
     const auto el = elementsFromState(sv, kMuEarth);
-    if (!expectOk(run, el, "elementsFromState hyperbolic")) return;
+    INFO(errorName(el));
+    REQUIRE(el.has_value());
 
     const OrbitInfo info = orbitInfo(*el, kMuEarth);
 
-    check(run, el->ecc.value > 1.0, "  trajectory is hyperbolic");
-    check(run, el->sma.value < 0.0, "  sma is negative");
-    check(run, std::isinf(info.apoapsis.value), "  apoapsis is infinite");
-    check(run, info.energy.value > 0.0, "  energy is positive");
+    REQUIRE(el->ecc.value > 1.0);
+    REQUIRE(el->sma.value < 0.0);
+    REQUIRE(std::isinf(info.apoapsis.value));
+    REQUIRE(info.energy.value > 0.0);
 
     // Round trip through the elements.
     const StateVector rebuilt = stateFromElements(*el, kMuEarth);
-    checkVecRel(run, "  elements reproduce the state (pos)", rebuilt.pos, sv.pos, Tolerance{1e-11});
-    checkVecRel(run, "  elements reproduce the state (vel)", rebuilt.vel, sv.vel, Tolerance{1e-11});
+    INFO("the elements reproduce the state");
+    REQUIRE_THAT(rebuilt.pos, WithinRelVec(sv.pos, Tolerance{1e-11}));
+    REQUIRE_THAT(rebuilt.vel, WithinRelVec(sv.vel, Tolerance{1e-11}));
 
     // Reversibility, over an hour of coasting outbound.
     const auto out = propagate(sv, kMuEarth, 3600.0_s);
-    if (!expectOk(run, out, "propagate hyperbolic")) return;
+    INFO(errorName(out));
+    REQUIRE(out.has_value());
 
     const auto returned = propagate(*out, kMuEarth, -3600.0_s);
-    if (expectOk(run, returned, "propagate hyperbolic backward")) {
-        checkVecRel(run, "  outbound then back (pos)", returned->pos, sv.pos, Tolerance{1e-9});
-    }
+    INFO(errorName(returned));
+    REQUIRE(returned.has_value());
 
-    check(run, length(out->pos) > length(sv.pos), "  trajectory is receding");
+    INFO("outbound then back");
+    REQUIRE_THAT(returned->pos, WithinRelVec(sv.pos, Tolerance{1e-9}));
+
+    INFO("the trajectory is receding");
+    REQUIRE(length(out->pos) > length(sv.pos));
 
     // And the two propagators must still agree out here.
     const auto viaElementSet = propagateElements(*el, kMuEarth, 3600.0_s);
-    if (expectOk(run, viaElementSet, "propagateElements hyperbolic")) {
-        checkVecRel(run,
-                    "  propagators agree on hyperbola",
-                    out->pos,
-                    stateFromElements(*viaElementSet, kMuEarth).pos,
-                    Tolerance{1e-8});
-    }
+    INFO(errorName(viaElementSet));
+    REQUIRE(viaElementSet.has_value());
+
+    INFO("the propagators agree on a hyperbola");
+    REQUIRE_THAT(out->pos,
+                 WithinRelVec(stateFromElements(*viaElementSet, kMuEarth).pos, Tolerance{1e-8}));
 }
 
 // Kepler's equation is solved by Newton iteration; it has to converge for every
 // eccentricity the sim can produce, including near-parabolic ones.
-void testKeplerSolver(Run& run) {
-    section("Kepler equation solver");
-
+// Catch2 macro expansion, not written complexity. See the note above.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("Kepler equation solver", "[orbit]") {
     for (const f64 ecc : {0.0, 0.1, 0.5, 0.9, 0.99, 0.999}) {
+        CAPTURE(ecc);
         f64 worst = 0.0;
         bool allSolved = true;
 
@@ -384,21 +390,21 @@ void testKeplerSolver(Run& run) {
             worst = std::max(worst, std::abs(wrapPi(backAgain - meanAnomaly).value));
         }
 
-        check(run, allSolved, "  every mean anomaly solved");
-        checkNear(run, "  elliptic round trip", worst, 0.0, Tolerance{1e-11});
-        if (worst > 1e-11) std::print("        (at ecc = {:g})\n", ecc);
+        INFO("every mean anomaly solved");
+        REQUIRE(allSolved);
+        INFO("elliptic round trip");
+        REQUIRE_THAT(worst, WithinAbsOf(0.0, Tolerance{1e-11}));
     }
 
     // True <-> eccentric anomaly, elliptic and hyperbolic.
     for (const f64 ecc : {0.0, 0.3, 0.85, 0.999}) {
         for (int i = 0; i < 360; i += 7) {
+            CAPTURE(ecc, i);
             const Radians nu = toRadians(Degrees{static_cast<f64>(i)});
             const Radians eccAnomaly = trueToEccentricAnomaly(nu, Eccentricity{ecc});
-            checkAngle(run,
-                       "  true<->eccentric (elliptic)",
-                       eccentricToTrueAnomaly(eccAnomaly, Eccentricity{ecc}),
-                       nu,
-                       Tolerance{1e-10});
+            INFO("true <-> eccentric (elliptic)");
+            REQUIRE_THAT(wrapPi(eccentricToTrueAnomaly(eccAnomaly, Eccentricity{ecc}) - nu).value,
+                         WithinAbsOf(0.0, Tolerance{1e-10}));
         }
     }
 
@@ -406,23 +412,19 @@ void testKeplerSolver(Run& run) {
         // Stay inside the asymptote, where the true anomaly is reachable.
         const f64 nuMax = std::acos(-1.0 / ecc) * 0.95;
         for (int i = -20; i <= 20; ++i) {
+            CAPTURE(ecc, i);
             const Radians nu{nuMax * static_cast<f64>(i) / 20.0};
             const Radians hyperbolic = trueToEccentricAnomaly(nu, Eccentricity{ecc});
-            checkAngle(run,
-                       "  true<->eccentric (hyperbolic)",
-                       eccentricToTrueAnomaly(hyperbolic, Eccentricity{ecc}),
-                       nu,
-                       Tolerance{1e-9});
+            INFO("true <-> eccentric (hyperbolic)");
+            REQUIRE_THAT(wrapPi(eccentricToTrueAnomaly(hyperbolic, Eccentricity{ecc}) - nu).value,
+                         WithinAbsOf(0.0, Tolerance{1e-9}));
 
             const Radians meanAnomaly = eccentricToMeanAnomaly(hyperbolic, Eccentricity{ecc});
             const auto solved = meanToEccentricAnomaly(meanAnomaly, Eccentricity{ecc});
-            if (expectOk(run, solved, "  hyperbolic Kepler solve")) {
-                checkNear(run,
-                          "  hyperbolic Kepler round trip",
-                          solved->value,
-                          hyperbolic.value,
-                          Tolerance{1e-9});
-            }
+            INFO(errorName(solved));
+            REQUIRE(solved.has_value());
+            INFO("hyperbolic Kepler round trip");
+            REQUIRE_THAT(solved->value, WithinAbsOf(hyperbolic.value, Tolerance{1e-9}));
         }
     }
 }
@@ -430,46 +432,29 @@ void testKeplerSolver(Run& run) {
 // The contract says failure is reported, never returned as a plausible number.
 // A contract is worth exactly as much as its test -- and until this commit,
 // propagate() answered a zero-radius state by silently handing the input back.
-void testFailuresAreReported(Run& run) {
-    section("failures are reported, not approximated");
-
+TEST_CASE("failures are reported, not approximated", "[orbit]") {
     const StateVector atCentre{.pos = {0, 0, 0}, .vel = {1000.0, 0, 0}};
     const auto degenerate = propagate(atCentre, kMuEarth, 60.0_s);
-    check(run, !degenerate.has_value(), "  a zero-radius state is refused");
-    check(run,
-          !degenerate.has_value() && degenerate.error() == OrbitError::DegenerateState,
-          "  with the specific error");
+    INFO("a zero-radius state is refused");
+    REQUIRE(!degenerate.has_value());
+    REQUIRE(degenerate.error() == OrbitError::DegenerateState);
 
     const auto degenerateElements = elementsFromState(atCentre, kMuEarth);
-    check(run, !degenerateElements.has_value(), "  and refused by elementsFromState too");
+    INFO("and refused by elementsFromState too");
+    REQUIRE(!degenerateElements.has_value());
 
     const StateVector leo{.pos = {7000e3, 0, 0}, .vel = {0, 7546.0, 0}};
     const auto massless = propagate(leo, GravParam{0.0}, 60.0_s);
-    check(run, !massless.has_value(), "  a massless central body is refused");
-    check(run,
-          !massless.has_value() && massless.error() == OrbitError::NonPositiveGravity,
-          "  with the specific error");
+    INFO("a massless central body is refused");
+    REQUIRE(!massless.has_value());
+    REQUIRE(massless.error() == OrbitError::NonPositiveGravity);
 
     const auto negativeGravity = elementsFromState(leo, GravParam{-1.0});
-    check(run, !negativeGravity.has_value(), "  negative gravity is refused");
+    INFO("negative gravity is refused");
+    REQUIRE(!negativeGravity.has_value());
 
     // Every error can be explained to a human.
-    check(run, !describe(OrbitError::SolverDidNotConverge).empty(), "  errors describe themselves");
-    check(run, !describe(OrbitError::DegenerateState).empty(), "  all of them");
-    check(run, !describe(OrbitError::NonPositiveGravity).empty(), "  every one");
-}
-
-} // namespace
-
-int main() {
-    return runSuite("two-body core", [](Run& run) {
-        testElementRoundTrip(run);
-        testDegenerateOrbits(run);
-        testKnownValues(run);
-        testPropagatorsAgree(run);
-        testPropagationInvariants(run);
-        testHyperbolic(run);
-        testKeplerSolver(run);
-        testFailuresAreReported(run);
-    });
+    REQUIRE(!describe(OrbitError::SolverDidNotConverge).empty());
+    REQUIRE(!describe(OrbitError::DegenerateState).empty());
+    REQUIRE(!describe(OrbitError::NonPositiveGravity).empty());
 }

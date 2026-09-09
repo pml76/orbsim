@@ -19,10 +19,11 @@ stand.
 
 **Milestone 0 is complete: a tested two-body core and a Vulkan renderer that
 opens a window and paces frames.** Nothing is drawn yet.
-[Milestone 1](plan/milestone-1-earth.md) — Earth, orbit track, Orbit MFD — is
-planned and **not started**. Its phase A (render foundations: pipelines, a
-camera with camera-relative rendering, a line renderer) is the next code to
-write.
+[Milestone 1](plan/milestone-1-earth.md) — Earth, orbit track, Orbit MFD — has
+**started**: [M1-01](plan/tasks/m1-01-catch2.md), the move to Catch2, landed on
+2026-09-09. [M1-02](plan/tasks/m1-02-record-the-decisions.md), the six ADRs and
+`THIRD_PARTY.md`, is next, and then phase A (render foundations: pipelines, a
+camera with camera-relative rendering, a line renderer).
 
 | Component | State |
 |---|---|
@@ -31,19 +32,30 @@ write.
 | `src/render/` | Vulkan 1.3 device, swapchain, frame pacing, RAII handles, buffer upload, shader loading. **No pipelines, no drawing.** |
 | `src/app/` | Window, event loop, argument parsing, frame loop. |
 | `shaders/` | Four GLSL shaders compile to SPIR-V at build time and are **never loaded**. They are placeholders for phase A. |
-| `tests/` | Two suites, 3,632 checks, plus a GPU smoke test and a libFuzzer target. |
+| `tests/` | Two Catch2 suites, 3,632 assertions in 19 test cases, plus a GPU smoke test and a libFuzzer target. |
 
 ### Test suites
 
-| Suite | Checks | What it covers |
+| Suite | Assertions | What it covers |
 |---|---|---|
-| `test_orbit` | 732 | Earth-orbit round trips, degenerate orbits, analytic values, propagator agreement, invariants, hyperbolic, Kepler solver, reported failures |
-| `test_orbit_scales` | 2900 | Heliocentric circles, parabolic trajectories, non-finite inputs, states that are finite but are not orbits, states with no orbital plane, a zero time step on every conic, near-rectilinear orbits, propagation composing, canonical scale invariance, bit-identical determinism, and a seeded sweep of 200 closed + 100 hyperbolic orbits around the Moon, Earth, Jupiter and the Sun |
+| `test_orbit` | 732, in 8 cases | Earth-orbit round trips, degenerate orbits, analytic values, propagator agreement, invariants, hyperbolic, Kepler solver, reported failures |
+| `test_orbit_scales` | 2900, in 11 cases | Heliocentric circles, parabolic trajectories, non-finite inputs, states that are finite but are not orbits, states with no orbital plane, a zero time step on every conic, near-rectilinear orbits, propagation composing, canonical scale invariance, bit-identical determinism, and a seeded sweep of 200 closed + 100 hyperbolic orbits around the Moon, Earth, Jupiter and the Sun |
 | `fuzz_orbit` | — | libFuzzer over the core under ASan and UBSan. Not a CTest test: run deliberately with a time budget, `cmake --preset linux-fuzz`. |
 | `orbsim_smoke` | — | Runs the app under the Vulkan validation layers for 2 s; fails on any validation error. Labelled `gpu`. |
 
 The seed for the random sweep is `20260905` and is written into
-`tests/test_orbit_scales.cpp`. A failure prints the failing case's parameters.
+`tests/test_orbit_scales.cpp`. A failure prints the failing case's parameters,
+through Catch2's `CAPTURE`, which reports them on failure rather than on every
+run.
+
+**The suites moved from a hand-rolled harness to Catch2 v3.16.0 on
+2026-09-09** (task M1-01), and the assertion count is the evidence that the
+move changed nothing: 732 and 2900 before, 732 and 2900 after, on both Windows
+trees and both Linux presets. `catch_discover_tests` makes each `TEST_CASE`
+its own CTest test, so `ctest -R` selects one and `ctest -N` lists nineteen.
+Catch2 prints a `Randomness seeded to:` line that differs between runs; it
+seeds only `GENERATE` and `--order rand`, neither of which this project uses,
+and the sweep's own generator is still seeded from `kSweepSeed`.
 
 ---
 
@@ -361,6 +373,58 @@ order, and reordering the two calls changes every case in the sweep.** The
 suite still reports 2,900 checks from seed 20260905, which is the evidence the
 split was behaviour-preserving.
 
+### Milestone 1 begins: M1-01, the move to Catch2, 2026-09-09
+
+The hand-rolled harness was right for one file and wrong for the ten this
+milestone adds, so both suites moved to **Catch2 v3.16.0** before any of the
+new ones are written. The task changed no assertion, no tolerance and no case,
+and **the assertion count is the evidence**: 732 and 2900 before, 732 and 2900
+after, on Windows clang RelWithDebInfo and Debug, under ASan, and under both
+Linux presets. `catch_discover_tests` gives each `TEST_CASE` its own CTest
+entry, so `ctest -N` lists nineteen.
+
+Four things from it are worth keeping.
+
+**Three custom matchers, because Catch2's own take bare doubles.**
+`WithinAbs(5.0, 5554.0)` accepts 5554 exactly as `WithinAbs(5554.0, 5.0)` does,
+since |5554 - 5| <= 5554 -- the silent transposition non-negotiable 1 forbids.
+`WithinAbsOf`, `WithinRelTo` and `WithinRelVec` in `tests/OrbitTestSupport.hpp`
+take a `Tolerance`, so the transposed call does not compile, and they reproduce
+the old harness's predicates exactly rather than approximately: Catch2's
+`WithinRel` divides by max(|got|, |want|) where this project divides by |want|.
+
+**`INFO(describe(result.error()))` is undefined behaviour.**
+`std::expected::error()` has the precondition that the expected holds no value,
+and `INFO` evaluates its argument eagerly on every call, not only on failure.
+The Debug tree asserts. `errorName()` guards it and returns "(succeeded)".
+
+**Nine `NOLINTNEXTLINE` suppressions, ruled by the owner after the
+alternatives were measured.** `readability-function-cognitive-complexity`
+scores a `TEST_CASE` at roughly three points per assertion because `REQUIRE`
+expands to a do-while wrapping a try/catch; the cases suppressed have no `if`
+of their own. The check's `IgnoreMacros` option would have cleared all of them
+project-wide at a measured cost of two points on one `src/` function
+(`meanToEccentricAnomaly`, 21 -> 19, against a threshold of 25), and a
+`NOLINTBEGIN`/`NOLINTEND` region would have taken one line per file. Both were
+rejected in favour of one suppression per function, because that is the only
+one of the three that still reports a genuinely over-complex helper added to
+those files later.
+
+**Catch2 needs no ASan annotation workaround, and finding that out took three
+attempts.** Assuming it did -- it is built without the sanitizer and uses
+`std::string` throughout, which is exactly what breaks vk-bootstrap -- the
+guard went in first. The first two experiments to check whether it was
+load-bearing both said "not needed", and both were false: Ninja had not
+rebuilt a single Catch2 object either time. Forcing all 108 to rebuild each
+way showed it genuinely is not needed, because the `_DISABLE_*_ANNOTATION`
+definitions `orbsim_sanitizers` already applies to *our* instrumented
+translation units make the MSVC STL emit the same `detect_mismatch` value an
+uninstrumented library emits. The guard was deleted and the reasoning left in
+its place. The lesson is the general one: **a build experiment that does not
+say how much it rebuilt has not been run.**
+
+---
+
 ---
 
 ## 4. The bug that justified the session
@@ -551,6 +615,22 @@ asked for.
   producing a diff in which every line changed.
 - **Use CLion's bundled CMake (4.3.1), not the 3.31.2 on PATH.** The build
   tree was configured with the former.
+- **`FETCHCONTENT_SOURCE_DIR_<NAME>` silently overrides the pin.** The two
+  Windows trees point the fetched dependencies at a shared source cache under
+  `build/_deps-cache/`, and the WSL trees at `build/_deps-cache-linux/` --
+  **one clone per platform**, decided 2026-09-09, because a Linux build should
+  not compile a working tree that Windows git checked out. It saves re-cloning
+  SDL3 into every tree, and it costs this: when `FETCHCONTENT_SOURCE_DIR_x` is
+  set, CMake uses that directory exactly as it finds it and **never reads the
+  `GIT_TAG` in `CMakeLists.txt`**. Changing a pin therefore does nothing at
+  all until the cached clone is checked out at the new tag by hand. Both
+  caches hold Catch2 at `v3.16.0`, matching the pin.
+
+  The setting lives in each `CMakeCache.txt`, not in the repository, so
+  deleting a build tree loses it and the next configure downloads afresh --
+  harmless, but it means two trees can be built from different sources while
+  both report green. If a dependency ever behaves differently between trees,
+  check this before anything else.
 - **The Epic Games overlay layer** logs a duplicate-layer warning at every
   Vulkan startup. It is noise, not a problem.
 - **There is one clang here now, and it is meant to stay that way.** 23.1.0 on

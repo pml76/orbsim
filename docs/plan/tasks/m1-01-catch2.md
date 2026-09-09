@@ -1,6 +1,6 @@
 # M1-01 — Move both suites to Catch2
 
-Phase: preliminaries | Status: not started
+Phase: preliminaries | Status: **done 2026-09-09**
 Prerequisites: none — this is the head of the queue
 
 ## Purpose
