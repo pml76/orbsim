@@ -267,6 +267,41 @@ translation units make the MSVC STL emit the same `detect_mismatch` value an
 uninstrumented library emits. The guard was deleted and the reasoning left in
 its place. The lesson is the general one: **a build experiment that does not
 say how much it rebuilt has not been run.**
+### M1-02, the eight records, and the audit that preceded it, 2026-09-09
+
+Twenty-six decisions had been taken on 2026-09-08, before the milestone
+started; six were scheduled to become ADRs and **eight did**. Decisions 16 (the
+radiometric chain) and 18 (quadtree LOD) span files exactly as the other six
+do, and the owner ruled that they be written now rather than when the code that
+depends on them arrives — which is the whole argument of the task: *an ADR
+written afterwards is a justification.*
+
+**The audit that opened the task is the part worth keeping.** All 112 documents
+were read against each other before a line of M1-02 was written, on the grounds
+that a task whose entire product is prose should not be built on prose that
+disagrees with itself. The task queue came out clean — all 84 task documents
+agree with the queue on phase, prerequisites and filename, checked by script —
+and about twenty other things did not. The full list is in the commit *Make the
+documents agree with the decisions that were taken*; two of them generalise.
+
+**A correction recorded in one place is not a correction.** On 2026-09-08 the
+register wrote down that phase E's acceptance criterion "was not achievable as
+written", because JPL Horizons cannot propagate a hypothetical satellite under
+a J2-only force model, and that GMAT replaces it. On 2026-09-09 the milestone
+plan still asked for Horizons, in two places, and so did this file. The
+register had done its job perfectly and nothing had propagated. That is the
+argument for section 8 of the register, which now maps every decision to the
+document that carries it, and for the `Decided by:` line that 71 task documents
+gained.
+
+**`doc-links` cannot see a backticked path.** `.claude/rules/physics-tests.md`
+still sent readers to `tests/TestHarness.hpp`, which M1-01 had deleted — in a
+file the harness loads automatically whenever a test is touched. The check that
+exists precisely to catch a document naming something that is not there could
+not see it, because the reference was in backticks rather than in a link. The
+script's own docstring describes this failure mode; it was one level outside
+its reach.
+
 ---
 
 ## 4. The bug that justified the session

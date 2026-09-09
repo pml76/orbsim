@@ -2,6 +2,7 @@
 
 Phase: A | Status: not started
 Prerequisites: M1-11, M1-13
+Decided by: [ADR 0012](../../adr/0012-orbsim-view.md)
 
 ## Purpose
 

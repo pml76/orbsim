@@ -2,6 +2,7 @@
 
 Phase: D | Status: not started
 Prerequisites: M1-18, M1-39
+Decided by: [ADR 0008](../../adr/0008-renderer-verification.md)
 
 ## Purpose
 

@@ -2,6 +2,7 @@
 
 Phase: B | Status: not started
 Prerequisites: M1-33
+Decided by: [ADR 0007](../../adr/0007-render-quality-is-a-struct.md)
 
 ## Purpose
 

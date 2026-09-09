@@ -2,6 +2,7 @@
 
 Phase: A | Status: not started
 Prerequisites: M1-14
+Decided by: [ADR 0014](../../adr/0014-radiometric-chain.md)
 
 ## Purpose
 
@@ -78,6 +79,6 @@ The standing rules. The frames that make this judgeable arrive one task later.
 
 - [ ] `check` green in both trees.
 - [ ] The 179 lm/W convention is stated in the header and referenced from
-      ADR 0008.
+      [ADR 0014](../../adr/0014-radiometric-chain.md).
 - [ ] AgX carries its attribution in the shader and in `THIRD_PARTY.md`.
 - [ ] No tuning constant exists anywhere in the chain.

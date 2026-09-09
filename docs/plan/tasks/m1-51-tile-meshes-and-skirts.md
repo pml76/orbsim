@@ -2,6 +2,7 @@
 
 Phase: C | Status: not started
 Prerequisites: M1-30, M1-31, M1-50
+Decided by: [ADR 0015](../../adr/0015-skirts-and-morphing.md)
 
 ## Purpose
 

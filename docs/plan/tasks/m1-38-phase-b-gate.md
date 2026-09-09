@@ -2,6 +2,7 @@
 
 Phase: B | Status: not started
 Prerequisites: M1-24 … M1-37
+Decided by: [ADR 0005](../../adr/0005-correctness-is-enforced-by-tools.md)
 
 ## Purpose
 

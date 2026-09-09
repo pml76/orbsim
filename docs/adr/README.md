@@ -23,12 +23,26 @@ usually enough.
 | [0005](0005-correctness-is-enforced-by-tools.md) | Correctness is enforced by tools, not by remembering | accepted | 2026-09-05 |
 | [0006](0006-simulation-not-sandbox.md) | orbsim is a simulation, not a sandbox | accepted | 2026-09-06 |
 | [0007](0007-render-quality-is-a-struct.md) | Render quality is a struct of per-feature settings, and never reaches the simulation | accepted | 2026-09-07 |
+| [0008](0008-renderer-verification.md) | Renderer verification is probes, golden frames, and a person looking at them | accepted | 2026-09-08 |
+| [0009](0009-time-is-a-type-with-a-scale.md) | Time is a type with a scale, and the astronomy lives in `src/astro/` | accepted | 2026-09-08 |
+| [0010](0010-tiles-are-ktx2.md) | Tiles are KTX2, and Orbiter's `.tree` is converted rather than streamed from | accepted | 2026-09-08 |
+| [0011](0011-the-integrator-has-three-seams.md) | The integrator has three seams, and they are closed sets | accepted | 2026-09-08 |
+| [0012](0012-orbsim-view.md) | `orbsim_view` holds the render-side maths that Vulkan never touches | accepted | 2026-09-08 |
+| [0013](0013-catch2-is-the-test-framework.md) | Catch2 is the test framework | accepted | 2026-09-08 |
+| [0014](0014-radiometric-chain.md) | The radiometric chain is manual photographic exposure and the AgX tonemap | accepted | 2026-09-08 |
+| [0015](0015-skirts-and-morphing.md) | Quadtree LOD is skirts plus vertex morphing | accepted | 2026-09-08 |
 
-ADRs **0008–0013** are planned by
-[M1-02](../plan/tasks/m1-02-record-the-decisions.md). The twenty-six decisions
-they will record are already settled and listed in
-[`../plan/milestone-1-decisions.md`](../plan/milestone-1-decisions.md), which
-is the register for the ones too small to become a record of their own.
+**0008 to 0015 record the decisions taken on 2026-09-08**, before milestone 1
+started. All twenty-six of those decisions are in
+[`../plan/milestone-1-decisions.md`](../plan/milestone-1-decisions.md) — the
+register, which holds the ones too small or too local to become a record of
+their own, and which maps every decision to the record that carries it.
+
+Three earlier records gained dated amendments in the same pass: **0001** (an
+integral `Count` beside `Quantity`), **0005** (the phase gates are where the
+sanitizers and the second compiler run) and **0007** (both of the questions it
+left open, answered — including that `RenderQuality` lives in `orbsim_view`
+rather than `src/render/`).
 
 The worked example keeps its own two records under
 [`../../coding-guidelines-example/docs/adr/`](../../coding-guidelines-example/docs/adr/).

@@ -1,7 +1,13 @@
-# M1-02 — Record the decisions as ADRs 0008–0013
+# M1-02 — Record the decisions as ADRs 0008–0015
 
-Phase: preliminaries | Status: not started
+Phase: preliminaries | Status: **done 2026-09-09**
 Prerequisites: none
+Writes: [ADR 0008](../../adr/0008-renderer-verification.md) to
+[ADR 0015](../../adr/0015-skirts-and-morphing.md), dated amendments to
+[0001](../../adr/0001-units-in-the-type-system.md),
+[0005](../../adr/0005-correctness-is-enforced-by-tools.md) and
+[0007](../../adr/0007-render-quality-is-a-struct.md), and
+[`THIRD_PARTY.md`](../../../THIRD_PARTY.md)
 
 ## Purpose
 
@@ -40,6 +46,19 @@ was considered, why, and what it does not decide:
   Considered: one render target; putting it in `core/`.
 - **0013 — Catch2 is the test framework.** Considered: keeping the hand-rolled
   harness; doctest.
+
+**Two more were added on 2026-09-09**, on the owner's instruction, after the
+audit that opened this task observed that decisions 16 and 18 span files just
+as the six above do:
+
+- **0014 — The radiometric chain is manual photographic exposure and the AgX
+  tonemap.** The HDR target, the order of the resolve pass, the 179 lm/W
+  convention, the 0.5 % budget, and the rule that no tuning constant exists
+  anywhere in the chain. Considered: ACES; keeping the LDR pipeline;
+  auto-exposure now.
+- **0015 — Quadtree LOD is skirts plus vertex morphing.** Why the crack and the
+  pop are separate problems, and why the morph factor is the same number as the
+  selection metric. Considered: stitching; morphing alone; skirts alone.
 
 Then three amendments and one new file:
 
@@ -84,8 +103,12 @@ decision appears once, with its alternatives.
 
 ## Done when
 
-- [ ] `docs/adr/0008` … `0013` exist, in the house shape.
-- [ ] ADRs 0001, 0005 and 0007 carry their dated amendments.
-- [ ] `THIRD_PARTY.md` exists and covers every pinned dependency.
-- [ ] `CLAUDE.md` and `PROJECT_STATE.md` point at the queue and the register.
-- [ ] `check` is green in both trees.
+- [x] `docs/adr/0008` … `0015` exist, in the house shape.
+- [x] ADRs 0001, 0005 and 0007 carry their dated amendments.
+- [x] `THIRD_PARTY.md` exists and covers every pinned dependency, the four
+      decided but not yet pinned, and the data sources.
+- [x] `CLAUDE.md` and `PROJECT_STATE.md` point at the queue and the register.
+- [x] Every task an ADR governs carries a `Decided by:` line naming it, and
+      [the register](../milestone-1-decisions.md) section 8 maps the traffic
+      the other way.
+- [x] `check` is green in both trees.

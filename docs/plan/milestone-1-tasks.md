@@ -22,6 +22,12 @@ where a failure cannot be attributed.
 "everything before it". They exist so that if the order ever has to change, what
 actually depends on what is written down rather than inferred.
 
+**Each task names the records that decide it.** A `Decided by:` line in the
+header links the ADRs a reader should have read before starting. The record
+argues the decision and is immutable; the task implements it and is not. Where
+a task has no such line, nothing in `docs/adr/` constrains it beyond the
+standing rules below.
+
 **One task is one commit.** Half a day to a day of work. If a task turns out to
 be two commits, it was two tasks, and the queue should say so before the second
 one starts.
@@ -101,7 +107,7 @@ unchanged. Inside the phases, three things drive the ordering:
 | # | Task | Prerequisites | Ends with |
 |---|---|---|---|
 | [01](tasks/m1-01-catch2.md) | Move both suites to Catch2 | — | The same 3,632 assertions, one harness |
-| [02](tasks/m1-02-record-the-decisions.md) | Record the decisions as ADRs 0008–0013 | — | Six ADRs and `THIRD_PARTY.md` |
+| [02](tasks/m1-02-record-the-decisions.md) | Record the decisions as ADRs 0008–0015 | — | Eight ADRs and [`THIRD_PARTY.md`](../../THIRD_PARTY.md) |
 
 ## Phase A — render foundations, the time system, the quality path
 

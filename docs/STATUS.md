@@ -40,9 +40,9 @@ opens a window and paces frames.** Nothing is drawn yet.
 | | |
 |---|---|
 | Current milestone | 1 — Earth, orbit track, Orbit MFD |
-| Last task completed | [M1-01](plan/tasks/m1-01-catch2.md), the move to Catch2, 2026-09-09 |
-| Next task | [M1-02](plan/tasks/m1-02-record-the-decisions.md), the six ADRs and `THIRD_PARTY.md` |
-| Then | Phase A — render foundations: pipelines, a camera with camera-relative rendering, a line renderer |
+| Last task completed | [M1-02](plan/tasks/m1-02-record-the-decisions.md), the eight ADRs and [`THIRD_PARTY.md`](../THIRD_PARTY.md), 2026-09-09 |
+| Next task | [M1-03](plan/tasks/m1-03-timepoint.md), `TimePoint` and the time scales |
+| Then | The rest of phase A — leap seconds, TDB and UT1, the Horizons fixtures, Earth orientation and the Sun; then `orbsim_view`, the camera, the pipelines, and the probe mode that verifies everything drawn after it |
 | Phase order | A → B → D → C → E → F → G |
 
 | Component | State |
@@ -100,13 +100,17 @@ rather than the exact tag. `gcc-14` is the second *implementation* and is not
 tied to that number.
 
 Pinned dependencies: SDL3, vk-bootstrap, VMA, Vulkan-Headers and Catch2, all
-fetched at a pinned tag by `CMakeLists.txt`.
+fetched at a pinned tag by `CMakeLists.txt`. Their licences, the ones decided
+but not yet pinned, and which files of `bc7enc_rdo` may be compiled, are in
+[`THIRD_PARTY.md`](../THIRD_PARTY.md).
 
 ## Decision records
 
 **The list is [`adr/README.md`](adr/README.md)**, next to the records
-themselves, so that browsing the directory finds it. Seven are accepted;
-0008-0013 are planned by [M1-02](plan/tasks/m1-02-record-the-decisions.md).
+themselves, so that browsing the directory finds it. **Fifteen are accepted**,
+0008 to 0015 having been written by
+[M1-02](plan/tasks/m1-02-record-the-decisions.md) from the decisions taken on
+2026-09-08.
 
 An accepted ADR is immutable, so the numbers inside one are not maintained
 here: they are what was true when the decision was taken.

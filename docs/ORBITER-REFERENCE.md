@@ -41,5 +41,6 @@ Marble files (~29 MB) are already downloaded on this machine.
 
 This project's own licence is MIT. What every third-party dependency is
 licensed under, and which files of it are actually compiled, is
-[`plan/milestone-1-decisions.md`](plan/milestone-1-decisions.md) section 7,
-verified 2026-09-08.
+[`../THIRD_PARTY.md`](../THIRD_PARTY.md); the day each of those was verified
+against the source is recorded in
+[`plan/milestone-1-decisions.md`](plan/milestone-1-decisions.md) section 7.

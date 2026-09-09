@@ -2,6 +2,7 @@
 
 Phase: F | Status: not started
 Prerequisites: M1-63, M1-68, M1-76
+Decided by: [ADR 0011](../../adr/0011-the-integrator-has-three-seams.md)
 
 ## Purpose
 

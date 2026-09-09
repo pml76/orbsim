@@ -95,7 +95,9 @@ The project has an opinionated, enforced house style:
   violated, with a coverage map
 - [`docs/adr/`](docs/adr/) — the decisions that span files: units as types,
   the error strategy, reverse-Z, pinned dependencies, how correctness is
-  enforced, simulation-not-sandbox, and scalable render quality
+  enforced, simulation-not-sandbox, scalable render quality, and eight more
+  taken before milestone 1 began, from how the renderer is verified to how the
+  integrator is put together. [The index](docs/adr/README.md) is the list
 - [`docs/VERIFICATION.md`](docs/VERIFICATION.md) — how the project knows the
   code is right, as distinct from how it is written. A physics bug does not
   crash; it returns a plausible number
@@ -108,7 +110,9 @@ so `propagate(state, dt, mu)` does not compile.
 
 ## Licence
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE). Every dependency's licence, and for one of them
+which files are compiled and which are not, is in
+[`THIRD_PARTY.md`](THIRD_PARTY.md).
 
 ### Acknowledgements
 

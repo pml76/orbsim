@@ -120,3 +120,26 @@ and the Linux presets are a deliberate act before a milestone lands. See
 The lesson is the one already in the section above, arriving again: a cost
 recorded from reasoning rather than from a command is a cost nobody has
 measured.
+
+## Update, 2026-09-08: the phase gates are where the rest of the tooling runs
+
+This record settles what `check` does, and says that nothing runs
+automatically. It does not say *when* the things outside `check` run -- and with
+no CI, that is a gap a person falls into. `asan`, `linux-sanitize`, `linux-gcc`
+and the fuzzers are each a deliberate act, and a deliberate act with no
+scheduled moment is one that happens when somebody remembers.
+
+Milestone 1 gives them a moment. **Every phase ends with a gate task** --
+[M1-23](../plan/tasks/m1-23-phase-a-gate.md),
+[M1-38](../plan/tasks/m1-38-phase-b-gate.md), and one for each phase after --
+which runs `asan`, both Linux presets, every fuzz target with a time budget and
+a coverage review, and records the numbers. **Nothing proceeds past a red
+gate.** The list grows with the milestone: `linux-tsan` joins at
+[M1-33](../plan/tasks/m1-33-async-loading.md), the first thread, and the fuzz
+targets go from one to five.
+
+This is not CI arriving under another name. A person still runs it, and the
+decision above stands unchanged. What is different is that the tooling this
+record calls "one preset away" now has a named place in the queue where it is
+not optional, so "we should run the sanitizers sometime" becomes a task with a
+number instead of an intention.

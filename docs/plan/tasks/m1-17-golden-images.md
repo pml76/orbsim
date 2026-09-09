@@ -2,6 +2,7 @@
 
 Phase: A | Status: not started
 Prerequisites: M1-16
+Decided by: [ADR 0008](../../adr/0008-renderer-verification.md)
 
 ## Purpose
 

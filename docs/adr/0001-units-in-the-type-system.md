@@ -63,3 +63,27 @@ metres, and its conic thresholds were in reciprocal metres. Neither had a
 type, and both were wrong at heliocentric scale (see the commit that made
 `propagate()` scale-free). A quantity with a unit invites the question "in
 what?"; a bare `1e-12` does not.
+
+## Update, 2026-09-08: counts get an integral base beside `Quantity`
+
+`Quantity<Derived>` holds an `f64`, which is right for every unit this record
+names and wrong for the ones that arrive with the renderer. A texel count, a
+mip level and a cache budget in mebibytes are **counts**: integral, with no
+meaningful fractional part. An `f64` base invites a division that silently
+truncates, or a value that is 2047.9999 texels wide.
+
+So `core/Scalar.hpp` gains **`Count<Derived>`**, the integral sibling: one
+`std::uint32_t`, explicit construction, no implicit conversion in either
+direction, comparison, addition and subtraction of the same type, and
+multiplication by an unsigned scale. No division that could truncate -- a ratio
+of counts is a named function returning `f64`. The same CRTP shape and the same
+`friend Derived` trick, so `struct Other : Count<Texels>` does not compile.
+
+`Texels` and `Mebibytes` are `Count`s. **`Pixels` stays on the `f64`
+`Quantity`**, because a screen-space error threshold of 2.5 px is a real
+quantity rather than a count, and rounding it to 2 or 3 would change what the
+quadtree does.
+
+This closes the question [`0007`](0007-render-quality-is-a-struct.md) left
+open. Decision 19 of [the register](../plan/milestone-1-decisions.md); built by
+[M1-12](../plan/tasks/m1-12-render-quality.md).

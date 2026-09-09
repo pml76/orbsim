@@ -2,6 +2,7 @@
 
 Phase: D | Status: not started
 Prerequisites: M1-08, M1-15
+Decided by: [ADR 0014](../../adr/0014-radiometric-chain.md)
 
 ## Purpose
 

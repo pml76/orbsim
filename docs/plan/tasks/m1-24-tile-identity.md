@@ -2,6 +2,7 @@
 
 Phase: B | Status: not started
 Prerequisites: M1-09
+Decided by: [ADR 0010](../../adr/0010-tiles-are-ktx2.md), [ADR 0012](../../adr/0012-orbsim-view.md)
 
 ## Purpose
 

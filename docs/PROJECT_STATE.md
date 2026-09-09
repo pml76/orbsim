@@ -183,6 +183,20 @@ that decision requires, ordered by structural risk; and
 Part 4 records which of them a machine currently checks and which do not yet
 exist. `CLAUDE.md` points at both.
 
+**Milestone 1 has two documents of its own, and both are load-bearing.**
+[`plan/milestone-1-tasks.md`](plan/milestone-1-tasks.md) is the queue: 84 tasks
+in one order, each with its own document under `plan/tasks/`, and the standing
+rules every task inherits.
+[`plan/milestone-1-decisions.md`](plan/milestone-1-decisions.md) is the
+register: the twenty-six rulings the queue was built on, the error budgets, the
+scope fences, and a table mapping each decision to the ADR that records it.
+Read the register before proposing anything the queue seems to have missed --
+section 6 exists so that a deliberate omission is not mistaken for an oversight.
+
+Third-party licences left the register on 2026-09-09 and now live in
+[`../THIRD_PARTY.md`](../THIRD_PARTY.md), including which files of
+`bc7enc_rdo` may be compiled and which may not.
+
 ---
 
 ## 6. Decisions that were reviewed, and how they landed
@@ -381,9 +395,11 @@ Read in this order:
 2. [`CLAUDE.md`](../CLAUDE.md) — how to work here, and the definition of done.
 3. This file, sections 7 and 8 — what is undecided, and what is known to bite.
 4. [`adr/`](adr/) — the decisions that span files, and why.
-5. [`plan/milestone-1-earth.md`](plan/milestone-1-earth.md) and
-   [`plan/milestone-1-tasks.md`](plan/milestone-1-tasks.md) — the milestone and
-   its task queue, then the one task document you are actually doing.
+5. [`plan/milestone-1-earth.md`](plan/milestone-1-earth.md), then
+   [`plan/milestone-1-tasks.md`](plan/milestone-1-tasks.md) and its
+   [decision register](plan/milestone-1-decisions.md) — the milestone, its task
+   queue and the rulings both were built on, then the one task document you are
+   actually doing.
 6. [`CODING_GUIDELINES.md`](../CODING_GUIDELINES.md) and
    [`VERIFICATION.md`](VERIFICATION.md) when you want the arguments, and
    `coding-guidelines-example/` when you want to see them applied.

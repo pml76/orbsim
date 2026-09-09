@@ -2,6 +2,7 @@
 
 Phase: A | Status: not started
 Prerequisites: M1-09
+Decided by: [ADR 0001](../../adr/0001-units-in-the-type-system.md), [ADR 0007](../../adr/0007-render-quality-is-a-struct.md), [ADR 0012](../../adr/0012-orbsim-view.md)
 
 ## Purpose
 

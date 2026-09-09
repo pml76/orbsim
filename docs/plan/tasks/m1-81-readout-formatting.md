@@ -2,6 +2,7 @@
 
 Phase: G | Status: not started
 Prerequisites: M1-03, M1-80
+Decided by: [ADR 0009](../../adr/0009-time-is-a-type-with-a-scale.md)
 
 ## Purpose
 

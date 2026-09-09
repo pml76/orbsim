@@ -2,6 +2,7 @@
 
 Phase: A | Status: not started
 Prerequisites: M1-13, M1-15
+Decided by: [ADR 0008](../../adr/0008-renderer-verification.md), [ADR 0014](../../adr/0014-radiometric-chain.md)
 
 ## Purpose
 

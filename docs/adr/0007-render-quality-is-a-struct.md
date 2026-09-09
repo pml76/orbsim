@@ -153,3 +153,35 @@ the coupling only shows up on hardware the author did not have.
 - **The default preset at first run**, and whether hardware detection picks it.
 - **The config file format**, which is the same question as scenario
   serialisation and should be answered once, for both.
+
+## Update, 2026-09-08: both of the open questions above are answered
+
+Two of the things this record deliberately left open were settled with the rest
+of milestone 1's decisions.
+
+**The numeric base for count-like units.** `Texels` and `Mebibytes` are
+`Count<Derived>`, a new integral sibling of `Quantity<Derived>` in
+`core/Scalar.hpp`; `Pixels` stays on the `f64` base, because a screen-space
+error threshold of 2.5 px is a real quantity rather than a count. The reasoning
+is appended to [`0001`](0001-units-in-the-type-system.md), where the type
+system lives, and [M1-12](../plan/tasks/m1-12-render-quality.md) builds it.
+
+**Where the struct lives.** This record says `src/render/`. It is `src/view/`,
+in the Vulkan-free library `orbsim_view` -- [`0012`](0012-orbsim-view.md),
+decision 17 of [the register](../plan/milestone-1-decisions.md).
+
+**The load-bearing clause is unaffected**, and it is worth being exact about
+why. What this record requires is that the *simulation* cannot see a quality
+setting, and `orbsim_core` links neither `orbsim_render` nor `orbsim_view`, so
+the link graph still refuses to compile a physics translation unit that reaches
+for one. What the move buys is the other direction: the quadtree's
+screen-space error threshold, the atmosphere's LUT resolutions and the tile
+cache's budget are all `RenderQuality` fields whose consumers are themselves
+headless, so the struct and the code that reads it can be tested together
+without a GPU.
+
+The illustrative header comment above therefore reads
+`// src/view/RenderQuality.hpp` today. Everything else about the shape -- an
+aggregate of per-feature settings, `enum class` for discrete choices, strong
+types for continuous ones, `constexpr` preset factories, and `fromConfig`
+returning `std::expected` -- is unchanged.

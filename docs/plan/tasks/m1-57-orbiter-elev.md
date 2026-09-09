@@ -2,6 +2,7 @@
 
 Phase: C | Status: not started
 Prerequisites: M1-36, M1-55
+Decided by: [ADR 0010](../../adr/0010-tiles-are-ktx2.md)
 
 ## Purpose
 

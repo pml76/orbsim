@@ -2,6 +2,7 @@
 
 Phase: C | Status: not started
 Prerequisites: M1-12, M1-50, M1-53
+Decided by: [ADR 0007](../../adr/0007-render-quality-is-a-struct.md), [ADR 0015](../../adr/0015-skirts-and-morphing.md)
 
 ## Purpose
 

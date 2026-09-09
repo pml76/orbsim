@@ -2,6 +2,7 @@
 
 Phase: preliminaries | Status: **done 2026-09-09**
 Prerequisites: none — this is the head of the queue
+Decided by: [ADR 0013](../../adr/0013-catch2-is-the-test-framework.md)
 
 ## Purpose
 

@@ -2,6 +2,7 @@
 
 Phase: A | Status: not started
 Prerequisites: M1-05, M1-06
+Decided by: [ADR 0009](../../adr/0009-time-is-a-type-with-a-scale.md)
 
 ## Purpose
 

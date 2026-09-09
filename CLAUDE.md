@@ -23,6 +23,7 @@ about to do.** They are one level deep from here, deliberately.
 | changing something that spans files | [`docs/adr/`](docs/adr/) — [the index](docs/adr/README.md) says which |
 | wondering why something is the way it is | [`docs/HISTORY.md`](docs/HISTORY.md) |
 | reading or borrowing Orbiter's source | [`docs/ORBITER-REFERENCE.md`](docs/ORBITER-REFERENCE.md) — the licence boundary is not uniform |
+| adding or updating a dependency | [`THIRD_PARTY.md`](THIRD_PARTY.md) — every pin, its licence, and which files of it are compiled |
 
 **Keep [`docs/STATUS.md`](docs/STATUS.md) current.** It is the only thing that
 makes a second machine cheap, and it is the one file where a stale number

@@ -4,10 +4,12 @@ Status: **settled 2026-09-08** by the project owner. Recorded here because the
 task queue in [`milestone-1-tasks.md`](milestone-1-tasks.md) is built on these,
 and would have to be rebuilt if any of them changed.
 
-Six of them span files and therefore become architecture decision records —
-that is task [M1-02](tasks/m1-02-record-the-decisions.md), the second thing done
-in this milestone. This file is the register: it holds all of them, including
-the ones too small for an ADR, so that no decision lives only in a conversation.
+Eight of them span files and therefore became architecture decision records —
+that was task [M1-02](tasks/m1-02-record-the-decisions.md), the second thing
+done in this milestone. This file is the register: it holds all of them,
+including the ones too small or too local for an ADR, so that no decision lives
+only in a conversation. **Section 8 maps every decision to where it is
+recorded.**
 
 **The rule they were taken under** is working agreement 1 in
 [`../../CLAUDE.md`](../../CLAUDE.md): state the finding, propose the fix, and
@@ -142,3 +144,46 @@ recalled. Each task that depends on one of these re-checks it before use.
 | NASA GMAT | **Apache-2.0**, current release **R2026a**, Windows build available |
 | The atmosphere method | Hillaire, S. (2020), *A Scalable and Production Ready Sky and Atmosphere Rendering Technique*, Computer Graphics Forum 39(4), EGSR 2020, DOI 10.1111/cgf.14050 |
 | The Orbiter archive format | `Utils/tileedit/qt/src/ZTreeMgr.{h,cpp}` in the reference clone, MIT. A magic-tagged header, a table of contents of quadtree nodes each carrying a file offset, an inflated size and four child indices, then zlib-deflated per-tile blobs. Surface tiles are DDS/DXT1; elevation is Orbiter's own ELEV format (`elv_io.cpp`, also MIT) |
+
+---
+
+## 8. Where each decision is recorded
+
+Written by [M1-02](tasks/m1-02-record-the-decisions.md) so the register reads
+in both directions: every record points back here, and this says which record
+carries which ruling. **"Register only" is a decision, not an omission** — a
+choice that touches one subsystem, or one file, does not earn a document that
+claims to outlive the conversation.
+
+| # | Decision | Recorded in |
+|---|---|---|
+| 1, 2, 3 | Probes, who looks at the frames, frame and golden geometry | [ADR 0008](../adr/0008-renderer-verification.md) |
+| 4 | External truth for the J2 integrator is GMAT | [ADR 0011](../adr/0011-the-integrator-has-three-seams.md) |
+| 5 | Frame time is measured, never asserted in `check` | Register only |
+| 6 | Catch2 | [ADR 0013](../adr/0013-catch2-is-the-test-framework.md) |
+| 7–13 | The integrator: Cowell then Encke, three seams, closed sets, a stateful stepper, term traits, state size, time acceleration | [ADR 0011](../adr/0011-the-integrator-has-three-seams.md) |
+| 14, 15 | Five time scales, and `src/astro/` | [ADR 0009](../adr/0009-time-is-a-type-with-a-scale.md) |
+| 16 | Manual photographic exposure and the AgX tonemap | [ADR 0014](../adr/0014-radiometric-chain.md) |
+| 17 | `orbsim_view`, the Vulkan-free render library | [ADR 0012](../adr/0012-orbsim-view.md) |
+| 18 | Skirts plus vertex morphing | [ADR 0015](../adr/0015-skirts-and-morphing.md) |
+| 19 | An integral `Count` beside `Quantity` | Dated amendments to [ADR 0001](../adr/0001-units-in-the-type-system.md) and [ADR 0007](../adr/0007-render-quality-is-a-struct.md) |
+| 20, 21 | KTX2, and the Orbiter archive converted rather than streamed from | [ADR 0010](../adr/0010-tiles-are-ktx2.md) |
+| 22 | Third-party pins | [`THIRD_PARTY.md`](../../THIRD_PARTY.md) |
+| 23 | ETOPO 2022 | Register only, plus [`data/textures/README.md`](../../data/textures/README.md) for the URL |
+| 24 | DejaVu Sans Mono | Register only, plus [`THIRD_PARTY.md`](../../THIRD_PARTY.md) for the licence |
+| 25 | Night lights in phase B; the water mask deferred | Register only |
+| 26 | Hard-coded scenarios, no configuration file | Register only, and section 6 above |
+
+Two further amendments were made in the same pass and belong to no decision in
+the table: [ADR 0005](../adr/0005-correctness-is-enforced-by-tools.md) gained a
+note that the phase gates are where the sanitizers and the second compiler run,
+since there is no CI; and [ADR 0007](../adr/0007-render-quality-is-a-struct.md)
+records that `RenderQuality` lives in `orbsim_view` rather than `src/render/`,
+which follows from decision 17.
+
+The error budgets in section 5 appear again in the record that owns them:
+phase A's in [0009](../adr/0009-time-is-a-type-with-a-scale.md) and
+[0014](../adr/0014-radiometric-chain.md), phase E's in
+[0011](../adr/0011-the-integrator-has-three-seams.md). Each also appears in its
+task document, in the test that asserts it, and in the commit message —
+[`../VERIFICATION.md`](../VERIFICATION.md) rule 4.

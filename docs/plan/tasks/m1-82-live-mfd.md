@@ -2,6 +2,7 @@
 
 Phase: G | Status: not started
 Prerequisites: M1-69, M1-71, M1-81
+Decided by: [ADR 0009](../../adr/0009-time-is-a-type-with-a-scale.md), [ADR 0011](../../adr/0011-the-integrator-has-three-seams.md)
 
 ## Purpose
 
