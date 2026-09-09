@@ -73,7 +73,8 @@ run. Catch2 prints a `Randomness seeded to:` line that differs between runs; it
 seeds only `GENERATE` and `--order rand`, neither of which this project uses,
 and the sweep's own generator is still seeded from `kSweepSeed`.
 `catch_discover_tests` makes each `TEST_CASE` its own CTest test, so `ctest -R`
-selects one and `ctest -N` lists nineteen.
+selects one and `ctest -N` lists **20**: the nineteen Catch2 cases plus
+`orbsim_smoke`. `ctest -LE gpu` lists the nineteen.
 
 ## What this machine has
 
@@ -103,20 +104,9 @@ fetched at a pinned tag by `CMakeLists.txt`.
 
 ## Decision records
 
-Seven architecture decision records exist in [`adr/`](adr/). Read the relevant
-one before changing anything it covers.
+**The list is [`adr/README.md`](adr/README.md)**, next to the records
+themselves, so that browsing the directory finds it. Seven are accepted;
+0008-0013 are planned by [M1-02](plan/tasks/m1-02-record-the-decisions.md).
 
-| ADR | Decision |
-|---|---|
-| 0001 | Physical quantities are types, built on one `Quantity<Derived>` base |
-| 0002 | `std::expected` for expected failures, assertions for impossible ones; one error representation per layer |
-| 0003 | Reverse-Z depth with an infinite far plane |
-| 0004 | Vulkan headers pinned by CMake; the SDK supplies only the loader and `glslc` |
-| 0005 | Correctness is enforced by a local `check` target and two hooks, not by a checklist and not by CI |
-| 0006 | orbsim is a simulation, not a sandbox: multi-body physics with perturbations, real time and frames, a radiometric renderer |
-| 0007 | Render quality is a `RenderQuality` struct of per-feature settings, living in the renderer where the physics cannot reach it |
-
-ADRs 0008–0013 are planned by
-[M1-02](plan/tasks/m1-02-record-the-decisions.md); the decisions they will
-record are already settled and listed in
-[`plan/milestone-1-decisions.md`](plan/milestone-1-decisions.md).
+An accepted ADR is immutable, so the numbers inside one are not maintained
+here: they are what was true when the decision was taken.

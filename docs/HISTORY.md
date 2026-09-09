@@ -16,6 +16,8 @@ That file now holds only what is true *now*; this one holds what happened.
   commits and what each one found
 - [4. The bug that justified the session](#4-the-bug-that-justified-the-session)
   — `propagate()` at 1 AU, and the two numbers without units behind it
+- [5. The 2026-09-07 amendment to the milestone 1 plan](#5-the-2026-09-07-amendment-to-the-milestone-1-plan)
+  — what changed in milestone 1 when ADR 0006 and 0007 landed
 
 Current state, versions and counts are in [`STATUS.md`](STATUS.md); the
 decisions themselves are in [`adr/`](adr/).
@@ -292,3 +294,23 @@ before any arithmetic, because a NaN used to arrive at Newton and leave as "did
 not converge" — true, and it sends the reader to the solver instead of the
 scenario file. `ParabolicElements` is what `propagateElements` says instead of
 handing an infinite semi-major axis to the Kepler solver.
+
+---
+
+## 5. The 2026-09-07 amendment to the milestone 1 plan
+
+Moved here from `CLAUDE.md` on 2026-09-09, where it had been kept as a
+safety net against a stale copy of the plan. The plan itself
+([`plan/milestone-1-earth.md`](plan/milestone-1-earth.md)) was amended in
+place and is the source; [`plan/realism.md`](plan/realism.md) section 5 has
+the reasoning. The four changes, in case a stale copy is in front of you:
+
+- **Phase A also builds the linear HDR pipeline, the `RenderQuality` plumbing,
+  and the time system.** The time system is there rather than in phase E
+  because B, D and C all come first, and it is cheapest at zero call sites.
+- **Phase C also does elevation**, rather than deferring it to milestone 2.
+- **Phase E is the integrator, not a `propagate()` loop**, and its acceptance
+  criterion gains an error budget against JPL Horizons.
+- **Phase F's criterion inverted.** The orbit track must *precess* at the J2
+  rate, not stay put. A track that stays put is now a failing test, and the
+  old wording would send someone hunting a bug that is the physics working.

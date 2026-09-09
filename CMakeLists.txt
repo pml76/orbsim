@@ -434,10 +434,11 @@ endif()
 # The definition of done.
 #
 # `cmake --build <tree> --target check` is what "finished" means here:
-# everything builds, every test passes, clang-tidy finds nothing, and
-# clang-format would change nothing. CLAUDE.md points at this target. Run it
-# in both build/relwithdebinfo and build/debug -- the assertions are only
-# live in the second.
+# everything builds, every test passes, clang-tidy finds nothing,
+# clang-format would change nothing, and no document links at something that
+# is not there. CLAUDE.md points at this target. Run it in both
+# build/relwithdebinfo and build/debug -- the assertions are only live in the
+# second.
 #
 # lint is one stamp per translation unit, so Ninja runs clang-tidy in
 # parallel and re-lints only what changed. Every header is a dependency of
@@ -515,6 +516,30 @@ else()
     )
 endif()
 
+# Documentation is checked too, because a reference that has rotted is
+# invisible from the inside: the file is still on disk and still says the
+# words, and only following the link finds out. A survey of 118 repositories
+# put 59% of them in that state. The script proves it can fail before it is
+# trusted -- see its own docstring.
+find_program(ORBSIM_PYTHON NAMES python3 python)
+if(ORBSIM_PYTHON)
+    add_custom_target(doc-links
+            COMMAND ${ORBSIM_PYTHON}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-doc-links.py
+                    ${CMAKE_CURRENT_SOURCE_DIR}
+            COMMENT "doc-links: every Markdown link and anchor in the repository"
+            VERBATIM
+    )
+else()
+    # Same rule as lint and format-check: a check that cannot run must fail
+    # rather than pass by doing nothing.
+    add_custom_target(doc-links
+            COMMAND ${CMAKE_COMMAND} -E false
+            COMMENT "python was not found on PATH; doc-links cannot run"
+            VERBATIM
+    )
+endif()
+
 add_custom_target(check
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
@@ -527,6 +552,7 @@ add_dependencies(check
         orbsim_test_header_selfcheck
         lint
         format-check
+        doc-links
 )
 if(ORBSIM_BUILD_APP)
     add_dependencies(check orbsim orbsim_render_header_selfcheck)

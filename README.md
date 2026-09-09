@@ -69,7 +69,8 @@ ctest --test-dir build/relwithdebinfo --output-on-failure
 `orbsim --validate --seconds 3` runs the application under the Vulkan
 validation layers for three seconds and exits non-zero if they report an
 error. The `check` target is the full definition of done -- build, tests,
-clang-tidy, clang-format, and that validation run:
+clang-tidy, clang-format, a check that no document links at something that is
+not there, and that validation run:
 
 ```
 cmake --build build/relwithdebinfo --target check
