@@ -1,0 +1,13 @@
+ Hi! Please familiarize yourself with this project. Especially the coding guidelines and how new
+  code is ensured to have no bugs. Then i like to plan out the milestone 1 into small tasks that can
+  be done in a determined sequence. Each task should be verfiable according to the aforementioned
+  guidelines. Successfull verification is a prequisite for the next task in the queue. Please
+  compose a document for each task holding sections on what is to be implemented, its tests, and
+  what other tasks a needed to be done before this one can start. The tasks itself should be clearly
+  defined and small. Please make double sure to not make any errors. Do not decide anything without
+  involving me, don't leave any questions open. If in doubt, i want you to go the extra mile that
+  your decision is correct. Please also compose a document holding all the tasks in the sequence in
+  that they should be processed.
+
+Good Morning! Please familiarize yourself with this project. Especially the coding guidelines and how new code is ensured to have no bugs. Then i like you to readthe description of task 1 of milestone 1. Please tell me how you would implement it. As a general rule of engagement during this and the coming sessions (you might want to note this in project memory): Please make double sure to not make any errors. Do not decide anything without involving me, don't leave any questions open. If in doubt, i want you to go the extra mile that your decision is correct. Any questions?
+
