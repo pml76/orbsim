@@ -281,18 +281,26 @@ asked for.
    `.github/workflows/ci.yml` was added in commit `eb2a99b` and deleted again
    on 2026-09-06. It is recoverable from history if the decision is ever
    revisited; nothing in the tree refers to it.
-3. **Tile format on disk: KTX2 with BC7, or DDS?** From the milestone plan,
-   still open. KTX2 has the cleaner spec; DDS is what Orbiter uses, which
-   matters for the later reader.
-4. **Elevation and night lights — settled for elevation: it moves into phase
-   C.** ADR 0006 makes relief part of the realism bar, and it is much cheaper
-   inside the quadtree than after it. Night lights still fold into phase B.
+3. **Tile format on disk: settled, and the answer is KTX2 with BC7.** Decided
+   2026-09-08 (register decision 20): it carries the mip chain and the Vulkan
+   format enum directly, and it has the cleaner spec. DDS does not disappear —
+   Orbiter's `Surf` tiles are DXT1 inside a DDS header, and the converter
+   repacks those blocks into KTX2 unchanged rather than transcoding them
+   (decision 21).
+4. **Elevation and night lights — both settled.** Elevation moves into phase C
+   (2026-09-07): ADR 0006 makes relief part of the realism bar, and it is much
+   cheaper inside the quadtree than after it. The dataset is ETOPO 2022,
+   60 arc-second, ice surface (decision 23). Night lights fold into phase B
+   (decision 25); the specular water mask stays deferred until a source is
+   located.
 5. **The physics fidelity question is settled: a simulation, not a sandbox.**
    ADR 0006, decided 2026-09-06. What remains open from that decision is the
-   *technical* fork list in [`plan/realism.md`](plan/realism.md) section 4 —
-   Encke or Cowell, which integrator, Cartesian or equinoctial state, DE440 or
-   VSOP87, and how far up the spherical-harmonic field to go. Each deserves
-   its own ADR when settled.
+   *technical* fork list in [`plan/realism.md`](plan/realism.md) section 4.
+   Three of those were settled on 2026-09-08 — Cowell then Encke, RK4 then a
+   high-order tableau, and a Cartesian state — and are recorded as an ADR.
+   **Still open: DE440 or VSOP87 for the ephemeris, and how far up the
+   spherical-harmonic field to go.** Milestone 1 needs neither: it uses the
+   analytic Sun and stops at J2.
 6. **Is `Vec3` staying unit-free?** Today a vector's unit is carried by the
    struct holding it (`StateVector::pos` is metres). A `Vec3<Metres>` is
    possible and much more invasive. ADR 0001 records the current answer, and

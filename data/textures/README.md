@@ -36,16 +36,30 @@ curl -L -O https://eoimages.gsfc.nasa.gov/images/imagerecords/55000/55167/earth_
 August is the conventional choice: minimal snow cover, so the coastlines and
 vegetation read clearly.
 
+### Elevation — ETOPO 2022
+
+**ETOPO 2022, 60 arc-second, ice surface**: one global GeoTIFF, 444 MB, dated
+2022-10-04, public domain as a US Government work (NOAA NCEI). Chosen on
+2026-09-08 — decision 23 of
+[the register](../../docs/plan/milestone-1-decisions.md) — and ingested by
+M1-54. **Elevation moved into phase C of milestone 1** on 2026-09-07, so it is
+no longer a milestone-2 concern.
+
+```
+curl -L -O https://www.ngdc.noaa.gov/mgg/global/relief/ETOPO2022/data/60s/60s_surface_elev_gtif/ETOPO_2022_v1_60s_N90W180_surface.tif
+```
+
+Blue Marble's `topo.bathy` imagery is **not** an elevation source. Its relief
+shading is baked into the pixels, which is what makes it read correctly from
+orbit and useless as a height field.
+
 ### Still to find
 
 **A water / specular mask.** Sun glint on oceans is cheap once the tile pipeline
 exists and contributes a lot to realism. The obvious URL under `imagerecords`
 returns 404, so the right source has yet to be located. Not a blocker — it can
-be approximated from the bathymetry channel until then.
-
-**Topography as a separate elevation channel.** Not needed until the camera
-descends far enough for relief to show, which is milestone 2. The `topo.bathy`
-image above already has shading baked in, which is enough for orbit.
+be approximated from the bathymetry channel until then. Deferred deliberately:
+decision 25.
 
 ### The full-resolution set
 

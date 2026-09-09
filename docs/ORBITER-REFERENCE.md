@@ -12,14 +12,16 @@ reference clone lives at `C:\Reference\orbiter`, outside this repository,
 
 | Path in the clone | Licence | Use |
 |---|---|---|
-| repository root | MIT | Read and borrow, with attribution |
-| `Utils/tileedit/qt/src/` | MIT | The clearest tile-format reference. Usable |
-| `Utils/tileedit/qt/extern/fastdxt/` | **LGPL** | Vendored DXT codec. Do not copy — Vulkan does BC natively |
+| repository root | MIT (Schweiger, 2000–2026) | Read and borrow, with attribution |
+| `Utils/tileedit/qt/src/` | MIT — no GPL headers, covered by the root licence | The clearest tile-format reference. Usable |
+| `Utils/tileedit/qt/extern/fastdxt/` | **LGPL** (vendored DXT codec, 78 KB) | Do not copy — Vulkan does BC natively |
 | `OVP/D3D9Client/` | **LGPL** | Where TileManager2 lives, but Direct3D and LGPL |
 
 The standalone `mschweiger/orbiter-tileedit` repo on GitHub is GPL v3 — the same
-code under a different licence. An MIT copy exists in the monorepo, so do not
-clone the GPL one; there is nothing to gain and a licence to lose.
+code under a different licence, which is entirely the author's prerogative. An
+MIT copy exists in the monorepo, so do not clone the GPL one; there is nothing
+to gain and a licence to lose. One was cloned early on and then **deleted**
+rather than kept and carefully avoided: removing a hazard beats managing one.
 
 **The format specification is `Doc/Orbiter Developer Manual/PLANETS.tex`**,
 section `sssec:tile_file_layout`: levels, latitude bands, longitude indices,

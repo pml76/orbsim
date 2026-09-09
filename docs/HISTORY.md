@@ -224,7 +224,9 @@ new ones are written. The task changed no assertion, no tolerance and no case,
 and **the assertion count is the evidence**: 732 and 2900 before, 732 and 2900
 after, on Windows clang RelWithDebInfo and Debug, under ASan, and under both
 Linux presets. `catch_discover_tests` gives each `TEST_CASE` its own CTest
-entry, so `ctest -N` lists nineteen.
+entry, so `ctest -N` lists twenty: the nineteen Catch2 cases plus
+`orbsim_smoke`. (This section said "nineteen" until the list was actually read
+on 2026-09-09; the count lives in [`STATUS.md`](STATUS.md).)
 
 Four things from it are worth keeping.
 
@@ -310,7 +312,11 @@ the reasoning. The four changes, in case a stale copy is in front of you:
   because B, D and C all come first, and it is cheapest at zero call sites.
 - **Phase C also does elevation**, rather than deferring it to milestone 2.
 - **Phase E is the integrator, not a `propagate()` loop**, and its acceptance
-  criterion gains an error budget against JPL Horizons.
+  criterion gains an error budget against JPL Horizons. *(Corrected
+  2026-09-08: the reference is a NASA GMAT trajectory. Horizons cannot
+  propagate a hypothetical satellite under a J2-only force model; it keeps the
+  Sun, Moon and Earth positions and the time scales. See
+  [the register](plan/milestone-1-decisions.md), decision 4.)*
 - **Phase F's criterion inverted.** The orbit track must *precess* at the J2
   rate, not stay put. A track that stays put is now a failing test, and the
   old wording would send someone hunting a bug that is the physics working.

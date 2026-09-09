@@ -43,7 +43,8 @@ by that one question: a tolerance compared against a quantity in sqrt(metres),
 and a threshold compared against one in 1/metres. Both were invisible at Earth
 scale.
 
-`tests/TestHarness.hpp` has the checks, `tests/OrbitTestSupport.hpp` the
-bodies and fixtures, `tests/test_orbit_scales.cpp` the shape to copy. The
-suites are Catch2; the custom matchers there take a `Tolerance` rather than a
-bare double, so a transposed argument does not compile.
+`tests/OrbitTestSupport.hpp` has the bodies, the fixtures and the custom
+matchers; `tests/test_orbit_scales.cpp` is the shape to copy. The suites are
+Catch2, and the matchers there take a `Tolerance` rather than a bare double, so
+a transposed argument does not compile. (`tests/TestHarness.hpp` was the
+hand-rolled harness and no longer exists -- M1-01 deleted it.)

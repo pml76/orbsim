@@ -72,7 +72,7 @@ Each phase ends in something that can be looked at and judged.
 | **B** | Tile pipeline | One tile loads from disk and draws on a sphere | Medium |
 | **D** | Atmosphere | The limb and terminator read as Earth from 400 km, in physical radiance | Medium |
 | **C** | Spherical quadtree | Descend 400 km → 10 km with no popping or seams, with relief visible at the terminator | **High** |
-| **E** | Simulation loop | A vessel orbits under a real integrator, within a stated error budget against JPL Horizons | Medium |
+| **E** | Simulation loop | A vessel orbits under a real integrator, within a stated error budget against a NASA GMAT reference trajectory | Medium |
 | **F** | Orbit track | The track precesses at the J2 rate, and the rate matches the analytic value | Low |
 | **G** | Orbit MFD | Ap/Pe/period/eccentricity readable while flying, and visibly osculating | Medium |
 
@@ -109,8 +109,9 @@ Three things were added on 2026-09-07, all for the same reason: each is cheap
 now and expensive once there is a renderer that assumed its absence.
 
 - **The linear HDR pipeline** — an RGBA16F target, light in physical units, a
-  real exposure stage, one tonemap (ACES or AgX), sRGB encoded once at the end.
-  The swapchain stops being where shaders write display-ready colour. This is
+  real exposure stage, one tonemap (**AgX**, decision 16), sRGB encoded once at
+  the end. The swapchain stops being where shaders write display-ready colour.
+  This is
   item 1 in `realism.md` section 3 and the highest-ranked item in the whole
   document: every shader written before it would have to be rewritten after it.
 - **The `RenderQuality` plumbing** ([`../adr/0007`](../adr/0007-render-quality-is-a-struct.md)).
@@ -137,8 +138,9 @@ equirectangular images. So this phase builds a pyramid.
 
 - A `TileSource` interface — the seam that lets the Orbiter reader arrive later
   as a second implementation rather than a parallel code path
-- `BlueMarbleSource`: an offline tool turning equirectangular source imagery
-  into a tile pyramid, BC-compressed
+- `tilegen`: an offline tool turning equirectangular source imagery into a tile
+  pyramid, BC-compressed. The seam is a closed set, so the sources arrive in
+  order as `SyntheticTileSource`, `KtxPyramidSource` and `TreeArchiveSource`
 - Async loading on a `std::jthread` worker, publishing finished tiles to the
   render thread as immutable values — no shared mutable state, per section 13
 - DDS/KTX2 header parsing. Vulkan consumes BC formats natively, so this is
@@ -189,10 +191,12 @@ The largest and riskiest phase.
 - Crack fixing between adjacent levels: skirts, or geomorphing
 - Tile cache with eviction under motion
 - **Elevation**, moved here from milestone 2 on 2026-09-07: displacement from
-  the Blue Marble topography, and normal mapping from the same data. Relief
-  reads most strongly at the terminator, where shadows are long, and
-  displacement is far cheaper built into the subdivision than bolted onto it
-  afterwards. `realism.md` section 2.3
+  **ETOPO 2022** (60 arc-second, ice surface, NOAA NCEI, public domain —
+  decision 23), and normal mapping from the same data. Blue Marble's
+  `topo.bathy` imagery has its relief shading baked into the pixels and is not
+  an elevation source. Relief reads most strongly at the terminator, where
+  shadows are long, and displacement is far cheaper built into the subdivision
+  than bolted onto it afterwards. `realism.md` section 2.3
 - The screen-space error threshold, the maximum level and the cache budget are
   `RenderQuality` fields, not constants
 
@@ -211,10 +215,12 @@ where the simulation of ADR 0006 actually begins.
 - Fixed timestep with an accumulator, decoupled from the render rate
 - Render-side interpolation between the last two states
 - Time acceleration, 1× to 10000×
-- **A real integrator.** The recommendation on file is Encke — integrate only
-  the *deviation* from an osculating reference conic, which reuses the
-  propagator that is already written and tested and holds far more significant
-  digits than Cowell. Not yet ruled on; see `realism.md` section 4
+- **A real integrator.** Settled on 2026-09-08: **Cowell first, then Encke**,
+  both kept and diffed against each other. Fixed-step Cowell with RK4 comes
+  first, so that convergence order can be measured against theory; Encke then
+  integrates only the *deviation* from an osculating reference conic, reusing
+  the propagator that is already written and tested. See
+  [the register](milestone-1-decisions.md), decisions 7 to 12
 - **The first perturbation: J2.** Largest accuracy gain per line of code in the
   whole project, and the thing phase F below is going to draw
 - **Uses the `TimePoint` from phase A.** The integrator is where a bare
@@ -230,9 +236,18 @@ quality preset.
 
 **Done when:** a vessel orbits under the integrator; time acceleration does not
 change where it ends up; **and the trajectory sits inside a stated error budget
-against JPL Horizons.** The first two are self-consistency, which
-`../VERIFICATION.md` rules 3 and 4 say is not evidence on its own — a wrong
-`mu` conserves energy perfectly. Write the number before writing the code.
+against a NASA GMAT reference trajectory.** The first two are self-consistency,
+which `../VERIFICATION.md` rules 3 and 4 say is not evidence on its own — a
+wrong `mu` conserves energy perfectly. Write the number before writing the code.
+
+**This said "against JPL Horizons" until 2026-09-08, and that was not
+achievable.** Horizons publishes ephemerides of natural bodies and of real
+spacecraft; it cannot propagate a hypothetical satellite under a J2-only force
+model, which is exactly the claim phase E needs to check. NASA GMAT can, and
+its configuration is recorded beside the fixture —
+[the register](milestone-1-decisions.md), decision 4, and M1-68. Horizons keeps
+the Sun, Moon and Earth positions and the time scales, which is what M1-06 and
+M1-08 use it for.
 
 ## Phase F — Orbit track
 
@@ -289,13 +304,15 @@ predicts.
 
 ## Decisions taken
 
-Two decisions taken since this plan was agreed sit above it and are recorded as
+Decisions taken since this plan was agreed sit above it and are recorded as
 architecture decision records rather than here:
 [`../adr/0006`](../adr/0006-simulation-not-sandbox.md) (a simulation, not a
 sandbox — multi-body physics, real time and frames, a radiometric renderer) and
 [`../adr/0007`](../adr/0007-render-quality-is-a-struct.md) (`RenderQuality`, and
-the rule that a quality setting never reaches the simulation state). Everything
-in this section predates both and is unaffected by them.
+the rule that a quality setting never reaches the simulation state) first, then
+the records written for the rulings of 2026-09-08.
+[The index](../adr/README.md) is the list. Everything in this section predates
+all of them and is unaffected by them.
 
 **Imagery: Blue Marble first, Orbiter tiles later.** Orbiter's Earth textures
 are derived from Blue Marble Next Generation anyway. Going to the source gives
@@ -311,20 +328,15 @@ appears; it was chosen deliberately.
 (shallow clone, 1.1 GB).
 
 The licence picture turned out better than expected once the clone was
-inspected, and the earlier reading of it was wrong. What is actually there:
+inspected, and the earlier reading of it was wrong: the root is MIT, and so is
+the tile-format reference under `Utils/tileedit/qt/src/`, while two directories
+are LGPL and must not be copied.
 
-| Path in the clone | Licence | How it may be used |
-|---|---|---|
-| repository root | MIT (Schweiger, 2000–2026) | Read and borrow, with attribution |
-| `Utils/tileedit/qt/src/` | MIT — no GPL headers, covered by the root licence | **Usable.** The clearest tile-format reference there is |
-| `Utils/tileedit/qt/extern/fastdxt/` | **LGPL** (vendored third-party DXT codec, 78 KB) | Do not copy. We have BC support in Vulkan anyway |
-| `OVP/D3D9Client/` | **LGPL** | Where `TileManager2` actually lives — but it is Direct3D, and LGPL |
-
-The standalone `mschweiger/orbiter-tileedit` repository on GitHub is **GPL v3**:
-the same code under a different licence, which is entirely the author's
-prerogative. Since an MIT-licensed copy of it exists inside the monorepo, that
-clone was **deleted** rather than kept and carefully avoided. Removing a hazard
-beats managing one.
+**The table, and the boundary it draws, is
+[`../ORBITER-REFERENCE.md`](../ORBITER-REFERENCE.md)**, which is where
+`CLAUDE.md` routes anyone about to read Orbiter's source. It is not repeated
+here, because a licence boundary with two homes is a licence boundary that will
+one day disagree with itself.
 
 ### The format specification
 
@@ -348,18 +360,27 @@ already on disk.
 
 ## Open questions
 
-- **Tile format on disk:** KTX2 with BC7, or plain DDS? KTX2 has mipmap and
-  supercompression support and a cleaner spec; DDS is what Orbiter uses, which
-  matters slightly for the later reader.
+**All of these were answered on 2026-09-08.** They are kept, struck through,
+because a question that simply vanishes reads as a question nobody asked.
+[The register](milestone-1-decisions.md) holds each answer with the
+alternatives it was weighed against.
+
+- ~~**Tile format on disk:** KTX2 with BC7, or plain DDS?~~ **Settled: KTX2**
+  (decision 20), carrying the mip chain and the Vulkan format enum directly.
+  Orbiter's DXT1 tiles are repacked into it block for block by a converter, so
+  no pixel is transcoded (decision 21).
 - ~~**Elevation:** probably milestone 2.~~ **Settled 2026-09-07: it moves into
   phase C.** ADR 0006 makes relief part of the realism bar, and displacement is
-  much cheaper built into the subdivision than bolted on afterwards.
-- **Night lights and specular water:** both available in the Blue Marble set,
-  both cheap once the tile pipeline exists, and both large contributors to
-  looking right. Likely worth folding into phase B.
+  much cheaper built into the subdivision than bolted on afterwards. The
+  dataset is ETOPO 2022 (decision 23).
+- ~~**Night lights and specular water:** both available in the Blue Marble set…
+  Likely worth folding into phase B.~~ **Settled: night lights fold into phase
+  B** (M1-35). The **specular water mask stays deferred** — the source has not
+  been located (decision 25).
 
-Questions this plan inherits from [`realism.md`](realism.md) section 4, none of
-which block phase A: Encke or Cowell and which integrator; Cartesian or
-equinoctial state; DE440 or VSOP87 for the ephemeris; whether `Vec3` acquires a
-unit and a frame. The integrator question is the one that decides how phase E
-is actually built.
+Of the questions this plan inherits from [`realism.md`](realism.md) section 4,
+the two that decide how phase E is built are settled: **Cowell then Encke**,
+RK4 then a high-order tableau, and a **Cartesian** propagated state (decisions
+7 to 12). Still open, and neither blocks this milestone: DE440 or VSOP87 for
+the ephemeris — milestone 1 uses neither, only the analytic Sun — and whether
+`Vec3` acquires a unit and a frame.

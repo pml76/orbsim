@@ -56,7 +56,7 @@ and their costs, and every row is the owner's answer.
 |---|---|---|
 | 20 | Tile container | **KTX2**, carrying the mip chain and the Vulkan format enum directly |
 | 21 | Orbiter `.tree` | **A converter tool, inside milestone 1.** Archive reader with a fuzz target, DXT1 repacked into KTX2 byte for byte, and the ELEV elevation format |
-| 22 | Third-party pins | **`stb` and `bc7enc_rdo`**, fetched and pinned exactly as SDL3, VMA, vk-bootstrap and Vulkan-Headers already are |
+| 22 | Third-party pins | **`stb` and `bc7enc_rdo`**, fetched and pinned exactly as SDL3, VMA, vk-bootstrap and Vulkan-Headers already are — Catch2 joined that list on 2026-09-09 with M1-01 |
 | 23 | Elevation dataset | **ETOPO 2022, 60 arc-second, ice surface** (NOAA NCEI, public domain) |
 | 24 | MFD font | **DejaVu Sans Mono**, committed as its TTF, baked at build time, and the **atlas embedded in the executable**, so there is no runtime font file |
 | 25 | Night lights and water | Night lights fold into phase B. The specular water mask stays **deferred**: the source has not been located |
@@ -76,7 +76,7 @@ it is never mistaken for a bug.
 
 | Phase | Claim | Budget | Checked against |
 |---|---|---|---|
-| A | UTC/TAI/TT round trip | exact to **1e-9 s**, 1970–2035 | The leap-second table and published ΔAT steps |
+| A | UTC/TAI/TT round trip | exact to **1e-9 s**, 1972–2035 | The leap-second table and published ΔAT steps |
 | A | TDB − TT | within **100 µs** — 3 m of Earth's orbital motion | The reference series |
 | A | Precession + ERA, as implemented | **0.1″** (code) | An IERS/ERFA reference value |
 | A | Precession + ERA, as modelled | **≤ 40″, about 1.2 km** on the ground: nutation omitted (≤ 25″) and ΔUT1 = 0 (≤ 15″) (model) | Recorded, not asserted |
@@ -95,6 +95,13 @@ it is never mistaken for a bug.
 | E | Determinism | **bit-identical** after 24 h of simulated time, between two runs and between 1× and 10000× | Itself — the one place `==` on floats is the correct operator |
 | F | Nodal regression | within **1 %** of `-1.5 n J2 (Re/p)^2 cos i` over 5 days | The analytic secular rate. The short-period oscillation in the node is about 0.03° against 25° of drift, so the budget sits an order of magnitude above the noise |
 | C, G | Frame time | **16.6 ms** at 1920×1080, High preset, RTX A2000, Earth from 400 km | Measured and recorded, not asserted |
+
+The UTC/TAI/TT row read **1970**–2035 when this register was written and was
+corrected to 1972 on 2026-09-09. UTC's leap-second era begins 1972-01-01 — ΔAT
+was 10 s that day and has stepped since — and
+[M1-04](tasks/m1-04-leap-seconds.md) reports `BeforeLeapSecondEra` for anything
+earlier, so a round trip across 1970–1972 is not something the table can be
+exact about. The budget the task asserts is the 1972 one.
 
 ---
 

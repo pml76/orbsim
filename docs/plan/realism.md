@@ -32,8 +32,9 @@ budget, and neither is allowed to quietly borrow from the other.
 Three consequences worth stating before the lists:
 
 - **Realism is an error budget, not an adjective.** "Realistic orbit" means
-  nothing; "position error under 1 km after 24 hours in LEO, checked against
-  JPL Horizons" is a claim that can fail. Every item below should acquire a
+  nothing; "position error under 1 km after 24 hours in LEO, checked against a
+  NASA GMAT reference trajectory" is a claim that can fail. Every item below
+  should acquire a
   number like that before it is called done. See
   [`../VERIFICATION.md`](../VERIFICATION.md) rule 4.
 - **Fidelity you cannot verify is decoration.** A J4 term nobody has validated
@@ -75,7 +76,18 @@ is the foundation; it is simply not the building.
 perturbation above is unreachable without one, and the choice constrains
 everything after it.
 
-The decisions that need making, in order:
+**All but the last of these were settled on 2026-09-08**, and the analysis is
+kept because it is what the ruling was made from.
+[The register](milestone-1-decisions.md) has the answers: **Cowell first, then
+Encke**, both kept and diffed against each other (7); fixed-step **RK4** first
+so the convergence order can be measured against theory, then a high-order
+tableau (7, M1-64, M1-65); a **stateful stepper**, so a multistep method or an
+adaptive controller can arrive without a rewrite (10); a **fixed step with more
+steps** under time acceleration, never a variable one (13); and a **Cartesian**
+propagated state, equinoctial elements deferred. Close approaches and
+regularisation are not decided, and milestone 1 does not need them.
+
+The decisions as they stood, in order:
 
 - **Cowell vs. Encke.** Cowell integrates the total acceleration directly:
   simple, and it spends its precision re-deriving the Kepler motion that
@@ -227,9 +239,10 @@ LDR and non-linear by design.** For the stated realism goal that has to invert:
   dynamic range in any rendering domain: a sunlit cloud top and a star field
   differ by more than ten orders of magnitude, and the reason spaceflight
   photography looks the way it does is exposure choice.
-- **Tonemap** at the end — ACES or AgX. This is the step that turns physical
-  radiance into something a monitor can show without the highlights turning into
-  flat white plastic.
+- **Tonemap** at the end — **AgX**, settled on 2026-09-08 as decision 16, with
+  manual photographic exposure and auto-exposure deferred. This is the step
+  that turns physical radiance into something a monitor can show without the
+  highlights turning into flat white plastic.
 - Then **sRGB encode once**, at the very end.
 
 Doing this later means rewriting every shader written before it. Doing it in
@@ -294,7 +307,7 @@ later — then by realism delivered per unit of effort.
 |---|---|---|---|
 | 1 | **Linear HDR + exposure + tonemap pipeline** (2.1) | Every shader written before this must be rewritten after it | S |
 | 2 | **Time system: `TimePoint` with an explicit scale** (1.3) | Touches every signature that takes a `Seconds`. Cheapest today, at zero call sites | S |
-| 3 | **Integrator, with Encke and a determinism story** (1.2) | Nothing in the force model is reachable without it | M |
+| 3 | **Integrator: Cowell then Encke, with a determinism story** (1.2) | Nothing in the force model is reachable without it | M |
 | 4 | **Ephemeris (DE440)** (1.3) | Prerequisite for multi-body, and it is also the validation source | M |
 | 5 | **Multi-body point-mass gravity** (1.1) | The owner's stated requirement. Small, once 3 and 4 exist | S |
 | 6 | **J2 (then J3, J4)** (1.1) | Largest single accuracy gain per line of code in the whole document | S |
@@ -315,11 +328,15 @@ later — then by realism delivered per unit of effort.
    2026-09-06: a simulation.** Real ephemeris time, real frames, real
    perturbations. Items 4 and 13 are therefore in scope, not optional, and
    ADR 0006 records the reasoning.
-2. **Encke or Cowell**, and which integrator (1.2). The recommendation is Encke
-   plus an adaptive high-order method, but symplectic is defensible if long
-   unpowered arcs dominate.
-3. **Equinoctial or Cartesian state** (1.2).
-4. **Does elevation move into phase C?** (2.3) The recommendation is yes.
+2. ~~**Encke or Cowell**, and which integrator (1.2).~~ **Settled 2026-09-08:
+   Cowell first, then Encke**, both kept and diffed. RK4 first so the order can
+   be measured against theory, then a high-order tableau. Symplectic was ruled
+   out for a simulator that will have burns and drag.
+3. ~~**Equinoctial or Cartesian state** (1.2).~~ **Settled 2026-09-08:
+   Cartesian**, with equinoctial elements deferred and named in the milestone's
+   scope fences so that the deferral is visible.
+4. ~~**Does elevation move into phase C?** (2.3)~~ **Settled 2026-09-07: yes**,
+   and the dataset is ETOPO 2022 (decision 23).
 5. **DE440 directly, or VSOP87/ELP2000?** (1.3) Recommendation: DE440.
 6. **Is `Vec3` staying unit-free?** Carried over from `PROJECT_STATE.md` section
    7. Multi-body physics with several frames makes this question sharper, not
@@ -341,9 +358,11 @@ amendments:
 - **Phase E is no longer "call `propagate()` in a loop".** It becomes the
   integrator (item 3) plus the first perturbation, which raises it from Low to
   Medium risk and makes the time system its prerequisite. Its acceptance
-  criterion gains an error budget against JPL Horizons, because "time
-  acceleration does not change where it ends up" is self-consistency and
-  section 0 rules that out as evidence on its own.
+  criterion gains an error budget against external reference data -- a NASA
+  GMAT trajectory, since Horizons cannot propagate a J2-only satellite
+  (decision 4 of 2026-09-08) -- because "time acceleration does not change
+  where it ends up" is self-consistency and section 0 rules that out as
+  evidence on its own.
 - **Phase C absorbs elevation** (item 11).
 - **Phase F's acceptance criterion inverts.** This document's first version said
   the orbit track was unaffected, and that was wrong: the phase was written to
@@ -472,7 +491,9 @@ empty and gain entries as each feature lands.
 
 The mechanism and the principle are both recorded in
 [`../adr/0007`](../adr/0007-render-quality-is-a-struct.md). The clause in 6.3
-is what that record is actually for: `RenderQuality` lives in `src/render/`,
-and because `orbsim_core` does not link the renderer, a physics translation
-unit that tries to read a quality setting **does not compile**. The rule is
+is what that record is actually for: `RenderQuality` lives in `orbsim_view`
+-- moved out of `src/render/` by decision 17 of 2026-09-08, so that the
+quadtree and atmosphere tests can read it without a GPU -- and because
+`orbsim_core` links neither render-side library, a physics translation unit
+that tries to read a quality setting **does not compile**. The rule is
 enforced by the link graph rather than by anyone remembering it.

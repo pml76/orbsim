@@ -442,8 +442,11 @@ now.
 `[[nodiscard]]` goes on any function whose entire purpose is its return value:
 
 ```cpp
-[[nodiscard]] Elements elementsFromState(const StateVector& sv, f64 mu);
-[[nodiscard]] StateVector propagate(const StateVector& sv, f64 mu, f64 dt);
+[[nodiscard]] std::expected<Elements, OrbitError>
+elementsFromState(const StateVector& sv, GravParam mu);
+
+[[nodiscard]] std::expected<StateVector, OrbitError>
+propagate(const StateVector& sv, GravParam mu, Seconds dt);
 ```
 
 Calling `propagate()` and dropping the result is *always* a bug. Ignoring the
@@ -527,7 +530,7 @@ You are on C++23. You do not have to choose between exceptions and out-params,
 because `std::expected` exists — and this is now the actual signature:
 
 ```cpp
-[[nodiscard]] static std::expected<VulkanContext, InitError> create(SDL_Window*, Validation);
+[[nodiscard]] static std::expected<VulkanContext, RenderError> create(SDL_Window*, Validation);
 ```
 
 This is strictly better than what you have:
@@ -554,7 +557,7 @@ When two independent principles point at the same refactor, that is usually the
 refactor to do — and in this case doing it once satisfied both.
 
 One deliberate difference between the two layers: the core reports an
-`OrbitError` enum, the renderer an `InitError` carrying a string. That is not
+`OrbitError` enum, the renderer a `RenderError` carrying a string. That is not
 inconsistency. A degenerate orbit is one of three things this code can decide;
 a device-creation failure is the *driver's* to explain, and "no suitable GPU"
 tells a user less than the driver's own account of which feature was missing.
@@ -929,9 +932,10 @@ But some decisions are bigger than any one file: pinning Vulkan headers instead
 of using the installed SDK, targeting C++23, choosing error codes over
 exceptions, reverse-Z. Those belong in short **architecture decision records** —
 a `docs/adr/` folder, one file per decision, three paragraphs each: what we
-decided, what we considered, why. **Done:** seven of them exist, including the
-two biggest — 0006, that this is a simulation and not a sandbox, and 0007, how
-render quality scales without ever touching the physics. Two years from now somebody will ask "why are
+decided, what we considered, why. **Done:** they exist, and
+[the index](docs/adr/README.md) lists them — including the two biggest, 0006,
+that this is a simulation and not a sandbox, and 0007, how render quality
+scales without ever touching the physics. Two years from now somebody will ask "why are
 we pinning these headers?" and the answer will exist instead of being
 reconstructed from a stale memory.
 
@@ -952,7 +956,8 @@ that happens to also let you ship elsewhere.
 **This is no longer hypothetical.** Since 2026-09-07 the Linux build is a WSL
 Ubuntu box rather than a CI job, and it has already earned its keep by being
 run: `linux-sanitize` and `linux-gcc` both pass, so clang and gcc-14 agree on
-all 3,632 assertions. ThreadSanitizer is waiting there for the day the physics
+every assertion in the suite ([`docs/STATUS.md`](docs/STATUS.md) has the
+count). ThreadSanitizer is waiting there for the day the physics
 moves off the render thread.
 
 - **Know your types.** Container sizes and indices are `size_t`. Vulkan hands
@@ -1153,8 +1158,8 @@ Items marked ✅ are already on this machine.
 
 | Tool | Notes |
 |---|---|
-| **CMake** ✅ | 3.31.2 on PATH, but CLion bundles **4.3.1** — use the bundled one, it is what your IDE uses |
-| **Ninja** ✅ | 1.12.0. Fast, and the only generator worth using here |
+| **CMake** ✅ | Use the copy CLion bundles, not the older one on `PATH` — the build trees were configured with it. Versions: [`docs/STATUS.md`](docs/STATUS.md) |
+| **Ninja** ✅ | Fast, and the only generator worth using here |
 | **CMakePresets** ✅ | Already pinning clang. This is how you stop arguing about build flags |
 | **FetchContent** ✅ | Currently pulling SDL3, vk-bootstrap, VMA, Vulkan-Headers |
 | **ccache** / **sccache** | Compile caching. You are rebuilding SDL3 from source; you will want this |
@@ -1165,7 +1170,7 @@ Items marked ✅ are already on this machine.
 | Tool | Notes |
 |---|---|
 | **clang** ✅ | Your primary. Targets `x86_64-pc-windows-msvc`. One version across Windows and WSL, deliberately; `docs/STATUS.md` says which |
-| **MSVC 14.44** ✅ | VS2022 is installed and clang already targets its ABI. A third opinion if you want one, though gcc-14 under WSL is the second and it is already wired to a preset |
+| **MSVC** ✅ | VS2022 is installed and clang already targets its ABI. A third opinion if you want one, though gcc-14 under WSL is the second and it is already wired to a preset |
 | **GCC** ✅ | MinGW 13.2 lacks `<print>` and cannot build this project. **gcc-14 under WSL can, and does** — the `linux-gcc` preset passes. Not CI; run it by hand before a milestone |
 | **Compiler Explorer** | godbolt.org. When you wonder whether the optimizer did the thing, stop wondering and go look |
 | **C++ Insights** | cppinsights.io. Shows you what the compiler *actually* generated from your template or range-for. Wonderful teaching tool, wonderful debugging tool |

@@ -26,8 +26,9 @@ follows.
   The GPU work stays in the app; the arithmetic and the reference stay in a test
   that links no Vulkan.
 - **`tests/test_radiometry.cpp`**, which computes the expected radiance itself —
-  `0.3 × 1361 / π = 129.98 W·m⁻²·sr⁻¹` — from the constant and the definition,
-  not from anything in `src/render/`.
+  `0.3 × 1361 / π = 129.97 W·m⁻²·sr⁻¹` (129.9659…) — from the constant and the
+  definition, not from anything in `src/render/`. The test computes it rather
+  than quoting it, so the rounding here can never be what the assertion uses.
 
 ## Out of scope
 
@@ -56,7 +57,7 @@ Any scene with more than one surface. Auto-exposure.
 
 ## Error budget
 
-**0.5 % of 129.98 W·m⁻²·sr⁻¹**, at 1 AU, albedo 0.3, normal incidence, measured
+**0.5 % of 129.97 W·m⁻²·sr⁻¹**, at 1 AU, albedo 0.3, normal incidence, measured
 in the linear HDR target before exposure. The number, its derivation and the
 0.05 % quantisation floor go in the test, the task and the commit message.
 

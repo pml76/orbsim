@@ -37,8 +37,9 @@ knows about frames or rendering.
 `tests/test_cowell.cpp`.
 
 - **The budget: with J2 disabled, agreement with `propagate()` to 1e-9 relative
-  over one orbit.** The two-body propagator is closed-form, tested by 3,632
-  assertions, and shares no code with the integrator — so this is the strongest
+  over one orbit.** The two-body propagator is closed-form, tested by the whole
+  two-body suite ([`STATUS.md`](../../STATUS.md) has the count), and shares no
+  code with the integrator — so this is the strongest
   available check that the integration machinery is right before any
   perturbation is added.
 - **Every scale and every conic**: circular, eccentric, near-parabolic and

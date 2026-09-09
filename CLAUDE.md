@@ -51,7 +51,7 @@ a quality knob; visual cost is answered by quality settings and physics cost by
 decoupling. **A quality setting must never reach the simulation state** — the
 same scenario at the lowest and highest settings puts the vessel in the same
 place, bit for bit. The mechanism is a `RenderQuality` struct living in
-`src/render/`, so the link graph enforces it.
+`orbsim_view`, which `orbsim_core` does not link, so the link graph enforces it.
 [`docs/adr/0007`](docs/adr/0007-render-quality-is-a-struct.md).
 
 ```

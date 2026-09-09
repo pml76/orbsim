@@ -20,9 +20,10 @@ Visual cost is answered by quality settings.
 simulation state.** The same scenario at the lowest and highest settings puts
 the vessel in the same place, bit for bit; the quality controller may read the
 frame clock and the physics may not. The mechanism is a `RenderQuality` struct
-of per-feature settings that lives in `src/render/`, so the rule is enforced by
-the link graph -- physics code that reaches for a quality setting does not
-compile. See [`docs/adr/0007`](../../docs/adr/0007-render-quality-is-a-struct.md)
+of per-feature settings that lives in the Vulkan-free render library
+`orbsim_view` (`src/view/`, created in M1-09) rather than in `orbsim_core`, so
+the rule is enforced by the link graph -- physics code that reaches for a
+quality setting does not compile. See [`docs/adr/0007`](../../docs/adr/0007-render-quality-is-a-struct.md)
 and [`docs/plan/realism.md`](../../docs/plan/realism.md) section 6.
 
 **The dependency direction is one-way and load-bearing.** `orbsim_core` builds
