@@ -1,5 +1,52 @@
 # How this project avoids bugs
 
+Kind: explanation
+Binding: yes — adopted 2026-09-06, applies to every change
+Read when: before you write a test, not after. Part 4 says which of these a
+machine actually checks. Versions and counts are in
+[`STATUS.md`](STATUS.md); what was found on a given day is in
+[`HISTORY.md`](HISTORY.md).
+
+## Contents
+
+**Part 1 — Habits**
+
+- [Rule 1. Write the failing test first, and make it fail for the right reason](#rule-1-write-the-failing-test-first-and-make-it-fail-for-the-right-reason)
+- [Rule 2. Never check code against itself](#rule-2-never-check-code-against-itself)
+- [Rule 3. Validate against external truth, not just internal consistency](#rule-3-validate-against-external-truth-not-just-internal-consistency)
+- [Rule 4. State an error budget before writing the code](#rule-4-state-an-error-budget-before-writing-the-code)
+- [Rule 5. Test the singularities, not just the scales](#rule-5-test-the-singularities-not-just-the-scales)
+- [Rule 6. Every bug gets a regression test named after the bug](#rule-6-every-bug-gets-a-regression-test-named-after-the-bug)
+- [Rule 7. Assert the impossible, report the possible — and never blur them](#rule-7-assert-the-impossible-report-the-possible--and-never-blur-them)
+- [Rule 8. Bound every loop *and* report non-convergence](#rule-8-bound-every-loop-and-report-non-convergence)
+- [Rule 9. Ask "in what?" of every bare number](#rule-9-ask-in-what-of-every-bare-number)
+- [Rule 10. Commit small, and keep the tree bisectable](#rule-10-commit-small-and-keep-the-tree-bisectable)
+
+**Part 2 — Infrastructure**
+
+- [Rule 11. Property-based and metamorphic testing](#rule-11-property-based-and-metamorphic-testing)
+- [Rule 12. Seeded randomised sweeps, with the seed written down](#rule-12-seeded-randomised-sweeps-with-the-seed-written-down)
+- [Rule 13. Fuzzing](#rule-13-fuzzing)
+- [Rule 14. Differential testing between implementations](#rule-14-differential-testing-between-implementations)
+- [Rule 15. Runtime invariant monitors, not just test-time ones](#rule-15-runtime-invariant-monitors-not-just-test-time-ones)
+- [Rule 16. Determinism is a tested property](#rule-16-determinism-is-a-tested-property)
+- [Rule 17. Extend the type system to full dimensional analysis](#rule-17-extend-the-type-system-to-full-dimensional-analysis)
+- [Rule 18. Coverage is a map of what has not been tested](#rule-18-coverage-is-a-map-of-what-has-not-been-tested)
+- [Rule 19. Mutation testing, occasionally](#rule-19-mutation-testing-occasionally)
+- [Rule 20. Run the Linux presets — the second compiler and UBSan are back](#rule-20-run-the-linux-presets--the-second-compiler-and-ubsan-are-back)
+- [Rule 21. Keep `check` as the single definition of done, and let it grow](#rule-21-keep-check-as-the-single-definition-of-done-and-let-it-grow)
+
+**Part 3 — The rules that are about people**
+
+- [Rule 22. Write down why, at the moment you know why](#rule-22-write-down-why-at-the-moment-you-know-why)
+- [Rule 23. Distrust agreement](#rule-23-distrust-agreement)
+- [Rule 24. Prefer the bug you cannot write](#rule-24-prefer-the-bug-you-cannot-write)
+
+**Part 4 — What actually enforces what**
+
+- The honest accounting of which rules a machine checks
+  and which depend on a person. **Read this one if you read one.**
+
 Status: **adopted (2026-09-06).** These rules apply to every change by default.
 `CLAUDE.md` points here, and the enforcement table below says which rules a
 machine checks and which rely on a person.
@@ -326,7 +373,7 @@ comparison — and confirm a test fails. If none does, the suite has a hole exac
 there.
 
 Expensive to automate, cheap to do by hand on the parts that matter most. Doing
-it once on `Orbit.cpp` would put a number on how much those 3,632 checks are
+it once on `Orbit.cpp` would put a number on how much the two-body suite is
 actually worth.
 
 ### Rule 20. Run the Linux presets — the second compiler and UBSan are back
@@ -341,7 +388,10 @@ wsl --install -d Ubuntu --no-launch
 ```
 
 Ubuntu 26.04 LTS, giving clang 21.1.8, gcc-14 14.3.0, cmake 4.2.3 and ninja
-1.13.2. Both presets — written months ago, never once executed — configured,
+1.13.2 — *on that day*. The clang was replaced by LLVM's own build on
+2026-09-08 so that one version spans both operating systems; the current
+versions are in [`STATUS.md`](STATUS.md) and the recipe is in
+[`PROJECT_STATE.md`](PROJECT_STATE.md) section 2. Both presets — written months ago, never once executed — configured,
 built and passed on the first run:
 
 | Preset | What it is | Result |

@@ -5,7 +5,7 @@ under the rulings recorded in [`milestone-1-decisions.md`](milestone-1-decisions
 (2026-09-08). This file says what the phases are and why; that queue says what to
 do next.**
 
-Status: planned, not started
+Status: planned. Progress is in [`../STATUS.md`](../STATUS.md)
 Agreed: 2026-09-05
 Amended: 2026-09-07, for [`../adr/0006`](../adr/0006-simulation-not-sandbox.md)
 (a simulation, not a sandbox) and

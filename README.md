@@ -17,7 +17,8 @@ a window, creates a device and paces frames. Nothing is drawn yet. See
   trajectories through one code path, at every scale from a lunar orbit to the
   outer solar system. Escape trajectories are ordinary here, not a special
   case.
-- **Two test suites, about 3,500 checks**, the useful ones crossing the code
+- **Two Catch2 test suites, several thousand checks** (`docs/STATUS.md` has
+  the count), the useful ones crossing the code
   against something it did not produce: universal-variable propagation against
   Kepler-element propagation, state→elements against elements→state, energy
   and angular momentum before and after, and a seeded sweep of 300 random

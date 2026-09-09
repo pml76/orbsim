@@ -1,6 +1,7 @@
 # Milestone 1 — the task queue
 
-Status: **planned 2026-09-08, not started.** 84 tasks, in one order.
+Status: **planned 2026-09-08.** 84 tasks, in one order.
+Which of them are done is in [`../STATUS.md`](../STATUS.md), not here.
 
 This is the working document for [milestone 1](milestone-1-earth.md): Earth, an
 orbit track, and an Orbit MFD. The milestone plan says what the phases are and

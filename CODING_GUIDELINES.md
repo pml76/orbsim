@@ -1,5 +1,45 @@
 # orbsim C++ Guidelines
 
+Kind: explanation
+Binding: yes — the house style, applied to every change
+Read when: you are about to write C++ here and want the reasoning, or you want
+to argue with a rule. `CLAUDE.md` has the rules in short form; this has the
+case for them. Versions and counts are in
+[`docs/STATUS.md`](docs/STATUS.md), never here.
+
+## Contents
+
+Everything here is an *argument* for a rule. The rules themselves are stated
+in [`CLAUDE.md`](CLAUDE.md); this is where each one comes from, and it is the
+place to read before disagreeing with one.
+
+- [If you read nothing else](#if-you-read-nothing-else)
+- [1. Use the tools available](#1-use-the-tools-available)
+- [2. Express intent, and make interfaces hard to misuse](#2-express-intent-and-make-interfaces-hard-to-misuse)
+- [3. Make it `constexpr`](#3-make-it-constexpr)
+- [4. Rule of Zero](#4-rule-of-zero)
+- [5. `const` and `[[nodiscard]]`](#5-const-and-nodiscard)
+- [6. Initialize your variables](#6-initialize-your-variables)
+- [7. Error handling](#7-error-handling)
+- [8. Things we simply do not do](#8-things-we-simply-do-not-do)
+- [9. Prefer algorithms over raw loops](#9-prefer-algorithms-over-raw-loops)
+- [10. Measure. Do not guess.](#10-measure-do-not-guess)
+- [11. Floating point, because this project actually cares](#11-floating-point-because-this-project-actually-cares)
+- [12. Keep the layers apart](#12-keep-the-layers-apart)
+- [13. Concurrency, before you need it](#13-concurrency-before-you-need-it)
+- [14. Source files](#14-source-files)
+- [15. Naming and formatting](#15-naming-and-formatting)
+- [16. Comments](#16-comments)
+- [17. Maintainability: the boring things that decide it](#17-maintainability-the-boring-things-that-decide-it)
+- [18. Portability](#18-portability)
+- [19. Determinism, because this is a simulator](#19-determinism-because-this-is-a-simulator)
+- [20. What actual flight software does](#20-what-actual-flight-software-does)
+- [21. Non-rules and myths](#21-non-rules-and-myths)
+- [Appendix A: The Toolbox](#appendix-a-the-toolbox)
+- [Appendix B: Cross-reference with the C++ Core Guidelines](#appendix-b-cross-reference-with-the-c-core-guidelines)
+- [Appendix C: Where this came from](#appendix-c-where-this-came-from)
+- [Before you push](#before-you-push)
+
 *Written in the style of Jason Turner (C++ Weekly, "C++ Best Practices") as a
 stylistic homage. He did not write this and has never seen this codebase.*
 
@@ -116,9 +156,9 @@ finds what the Windows build cannot. See `docs/VERIFICATION.md` rule 20.
 `bugprone-*`, `performance-*`, and `readability-*`, and add
 `cppcoreguidelines-*` when you are feeling strong.
 
-**Tests.** You already have 3,632 assertions on the two-body core, and — this is
-the part I want to highlight — they check two *independent* implementations
-against each other. Universal-variable propagation versus Kepler-element
+**Tests.** You already have thousands of assertions on the two-body core —
+`docs/STATUS.md` has the count — and, this is the part I want to highlight,
+they check two *independent* implementations against each other. Universal-variable propagation versus Kepler-element
 propagation. Neither one can hide a sign error behind the other. That is a
 genuinely good test design and you should keep doing exactly that as the physics
 grows. A test that only checks the code against itself tells you nothing.
@@ -637,8 +677,8 @@ exists. It builds and runs headless.
 
 Protect this. It is worth more than it looks:
 
-- The physics is testable without a GPU, which is why you have 3,632 assertions
-  and not six.
+- The physics is testable without a GPU, which is why the suite has thousands
+  of assertions and not six.
 - A scenario batch-runner, a dedicated server, or a headless CI job all become
   possible for free.
 - The renderer can be replaced without touching a line of orbital mechanics.
@@ -1124,7 +1164,7 @@ Items marked ✅ are already on this machine.
 
 | Tool | Notes |
 |---|---|
-| **clang 22** ✅ | Your primary. Targets `x86_64-pc-windows-msvc` |
+| **clang** ✅ | Your primary. Targets `x86_64-pc-windows-msvc`. One version across Windows and WSL, deliberately; `docs/STATUS.md` says which |
 | **MSVC 14.44** ✅ | VS2022 is installed and clang already targets its ABI. A third opinion if you want one, though gcc-14 under WSL is the second and it is already wired to a preset |
 | **GCC** ✅ | MinGW 13.2 lacks `<print>` and cannot build this project. **gcc-14 under WSL can, and does** — the `linux-gcc` preset passes. Not CI; run it by hand before a milestone |
 | **Compiler Explorer** | godbolt.org. When you wonder whether the optimizer did the thing, stop wondering and go look |
@@ -1155,7 +1195,7 @@ Items marked ✅ are already on this machine.
 | Tool | Notes |
 |---|---|
 | **CTest** ✅ | Already wired up |
-| **Catch2** / **doctest** | Your test harness is currently hand-rolled. That was the right call for one file. At three or four files you will want real failure output, test filtering, and tagging — switch then, not before |
+| **Catch2** ✅ / **doctest** | The harness was hand-rolled, which was the right call for one file. At three or four files you want real failure output, test filtering and tagging — switch then, not before. **That moment arrived**: both suites moved to Catch2 in task M1-01, before the ten suites milestone 1 adds. The assertion count was the evidence the move changed nothing |
 | **libFuzzer** | `-fsanitize=fuzzer`. Underused by almost everybody, and **a superb fit for this project**: throw random state vectors at `elementsFromState`, round-trip them, assert the invariants hold. The fuzzer will find the degenerate orbit you did not think of. It always does |
 | **llvm-cov** / **llvm-profdata** ✅ | Ships with clang. Coverage is a map of what you have *not* tested |
 | **OpenCppCoverage** | Windows-native alternative if the llvm route annoys you |

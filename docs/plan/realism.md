@@ -51,7 +51,7 @@ Three consequences worth stating before the lists:
 
 Today `src/orbit/` solves exactly one problem: a massless particle around a
 single point mass, in closed form, with no forces other than that one. It solves
-it very well — 3,632 checks, two independent formulations cross-validated, correct
+it very well — thousands of checks, two independent formulations cross-validated, correct
 from lunar to heliocentric scale. Nothing below is a criticism of that code. It
 is the foundation; it is simply not the building.
 
@@ -362,7 +362,7 @@ phase A did its job. The Earth-first priority still holds.
 The two-body propagator does not go away and is not superseded. It becomes the
 *reference conic* that Encke integrates deviations from, and it keeps its three
 existing jobs: drawing paths, high time acceleration, and MFD prediction. The
-3,632 checks behind it are the reason that reference can be trusted.
+thousands of checks behind it are the reason that reference can be trusted.
 
 ---
 
