@@ -435,8 +435,9 @@ endif()
 #
 # `cmake --build <tree> --target check` is what "finished" means here:
 # everything builds, every test passes, clang-tidy finds nothing,
-# clang-format would change nothing, and no document links at something that
-# is not there. CLAUDE.md points at this target. Run it in both
+# clang-format would change nothing, and no document links -- or points at in
+# backticks -- something that is not there. CLAUDE.md points at this target.
+# Run it in both
 # build/relwithdebinfo and build/debug -- the assertions are only live in the
 # second.
 #
@@ -527,7 +528,7 @@ if(ORBSIM_PYTHON)
             COMMAND ${ORBSIM_PYTHON}
                     ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-doc-links.py
                     ${CMAKE_CURRENT_SOURCE_DIR}
-            COMMENT "doc-links: every Markdown link and anchor in the repository"
+            COMMENT "doc-links: every Markdown link, anchor and backticked path"
             VERBATIM
     )
 else()

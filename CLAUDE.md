@@ -133,8 +133,9 @@ cmake --build build/debug --target check
 
 **Nothing is done until `check` passes in both trees.** It builds everything,
 runs `clang-format --dry-run --Werror`, runs `clang-tidy` over every
-translation unit with headers included, checks that no document links to
-something that is not there, and runs `ctest` -- including a two-second run of
+translation unit with headers included, checks that no document links **or
+points in backticks** at something that is not there, and runs `ctest` --
+including a two-second run of
 the application under the Vulkan validation layers (`orbsim_smoke`, label
 `gpu`) that fails on any validation error. Both trees, because assertions are
 only live in Debug. Smaller targets for the loop: `lint`, `format-check`,

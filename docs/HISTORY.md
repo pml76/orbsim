@@ -294,13 +294,25 @@ argument for section 8 of the register, which now maps every decision to the
 document that carries it, and for the `Decided by:` line that 71 task documents
 gained.
 
-**`doc-links` cannot see a backticked path.** `.claude/rules/physics-tests.md`
-still sent readers to `tests/TestHarness.hpp`, which M1-01 had deleted — in a
-file the harness loads automatically whenever a test is touched. The check that
-exists precisely to catch a document naming something that is not there could
-not see it, because the reference was in backticks rather than in a link. The
-script's own docstring describes this failure mode; it was one level outside
-its reach.
+**`doc-links` could not see a backticked path**, and now it can.
+`.claude/rules/physics-tests.md` still sent readers to `tests/TestHarness.hpp`,
+which M1-01 had deleted — in a file the harness loads automatically whenever a
+test is touched. The check that exists precisely to catch a document naming
+something that is not there could not see it, because the reference was in
+backticks rather than in a link. The script's own docstring described that
+failure mode, and it was one level outside its reach.
+
+**It was closed the same day**, deliberately as its own change: the script now
+also resolves backticked repository paths and `docs/adr/NNNN` record numbers.
+Three rules keep it honest, each costing coverage on purpose — only paths
+carrying a file extension, so a directory decided but not yet created is not an
+error; only paths whose first segment is a real top-level directory, so a
+dependency's header is nobody's promise; and task documents are exempt, because
+naming a file the task will create is their whole job. Two paths are named on
+purpose although they are absent, both `tests/TestHarness.hpp`, each listed in
+the script with its reason. It was shown to fail on a missing file and on a
+wrong ADR number, and to stay silent on an existing file, a dependency header,
+a future directory and a path inside a fenced block, before it was trusted.
 
 ---
 
