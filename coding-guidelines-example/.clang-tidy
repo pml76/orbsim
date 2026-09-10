@@ -8,8 +8,42 @@
 # a property worth keeping: the moment it produces one, either the code drifted
 # or the rule changed, and both are worth a look.
 #
-# Every disabled check below carries the reason it is disabled. A suppression
-# list without reasons is how a lint config quietly stops meaning anything.
+# Every disabled check carries the reason it is disabled and a count of what
+# turning it back on would cost. A suppression list without reasons is how a
+# lint config quietly stops meaning anything.
+#
+# They sit here rather than beside the entries because `Checks:` is a folded
+# block scalar: a `#` inside it is text, not a comment, and it folds into the
+# neighbouring check name -- which silently stops that suppression applying.
+# Verified against clang-tidy --verify-config on 2026-09-10.
+#
+# The four, measured the same day over this project's seven translation units
+# with `--checks=-*,<check>`. "findings" is what a lint run prints; "lines" is
+# distinct source lines, which is what a NOLINT per site would touch. The
+# numbers are this example's own and are smaller than the parent project's.
+#
+#   -cppcoreguidelines-avoid-magic-numbers    211 findings, 56 lines
+#   -readability-magic-numbers                the same 211; two names for one
+#                                             check, so the cost is 211
+#
+#       Mostly the tests' expected values and the worked constants of the
+#       Kepler solve, each already carrying a comment saying where it came
+#       from.
+#
+#   -readability-identifier-length             160 findings, 40 lines
+#
+#       The domain's notation: mu, dt, e, a, r, v and the like. The check
+#       wants three characters. Section 15 asks for names that say what a
+#       thing is in its own domain, and in orbital mechanics that is `mu`.
+#
+#   -modernize-use-trailing-return-type        153 findings, 52 lines
+#
+#       A style inversion rather than a defect: `auto f() -> T` against the
+#       `T f()` this example writes everywhere. None of the 153 is a bug.
+#
+# The example must keep matching the parent project's configuration, because
+# its whole job is to be the house style applied to real code. If a suppression
+# is removed there, remove it here in the same commit.
 ---
 Checks: >
   clang-analyzer-*,

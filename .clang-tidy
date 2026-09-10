@@ -4,14 +4,69 @@
 # something a machine enforces on every build, because advice that relies on
 # everyone remembering decays and advice a tool checks does not.
 #
-# Every disabled check below has a reason next to it, and a count of what
-# turning it back on would cost. If you disable one more, write both -- a bare
-# list of suppressions is how a lint config quietly becomes meaningless.
+# Every disabled check has a reason and a count of what turning it back on
+# would cost. If you disable one more, write both -- a bare list of
+# suppressions is how a lint config quietly becomes meaningless.
+#
+# They are in the block below rather than beside the entries themselves,
+# because YAML will not allow the latter: `Checks:` is a folded block scalar,
+# so a `#` inside it is not a comment, it is text. Tried on 2026-09-10 --
+# clang-tidy --verify-config then reports
+#
+#     unknown check '# a comment inside the folded block -readability-...'
+#
+# because the comment and the next entry fold into one name, **and the
+# suppression it was attached to silently stops applying**. A comment that
+# turns a check back on without saying so is worse than no comment.
 #
 # The list is meant to shrink. It was emptied on 2026-09-08 to see what was
 # actually in it; ten of the fourteen entries turned out to be either dead,
 # cheap to fix, or better expressed as a NOLINT at the handful of sites that
 # needed one, and are gone.
+#
+# ---------------------------------------------------------------------------
+# The four that remain, and what each costs.
+#
+# Measured 2026-09-10 over the five linted translation units with
+# `--checks=-*,<check>`. "findings" is what a lint run prints, which counts a
+# header once per translation unit that includes it; "lines" is distinct
+# source lines, which is what a NOLINT at every site would have to touch. The
+# 2026-09-08 numbers were 408/357/277 and have already moved, which is why
+# they are dated.
+#
+#   -cppcoreguidelines-avoid-magic-numbers    276 findings, 116 lines
+#   -readability-magic-numbers                the same 276 -- these are two
+#                                             names for one check, so the cost
+#                                             is 276 and not 552
+#
+#       66 of the 116 lines are in tests/, where a table of expected values
+#       *is* the test: naming each entry would hide the thing being asserted.
+#       The other 50 are in src/, and most are a series coefficient or a
+#       conversion factor whose provenance is already in a comment beside it.
+#       This is the entry most worth removing, and the cheapest, because the
+#       two populations want opposite treatment and clang-tidy reads a
+#       .clang-tidy per directory.
+#
+#   -readability-identifier-length             414 findings, 194 lines
+#
+#       The check wants three characters and this domain's notation does not
+#       have them: v (98), a (38), mu (28), el (28), s (25), sv (21), ok (20),
+#       dt (19), then the Stumpff coefficients c0..c3, and r0, rp, vp, nu, h,
+#       q. Renaming `a` to `semiMajorAxis` inside a Kepler solve makes the
+#       formula harder to check against the book it came from, not easier, and
+#       CODING_GUIDELINES section 15 asks for names that say what a thing is
+#       in its own domain. The narrower instrument here is this check's own
+#       IgnoredParameterNames / IgnoredVariableNames, not a NOLINT: see
+#       .claude/rules/lint-config.md.
+#
+#   -modernize-use-trailing-return-type        365 findings, 174 lines
+#
+#       A style inversion, not a defect. The check wants `auto f() -> T`; this
+#       codebase writes `T f()`, consistently, in all 174 places. Zero of the
+#       365 is a bug. It is the same class of thing as the brace deviation in
+#       CODING_GUIDELINES section 15 -- choose one, apply it everywhere, write
+#       it down -- so turning it on means rewriting 174 declarations and
+#       changing the house style. That is a decision about taste.
 ---
 Checks: >
   clang-analyzer-*,

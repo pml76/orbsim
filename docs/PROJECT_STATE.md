@@ -332,6 +332,13 @@ asked for.
   and compare the finding count against a plain run.
 - **A `Checks:` list drops the defaults**, so `clang-analyzer-*` has to be
   named explicitly. It is the only family that is path-sensitive.
+- **A `#` inside `.clang-tidy`'s `Checks:` block is not a comment.** It is a
+  YAML folded block scalar, so the `#` and everything after it fold into the
+  neighbouring check name -- and the suppression it was attached to silently
+  stops applying. `clang-tidy --verify-config` reports it as an unknown check
+  and is the only thing that will; nothing runs it automatically. This is why
+  the reasons for the four disabled checks sit in a comment block *above*
+  `Checks:` rather than beside the entries.
 - **ASan does not work with a Debug build on Windows.** See 6.3.
 - **CRLF.** `.gitattributes` normalises the repository to LF and
   `.clang-format` now writes LF, but an older checkout can still hold CRLF in

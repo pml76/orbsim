@@ -39,7 +39,28 @@ keeping:
 
 Every suppression that survives carries its reason and a count of what turning
 the check back on would cost. A bare list of suppressions is how a lint config
-quietly becomes meaningless.
+quietly becomes meaningless. Both are in a comment block immediately above
+`Checks:`, dated, because the counts move: the three open entries were
+408/357/277 on 2026-09-08 and 414/365/276 on 2026-09-10, with no change to the
+checks at all.
+
+**The reasons cannot sit next to the entries**, and finding out why is worth
+one line here. `Checks:` is a YAML *folded block scalar*, so a `#` inside it is
+not a comment -- it is text, and it folds into the neighbouring check name.
+The suppression it was attached to then **silently stops applying**. That is
+the failure mode this whole file is about, arriving inside the file that is
+about it.
+
+**`clang-tidy --verify-config` is the check on the check**, and it costs a
+second:
+
+```
+clang-tidy --verify-config -p build/relwithdebinfo src/orbit/Orbit.cpp
+```
+
+It reports an unknown check name, which is what a typo, a check renamed by an
+upgrade, and the folded-comment trap above all look like. Nothing runs it
+automatically today.
 
 **Two clang-tidy 23 checks are wrong on this code**, and one writes code that
 does not compile — see [`docs/PROJECT_STATE.md`](../../docs/PROJECT_STATE.md)
