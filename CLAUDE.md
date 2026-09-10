@@ -132,8 +132,9 @@ cmake --build build/debug --target check
 ```
 
 **Nothing is done until `check` passes in both trees.** It builds everything,
-runs `clang-format --dry-run --Werror`, runs `clang-tidy` over every
-translation unit with headers included, checks that no document links **or
+runs `clang-format --dry-run --Werror`, verifies that the lint configuration
+names only checks that exist and then runs `clang-tidy` over every translation
+unit with headers included, checks that no document links **or
 points in backticks** at something that is not there, and runs `ctest` --
 including a two-second run of
 the application under the Vulkan validation layers (`orbsim_smoke`, label

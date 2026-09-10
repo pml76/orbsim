@@ -434,7 +434,8 @@ endif()
 # The definition of done.
 #
 # `cmake --build <tree> --target check` is what "finished" means here:
-# everything builds, every test passes, clang-tidy finds nothing,
+# everything builds, every test passes, clang-tidy's configuration names only
+# checks that exist and then finds nothing,
 # clang-format would change nothing, and no document links -- or points at in
 # backticks -- something that is not there. CLAUDE.md points at this target.
 # Run it in both
@@ -471,6 +472,60 @@ list(FILTER ORBSIM_OWN_SOURCES EXCLUDE REGEX "VmaImpl\\.cpp$")
 
 if(ORBSIM_CLANG_TIDY)
     file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lint)
+
+    # The check on the check, and it runs before them.
+    #
+    # `--verify-config` exits non-zero on a check name clang-tidy does not
+    # know, and a normal run ignores one in silence. Three things look exactly
+    # like that: a typo, a check renamed by a compiler upgrade -- which this
+    # project meets on purpose, since `.clang-tidy` lists families and every
+    # upgrade is a small triage -- and a `#` written inside the `Checks:`
+    # block, which is a folded YAML scalar, so the comment folds into the next
+    # check name and **silently cancels the suppression it was attached to**.
+    # Without this target all three are indistinguishable from a clean run.
+    #
+    # Shown to fail before it was trusted: a deliberate
+    # `-readability-identifier-lenght` exits 1 and names the typo.
+    #
+    # Once per directory whose files are linted, because clang-tidy resolves a
+    # config per file and a `tests/.clang-tidy` would be a second one. 88 ms
+    # each. The glob is CONFIGURE_DEPENDS over exactly those directories, so a
+    # per-directory config added later joins this dependency list by itself
+    # rather than by somebody remembering.
+    set(orbsim_lint_dirs "")
+    set(orbsim_lint_dir_sources "")
+    foreach(source IN LISTS ORBSIM_LINT_SOURCES)
+        get_filename_component(orbsim_lint_dir "${source}" DIRECTORY)
+        if(NOT "${orbsim_lint_dir}" IN_LIST orbsim_lint_dirs)
+            list(APPEND orbsim_lint_dirs "${orbsim_lint_dir}")
+            list(APPEND orbsim_lint_dir_sources "${source}")
+        endif()
+    endforeach()
+
+    set(orbsim_tidy_config_globs ${CMAKE_CURRENT_SOURCE_DIR}/.clang-tidy)
+    foreach(dir IN LISTS orbsim_lint_dirs)
+        list(APPEND orbsim_tidy_config_globs
+                ${CMAKE_CURRENT_SOURCE_DIR}/${dir}/.clang-tidy)
+    endforeach()
+    file(GLOB ORBSIM_TIDY_CONFIGS CONFIGURE_DEPENDS ${orbsim_tidy_config_globs})
+
+    set(orbsim_verify_stamps "")
+    foreach(source IN LISTS orbsim_lint_dir_sources)
+        get_filename_component(orbsim_lint_dir "${source}" DIRECTORY)
+        string(REPLACE "/" "_" stem "${orbsim_lint_dir}")
+        set(stamp "${CMAKE_CURRENT_BINARY_DIR}/lint/verify_${stem}.ok")
+        add_custom_command(
+                OUTPUT ${stamp}
+                COMMAND ${ORBSIM_CLANG_TIDY} --verify-config -p ${CMAKE_BINARY_DIR}
+                        ${CMAKE_CURRENT_SOURCE_DIR}/${source}
+                COMMAND ${CMAKE_COMMAND} -E touch ${stamp}
+                DEPENDS ${ORBSIM_TIDY_CONFIGS}
+                COMMENT "clang-tidy --verify-config for ${orbsim_lint_dir}/"
+                VERBATIM
+        )
+        list(APPEND orbsim_verify_stamps ${stamp})
+    endforeach()
+
     set(orbsim_lint_stamps "")
     foreach(source IN LISTS ORBSIM_LINT_SOURCES)
         string(REPLACE "/" "_" stem "${source}")
@@ -482,13 +537,14 @@ if(ORBSIM_CLANG_TIDY)
                 COMMAND ${CMAKE_COMMAND} -E touch ${stamp}
                 DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${source}
                         ${ORBSIM_OWN_HEADERS}
-                        ${CMAKE_CURRENT_SOURCE_DIR}/.clang-tidy
+                        ${ORBSIM_TIDY_CONFIGS}
+                        ${orbsim_verify_stamps}
                 COMMENT "clang-tidy ${source}"
                 VERBATIM
         )
         list(APPEND orbsim_lint_stamps ${stamp})
     endforeach()
-    add_custom_target(lint DEPENDS ${orbsim_lint_stamps})
+    add_custom_target(lint DEPENDS ${orbsim_verify_stamps} ${orbsim_lint_stamps})
 else()
     # A lint target that cannot lint must fail, not pass by doing nothing.
     add_custom_target(lint

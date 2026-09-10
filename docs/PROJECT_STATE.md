@@ -336,8 +336,9 @@ asked for.
   YAML folded block scalar, so the `#` and everything after it fold into the
   neighbouring check name -- and the suppression it was attached to silently
   stops applying. `clang-tidy --verify-config` reports it as an unknown check
-  and is the only thing that will; nothing runs it automatically. This is why
-  the reasons for the four disabled checks sit in a comment block *above*
+  and is the only thing that will, which is why the `lint` target now runs it
+  first, once per directory whose files are linted. This is also why the
+  reasons for the four disabled checks sit in a comment block *above*
   `Checks:` rather than beside the entries.
 - **ASan does not work with a Debug build on Windows.** See 6.3.
 - **CRLF.** `.gitattributes` normalises the repository to LF and

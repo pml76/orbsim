@@ -51,16 +51,19 @@ The suppression it was attached to then **silently stops applying**. That is
 the failure mode this whole file is about, arriving inside the file that is
 about it.
 
-**`clang-tidy --verify-config` is the check on the check**, and it costs a
-second:
+**`clang-tidy --verify-config` is the check on the check, and `lint` runs it
+before it runs anything else.** It exits non-zero on a check name clang-tidy
+does not know -- which is what a typo, a check renamed by an upgrade, and the
+folded-comment trap above all look like, and all three are invisible in a
+normal run. It costs 88 ms, once per directory whose files are linted, and the
+per-file lint waits on it, so a broken configuration fails with one diagnostic
+that names the cause rather than five that look clean:
 
 ```
 clang-tidy --verify-config -p build/relwithdebinfo src/orbit/Orbit.cpp
 ```
 
-It reports an unknown check name, which is what a typo, a check renamed by an
-upgrade, and the folded-comment trap above all look like. Nothing runs it
-automatically today.
+Run it by hand after editing either config, or just build `lint`.
 
 **Two clang-tidy 23 checks are wrong on this code**, and one writes code that
 does not compile — see [`docs/PROJECT_STATE.md`](../../docs/PROJECT_STATE.md)
