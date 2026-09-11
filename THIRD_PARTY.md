@@ -46,8 +46,8 @@ The Vulkan **SDK** is not a dependency in this sense: it supplies the loader and
 ## Decided, not yet pinned
 
 Settled on 2026-09-08 in
-[the milestone 1 register](docs/plan/milestone-1-decisions.md), and each one
-arrives with the task that first needs it. **The exact repository URL and tag
+[the milestone 1 register](docs/plan/milestone-1-decisions.md) -- ERFA on
+2026-09-11 -- and each one arrives with the task that first needs it. **The exact repository URL and tag
 go in the table above when the pin lands** — they are deliberately not written
 here from memory.
 
@@ -57,6 +57,7 @@ here from memory.
 | `bc7enc_rdo` (Richard Geldreich) | **Three licences in one repository** — see below | [M1-29](docs/plan/tasks/m1-29-bc7.md) | BC7 encoding for the tile pyramid |
 | DejaVu Sans Mono, release **2.37** (`dejavu-fonts-ttf-2.37.zip`) | Bitstream Vera derived: permissive; bundling inside a larger package is allowed; the notice must be carried; the fonts may not be sold by themselves; a derivative must be renamed | [M1-78](docs/plan/tasks/m1-78-font.md) | The MFD font. Committed as its TTF, baked at build time, and the **atlas embedded in the executable**, so there is no runtime font file |
 | AgX minimal implementation (Benjamin Wrensch, *Missing Deadlines*) | MIT, confirmed by the author in the licensing discussion on his repository. The constants derive from Troy Sobotka's OCIO configuration | [M1-15](docs/plan/tasks/m1-15-exposure-and-agx.md) | The tonemap — [`docs/adr/0014`](docs/adr/0014-radiometric-chain.md). Attribution goes in the shader header as well as here |
+| ERFA (`liberfa/erfa`), decided 2026-09-11 | **BSD-3-Clause**, after a preamble on its SOFA heritage; copyright the NumFOCUS Foundation. Uniform across the repository — no other licence file, no vendored code, the leap-second table in `dat.c` under the same terms — verified 2026-09-10. A binary distribution must carry its notice. **Not SOFA**, whose own licence (SPDX `SOFA`) adds conditions on derived work | [M1-05](docs/plan/tasks/m1-05-tdb-and-ut1.md) | TDB − TT, the celestial-to-terrestrial rotation and the Sun — [`docs/adr/0016`](docs/adr/0016-the-astronomy-is-erfa.md). Built unedited as its own C library, all 249 library files, with its validation program `t_erfa_c` as a CTest test; called from `src/astro/` only. The latest release on 2026-09-10 was v2.0.1 (2023-10-13); re-verify when the pin lands |
 
 ## `bc7enc_rdo`: which files are compiled
 

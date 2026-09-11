@@ -115,10 +115,10 @@ unchanged. Inside the phases, three things drive the ordering:
 |---|---|---|---|
 | [03](tasks/m1-03-timepoint.md) | `TimePoint` and the time scales | 01 | A time that knows which scale it is in |
 | [04](tasks/m1-04-leap-seconds.md) | UTC, TAI and TT | 03 | Leap seconds, and an expiry that reports |
-| [05](tasks/m1-05-tdb-and-ut1.md) | TDB and UT1 | 04 | All five scales, with ΔUT1 = 0 recorded as model error |
+| [05](tasks/m1-05-tdb-and-ut1.md) | TDB and UT1, and ERFA pinned | 04 | All five scales, with ΔUT1 = 0 recorded as model error |
 | [06](tasks/m1-06-horizons-fixtures.md) | The Horizons fixture format | 01, 03 | External truth, committed and readable |
-| [07](tasks/m1-07-earth-orientation.md) | Precession and the Earth rotation angle | 05, 06 | A body-fixed frame, 0.1″ against reference |
-| [08](tasks/m1-08-solar-position.md) | Solar position | 05, 06, 07 | Sun direction and distance, 0.01° against Horizons |
+| [07](tasks/m1-07-earth-orientation.md) | Precession, nutation and the Earth rotation angle | 05, 06 | A body-fixed frame, 0.1″ against an independent implementation |
+| [08](tasks/m1-08-solar-position.md) | Solar position | 05, 06, 07 | Sun direction and distance, 0.1″ against Horizons |
 | [09](tasks/m1-09-orbsim-view.md) | The `orbsim_view` library and `Mat4` | 01 | A Vulkan-free render library the tests can link |
 | [10](tasks/m1-10-reverse-z-projection.md) | Reverse-Z with an infinite far plane | 09 | ADR 0003 made real, and tested |
 | [11](tasks/m1-11-camera.md) | The camera, and the f64 → f32 boundary | 10 | One named narrowing function |
@@ -235,8 +235,9 @@ deferred deliberately; the reasoning is in
 [the decision register](milestone-1-decisions.md) section 6.
 
 Thrust, mass and 6-DOF attitude. Third bodies, drag and solar radiation
-pressure. DE440, and any ephemeris beyond the analytic Sun. Nutation and polar
-motion. Equinoctial elements. A scenario file, a configuration file and an
+pressure. DE440, and any ephemeris beyond the analytic Sun. Polar motion, and
+ΔUT1 from IERS data — nutation left this list on 2026-09-11, when ERFA made it
+one call (ADR 0016). Equinoctial elements. A scenario file, a configuration file and an
 adaptive quality controller. The specular water mask. Clouds. A star catalogue.
 Orbiter's `Mask`, `Label` and `Cloud` archive layers — only `Surf` and `Elev`
 are converted here.

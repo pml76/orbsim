@@ -24,13 +24,14 @@ usually enough.
 | [0006](0006-simulation-not-sandbox.md) | orbsim is a simulation, not a sandbox | accepted | 2026-09-06 |
 | [0007](0007-render-quality-is-a-struct.md) | Render quality is a struct of per-feature settings, and never reaches the simulation | accepted | 2026-09-07 |
 | [0008](0008-renderer-verification.md) | Renderer verification is probes, golden frames, and a person looking at them | accepted | 2026-09-08 |
-| [0009](0009-time-is-a-type-with-a-scale.md) | Time is a type with a scale, and the astronomy lives in `src/astro/` | accepted | 2026-09-08 |
+| [0009](0009-time-is-a-type-with-a-scale.md) | Time is a type with a scale, and the astronomy lives in `src/astro/` | accepted; partly superseded by 0016 | 2026-09-08 |
 | [0010](0010-tiles-are-ktx2.md) | Tiles are KTX2, and Orbiter's `.tree` is converted rather than streamed from | accepted | 2026-09-08 |
 | [0011](0011-the-integrator-has-three-seams.md) | The integrator has three seams, and they are closed sets | accepted | 2026-09-08 |
 | [0012](0012-orbsim-view.md) | `orbsim_view` holds the render-side maths that Vulkan never touches | accepted | 2026-09-08 |
 | [0013](0013-catch2-is-the-test-framework.md) | Catch2 is the test framework | accepted | 2026-09-08 |
 | [0014](0014-radiometric-chain.md) | The radiometric chain is manual photographic exposure and the AgX tonemap | accepted | 2026-09-08 |
 | [0015](0015-skirts-and-morphing.md) | Quadtree LOD is skirts plus vertex morphing | accepted | 2026-09-08 |
+| [0016](0016-the-astronomy-is-erfa.md) | The astronomy is ERFA's, called through typed wrappers | accepted | 2026-09-11 |
 
 **0008 to 0015 record the decisions taken on 2026-09-08**, before milestone 1
 started. All twenty-six of those decisions are in
@@ -47,6 +48,11 @@ rather than `src/render/`).
 **0009 gained one on 2026-09-10**, with M1-03: the day begins at midnight, and
 the time within it is integer picoseconds rather than an f64 fraction, which
 was measured to drift 83 ns where the task's budget was 1 ns.
+
+**0016 partly supersedes 0009, on 2026-09-11**: ERFA computes the astronomy,
+nutation is modelled, and the pairing of equinox-based precession with the
+Earth rotation angle -- measured at 0.342° out -- is replaced by ERFA's
+CIO-based rotation.
 
 The worked example keeps its own two records under
 [`../../coding-guidelines-example/docs/adr/`](../../coding-guidelines-example/docs/adr/).

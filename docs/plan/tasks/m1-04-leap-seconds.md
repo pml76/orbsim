@@ -2,7 +2,7 @@
 
 Phase: A | Status: not started
 Prerequisites: M1-03
-Decided by: [ADR 0009](../../adr/0009-time-is-a-type-with-a-scale.md)
+Decided by: [ADR 0009](../../adr/0009-time-is-a-type-with-a-scale.md), [ADR 0016](../../adr/0016-the-astronomy-is-erfa.md)
 
 ## Purpose
 
@@ -46,6 +46,13 @@ ground track by hundreds of metres and does it plausibly.
 TDB and UT1, which are M1-05. Predicting future leap seconds. The 1961–1971
 rate-offset era, refused above. Any automatic download of the table: it is
 committed data with a recorded provenance.
+
+*(Added 2026-09-11.)* **ERFA's `eraDat`, deliberately** (ADR 0016, decision
+28), although ERFA arrives for the astronomy in M1-05. It extrapolates past its
+own table — in silence until 2028, with a warning after — which is the
+behaviour ADR 0009 rules out, and replacing its table means
+`eraSetLeapSeconds`, which changes state for the whole process. This task's
+arithmetic stays exact integer picoseconds, and its table comes from the IERS.
 
 ## Tests
 

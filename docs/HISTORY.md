@@ -378,6 +378,44 @@ believed. Everything then agreed: 424,381 assertions -- the 3,632 from before
 and 420,749 new -- in both Windows trees, under ASan, under `linux-sanitize`
 and under `linux-gcc`.
 
+### ERFA, and two errors the plan for M1-07 carried, 2026-09-11
+
+A question about ERFA's licence became a decision about what computes the
+astronomy. ERFA is BSD-3-Clause and copying it would have been lawful; the
+owner's instinct was to copy it or call it. **Calling it won** (ADR 0016,
+decisions 27-29): fetched and pinned like every other dependency, built
+unedited, its own 1,494-check validation run inside `check`, and reached only
+through typed wrappers in `src/astro/`. Before that was recommended it was
+measured: all 249 library files compile with **zero warnings** under this
+project's strictest flags on Windows clang 23.1.0, WSL clang 23.1.1 and gcc-14,
+and the validation passes on all three. It buys 3 ns for TDB - TT where the
+plan had a 100 us budget, 0.016" for the Sun where it had 0.01°, and nutation,
+which had been deferred as 1,365 terms to transcribe. The leap seconds stay
+ours, exact and reporting, because `eraDat` extrapolates past its table.
+
+**Rewriting M1-07 around ERFA found two errors in it, both by computing the
+answer.** The plan composed IAU 2006 precession in its equinox-based
+Fukushima-Williams form with the Earth rotation angle, which is measured from
+a different origin: **1231" -- 0.342°, about 38 km at the equator -- out**, and
+growing by 46" a year. And it tested the rotation rate against the sidereal
+day, 86 164.0905 s, where ERA's period is the stellar day, 86 164.098 903 691 s:
+a correct implementation would have failed that test by 8.4 ms against a
+0.1 ms tolerance. The first would have put the Earth's texture and every ground
+track a third of a degree out, plausibly, and passed every test the task
+listed; the second would have failed a correct implementation, inviting
+somebody to break the code until it passed. Neither is visible by reading, and
+both took a few lines of C against ERFA to see. That is working agreement 1's
+"measure rather than assume" applied to a plan rather than to code, and it is
+the second time in two days a plan has been wrong where only a measurement
+could say so.
+
+The frame's model error falls from <= 40" to **<= 14.1"**, and both halves of
+that were measured rather than quoted: 13.5" from dUT1 = 0, and 0.6" from
+polar motion -- the largest pole excursion in the IERS EOP 20 C04 series,
+18.6 m in 1996, read from the series itself. The Sun's budget tightens from
+0.01° and 2e-4 AU to 0.1" and 1e-6 AU, which is why the Horizons fixture must
+now be geometric: aberration alone is 20.5".
+
 ---
 
 ## 4. The bug that justified the session

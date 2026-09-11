@@ -2,7 +2,7 @@
 
 Phase: A | Status: not started
 Prerequisites: M1-01, M1-03
-Decided by: [ADR 0009](../../adr/0009-time-is-a-type-with-a-scale.md)
+Decided by: [ADR 0009](../../adr/0009-time-is-a-type-with-a-scale.md), [ADR 0016](../../adr/0016-the-astronomy-is-erfa.md)
 
 ## Purpose
 
@@ -23,9 +23,15 @@ early, and deliberately plainly.
   source     = JPL Horizons
   retrieved  = 2026-09-.. by <who>
   query      = target=10 (Sun); center=500@399 (Earth geocentre);
-               vectors; frame=ICRF; time scale=TDB; units=km, km/s
+               vectors; frame=ICRF; time scale=TDB; units=km, km/s;
+               corrections=none (geometric)
   columns    = jd_tdb  x_km  y_km  z_km  vx_kms  vy_kms  vz_kms
   ```
+
+  *(Amended 2026-09-11.)* **Geometric**, with neither light-time nor aberration
+  applied: M1-08 now asserts 0.1″ against these vectors, and aberration alone
+  is 20.5″, so a corrected fixture would measure the correction rather than the
+  code. The query records it so a reader can see it was asked for.
 
   Then whitespace-separated rows, `#` for comments. Text rather than binary so
   a diff is readable and a wrong number is visible in review.
@@ -36,7 +42,8 @@ early, and deliberately plainly.
   half-read table.
 - **The first fixture**: geocentric Sun position and velocity at roughly 40
   epochs spread over 2000–2050, including two near perihelion and two near
-  aphelion, so the distance test in M1-07 has something to bite on.
+  aphelion, so the distance test in M1-08 has something to bite on.
+  *(Corrected 2026-09-11: this said M1-07, which has no distance test.)*
 - **`tests/fixtures/README.md`**: the exact Horizons query for each fixture,
   written so anybody can regenerate it, plus a line on why the data is committed
   rather than fetched — a test that needs the network is a test that fails for

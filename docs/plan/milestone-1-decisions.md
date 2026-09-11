@@ -40,7 +40,7 @@ and their costs, and every row is the owner's answer.
 | 11 | Force-term traits | **Each term declares whether it depends on time, position or velocity.** A future symplectic or Nyström integrator can then refuse by name rather than integrate something wrong but plausible |
 | 12 | Integrated state size | **Six now, steppers generic over a state concept.** Thrust with variable mass, and 6-DOF attitude, join later as channels without rewriting an integrator |
 | 13 | Time acceleration | **Fixed step, more steps.** 1x and 10000x are bit-identical. If a machine cannot keep up, the simulation clock lags real time and says so; the model never changes |
-| 14 | Time and frames in scope | **Full**: UTC, TAI, TT, TDB and UT1 as distinct types on a two-part Julian date; a leap-second table that reports rather than extrapolates; IAU 2006 precession and the Earth rotation angle; an analytic solar position. Nutation and ΔUT1 deferred **with their errors written down**. *Storage amended 2026-09-10 with M1-03: a Modified Julian Day beginning at midnight, and integer picoseconds within it — ADR 0009's update* |
+| 14 | Time and frames in scope | **Full**: UTC, TAI, TT, TDB and UT1 as distinct types on a two-part Julian date; a leap-second table that reports rather than extrapolates; IAU 2006 precession and the Earth rotation angle; an analytic solar position. Nutation and ΔUT1 deferred **with their errors written down**. *Storage amended 2026-09-10 with M1-03: a Modified Julian Day beginning at midnight, and integer picoseconds within it — ADR 0009's update. Amended again 2026-09-11 (decisions 27–29, ADR 0016): ERFA computes the astronomy, nutation is modelled after all, and the precession is CIO-based with ERA — the pairing written here was measured 0.342° out* |
 | 15 | Where the astronomy lives | **A new `src/astro/`**, in the same `orbsim_core` target. `src/orbit/` stays about trajectories; `astro/` takes where bodies are and how frames rotate |
 
 ## 3. Renderer
@@ -58,7 +58,7 @@ and their costs, and every row is the owner's answer.
 |---|---|---|
 | 20 | Tile container | **KTX2**, carrying the mip chain and the Vulkan format enum directly |
 | 21 | Orbiter `.tree` | **A converter tool, inside milestone 1.** Archive reader with a fuzz target, DXT1 repacked into KTX2 byte for byte, and the ELEV elevation format |
-| 22 | Third-party pins | **`stb` and `bc7enc_rdo`**, fetched and pinned exactly as SDL3, VMA, vk-bootstrap and Vulkan-Headers already are — Catch2 joined that list on 2026-09-09 with M1-01 |
+| 22 | Third-party pins | **`stb` and `bc7enc_rdo`**, fetched and pinned exactly as SDL3, VMA, vk-bootstrap and Vulkan-Headers already are — Catch2 joined that list on 2026-09-09 with M1-01, and ERFA was decided on 2026-09-11 to join it with M1-05 (decision 27) |
 | 23 | Elevation dataset | **ETOPO 2022, 60 arc-second, ice surface** (NOAA NCEI, public domain) |
 | 24 | MFD font | **DejaVu Sans Mono**, committed as its TTF, baked at build time, and the **atlas embedded in the executable**, so there is no runtime font file |
 | 25 | Night lights and water | Night lights fold into phase B. The specular water mask stays **deferred**: the source has not been located |
@@ -80,9 +80,9 @@ it is never mistaken for a bug.
 |---|---|---|---|
 | A | UTC/TAI/TT round trip | exact to **1e-9 s**, 1972–2035 | The leap-second table and published ΔAT steps |
 | A | TDB − TT | within **100 µs** — 3 m of Earth's orbital motion | The reference series |
-| A | Precession + ERA, as implemented | **0.1″** (code) | An IERS/ERFA reference value |
-| A | Precession + ERA, as modelled | **≤ 40″, about 1.2 km** on the ground: nutation omitted (≤ 25″) and ΔUT1 = 0 (≤ 15″) (model) | Recorded, not asserted |
-| A | Solar direction and distance | **0.01°**, **2e-4 AU** — 0.04 % of irradiance | JPL Horizons fixtures |
+| A | Precession, nutation + ERA, as implemented | **0.1″** (code) | An independent implementation of the same IAU models — not ERFA, which computes it (ADR 0016) |
+| A | Precession, nutation + ERA, as modelled | **≤ 14.1″, about 440 m** on the ground: ΔUT1 = 0 (≤ 13.5″) and polar motion omitted (≤ 0.6″) (model) | Recorded, not asserted |
+| A | Solar direction and distance | **0.1″**, **1e-6 AU** | JPL Horizons fixtures, geometric |
 | A | Radiometric chain | **0.5 %** of the analytic 130 W·m⁻²·sr⁻¹ for a Lambertian patch, albedo 0.3, normal to the Sun at 1 AU | Analytic value, read back from the HDR target before tonemapping. RGBA16F quantisation is 0.05 % |
 | A | Camera-relative precision | a fixed world point at Earth radius moves **≤ 0.05 px** at 1920×1080 between consecutive frames | Computed on the CPU with the same maths |
 | B | BC7 compression | **≥ 40 dB PSNR** against the source | The uncompressed source image |
@@ -104,6 +104,20 @@ was 10 s that day and has stepped since — and
 [M1-04](tasks/m1-04-leap-seconds.md) reports `BeforeLeapSecondEra` for anything
 earlier, so a round trip across 1970–1972 is not something the table can be
 exact about. The budget the task asserts is the 1972 one.
+
+The frame and Sun rows were amended on 2026-09-11 with decisions 27–29. **The
+frame** now includes nutation, so its model error loses the ≤ 25″ nutation
+term and gains polar motion, ≤ 0.6″ — the largest pole excursion in the IERS
+EOP 20 C04 series, 1962–2025. Its code budget stays 0.1″, now against an
+independent implementation rather than ERFA. **The Sun** moved from 0.01° and
+2e-4 AU to **0.1″ and 1e-6 AU**: `eraEpv00` puts the Earth within 11.2 km of
+DE405 over 1900–2100 by its own comparison, which is 0.016″ of direction and
+7.5e-8 AU of distance, so the budgets keep sixfold and thirteenfold headroom
+over the implementation's stated worst case. The fixture must be geometric —
+no light-time, no aberration — because aberration alone is 20.5″. **TDB − TT**
+keeps its 100 µs: ERFA claims 3 ns, but a budget can be no tighter than the
+independent reference it is checked against, and that reference is chosen in
+M1-05.
 
 ---
 
@@ -144,6 +158,9 @@ recalled. Each task that depends on one of these re-checks it before use.
 | NASA GMAT | **Apache-2.0**, current release **R2026a**, Windows build available |
 | The atmosphere method | Hillaire, S. (2020), *A Scalable and Production Ready Sky and Atmosphere Rendering Technique*, Computer Graphics Forum 39(4), EGSR 2020, DOI 10.1111/cgf.14050 |
 | The Orbiter archive format | `Utils/tileedit/qt/src/ZTreeMgr.{h,cpp}` in the reference clone, MIT. A magic-tagged header, a table of contents of quadtree nodes each carrying a file offset, an inflated size and four child indices, then zlib-deflated per-tile blobs. Surface tiles are DDS/DXT1; elevation is Orbiter's own ELEV format (`elv_io.cpp`, also MIT) |
+| ERFA *(verified 2026-09-10)* | **BSD-3-Clause**, after a preamble on its SOFA heritage; copyright the NumFOCUS Foundation. Uniform across the repository. Latest release **v2.0.1**, 2023-10-13 |
+| SOFA *(verified 2026-09-10)* | Its own licence, SPDX `SOFA`: derived work must say it is derived, describe its differences in the source, and name no routine `iau…` or `sofa…`. ERFA exists to avoid those conditions |
+| The stellar and sidereal days *(verified 2026-09-11)* | Stellar day **86 164.098 903 691 s**, sidereal day 86 164.090 530 832 88 s (IERS useful constants). ERA turns once per stellar day |
 
 ---
 
@@ -173,6 +190,7 @@ claims to outlive the conversation.
 | 24 | DejaVu Sans Mono | Register only, plus [`THIRD_PARTY.md`](../../THIRD_PARTY.md) for the licence |
 | 25 | Night lights in phase B; the water mask deferred | Register only |
 | 26 | Hard-coded scenarios, no configuration file | Register only, and section 6 above |
+| 27–29 | ERFA computes the astronomy; the time scales' arithmetic stays exact and ours; nutation is modelled | [ADR 0016](../adr/0016-the-astronomy-is-erfa.md), and section 9 below |
 
 Two further amendments were made in the same pass and belong to no decision in
 the table: [ADR 0005](../adr/0005-correctness-is-enforced-by-tools.md) gained a
@@ -182,8 +200,30 @@ records that `RenderQuality` lives in `orbsim_view` rather than `src/render/`,
 which follows from decision 17.
 
 The error budgets in section 5 appear again in the record that owns them:
-phase A's in [0009](../adr/0009-time-is-a-type-with-a-scale.md) and
-[0014](../adr/0014-radiometric-chain.md), phase E's in
+phase A's in [0009](../adr/0009-time-is-a-type-with-a-scale.md),
+[0014](../adr/0014-radiometric-chain.md) and
+[0016](../adr/0016-the-astronomy-is-erfa.md), phase E's in
 [0011](../adr/0011-the-integrator-has-three-seams.md). Each also appears in its
 task document, in the test that asserts it, and in the commit message —
 [`../VERIFICATION.md`](../VERIFICATION.md) rule 4.
+
+---
+
+## 9. Rulings since the queue was built
+
+Taken by the owner after the twenty-six above, each put as a question with its
+alternatives, their costs and a recommendation, and each the owner's answer.
+Numbered on from 26 so that a reference to a decision number stays unambiguous.
+
+| # | Decision | Answer |
+|---|---|---|
+| 27 | How ERFA is used | **ERFA computes the astronomy** — TDB − TT, the celestial-to-terrestrial rotation, the Sun — fetched and pinned like every other dependency, built unedited, and called from `src/astro/` through typed wrappers. Its validation runs in `check`. Considered: ERFA as a reference only, a verbatim copy, a port into the house style. Ruled 2026-09-11 |
+| 28 | The time scales' own arithmetic | **Stays exact and ours.** UTC, TAI and TT are integer picoseconds in `core/Time.hpp`; ERFA's `eraDat` extrapolates past its table, which ADR 0009 rules out. Ruled 2026-09-11 |
+| 29 | Nutation | **Modelled**, IAU 2000A through ERFA, where decision 14 had deferred it as 1,365 terms to transcribe. The frame's model error falls from ≤ 40″ to ≤ 14.1″. Ruled 2026-09-11 |
+
+The M1-03 rulings of 2026-09-10 — the storage of an instant, the day boundary,
+the arithmetic contract, one error per calendar field, years 1–9999, the
+Julian-date interface, the epoch constants' scales, no default constructor —
+are recorded in [ADR 0009](../adr/0009-time-is-a-type-with-a-scale.md)'s
+update and in [M1-03](tasks/m1-03-timepoint.md)'s amended text, which is where
+the code that depends on them is.

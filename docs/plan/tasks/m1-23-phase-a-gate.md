@@ -57,7 +57,9 @@ In `PROJECT_STATE.md`:
 - assertion counts per toolchain, and the total;
 - the coverage table, extended with the new files;
 - the phase A benchmark baseline from M1-22;
-- the model errors now standing: nutation, ΔUT1, and the solar formula;
+- the model errors now standing: ΔUT1, polar motion, and the accuracies ERFA
+  states for what it computes (amended 2026-09-11, ADR 0016: nutation is
+  modelled, and the solar formula is ERFA's);
 - every golden image now committed, and the date each was approved.
 
 And in `VERIFICATION.md` Part 4: rule 3 moves off **to build** — external truth

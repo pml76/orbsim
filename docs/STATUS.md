@@ -19,7 +19,7 @@ A *dated* measurement is not a current claim and does not belong here: "the
 fuzzer ran 77.4 million executions clean on 2026-09-07" is a fact about that
 day and stays in [`HISTORY.md`](HISTORY.md).
 
-Last updated: 2026-09-10.
+Last updated: 2026-09-11.
 
 ## Contents
 
@@ -42,7 +42,7 @@ opens a window and paces frames.** Nothing is drawn yet.
 | Current milestone | 1 — Earth, orbit track, Orbit MFD |
 | Last task completed | [M1-03](plan/tasks/m1-03-timepoint.md), `TimePoint` and the time scales, 2026-09-10 |
 | Next task | [M1-04](plan/tasks/m1-04-leap-seconds.md), UTC, TAI and TT: the leap-second table |
-| Then | The rest of phase A — TDB and UT1, the Horizons fixtures, Earth orientation and the Sun; then `orbsim_view`, the camera, the pipelines, and the probe mode that verifies everything drawn after it |
+| Then | The rest of phase A — TDB and UT1, where ERFA is pinned; the Horizons fixtures; Earth orientation with nutation, and the Sun, both computed by ERFA; then `orbsim_view`, the camera, the pipelines, and the probe mode that verifies everything drawn after it |
 | Phase order | A → B → D → C → E → F → G |
 
 | Component | State |
@@ -112,10 +112,10 @@ but not yet pinned, and which files of `bc7enc_rdo` may be compiled, are in
 ## Decision records
 
 **The list is [`adr/README.md`](adr/README.md)**, next to the records
-themselves, so that browsing the directory finds it. **Fifteen are accepted**,
-0008 to 0015 having been written by
+themselves, so that browsing the directory finds it. **Sixteen are accepted**:
+0008 to 0015 written by
 [M1-02](plan/tasks/m1-02-record-the-decisions.md) from the decisions taken on
-2026-09-08.
+2026-09-08, and 0016 — ERFA computes the astronomy — on 2026-09-11.
 
 An accepted ADR is immutable, so the numbers inside one are not maintained
 here: they are what was true when the decision was taken.

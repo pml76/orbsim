@@ -41,8 +41,9 @@ does something nobody scripted, and that is the point of this step.
 
 A short milestone report in `docs/plan/milestone-1-earth.md` — the criteria, the
 measured numbers behind each, the frame-time table, and the model errors
-standing at the end: nutation, ΔUT1, the solar formula, the geoid, and the
-force model's deliberate exclusions. That last list matters more than the
+standing at the end: ΔUT1, polar motion, the accuracies ERFA states for what
+it computes, the geoid, and the force model's deliberate exclusions (amended
+2026-09-11, ADR 0016: nutation is modelled, and the solar formula is ERFA's). That last list matters more than the
 successes: it is what the next milestone starts from.
 
 ## What to do if something fails

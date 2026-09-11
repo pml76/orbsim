@@ -2,14 +2,20 @@
 
 Phase: A | Status: not started
 Prerequisites: M1-05, M1-06, M1-07
-Decided by: [ADR 0009](../../adr/0009-time-is-a-type-with-a-scale.md)
+Decided by: [ADR 0009](../../adr/0009-time-is-a-type-with-a-scale.md), [ADR 0016](../../adr/0016-the-astronomy-is-erfa.md)
+
+**Amended 2026-09-11** (decisions 27–29): the Sun comes from ERFA's
+`eraEpv00` rather than the *Astronomical Almanac*'s low-precision formula, and
+the budgets tighten from 0.01° and 2e-4 AU to **0.1″ and 1e-6 AU**. One
+question — what the wrapper does outside 1900–2100 — is the owner's, and is
+put before this task starts.
 
 ## Purpose
 
 Everything about the image depends on where the Sun is: the terminator, the
 limb, the length of the shadows, and — through the inverse-square law — how much
 light there is to expose for. This is the one piece of ephemeris milestone 1
-needs, and it is deliberately the cheapest possible one.
+needs.
 
 **It lights the scene; it does not pull on anything.** The force model in phase E
 is Earth point mass and J2 only.
@@ -18,16 +24,26 @@ is Earth point mass and J2 only.
 
 `src/astro/Sun.hpp` / `.cpp`.
 
-- The **low-precision solar coordinates** from the *Astronomical Almanac*
-  (mean longitude, mean anomaly, ecliptic longitude with two equation-of-centre
-  terms, the obliquity of date, and the radius vector in AU), with the formula
-  and its stated validity — about 0.01° over 1950–2050 — quoted in the comment.
-- **Referred to the equinox of date, then rotated into ICRF** using M1-07's
-  precession. This is why M1-07 comes first, and the header says so, because a
-  reader who assumes the formula already gives J2000 is wrong by 0.36° at a 2026
-  epoch — which is 36 times the formula's own error.
+- **The Earth's heliocentric position from ERFA's `eraEpv00`**, negated to give
+  the geocentric Sun *(amended)*. It is oriented to the BCRS, which is aligned
+  with ICRS, so no rotation follows. Its notes compare it with DE405 over
+  1900–2100 at 3.7 km RMS and 11.2 km at worst — 0.016″ of solar direction —
+  and the comment quotes them. *(Was: the low-precision formula, about 0.01°,
+  referred to the equinox of date and rotated into ICRF through M1-07's
+  precession — the step that is no longer needed.)*
+- **Geometric, and the header says so** *(added)*: where the Sun is at the
+  instant, with neither light-time nor aberration applied. Aberration alone
+  moves the apparent Sun by 20.5″ — two hundred times this task's budget, and
+  invisible on screen, where the Sun's disc is 0.53° across. The lighting uses
+  the geometric Sun.
 - `[[nodiscard]] Vec3 geocentricSunPosition(TdbTime)` in **metres**, ICRF, and
   `[[nodiscard]] Metres sunDistance(TdbTime)`.
+- **Outside 1900–2100** `eraEpv00` returns a warning status: its stated
+  accuracy lapses, and its errors roughly double by 1800 and 2200. What the
+  wrapper does there — report it by name, so both functions return a
+  `std::expected`, or accept the documented loss of accuracy and say so — is
+  **the owner's decision, put before this task starts**. The status is never
+  ignored silently either way.
 - `Irradiance` (W·m⁻²) joins `core/Units.hpp`, and
   `[[nodiscard]] Irradiance solarIrradianceAt(Metres distance)` implements the
   inverse-square law from the total solar irradiance at 1 AU. The constant is
@@ -36,33 +52,44 @@ is Earth point mass and J2 only.
 
 ## Out of scope
 
-The Moon. Planets. DE440, VSOP87, and any series with more than a handful of
-terms. Light-time correction and aberration — both below the 0.01° budget.
-Anything gravitational.
+The Moon. Planets — ERFA's `eraPlan94` exists, and DE440 against VSOP87 is
+still open. Light-time and aberration, deliberately, as above. Anything
+gravitational.
 
 ## Tests
 
-`tests/test_sun.cpp`, against the M1-06 Horizons fixture.
+`tests/test_sun.cpp`, against the M1-06 Horizons fixture — geometric vectors,
+with no light-time or aberration correction, or the comparison measures the
+correction instead of the code.
 
-- **Direction within 0.01°** and **distance within 2e-4 AU** at all ~40 fixture
-  epochs across 2000–2050. This is the budget, and Horizons is data this project
-  did not produce.
+- **Direction within 0.1″** and **distance within 1e-6 AU** *(amended)* at all
+  ~40 fixture epochs across 2000–2050. This is the budget, and Horizons is data
+  this project did not produce.
 - **Perihelion and aphelion**: the annual minimum and maximum distances land at
-  0.9833 AU and 1.0167 AU within budget, and near the right dates — a physical
-  check the fixture rows alone would not force.
-- **The March equinox**: the Sun's declination crosses zero within 0.01° of the
-  published instant. A sign error in the obliquity rotation fails this and
-  passes several other tests, which is why it is here.
+  0.9833 AU and 1.0167 AU to within 1e-4 AU — the four decimals those published
+  figures carry — and near the right dates, a physical check the fixture rows
+  alone would not force. *(Amended: "within budget" would now be tighter than
+  the figures themselves.)*
+- **The March equinox**: at the published instant, the Sun's declination,
+  referred to the true equator of date through M1-07's rotation, is within
+  0.01° of zero. Aberration, which this geometric position omits, accounts for
+  0.002° of it. A sign error in the rotation fails this and passes several
+  other tests, which is why it is here.
 - **Irradiance**: 1361 W·m⁻² at exactly 1 AU, and the 1/r² falloff checked at
   0.5 AU and 2 AU against hand-computed values.
 - **Continuity**: no jump larger than the per-step motion across a year, swept —
   a wrapped angle handled wrongly shows up here as a discontinuity.
+- *(Added:)* `eraEpv00`'s status is handled as the owner decided, and the test
+  asks for the outcome by name.
 
 ## Error budget
 
-**Direction 0.01°, distance 2e-4 AU** against JPL Horizons over 2000–2050,
-asserted. The distance budget is 0.04 % of irradiance, which is well below the
-0.5 % radiometric budget in M1-18, so this cannot be what makes that one fail.
+**Direction 0.1″, distance 1e-6 AU** against JPL Horizons geometric vectors
+over 2000–2050, asserted. `eraEpv00`'s stated worst case over 1900–2100 is
+11.2 km, which is 0.016″ of direction and 7.5e-8 AU of distance, so the budgets
+keep sixfold and thirteenfold headroom over the implementation's own claim. The
+distance budget is 0.0002 % of irradiance, so it cannot be what makes the
+0.5 % radiometric budget in M1-18 fail. *(Was 0.01° and 2e-4 AU.)*
 
 ## Verification
 
@@ -72,6 +99,8 @@ The standing rules.
 
 - [ ] `check` green in both trees.
 - [ ] Both budgets asserted against the Horizons fixture, not against a claim.
-- [ ] The frame the result is expressed in is stated in the header, and the
-      of-date-to-ICRF rotation is applied and tested.
+- [ ] The frame the result is expressed in, and that it is geometric, are stated
+      in the header.
 - [ ] The solar constant carries its source.
+- [ ] The out-of-range question was answered by the owner, and the answer is
+      tested by name.

@@ -139,3 +139,17 @@ the Julian-date *interface* rather than the storage: `julianDate()` still
 returns an f64 fraction, correctly rounded, whose ulp near the end of a day is
 9.6 ps. The day number stays an f64, whole-valued, so that no finite duration
 can overflow it.
+
+## Partly superseded by 0016, 2026-09-11
+
+[`0016`](0016-the-astronomy-is-erfa.md) makes ERFA compute the astronomy, and
+in doing so replaces three things above. `src/astro/` gains a link dependency,
+where this record said none. **"IAU 2006 precession with the Earth rotation
+angle" does not compose as written**: the Fukushima-Williams matrix is
+equinox-based and ERA is measured from the celestial intermediate origin, and
+the pairing was measured at 1231" -- 0.342°, about 38 km at the equator -- out
+on 2026-09-11; the body-fixed frame is ERFA's CIO-based `eraC2t06a`. And
+nutation is modelled, so the "as modelled" budget above falls from <= 40" to
+<= 14.1". The other budgets in the table move with it, in 0016 and the register.
+The five scales, their storage, and the leap-second table that reports rather
+than extrapolates all stand.
