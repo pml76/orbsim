@@ -637,9 +637,11 @@ TEST_CASE("near-rectilinear orbits, e approaching 1", "[orbit][scales]") {
 
 // The same inputs must produce bit-identical outputs, every time.
 //
-// VERIFICATION.md rule 16, and the one place this codebase permits `==` on
-// floating point: bit identity is the actual claim, and a tolerance here would
-// hide precisely the drift being tested for. It catches a class of accidental
+// VERIFICATION.md rule 16, and the one place this codebase compares floating
+// point exactly: bit identity is the actual claim, and a tolerance here would
+// hide precisely the drift being tested for. It says so by name, through
+// bitIdentical(), which also tells +0.0 from -0.0; CAPTURE prints both sides
+// of a failure, round-trippably. It catches a class of accidental
 // nondeterminism that no other test can see -- iteration over an unordered
 // container, uninitialised padding, a branch on wall-clock time, a solver that
 // reads a global. None of those exist today, which is the point: this test is
@@ -657,27 +659,36 @@ TEST_CASE("propagation is bit-identical across runs", "[orbit][scales]") {
     INFO("second run -> " << errorName(second));
     REQUIRE(second.has_value());
 
+    CAPTURE(first->pos, second->pos);
     INFO("single step: position bit-identical");
-    REQUIRE(first->pos == second->pos);
+    REQUIRE(first->pos.bitIdentical(second->pos));
+    CAPTURE(first->vel, second->vel);
     INFO("single step: velocity bit-identical");
-    REQUIRE(first->vel == second->vel);
+    REQUIRE(first->vel.bitIdentical(second->vel));
 
-    // A long chain, where any drift would compound rather than cancel.
+    // A long chain, where any drift would compound rather than cancel. A
+    // failed step ends the chain at the zero state, which two runs that agree
+    // reach together; the one variable returned keeps the copy elided.
     const auto chain = [&] -> StateVector {
         StateVector s = start;
         for (int i = 0; i < 100; ++i) {
             const auto next = propagate(s, kMuEarth, 60.0_s);
-            if (!next) return StateVector{};
+            if (!next) {
+                s = StateVector{};
+                break;
+            }
             s = *next;
         }
         return s;
     };
     const StateVector chainA = chain();
     const StateVector chainB = chain();
+    CAPTURE(chainA.pos, chainB.pos);
     INFO("100 steps: position bit-identical");
-    REQUIRE(chainA.pos == chainB.pos);
+    REQUIRE(chainA.pos.bitIdentical(chainB.pos));
+    CAPTURE(chainA.vel, chainB.vel);
     INFO("100 steps: velocity bit-identical");
-    REQUIRE(chainA.vel == chainB.vel);
+    REQUIRE(chainA.vel.bitIdentical(chainB.vel));
 
     // The conversions too, since a scenario reload goes through them.
     const auto elA = elementsFromState(start, kMuEarth);
@@ -687,13 +698,17 @@ TEST_CASE("propagation is bit-identical across runs", "[orbit][scales]") {
     INFO("elements second -> " << errorName(elB));
     REQUIRE(elB.has_value());
 
-    const bool elementsIdentical = elA->sma == elB->sma && elA->ecc == elB->ecc &&
-                                   elA->inc == elB->inc && elA->lan == elB->lan &&
-                                   elA->aop == elB->aop && elA->tra == elB->tra;
+    const bool elementsIdentical =
+        elA->sma.bitIdentical(elB->sma) && elA->ecc.bitIdentical(elB->ecc) &&
+        elA->inc.bitIdentical(elB->inc) && elA->lan.bitIdentical(elB->lan) &&
+        elA->aop.bitIdentical(elB->aop) && elA->tra.bitIdentical(elB->tra);
     INFO("elementsFromState is bit-identical");
     REQUIRE(elementsIdentical);
+    const Vec3 backA = stateFromElements(*elA, kMuEarth).pos;
+    const Vec3 backB = stateFromElements(*elB, kMuEarth).pos;
+    CAPTURE(backA, backB);
     INFO("stateFromElements is bit-identical");
-    REQUIRE(stateFromElements(*elA, kMuEarth).pos == stateFromElements(*elB, kMuEarth).pos);
+    REQUIRE(backA.bitIdentical(backB));
 }
 
 namespace {

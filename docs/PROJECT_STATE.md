@@ -412,18 +412,52 @@ asked for.
     template parameter's name. Written over the type aliases (`TtTime`) rather
     than over `TimeScale` values, the compile-time checks give it nothing to
     see.
-- **gcc and clang disagree about a field left out of a designated
+- **gcc and clang used to disagree about a field left out of a designated
   initializer**, and clang-tidy stands in the way of the obvious fix. gcc-14's
   `-Wmissing-field-initializers`, part of `-Wextra`, reports the omitted field
   unless it has a default member initializer of its own; clang files the
   designated case under `-Wmissing-designated-field-initializers`, which the
-  build switches off. So a struct built by designated initializers that stop
-  early -- `CalendarDate{.year = 2000, .month = 1, .day = 1}` -- compiles on
-  Windows and fails `linux-gcc`. The fix is an initializer on the field, but
-  `Seconds second{};` is exactly what `readability-redundant-member-init`
-  removes, because `Seconds` initialises itself; `Seconds second{0.0};` calls
-  a different constructor and satisfies both. Found by M1-03, 2026-09-10, on
-  the second compiler's first look at the code.
+  build switched off project-wide until 2026-09-11. So a struct built by
+  designated initializers that stop early --
+  `CalendarDate{.year = 2000, .month = 1, .day = 1}` -- compiled on Windows
+  and failed `linux-gcc`. Since ADR 0017 the warning is on everywhere except
+  `render/VulkanContext.cpp`, and the two compilers agree: measured on
+  2026-09-11, each reports an omitted field without a default member
+  initializer and neither reports one with it. The fix is an initializer on
+  the field, but `Seconds second{};` is exactly what
+  `readability-redundant-member-init` removes, because `Seconds` initialises
+  itself; `Seconds second{0.0};` calls a different constructor and satisfies
+  both. Found by M1-03, 2026-09-10, on the second compiler's first look at
+  the code.
+- **`-Wfloat-equal` means different things to the two compilers**, measured
+  2026-09-11. clang reports `x == y` and a defaulted comparison over a
+  `double` member, and exempts a comparison against any literal it holds
+  exactly -- `x == 0.0`, `x == 0.5`. gcc reports every literal comparison and
+  `x == y`, and not the defaulted one. Neither reports `<`. gcc builds only
+  the core and the tests, so in `src/render/` and `src/app/` an `x == 0.0` is
+  seen by nothing. Where an exact-zero test is meant,
+  `std::fpclassify(x) == FP_ZERO` says so, and agrees with `x == 0.0` on
+  every input (`orbit/Orbit.cpp`).
+- **Some warnings exist on one ABI only.** `-Wweak-vtables` fires under the
+  Itanium ABI, where a class's vtable is emitted with its key function, and
+  never under MSVC's, which has no key functions. A header-only polymorphic
+  class therefore builds clean on Windows and fails `linux-sanitize` and
+  `linux-fuzz`, which is what the test matchers did (ADR 0017). Run the Linux
+  presets after adding a class with virtual functions.
+- **A gcc-only warning cannot be named in a pragma clang reads.** clang
+  rejects `#pragma GCC diagnostic ignored "-Wabi-tag"` as an unknown warning
+  group, which `-Weverything` makes an error, so a gcc-only exemption sits
+  inside `#if defined(__GNUC__) && !defined(__clang__)`, as in
+  `tests/OrbitTestSupport.hpp`.
+- **`-Weverything` includes `-Wshadow-header`**, so a probe that shadows one
+  of our headers from another include directory -- the easy way to compile a
+  mutated copy -- fails before it tests anything, and looks like a killed
+  mutant. Pass `-Wno-shadow-header` to the probe alone, and compile the
+  unmutated copy first to prove the harness.
+- **gcc lists its C++-only warnings as `[available in C++, ObjC++]`** when
+  asked without a source file, rather than as on or off, so a script that
+  takes only `[disabled]` misses exactly those. `scripts/gcc-warnings.py`
+  takes both.
 
 ---
 

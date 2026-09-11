@@ -7,8 +7,11 @@ Decided by: [ADR 0011](../../adr/0011-the-integrator-has-three-seams.md)
 ## Purpose
 
 `VERIFICATION.md` rule 16: *"Run a scenario twice from the same initial state;
-assert bit-identical results. This is the one place `==` on floats is correct,
-because bit identity is the actual claim."*
+assert bit-identical results. This is the one place an exact floating-point
+comparison is correct, because bit identity is the actual claim -- and it is
+made by name, with `bitIdentical()`, which also tells +0.0 from -0.0."* (The
+wording since 2026-09-11, when the value types lost their floating-point `==`;
+[ADR 0017](../../adr/0017-every-warning-is-an-error.md).)
 
 Three separate claims are being made by this project, and each gets its own
 assertion here. Two are about time; the third is ADR 0007's load-bearing clause,

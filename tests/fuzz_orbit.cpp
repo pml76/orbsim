@@ -89,7 +89,11 @@ constexpr std::size_t kBytesNeeded = kDoublesNeeded * sizeof(double);
 } // namespace
 
 // The name and signature are libFuzzer's, not this codebase's, so the naming
-// check cannot apply to it.
+// check cannot apply to it. libFuzzer declares it in its own driver, in no
+// header this file can include, which is what -Wmissing-prototypes reports; it
+// is off for this definition (ADR 0017).
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-prototypes"
 // NOLINTNEXTLINE(readability-identifier-naming)
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size) {
     if (size < kBytesNeeded) return 0;
@@ -97,8 +101,15 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     // memcpy rather than a cast: the bytes are not aligned for a double, and
     // type-punning through a reinterpret_cast is undefined -- which UBSan would
     // rightly report as a bug in this harness rather than in the code under it.
+    // libFuzzer hands the input over as a pointer and a size, and the size is
+    // checked above; a C library copy from a bare pointer is what
+    // -Wunsafe-buffer-usage-in-libc-call reports, and it is off for this one
+    // (ADR 0017).
     std::array<double, kDoublesNeeded> raw{};
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-libc-call"
     std::memcpy(raw.data(), data, kBytesNeeded);
+#pragma clang diagnostic pop
 
     const StateVector sv{.pos = {raw[0], raw[1], raw[2]}, .vel = {raw[3], raw[4], raw[5]}};
     const GravParam mu{raw[6]};
@@ -115,3 +126,4 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
 
     return 0;
 }
+#pragma clang diagnostic pop

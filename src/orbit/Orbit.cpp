@@ -125,10 +125,12 @@ initialUniversalAnomaly(const StateVector& sv, const UniversalContext& ctx, f64 
     // is why only hyperbolic trajectories ever failed -- including at dt = 0
     // after a whole revolution was folded out of a closed orbit.
     //
-    // `== 0.0` is deliberate, and is the exception CODING_GUIDELINES section 11
-    // allows: the claim is exactly zero, not "small". A tolerance here would
-    // answer a different question and would make a very short step wrong.
-    if (seconds == 0.0) return 0.0;
+    // An exact-zero test, deliberately: the claim is exactly zero, not
+    // "small". A tolerance here would answer a different question and would
+    // make a very short step wrong. Spelled with fpclassify rather than
+    // `== 0.0`, which -Wfloat-equal reports: the two agree on every input,
+    // both zeros and NaN included, and this one says which question it asks.
+    if (std::fpclassify(seconds) == FP_ZERO) return 0.0;
 
     if (ctx.alpha * ctx.r0 > kParabolicAlphaTol) { // ellipse
         return ctx.sqrtMu * seconds * ctx.alpha;
@@ -317,7 +319,8 @@ template <std::invocable<f64> Fn>
 solveUniversalAnomaly(const StateVector& sv, const UniversalContext& ctx, f64 seconds) {
     const f64 target = ctx.sqrtMu * seconds;
 
-    if (seconds == 0.0) return UniversalSolution{}; // chi = 0; see the guard in the guess
+    // chi = 0 exactly; see the guard in the guess, and why it is fpclassify.
+    if (std::fpclassify(seconds) == FP_ZERO) return UniversalSolution{};
 
     // time(0) = 0 exactly, and time is increasing, so the root sits on the same
     // side of zero as the target does.
@@ -647,7 +650,9 @@ std::expected<Radians, OrbitError> meanToEccentricAnomaly(Radians meanAnomaly, E
     // Strictly increasing again, and unbounded, so the bracket has to be found
     // rather than assumed.
     const f64 mean = meanAnomaly.value;
-    if (mean == 0.0) return Radians{0.0}; // M(0) = 0 exactly, on every conic
+    // M(0) = 0 exactly, on every conic. An exact-zero test, as in
+    // initialUniversalAnomaly.
+    if (std::fpclassify(mean) == FP_ZERO) return Radians{0.0};
 
     const f64 direction = mean > 0.0 ? 1.0 : -1.0;
 

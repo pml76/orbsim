@@ -33,11 +33,20 @@ namespace orb::gfx {
 //
 // `Destroy` is an `auto` non-type parameter so the calling convention
 // (VKAPI_PTR) never has to be spelled out here.
+//
+// Every handle is a pointer to an object the driver owns -- the
+// non-dispatchable ones too, on a 64-bit target -- so each wrapper below
+// refers to what its constructor was handed. [[clang::lifetimebound]] says
+// so: clang's lifetime analysis asks for it
+// (-Wlifetime-safety-intra-tu-constructor-suggestions), and uses it to report
+// a wrapper that outlives what it refers to, in the cases it can follow.
 template <typename Handle, typename Owner, auto Destroy> class OwnedHandle {
 public:
     OwnedHandle() noexcept = default;
 
-    OwnedHandle(Owner owner, Handle handle) noexcept : owner_(owner), handle_(handle) {}
+    OwnedHandle(Owner owner [[clang::lifetimebound]],
+                Handle handle [[clang::lifetimebound]]) noexcept
+        : owner_(owner), handle_(handle) {}
 
     ~OwnedHandle() { reset(); }
 
@@ -88,7 +97,8 @@ using UniquePipeline = OwnedHandle<VkPipeline, VkDevice, vkDestroyPipeline>;
 class UniqueInstance {
 public:
     UniqueInstance() noexcept = default;
-    explicit UniqueInstance(VkInstance instance) noexcept : instance_(instance) {}
+    explicit UniqueInstance(VkInstance instance [[clang::lifetimebound]]) noexcept
+        : instance_(instance) {}
 
     ~UniqueInstance() { reset(); }
 
@@ -124,7 +134,7 @@ private:
 class UniqueDevice {
 public:
     UniqueDevice() noexcept = default;
-    explicit UniqueDevice(VkDevice device) noexcept : device_(device) {}
+    explicit UniqueDevice(VkDevice device [[clang::lifetimebound]]) noexcept : device_(device) {}
 
     ~UniqueDevice() { reset(); }
 
@@ -163,7 +173,8 @@ private:
 class UniqueDebugMessenger {
 public:
     UniqueDebugMessenger() noexcept = default;
-    UniqueDebugMessenger(VkInstance instance, VkDebugUtilsMessengerEXT messenger) noexcept
+    UniqueDebugMessenger(VkInstance instance [[clang::lifetimebound]],
+                         VkDebugUtilsMessengerEXT messenger [[clang::lifetimebound]]) noexcept
         : instance_(instance), messenger_(messenger) {}
 
     ~UniqueDebugMessenger() { reset(); }
@@ -190,10 +201,15 @@ public:
         if (messenger_ != VK_NULL_HANDLE && instance_ != VK_NULL_HANDLE) {
             // vkGetInstanceProcAddr returns PFN_vkVoidFunction; casting it to the
             // typed entry point is how the Vulkan specification says to reach an
-            // extension function, not a choice this code makes.
+            // extension function, not a choice this code makes. The same reason
+            // answers -Wcast-function-type-strict, which reports that cast, and
+            // is off for it alone (ADR 0017).
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wcast-function-type-strict"
             // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
             const auto destroy = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
                 vkGetInstanceProcAddr(instance_, "vkDestroyDebugUtilsMessengerEXT"));
+#pragma clang diagnostic pop
             if (destroy != nullptr) destroy(instance_, messenger_, nullptr);
         }
         messenger_ = VK_NULL_HANDLE;
@@ -219,7 +235,7 @@ private:
 class DeviceIdleGuard {
 public:
     DeviceIdleGuard() noexcept = default;
-    explicit DeviceIdleGuard(VkDevice device) noexcept : device_(device) {}
+    explicit DeviceIdleGuard(VkDevice device [[clang::lifetimebound]]) noexcept : device_(device) {}
 
     // The wait's result is discarded on purpose: this is a destructor, and the
     // only failure vkDeviceWaitIdle can report is a lost device, after which
@@ -251,7 +267,8 @@ private:
 class UniqueAllocator {
 public:
     UniqueAllocator() noexcept = default;
-    explicit UniqueAllocator(VmaAllocator allocator) noexcept : allocator_(allocator) {}
+    explicit UniqueAllocator(VmaAllocator allocator [[clang::lifetimebound]]) noexcept
+        : allocator_(allocator) {}
 
     ~UniqueAllocator() { reset(); }
 
@@ -287,7 +304,9 @@ private:
 class UniqueImage {
 public:
     UniqueImage() noexcept = default;
-    UniqueImage(VmaAllocator allocator, VkImage image, VmaAllocation allocation) noexcept
+    UniqueImage(VmaAllocator allocator [[clang::lifetimebound]],
+                VkImage image [[clang::lifetimebound]],
+                VmaAllocation allocation [[clang::lifetimebound]]) noexcept
         : allocator_(allocator), image_(image), allocation_(allocation) {}
 
     ~UniqueImage() { reset(); }
@@ -337,10 +356,10 @@ private:
 class UniqueBuffer {
 public:
     UniqueBuffer() noexcept = default;
-    UniqueBuffer(VmaAllocator allocator,
-                 VkBuffer buffer,
-                 VmaAllocation allocation,
-                 void* mapped,
+    UniqueBuffer(VmaAllocator allocator [[clang::lifetimebound]],
+                 VkBuffer buffer [[clang::lifetimebound]],
+                 VmaAllocation allocation [[clang::lifetimebound]],
+                 void* mapped [[clang::lifetimebound]],
                  VkDeviceSize size) noexcept
         : allocator_(allocator),
           buffer_(buffer),

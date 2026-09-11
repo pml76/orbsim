@@ -22,6 +22,7 @@
 //
 #include "core/Scalar.hpp"
 
+#include <concepts>
 #include <type_traits>
 
 namespace orb {
@@ -124,14 +125,17 @@ static_assert(nearlyEqual(toRadians(toDegrees(Radians{1.0})).value, 1.0, Toleran
 // naming the quantity says what is under test and needs no parentheses at all.
 inline constexpr Metres kOneKilometre = 1.0_km;
 static_assert(nearlyEqual(kOneKilometre.value, 1000.0, Tolerance{0.0}));
-static_assert(180.0_deg == Degrees{180.0});
+inline constexpr Degrees kHalfTurnInDegrees = 180.0_deg;
+static_assert(nearlyEqual(kHalfTurnInDegrees.value, 180.0, Tolerance{0.0}));
 
 // The unit-preserving arithmetic from Quantity, and the conversions it refuses.
-static_assert(Radians{1.0} + Radians{2.0} == Radians{3.0});
-static_assert(Seconds{3.0} - Seconds{1.0} == Seconds{2.0});
-static_assert(-Seconds{1.0} == Seconds{-1.0});
-static_assert(Seconds{2.0} * 3.0 == Seconds{6.0});
+// Exact results, so a zero tolerance: see nearlyEqual in core/Scalar.hpp.
+static_assert(nearlyEqual((Radians{1.0} + Radians{2.0}).value, 3.0, Tolerance{0.0}));
+static_assert(nearlyEqual((Seconds{3.0} - Seconds{1.0}).value, 2.0, Tolerance{0.0}));
+static_assert(nearlyEqual((-Seconds{1.0}).value, -1.0, Tolerance{0.0}));
+static_assert(nearlyEqual((Seconds{2.0} * 3.0).value, 6.0, Tolerance{0.0}));
 static_assert(Metres{1.0} < Metres{2.0});
+static_assert(!std::equality_comparable<Seconds>, "exact equality of a double is spelled out");
 static_assert(!std::is_convertible_v<f64, Radians>);
 static_assert(!std::is_convertible_v<Radians, f64>);
 static_assert(!std::is_convertible_v<Degrees, Radians>, "conversion is toRadians(), by name");

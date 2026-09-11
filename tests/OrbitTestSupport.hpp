@@ -103,9 +103,27 @@ protected:
     // Protected, matching MatcherUntypedBase: Catch2 reaches this through the
     // public toString(), and widening the visibility of an override is what
     // misc-override-with-different-visibility exists to catch.
-    [[nodiscard]] std::string describe() const override {
-        return std::format("is within {:g} of {:.17g}", tol_.value, want_);
-    }
+    //
+    // Defined in OrbitTestSupport.cpp, as each matcher's describe() is: the
+    // first virtual defined out of line is the class's key function, and its
+    // vtable is then emitted there, once, instead of in every suite that
+    // includes this header -- which -Wweak-vtables reports (ADR 0017).
+    //
+    // gcc's -Wabi-tag reports that it gave a function returning std::string
+    // libstdc++'s "cxx11" ABI tag -- which gcc does by itself, and which
+    // matters to a library whose exported names must survive the older string
+    // ABI. The string here is Catch2's: describe() and StringMaker::convert
+    // return std::string because Catch2 declares them so. The warning is off
+    // at each such site, and for gcc alone, because clang has no warning of
+    // that name and rejects one it does not know (ADR 0017).
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wabi-tag"
+#endif
+    [[nodiscard]] std::string describe() const override;
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 private:
     f64 want_;
@@ -133,12 +151,16 @@ public:
     }
 
 protected:
-    // Protected, matching MatcherUntypedBase: Catch2 reaches this through the
-    // public toString(), and widening the visibility of an override is what
-    // misc-override-with-different-visibility exists to catch.
-    [[nodiscard]] std::string describe() const override {
-        return std::format("is within {:g} relative of {:.17g}", relTol_.value, want_);
-    }
+    // Protected, out of line, and exempt from gcc's -Wabi-tag, for the
+    // reasons given on WithinAbsOf.
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wabi-tag"
+#endif
+    [[nodiscard]] std::string describe() const override;
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 private:
     f64 want_;
@@ -158,16 +180,16 @@ public:
     }
 
 protected:
-    // Protected, matching MatcherUntypedBase: Catch2 reaches this through the
-    // public toString(), and widening the visibility of an override is what
-    // misc-override-with-different-visibility exists to catch.
-    [[nodiscard]] std::string describe() const override {
-        return std::format("is within {:g} relative of ({:.17g}, {:.17g}, {:.17g})",
-                           relTol_.value,
-                           want_.x,
-                           want_.y,
-                           want_.z);
-    }
+    // Protected, out of line, and exempt from gcc's -Wabi-tag, for the
+    // reasons given on WithinAbsOf.
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wabi-tag"
+#endif
+    [[nodiscard]] std::string describe() const override;
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 private:
     Vec3 want_;
@@ -193,13 +215,21 @@ template <typename T, typename Error>
 
 // Catch2 prints an unknown type as "{?}", which would make every vector
 // failure unreadable. 17 significant digits is a round-trippable f64, so a
-// failure can be pasted back into a test as an exact reproduction.
+// failure can be pasted back into a test as an exact reproduction. Exempt from
+// gcc's -Wabi-tag, for the reason given on WithinAbsOf::describe().
 namespace Catch {
 
 template <> struct StringMaker<orb::Vec3> {
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wabi-tag"
+#endif
     [[nodiscard]] static std::string convert(const orb::Vec3& value) {
         return std::format("({:.17g}, {:.17g}, {:.17g})", value.x, value.y, value.z);
     }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 };
 
 } // namespace Catch

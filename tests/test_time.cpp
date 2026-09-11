@@ -45,13 +45,22 @@ using namespace orb::test;
 
 // Catch2 prints an unknown type as "{?}". An instant prints as its two stored
 // integers, so a failure can be pasted back into a test as an exact case.
+// Exempt from gcc's -Wabi-tag, for the reason given on WithinAbsOf::describe()
+// in tests/OrbitTestSupport.hpp: the std::string is Catch2's.
 namespace Catch {
 
 template <orb::TimeScale Scale> struct StringMaker<orb::TimePoint<Scale>> {
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wabi-tag"
+#endif
     [[nodiscard]] static std::string convert(const orb::TimePoint<Scale>& value) {
         return std::format(
             "(MJD {:.17g}, {} ps)", value.modifiedJulianDay(), value.picosecondOfDay());
     }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 };
 
 } // namespace Catch

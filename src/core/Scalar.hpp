@@ -10,8 +10,11 @@
 // Math.hpp needs them for rotations and integration; when the strong types
 // lived above the vector maths, every rotation took a bare f64 angle.
 //
+#include <bit>
 #include <cmath>
 #include <compare>
+#include <concepts>
+#include <cstdint>
 #include <numbers>
 #include <type_traits>
 
@@ -23,8 +26,15 @@ using f64 = double;
 inline constexpr f64 kPi = std::numbers::pi_v<f64>;
 inline constexpr f64 kTau = 2.0 * kPi;
 
+// The bits of a double, for comparisons whose claim is bit identity -- a
+// determinism check. +0.0 and -0.0 are equal as numbers and differ here; a NaN
+// is never equal to itself as a number and is identical to its own bits.
+[[nodiscard]] constexpr std::uint64_t bitsOf(f64 v) noexcept {
+    return std::bit_cast<std::uint64_t>(v);
+}
+
 // The base for every strong scalar type: one f64, no implicit conversion in
-// either direction, comparison and unit-preserving arithmetic.
+// either direction, ordering, and unit-preserving arithmetic.
 //
 // Each concrete type is a struct deriving from this (CRTP), so that Radians
 // and Degrees are distinct types the compiler can tell apart, while the code
@@ -47,7 +57,17 @@ template <typename Derived> struct Quantity {
     // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
     f64 value{};
 
+    // Ordering, and no `==`. The defaulted <=> gives <, >, <= and >=; `==` is
+    // deleted, because on a double it is the comparison CODING_GUIDELINES
+    // section 11 forbids and -Wfloat-equal reports (ADR 0017). Exact equality
+    // is spelled out instead: nearlyEqual with a zero tolerance for a value,
+    // bitIdentical below when bit identity is the claim.
     [[nodiscard]] constexpr auto operator<=>(const Quantity&) const noexcept = default;
+    bool operator==(const Quantity&) const = delete;
+
+    [[nodiscard]] constexpr bool bitIdentical(Derived other) const noexcept {
+        return bitsOf(value) == bitsOf(other.value);
+    }
 
     [[nodiscard]] constexpr Derived operator-() const noexcept { return Derived{-value}; }
     [[nodiscard]] constexpr Derived operator+(Derived other) const noexcept {
@@ -96,7 +116,8 @@ struct Tolerance : Quantity<Tolerance> {
 // The only float comparison this codebase permits. `==` on doubles is wrong at
 // runtime and equally wrong inside a static_assert, because it is the same
 // arithmetic either way. The exception is a determinism check, where bit
-// identity is the actual claim being made.
+// identity is the actual claim being made, and it says so by name:
+// bitIdentical() on Quantity, Vec3 and Quat.
 //
 // The two compared values are interchangeable -- |a-b| is commutative -- so
 // transposing them cannot produce a wrong answer.
@@ -127,15 +148,21 @@ static_assert(sizeof(Tolerance) == sizeof(f64), "a strong type must cost nothing
 static_assert(std::is_trivially_copyable_v<Tolerance>);
 static_assert(!std::is_convertible_v<f64, Tolerance>, "construction must be explicit");
 static_assert(!std::is_convertible_v<Tolerance, f64>, "no silent way back to a bare double");
-static_assert(Tolerance{1.0} + Tolerance{2.0} == Tolerance{3.0});
-static_assert(Tolerance{3.0} - Tolerance{2.0} == Tolerance{1.0});
-static_assert(-Tolerance{1.0} == Tolerance{-1.0});
-static_assert(Tolerance{2.0} * 3.0 == Tolerance{6.0});
-static_assert(3.0 * Tolerance{2.0} == Tolerance{6.0});
-static_assert(Tolerance{6.0} / 3.0 == Tolerance{2.0});
+// Exact results, compared the one way this codebase compares doubles: through
+// nearlyEqual, here with a zero tolerance.
+static_assert(nearlyEqual((Tolerance{1.0} + Tolerance{2.0}).value, 3.0, Tolerance{0.0}));
+static_assert(nearlyEqual((Tolerance{3.0} - Tolerance{2.0}).value, 1.0, Tolerance{0.0}));
+static_assert(nearlyEqual((-Tolerance{1.0}).value, -1.0, Tolerance{0.0}));
+static_assert(nearlyEqual((Tolerance{2.0} * 3.0).value, 6.0, Tolerance{0.0}));
+static_assert(nearlyEqual((3.0 * Tolerance{2.0}).value, 6.0, Tolerance{0.0}));
+static_assert(nearlyEqual((Tolerance{6.0} / 3.0).value, 2.0, Tolerance{0.0}));
 static_assert(Tolerance{1.0} < Tolerance{2.0});
 static_assert(nearlyEqual(1.0, 1.0 + 1e-16, Tolerance{1e-15}));
 static_assert(!nearlyEqual(1.0, 1.1, Tolerance{1e-15}));
+static_assert(!std::equality_comparable<Tolerance>, "exact equality of a double is spelled out");
+static_assert(Tolerance{0.0}.bitIdentical(Tolerance{0.0}) &&
+                  !Tolerance{0.0}.bitIdentical(Tolerance{-0.0}),
+              "bit identity tells the two zeros apart, as a determinism check needs");
 
 } // namespace orb
 

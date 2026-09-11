@@ -239,6 +239,16 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
 // reporting path that can itself throw is not a reporting path; its results
 // are discarded on purpose, since if stderr is gone too there is nobody left
 // to tell.
+//
+// The arguments and std::fputs are both the C runtime's interface, and two
+// warnings are off for this function alone (ADR 0017): the arguments arrive as
+// a pointer and a count, and a span of the two is the only way to give them
+// bounds, which is the construction -Wunsafe-buffer-usage-in-container
+// reports; and std::fputs is a C library function taking an unbounded string,
+// which is what -Wunsafe-buffer-usage-in-libc-call reports.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-container"
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-libc-call"
 int main(int argc, char** argv) {
     const std::span<char* const> args(argv, static_cast<std::size_t>(argc));
     try {
@@ -253,3 +263,4 @@ int main(int argc, char** argv) {
         return kExitFailure;
     }
 }
+#pragma clang diagnostic pop

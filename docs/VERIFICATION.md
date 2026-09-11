@@ -310,8 +310,11 @@ hour three.
 ### Rule 16. Determinism is a tested property
 
 Run a scenario twice from the same initial state; assert bit-identical results.
-This is the one place `==` on floats is correct, because bit identity is the
-actual claim.
+This is the one place an exact floating-point comparison is correct, because
+bit identity is the actual claim -- and it is made by name, with
+`bitIdentical()`, which also tells +0.0 from -0.0. The value types have no
+floating-point `==` to reach for
+([ADR 0017](adr/0017-every-warning-is-an-error.md)).
 
 It catches a whole class of accidental nondeterminism — iteration over an
 unordered container, uninitialised padding, a branch on wall-clock time, an

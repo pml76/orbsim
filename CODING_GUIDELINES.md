@@ -131,6 +131,18 @@ Dependencies are pulled in with `SYSTEM`, which is what makes that survivable:
 the full set appeared to produce 643 warnings, and 639 of them were inside
 `vk_mem_alloc.h` and `VkBootstrap.h`.
 
+**And then all of them**, on 2026-09-11
+([ADR 0017](docs/adr/0017-every-warning-is-an-error.md)). A hand-picked list
+catches what somebody thought to pick, and nobody had picked `-Wfloat-equal`:
+every unit type turned out to hand out a floating-point `==`. clang now builds
+with `-Weverything`, and gcc with every warning it lists for C++, as errors,
+less a few exceptions written beside their flags with their reasons -- in
+`CMakeLists.txt` for clang, in `scripts/gcc-warnings.py` for gcc. The owner's
+rule for the rest: the warnings are there to rule out old and bad style, so our
+own code is fixed. Where a warning is raised by a library's interface -- a C
+varargs API, a pointer and a count, Vulkan's generic function pointer -- it is
+switched off at that site alone, with the reason written there.
+
 **A note on `-Wconversion` in this project specifically.** You are going to get
 a *lot* of hits, because this codebase deliberately computes in `double` and
 hands `float` to the GPU. That is not a reason to turn the warning off. That is
@@ -374,8 +386,13 @@ constexpr Vec3 cross(const Vec3& a, const Vec3& b) { ... }   // yes, good
 And then — this is the part people forget — **prove it**:
 
 ```cpp
-static_assert(cross(Vec3{1, 0, 0}, Vec3{0, 1, 0}) == Vec3{0, 0, 1});
+static_assert(nearlyEqual(lengthSq(cross(Vec3{1, 0, 0}, Vec3{0, 1, 0}) - Vec3{0, 0, 1}),
+                          0.0,
+                          Tolerance{0.0}));
 ```
+
+(A zero tolerance rather than `==`, because `Vec3` no longer has a
+floating-point `==` -- section 11.)
 
 That `static_assert` is a unit test that costs zero runtime, can never rot, and
 runs on every single build whether you remember to run the test suite or not.
@@ -665,6 +682,12 @@ Most projects can be sloppy here. Yours cannot.
   `orbitInfo()` returns infinity on purpose, for hyperbolic trajectories.
 - **Never compare floats with `==`.** You know this. I am saying it anyway,
   because someone will do it in a debug check at 1am.
+  *(Since 2026-09-11 it does not compile on the value types: `Quantity`,
+  `Vec3` and `Quat` have no `==`, and `-Wfloat-equal` reports one on a bare
+  double -- gcc always, clang unless one side is a literal it holds exactly;
+  see `docs/PROJECT_STATE.md` section 8. The two spellings left are
+  `nearlyEqual(a, b, tolerance)`, with a zero tolerance for an exact result,
+  and `bitIdentical()` where bit identity is the claim.)*
 - **Keep the precision boundary in one place.** `f64` everywhere in the
   simulation; narrow to `f32` only at the renderer boundary, after the
   camera-relative transform has brought the magnitudes down. The moment `f32`

@@ -531,7 +531,26 @@ public:
     }
 
     // Normalised instants compare as their day, then their time of day.
-    [[nodiscard]] constexpr auto operator<=>(const TimePoint&) const noexcept = default;
+    //
+    // The day is compared with std::strong_order rather than with `==`, which
+    // on a double is the comparison CODING_GUIDELINES section 11 forbids (ADR
+    // 0017). Over every day an instant can hold that is the numerical order:
+    // each is whole and finite, and none is -0.0, because every one is built
+    // by carry(), which adds a converted integer to it, and a sum is -0.0 only
+    // when both of its terms are. The one day outside that is the NaN a
+    // violated precondition leaves in a Release build (operator+), which
+    // compares equal to itself and after every instant.
+    [[nodiscard]] constexpr std::strong_ordering
+    operator<=>(const TimePoint& other) const noexcept {
+        if (const std::strong_ordering day = std::strong_order(mjd_, other.mjd_);
+            std::is_neq(day)) {
+            return day;
+        }
+        return picos_ <=> other.picos_;
+    }
+    [[nodiscard]] constexpr bool operator==(const TimePoint& other) const noexcept {
+        return std::is_eq(*this <=> other);
+    }
 
 private:
     explicit constexpr TimePoint(detail::DayAndPicos parts) noexcept
@@ -578,6 +597,8 @@ static_assert(!std::is_convertible_v<TtTime, TdbTime> && !std::is_constructible_
               "TT and TDB are different types; converting between them is M1-05's named function");
 static_assert(detail::AddsSeconds<TtTime> && !detail::AddsSeconds<UtcTime>,
               "a UTC day may hold 86 401 SI seconds, so UTC + Seconds does not compile");
+static_assert(std::three_way_comparable<TtTime, std::strong_ordering>,
+              "instants are totally ordered, so they sort, and they key a map");
 
 // The published epochs, at compile time: J2000.0 is noon of MJD 51544 (JD
 // 2451545.0 - 2400000.5 = 51544.5), and the Unix epoch is the midnight that

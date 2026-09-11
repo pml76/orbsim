@@ -135,7 +135,11 @@ public:
     [[nodiscard]] VmaAllocator allocator() const noexcept { return allocator_.get(); }
     [[nodiscard]] VkFormat colorFormat() const noexcept { return swapchainFormat_; }
     [[nodiscard]] VkExtent2D extent() const noexcept { return swapchainExtent_; }
-    [[nodiscard]] const std::string& deviceName() const noexcept { return deviceName_; }
+    // A reference into this context, and marked so, which lets clang report
+    // one held past the context's lifetime where it can follow the two.
+    [[nodiscard]] const std::string& deviceName() const noexcept [[clang::lifetimebound]] {
+        return deviceName_;
+    }
 
 private:
     VulkanContext() = default;

@@ -79,6 +79,17 @@ a header as `src\core/Math.hpp`; a regex that only accepted `/` left every
 header in the tree unlinted for sixteen commits while the `.cpp` files
 reported clean.
 
+**The compiler's warnings are the other half, and the same rules hold**
+([ADR 0017](../../docs/adr/0017-every-warning-is-an-error.md)). clang builds
+with `-Weverything` and gcc with the list `scripts/gcc-warnings.py` generates
+into `cmake/GccWarnings.cmake`, as errors. A `-Wno-` in `CMakeLists.txt` or an
+entry in the script's `EXCLUDED` is a project-wide suppression, which is the
+owner's decision and carries its reason beside it. Our own code is fixed. A
+warning raised where our code meets a library's interface is switched off at
+that site alone -- `#pragma clang diagnostic push`, `ignored`, `pop` -- with
+the reason written there. A clang upgrade brings new warnings as errors, as it
+brings new checks; a gcc upgrade means re-running the script in WSL.
+
 **The build:** why `check` is what it is, and why there is no CI, is
 [`docs/adr/0005`](../../docs/adr/0005-correctness-is-enforced-by-tools.md).
 Do not add a CI workflow. The `asan` preset is RelWithDebInfo with `-DNDEBUG`

@@ -32,6 +32,7 @@ usually enough.
 | [0014](0014-radiometric-chain.md) | The radiometric chain is manual photographic exposure and the AgX tonemap | accepted | 2026-09-08 |
 | [0015](0015-skirts-and-morphing.md) | Quadtree LOD is skirts plus vertex morphing | accepted | 2026-09-08 |
 | [0016](0016-the-astronomy-is-erfa.md) | The astronomy is ERFA's, called through typed wrappers | accepted | 2026-09-11 |
+| [0017](0017-every-warning-is-an-error.md) | Every warning the compiler has, as an error; a library's interface is answered at the site | accepted | 2026-09-11 |
 
 **0008 to 0015 record the decisions taken on 2026-09-08**, before milestone 1
 started. All twenty-six of those decisions are in
@@ -53,6 +54,13 @@ was measured to drift 83 ns where the task's budget was 1 ns.
 nutation is modelled, and the pairing of equinox-based precession with the
 Earth rotation angle -- measured at 0.342° out -- is replaced by ERFA's
 CIO-based rotation.
+
+**0017 extends 0005, the same day**: clang builds with `-Weverything` and gcc
+with every warning it lists, as errors, less a few exceptions each written
+down with its reason; a warning raised by a library's interface is switched
+off at that site alone. It also refines one phrase of 0011: determinism is
+asserted with `bitIdentical()`, because the value types no longer have a
+floating-point `==`.
 
 The worked example keeps its own two records under
 [`../../coding-guidelines-example/docs/adr/`](../../coding-guidelines-example/docs/adr/).

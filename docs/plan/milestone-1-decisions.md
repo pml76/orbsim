@@ -94,7 +94,7 @@ it is never mistaken for a bug.
 | E | J2 off, against the two-body propagator | **1e-9 relative** over one orbit | `propagate()`, which shares no line of code with the integrator |
 | E | Convergence order | within **0.1** of theory — 4 for RK4, 8 for the high-order tableau | A step-halving study |
 | E | Position against GMAT, J2 only, 400 km circular, i = 51.6° | **< 10 m after one orbit, < 1 km after 24 h** | GMAT R2026a fixture, settings recorded |
-| E | Determinism | **bit-identical** after 24 h of simulated time, between two runs and between 1× and 10000× | Itself — the one place `==` on floats is the correct operator |
+| E | Determinism | **bit-identical** after 24 h of simulated time, between two runs and between 1× and 10000× | Itself — the one place an exact floating-point comparison is correct, spelled `bitIdentical()` since 2026-09-11 ([ADR 0017](../adr/0017-every-warning-is-an-error.md)) |
 | F | Nodal regression | within **1 %** of `-1.5 n J2 (Re/p)^2 cos i` over 5 days | The analytic secular rate. The short-period oscillation in the node is about 0.03° against 25° of drift, so the budget sits an order of magnitude above the noise |
 | C, G | Frame time | **16.6 ms** at 1920×1080, High preset, RTX A2000, Earth from 400 km | Measured and recorded, not asserted |
 

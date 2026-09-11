@@ -177,8 +177,14 @@ and the conventions and the finishing checklist are in
    function, subtracting before narrowing. Never touch the floating-point flags.
 9. **Comment the *why*.** Every non-obvious constant says where its value came
    from.
-10. **Zero warnings, zero clang-tidy findings.** Suppressions are allowed and
-    must carry a written reason.
+10. **Every warning on, as an error, and zero clang-tidy findings.** clang
+    builds with `-Weverything` and gcc with every warning it lists, less a few
+    exceptions written beside their flags with their reasons. Our own code is
+    fixed, not silenced. A warning raised where our code meets a library's
+    interface is switched off at that site alone, with the reason written
+    there; switching one off project-wide is the owner's decision.
+    Suppressions of either kind carry a written reason.
+    [`docs/adr/0017`](docs/adr/0017-every-warning-is-an-error.md).
 11. **Every `VkResult` is checked**, through `vkCheck`, and every function
     that can fail says so in its return type. A dropped result is how a lost
     device becomes a hang three frames later.

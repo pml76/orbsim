@@ -74,10 +74,14 @@ struct Vec3 {
         return *this;
     }
 
-    // Exact comparison, for the compile-time tests below and for determinism
-    // checks, where bit identity is the claim. Approximate comparison goes
-    // through nearlyEqual on a length or a component.
-    [[nodiscard]] constexpr bool operator==(const Vec3&) const noexcept = default;
+    // No `==`: on doubles it is the comparison CODING_GUIDELINES section 11
+    // forbids (ADR 0017). Comparison goes through nearlyEqual on a length or a
+    // component, and a determinism check, where bit identity is the claim,
+    // says so by name.
+    [[nodiscard]] constexpr bool bitIdentical(const Vec3& other) const noexcept {
+        return bitsOf(x) == bitsOf(other.x) && bitsOf(y) == bitsOf(other.y) &&
+               bitsOf(z) == bitsOf(other.z);
+    }
 };
 
 [[nodiscard]] constexpr Vec3 operator*(f64 s, const Vec3& v) noexcept { return v * s; }
@@ -161,7 +165,11 @@ struct Quat {
 
     [[nodiscard]] Vec3 inverseRotate(const Vec3& v) const noexcept { return conjugate().rotate(v); }
 
-    [[nodiscard]] constexpr bool operator==(const Quat&) const noexcept = default;
+    // No `==`, for the reason given on Vec3; bit identity by name instead.
+    [[nodiscard]] constexpr bool bitIdentical(const Quat& other) const noexcept {
+        return bitsOf(w) == bitsOf(other.w) && bitsOf(x) == bitsOf(other.x) &&
+               bitsOf(y) == bitsOf(other.y) && bitsOf(z) == bitsOf(other.z);
+    }
 };
 
 [[nodiscard]] inline Quat normalize(const Quat& q) noexcept {
@@ -188,16 +196,57 @@ integrateAngularVelocity(const Quat& q, const Vec3& omega, Seconds dt) noexcept 
 // Compile-time tests. A static_assert is a unit test that costs nothing at
 // runtime, runs on every build whether or not the suite is invoked, and cannot
 // rot. std::sqrt is not constexpr until C++26, so length() is not covered here.
-static_assert(cross(Vec3{1, 0, 0}, Vec3{0, 1, 0}) == Vec3{0, 0, 1});
-static_assert(cross(Vec3{0, 1, 0}, Vec3{1, 0, 0}) == Vec3{0, 0, -1});
+//
+// Every result is exact, so the tolerance is zero. A vector is compared through
+// the squared length of the difference, which is zero only when every
+// component is: the components are small integers, so no nonzero difference
+// can square to an underflowed zero.
+static_assert(nearlyEqual(lengthSq(cross(Vec3{1, 0, 0}, Vec3{0, 1, 0}) - Vec3{0, 0, 1}),
+                          0.0,
+                          Tolerance{0.0}));
+static_assert(nearlyEqual(lengthSq(cross(Vec3{0, 1, 0}, Vec3{1, 0, 0}) - Vec3{0, 0, -1}),
+                          0.0,
+                          Tolerance{0.0}));
 static_assert(nearlyEqual(dot(Vec3{1, 2, 3}, Vec3{4, 5, 6}), 32.0, Tolerance{0.0}));
 static_assert(nearlyEqual(lengthSq(Vec3{3, 4, 0}), 25.0, Tolerance{0.0}));
-static_assert(Vec3{1, 2, 3} - Vec3{1, 2, 3} == Vec3{});
-static_assert(-Vec3{1, -2, 3} == Vec3{-1, 2, -3});
-static_assert(Vec3{1, 2, 3} * 2.0 == Vec3{2, 4, 6});
-static_assert(Quat{}.conjugate() == Quat{});
-static_assert(Quat{} * Quat{0, 1, 0, 0} == Quat{0, 1, 0, 0}, "identity is the unit");
-static_assert(Quat{0, 1, 0, 0} * Quat{0, 1, 0, 0} == Quat{-1, 0, 0, 0}, "i * i = -1");
+static_assert(nearlyEqual(lengthSq(Vec3{1, 2, 3} - Vec3{1, 2, 3}), 0.0, Tolerance{0.0}));
+static_assert(nearlyEqual(lengthSq(-Vec3{1, -2, 3} - Vec3{-1, 2, -3}), 0.0, Tolerance{0.0}));
+static_assert(nearlyEqual(lengthSq((Vec3{1, 2, 3} * 2.0) - Vec3{2, 4, 6}), 0.0, Tolerance{0.0}));
+// Quat has no subtraction, so it is compared component by component.
+// Conjugating the identity gives -0 components: equal to +0 as numbers, which
+// is the claim, and not bit-identical to them, which is why this is not
+// bitIdentical.
+static_assert(
+    [] {
+        const Quat q = Quat{}.conjugate();
+        return nearlyEqual(q.w, 1.0, Tolerance{0.0}) && nearlyEqual(q.x, 0.0, Tolerance{0.0}) &&
+               nearlyEqual(q.y, 0.0, Tolerance{0.0}) && nearlyEqual(q.z, 0.0, Tolerance{0.0});
+    }(),
+    "the identity is its own conjugate");
+static_assert(
+    [] {
+        const Quat q = Quat{} * Quat{0, 1, 0, 0};
+        return nearlyEqual(q.w, 0.0, Tolerance{0.0}) && nearlyEqual(q.x, 1.0, Tolerance{0.0}) &&
+               nearlyEqual(q.y, 0.0, Tolerance{0.0}) && nearlyEqual(q.z, 0.0, Tolerance{0.0});
+    }(),
+    "identity is the unit");
+static_assert(
+    [] {
+        const Quat q = Quat{0, 1, 0, 0} * Quat{0, 1, 0, 0};
+        return nearlyEqual(q.w, -1.0, Tolerance{0.0}) && nearlyEqual(q.x, 0.0, Tolerance{0.0}) &&
+               nearlyEqual(q.y, 0.0, Tolerance{0.0}) && nearlyEqual(q.z, 0.0, Tolerance{0.0});
+    }(),
+    "i * i = -1");
+static_assert(!Quat{}.conjugate().bitIdentical(Quat{}), "the conjugate's zeros are negative");
+// bitIdentical compares every component, and tells the two zeros apart.
+static_assert(Vec3{1, 2, 3}.bitIdentical(Vec3{1, 2, 3}));
+static_assert(!Vec3{}.bitIdentical(Vec3{-0.0, 0, 0}) && !Vec3{}.bitIdentical(Vec3{0, -0.0, 0}) &&
+              !Vec3{}.bitIdentical(Vec3{0, 0, -0.0}));
+static_assert(Quat{}.bitIdentical(Quat{}));
+static_assert(!Quat{0, 0, 0, 0}.bitIdentical(Quat{-0.0, 0, 0, 0}) &&
+              !Quat{}.bitIdentical(Quat{1, -0.0, 0, 0}) &&
+              !Quat{}.bitIdentical(Quat{1, 0, -0.0, 0}) &&
+              !Quat{}.bitIdentical(Quat{1, 0, 0, -0.0}));
 
 } // namespace orb
 

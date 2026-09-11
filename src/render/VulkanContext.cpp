@@ -24,6 +24,18 @@
 #include <utility>
 #include <vector>
 
+// Vulkan's and VMA's C structs are written here as designated initialisers
+// that name the fields that matter and leave the rest -- pNext, flags, often a
+// dozen more -- value-initialised to zero or null, which is what the
+// specification asks of a field not in use: a null pNext, reserved flags of 0,
+// a feature not requested left VK_FALSE. -Wmissing-designated-field-initializers
+// reports every one of those, 28 when it was switched on (2026-09-11), so it is
+// off for this file -- the one that fills in Vulkan's structs -- and on
+// everywhere else (ADR 0017). The cost: a struct of our own initialised in
+// this file goes unchecked too.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wmissing-designated-field-initializers"
+
 namespace orb::gfx {
 namespace {
 
@@ -52,6 +64,13 @@ enum class FenceState : std::uint8_t {
 // dependency for one function is not worth it. Only the results this renderer
 // can meet are named; anything else shows its number, which is still enough to
 // look up.
+//
+// -Wswitch-enum asks for every enumerator even where there is a default, and
+// is off for this one switch (ADR 0017): VkResult is Vulkan's enum, it grows
+// with every header release, and the default is the design here rather than
+// an omission.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wswitch-enum"
 [[nodiscard]] std::string resultName(VkResult result) {
     switch (result) {
     case VK_SUCCESS:
@@ -96,6 +115,7 @@ enum class FenceState : std::uint8_t {
         return "VkResult " + std::to_string(static_cast<int>(result));
     }
 }
+#pragma clang diagnostic pop
 
 // Every Vulkan and VMA call that returns a VkResult goes through here, so that
 // none is dropped. This is rule 7 of the Power of Ten -- check the return
@@ -199,8 +219,15 @@ VKAPI_ATTR VkBool32 VKAPI_CALL onValidationMessage(VkDebugUtilsMessageSeverityFl
         auto* errors = static_cast<std::atomic<uint32_t>*>(userData);
         if (errors != nullptr) errors->fetch_add(1, std::memory_order_relaxed);
     }
+    // SDL's C logging API is variadic, and the message is the loader's C
+    // string, which the specification makes null-terminated but whose bounds
+    // no type can carry; -Wunsafe-buffer-usage-in-format-attr-call reports
+    // exactly that, and is off for this call (ADR 0017).
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-format-attr-call"
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg) -- SDL's C logging API is variadic
     SDL_Log("[validation] %s", data != nullptr ? data->pMessage : "(no message)");
+#pragma clang diagnostic pop
     // The specification requires VK_FALSE from an application callback: VK_TRUE
     // would abort the call that triggered the message.
     return VK_FALSE;
@@ -225,7 +252,15 @@ struct InstanceBundle {
     const auto build = [&](Validation requested) {
         vkb::InstanceBuilder builder;
         builder.set_app_name("orbsim").set_engine_name("orbsim").require_api_version(1, 3, 0);
-        for (const char* const extension : std::span(sdlExts, sdlExtCount)) {
+        // SDL hands the extensions back as a pointer and a count, and a span
+        // of the two is the only way to give them bounds; the two-argument
+        // constructor is what -Wunsafe-buffer-usage-in-container reports, and
+        // it is off for this line (ADR 0017).
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-container"
+        const std::span extensions(sdlExts, sdlExtCount);
+#pragma clang diagnostic pop
+        for (const char* const extension : extensions) {
             builder.enable_extension(extension);
         }
         if (requested == Validation::Enabled) {
@@ -849,15 +884,26 @@ std::expected<void, RenderError> VulkanContext::uploadBuffer(UniqueBuffer& dst,
 
     // A host-visible destination can be written directly; the staging round
     // trip is only needed for device-local memory.
+    //
+    // VMA hands mapped memory back as a bare pointer, and the way to write
+    // through one is a C library copy, which -Wunsafe-buffer-usage-in-libc-call
+    // reports; it is off for the two copies (ADR 0017). The bound is checked
+    // above: the data is no larger than either buffer.
     if (dst.mapped() != nullptr) {
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-libc-call"
         std::memcpy(dst.mapped(), data.data(), data.size());
+#pragma clang diagnostic pop
         return {};
     }
 
     auto staging = createBuffer(data.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, Memory::HostVisible);
     if (!staging) return std::unexpected(staging.error());
     if (staging->mapped() == nullptr) return fail("Staging buffer was not mapped");
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-libc-call"
     std::memcpy(staging->mapped(), data.data(), data.size());
+#pragma clang diagnostic pop
 
     VkFence fence = uploadFence_.get();
     if (auto ok = vkCheck(vkResetFences(device_.get(), 1, &fence), "vkResetFences (upload)"); !ok) {
@@ -930,3 +976,5 @@ VulkanContext::loadShaderModule(const std::filesystem::path& path) const {
 }
 
 } // namespace orb::gfx
+
+#pragma clang diagnostic pop

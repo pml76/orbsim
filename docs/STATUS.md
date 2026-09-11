@@ -41,6 +41,7 @@ opens a window and paces frames.** Nothing is drawn yet.
 |---|---|
 | Current milestone | 1 — Earth, orbit track, Orbit MFD |
 | Last task completed | [M1-03](plan/tasks/m1-03-timepoint.md), `TimePoint` and the time scales, 2026-09-10 |
+| Before M1-04 | Two commits from [ADR 0017](adr/0017-every-warning-is-an-error.md): the same warning policy for `coding-guidelines-example/`, then `tests/fuzz_orbit.cpp` brought under lint, which it never was (13 findings) |
 | Next task | [M1-04](plan/tasks/m1-04-leap-seconds.md), UTC, TAI and TT: the leap-second table |
 | Then | The rest of phase A — the Horizons fixtures (M1-06, now ahead of M1-05); TDB and UT1, where ERFA is pinned; Earth orientation with nutation, and the Sun, both computed by ERFA; then `orbsim_view`, the camera, the pipelines, and the probe mode that verifies everything drawn after it |
 | Phase order | A → B → D → C → E → F → G |
@@ -112,10 +113,11 @@ but not yet pinned, and which files of `bc7enc_rdo` may be compiled, are in
 ## Decision records
 
 **The list is [`adr/README.md`](adr/README.md)**, next to the records
-themselves, so that browsing the directory finds it. **Sixteen are accepted**:
-0008 to 0015 written by
+themselves, so that browsing the directory finds it. **Seventeen are
+accepted**: 0008 to 0015 written by
 [M1-02](plan/tasks/m1-02-record-the-decisions.md) from the decisions taken on
-2026-09-08, and 0016 — ERFA computes the astronomy — on 2026-09-11.
+2026-09-08, then 0016 — ERFA computes the astronomy — and 0017 — every warning
+as an error — both on 2026-09-11.
 
 An accepted ADR is immutable, so the numbers inside one are not maintained
 here: they are what was true when the decision was taken.
