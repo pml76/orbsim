@@ -44,6 +44,10 @@ sanitizers and the second compiler run) and **0007** (both of the questions it
 left open, answered — including that `RenderQuality` lives in `orbsim_view`
 rather than `src/render/`).
 
+**0009 gained one on 2026-09-10**, with M1-03: the day begins at midnight, and
+the time within it is integer picoseconds rather than an f64 fraction, which
+was measured to drift 83 ns where the task's budget was 1 ns.
+
 The worked example keeps its own two records under
 [`../../coding-guidelines-example/docs/adr/`](../../coding-guidelines-example/docs/adr/).
 They are superseded by 0001 and 0002 here where the two disagree.

@@ -33,9 +33,13 @@ ground track by hundreds of metres and does it plausibly.
   constant, with the definition cited in the comment.
 - **The leap second itself is representable.** `fromCalendar` accepts a seconds
   field of 60 exactly on the days the table says have one, and reports
-  `InvalidCalendarDate` on every other day. That is why UTC is stored as a
-  quasi-Julian date whose days are not all the same length, and the header says
-  so in one paragraph.
+  `InvalidTimeOfDay` on every other day. M1-03 stores the time of day as SI
+  picoseconds since midnight, so a UTC day with a leap second simply runs to
+  86 401 s: 23:59:60.5 is 86 400.5 s into the day, exactly, and the invariant
+  for UTC becomes "within that day's length" -- which the header says in one
+  paragraph. *(Amended 2026-09-10 with M1-03: the error was
+  `InvalidCalendarDate`, and UTC was to be a quasi-Julian date whose days are
+  not all the same length. See ADR 0009's update.)*
 
 ## Out of scope
 
@@ -60,7 +64,7 @@ Extends `tests/test_time.cpp`.
   repeated UTC second.
 - **Named failures**: an instant past the validity date reports
   `LeapSecondTableExpired`; one before 1972 reports `BeforeLeapSecondEra`; 60
-  seconds on an ordinary day reports `InvalidCalendarDate`. Each asked for by
+  seconds on an ordinary day reports `InvalidTimeOfDay`. Each asked for by
   name, not by "it failed".
 
 ## Error budget

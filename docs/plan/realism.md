@@ -152,9 +152,11 @@ refinement for close approaches, not a prerequisite.
 
 ### 1.3 Ephemeris and reference frames — **[S]**
 
-**Today: nothing.** There is no notion of *when*, no notion of where any body
-is, and no frame other than "the central body's inertial frame". Multi-body
-gravity is impossible without this, which is why it is structural.
+**Today: a notion of *when*, and nothing else.** Since M1-03 (2026-09-10) an
+instant is a `TimePoint` on one of five scales; converting between them is
+M1-04 and M1-05. There is still no notion of where any body is, and no frame
+other than "the central body's inertial frame". Multi-body gravity is
+impossible without this, which is why it is structural.
 
 - **Body positions over time.** JPL DE440 (via SPICE, or a direct Chebyshev
   reader) is ground truth. VSOP87 for planets plus ELP2000 for the Moon is the

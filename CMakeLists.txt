@@ -201,6 +201,7 @@ target_link_libraries(orbsim_test_support INTERFACE
 set(ORBSIM_TESTS
         test_orbit
         test_orbit_scales
+        test_time
 )
 foreach(test_name IN LISTS ORBSIM_TESTS)
     add_executable(${test_name} tests/${test_name}.cpp)
@@ -414,6 +415,7 @@ orbsim_add_header_selfcheck(orbsim_header_selfcheck orbsim_core
         core/Scalar.hpp
         core/Units.hpp
         core/Math.hpp
+        core/Time.hpp
         orbit/Orbit.hpp
 )
 orbsim_add_header_selfcheck(orbsim_test_header_selfcheck orbsim_test_support

@@ -40,7 +40,7 @@ and their costs, and every row is the owner's answer.
 | 11 | Force-term traits | **Each term declares whether it depends on time, position or velocity.** A future symplectic or Nyström integrator can then refuse by name rather than integrate something wrong but plausible |
 | 12 | Integrated state size | **Six now, steppers generic over a state concept.** Thrust with variable mass, and 6-DOF attitude, join later as channels without rewriting an integrator |
 | 13 | Time acceleration | **Fixed step, more steps.** 1x and 10000x are bit-identical. If a machine cannot keep up, the simulation clock lags real time and says so; the model never changes |
-| 14 | Time and frames in scope | **Full**: UTC, TAI, TT, TDB and UT1 as distinct types on a two-part Julian date; a leap-second table that reports rather than extrapolates; IAU 2006 precession and the Earth rotation angle; an analytic solar position. Nutation and ΔUT1 deferred **with their errors written down** |
+| 14 | Time and frames in scope | **Full**: UTC, TAI, TT, TDB and UT1 as distinct types on a two-part Julian date; a leap-second table that reports rather than extrapolates; IAU 2006 precession and the Earth rotation angle; an analytic solar position. Nutation and ΔUT1 deferred **with their errors written down**. *Storage amended 2026-09-10 with M1-03: a Modified Julian Day beginning at midnight, and integer picoseconds within it — ADR 0009's update* |
 | 15 | Where the astronomy lives | **A new `src/astro/`**, in the same `orbsim_core` target. `src/orbit/` stays about trajectories; `astro/` takes where bodies are and how frames rotate |
 
 ## 3. Renderer

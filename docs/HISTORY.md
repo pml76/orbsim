@@ -314,6 +314,70 @@ the script with its reason. It was shown to fail on a missing file and on a
 wrong ADR number, and to stay silent on an existing file, a dependency header,
 a future directory and a path inside a fenced block, before it was trusted.
 
+### M1-03, `TimePoint`, and the representation the task could not use, 2026-09-10
+
+The first task under the working agreement of 2026-09-09 -- every question up
+front, every fact measured -- and the measuring changed the task before a line
+of it was written.
+
+**The task's own representation could not meet the task's own budget.** It
+asked for an f64 fraction of a day and for a million additions of 1 us to
+drift by under 1 ns. A spike in exact rational arithmetic measured **82.7 ns**,
+systematic rather than random: 1 us has no binary representation, and every
+addition rounds it the same way. From a fraction of zero the same run drifts
+6 ps -- and in the task's noon-based day, zero is exactly J2000, where the
+obvious test would have started. It would have passed, and been decoration
+(`VERIFICATION.md` rule 23). The owner ruled for **integer picoseconds within a
+day that begins at midnight** -- a Modified Julian Day, because ERFA divides
+its UTC days at midnight for the reason M1-04 will need: the leap second comes
+at the end of a civil day. ADR 0009 carries the update; the decision itself
+stands.
+
+Eleven questions went to the owner in one message, each with a
+recommendation, and all eleven were taken as recommended: the storage, the day
+boundary, a non-finite duration as an asserted precondition that a Release
+build turns into a NaN day rather than undefined behaviour, one error per
+calendar field, years 1-9999, a two-part Julian-date interface, the scales of
+the epoch constants, no default constructor, two tests beyond the task's list,
+the complexity suppressions, and leaving the rule of engagement where
+`CLAUDE.md` already has it.
+
+**Every expected value comes from outside the header**: the published epochs
+from the US Naval Observatory, the calendar from `std::chrono`'s -- Howard
+Hinnant's algorithm, a different formulation from Fliegel and Van Flandern's --
+on all 73,414 days of 1900-2100, and the Julian-date conversions from Python's
+exact fractions. The suite was seen to fail against a stub first; 17 of its 20
+cases failed and 3 passed, because the stub collapsed every instant into one.
+**Eight deliberate mutations were then all caught**, and each of those three
+cases failed under the mutation aimed at it.
+
+Two things worth keeping.
+
+**A suppression written before the check has run is a guess.** Fourteen
+`NOLINTNEXTLINE(readability-function-cognitive-complexity)` lines went in with
+the suite, under a comment saying "only where the check fires". Running the
+check over a copy with them stripped found five cases over the threshold. The
+other nine were deleted; the comment is true now, and was not.
+
+**clang-tidy 23 is wrong in three more ways on this code**, each reproduced on
+a probe with the real clang-tidy rather than taken from the editor, and each
+answered by writing the code differently: a requires-clause whose parentheses
+it calls redundant and which does not compile without them; a De Morgan
+rewrite that changes what `!(v > -k && v < k)` means for NaN; and C-style
+casts reported where clang itself made the casts, substituting an enumerator
+into a template. They are in `PROJECT_STATE.md` section 8 with the others.
+
+**And the second compiler found one on its first look**, as it did with the
+missing `<tuple>`. gcc-14 refused to build a designated initializer that
+stopped at the day or the hour, because `CalendarDate::second` had no
+initializer of its own -- clang files that case under a warning the build
+switches off -- and the obvious `Seconds second{};` is exactly what
+`readability-redundant-member-init` removed from `Elements` on 2026-09-08.
+`Seconds second{0.0}` satisfies both, which a probe confirmed before it was
+believed. Everything then agreed: 424,381 assertions -- the 3,632 from before
+and 420,749 new -- in both Windows trees, under ASan, under `linux-sanitize`
+and under `linux-gcc`.
+
 ---
 
 ## 4. The bug that justified the session

@@ -65,9 +65,11 @@ clang-tidy --verify-config -p build/relwithdebinfo src/orbit/Orbit.cpp
 
 Run it by hand after editing either config, or just build `lint`.
 
-**Two clang-tidy 23 checks are wrong on this code**, and one writes code that
-does not compile — see [`docs/PROJECT_STATE.md`](../../docs/PROJECT_STATE.md)
-section 8 before running `clang-tidy --fix` over the tree.
+**Four clang-tidy 23 checks are wrong on this code, five ways between them**,
+and most of their fixes break it — three do not compile, and one changes what a
+comparison means for NaN. See [`docs/PROJECT_STATE.md`](../../docs/PROJECT_STATE.md)
+section 8 before running `clang-tidy --fix` over the tree, and before
+reshaping code to satisfy one of them.
 
 **Every clang upgrade is a small triage.** `.clang-tidy` lists check *families*
 with `WarningsAsErrors: '*'`, so checks new in a release enrol themselves as

@@ -392,6 +392,38 @@ asked for.
   trailing comma, and its fix-it **deletes the separator**. Both are avoided
   here by naming the value instead. Neither fires under clang-tidy 22. If you
   run `clang-tidy --fix` over this tree, build afterwards and read the diff.
+- **Three more, found by M1-03 on 2026-09-10**, each reproduced with the real
+  clang-tidy 23.1.0 on a probe rather than taken from the editor, and each
+  avoided in `core/Time.hpp` or `tests/test_time.cpp` by writing the code
+  differently rather than by a suppression:
+  - `readability-redundant-parentheses` again, on a requires-clause.
+    `requires(isUniform(Scale))` must keep its parentheses -- a function call
+    is not a primary expression -- so the fix does not compile. A named
+    concept, `requires UniformScale<Scale>`, needs none.
+  - `readability-simplify-boolean-expr` applies De Morgan to
+    `!(v > -k && v < k)` and writes `v <= -k || v >= k`, which differs when
+    `v` is NaN: the first is true, the second false. Where that negated form
+    was guarding a cast to an integer, the fix would have let a NaN through to
+    undefined behaviour. Testing finiteness first removes the question.
+  - `modernize-avoid-c-style-cast` reports casts nobody wrote. When an
+    enumerator is substituted into a template, clang wraps it in a
+    `CStyleCastExpr` of its own making -- visible in `-Xclang -ast-dump` under
+    a `SubstNonTypeTemplateParmExpr` -- and the check reports it at the
+    template parameter's name. Written over the type aliases (`TtTime`) rather
+    than over `TimeScale` values, the compile-time checks give it nothing to
+    see.
+- **gcc and clang disagree about a field left out of a designated
+  initializer**, and clang-tidy stands in the way of the obvious fix. gcc-14's
+  `-Wmissing-field-initializers`, part of `-Wextra`, reports the omitted field
+  unless it has a default member initializer of its own; clang files the
+  designated case under `-Wmissing-designated-field-initializers`, which the
+  build switches off. So a struct built by designated initializers that stop
+  early -- `CalendarDate{.year = 2000, .month = 1, .day = 1}` -- compiles on
+  Windows and fails `linux-gcc`. The fix is an initializer on the field, but
+  `Seconds second{};` is exactly what `readability-redundant-member-init`
+  removes, because `Seconds` initialises itself; `Seconds second{0.0};` calls
+  a different constructor and satisfies both. Found by M1-03, 2026-09-10, on
+  the second compiler's first look at the code.
 
 ---
 

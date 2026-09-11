@@ -106,3 +106,36 @@ budget is spent on the clock.
 - **Whether `Vec3` acquires a frame.** Several frames now exist as a concept;
   whether the type carries one is
   [`../PROJECT_STATE.md`](../PROJECT_STATE.md) section 7.6, still open.
+
+## Update, 2026-09-10: midnight days, and integer picoseconds
+
+Written with [M1-03](../plan/tasks/m1-03-timepoint.md), before its code, on the
+owner's rulings of the same day. **The decision stands** -- five scales as five
+types, a two-part date with an integral day number, resolution at 10 ps or
+better -- and two of its particulars change.
+
+- **The day is a Modified Julian Day, and it begins at midnight**, where the
+  record above implied the integral Julian date, whose day begins at noon.
+  UTC's leap second comes at the end of a civil day, so with noon-based days
+  23:59:60 would fall in the middle of a stored day. ERFA divides its UTC
+  quasi-Julian dates at midnight for the same reason -- "the quasi-JD day
+  represents UTC days whether the length is 86399, 86400 or 86401 SI seconds"
+  (`dtf2d.c`) -- and the IERS tables M1-04 and M1-05 read are keyed by MJD.
+- **The time within the day is an integer count of picoseconds**, not an f64
+  fraction of a day. Measured before any code was written: a million additions
+  of 1 us to an f64 fraction drift **82.7 ns**, against the 1 ns M1-03 asked
+  for, because 1 us has no exact binary representation and every addition
+  rounds it the same way. From fraction 0 -- which is J2000 in a noon-based day
+  -- the same run drifts 6 ps, so the obvious test would have passed and proved
+  nothing. In integer picoseconds the run is exact, as is every decimal step a
+  simulation clock takes, and the resolution is 1 ps everywhere in the day
+  rather than up to 9.6 ps. A day of 86 401 s is 8.64e16 ps, which an int64
+  holds 106 times over. Orekit made the same move in its version 13, to integer
+  seconds and attoseconds, and gives the same reasons: robustness, no IEEE-754
+  edge cases, and being "decimal-friendly".
+
+So "the fraction's ulp is about 1.1e-16 day, near 10 ps" above now describes
+the Julian-date *interface* rather than the storage: `julianDate()` still
+returns an f64 fraction, correctly rounded, whose ulp near the end of a day is
+9.6 ps. The day number stays an f64, whole-valued, so that no finite duration
+can overflow it.

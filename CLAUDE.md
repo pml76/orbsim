@@ -56,9 +56,9 @@ place, bit for bit. The mechanism is a `RenderQuality` struct living in
 [`docs/adr/0007`](docs/adr/0007-render-quality-is-a-struct.md).
 
 ```
-src/core/     maths, units, contracts   — no dependencies
-src/orbit/    orbital mechanics         — depends on core only
-src/render/   Vulkan renderer           — depends on core; never the reverse
+src/core/     maths, units, time, contracts — no dependencies
+src/orbit/    orbital mechanics             — depends on core only
+src/render/   Vulkan renderer               — depends on core; never the reverse
 src/app/      window and main loop
 tests/        CTest suites
 ```

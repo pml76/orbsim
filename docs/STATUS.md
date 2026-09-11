@@ -19,7 +19,7 @@ A *dated* measurement is not a current claim and does not belong here: "the
 fuzzer ran 77.4 million executions clean on 2026-09-07" is a fact about that
 day and stays in [`HISTORY.md`](HISTORY.md).
 
-Last updated: 2026-09-09.
+Last updated: 2026-09-10.
 
 ## Contents
 
@@ -40,19 +40,19 @@ opens a window and paces frames.** Nothing is drawn yet.
 | | |
 |---|---|
 | Current milestone | 1 — Earth, orbit track, Orbit MFD |
-| Last task completed | [M1-02](plan/tasks/m1-02-record-the-decisions.md), the eight ADRs and [`THIRD_PARTY.md`](../THIRD_PARTY.md), 2026-09-09 |
-| Next task | [M1-03](plan/tasks/m1-03-timepoint.md), `TimePoint` and the time scales |
-| Then | The rest of phase A — leap seconds, TDB and UT1, the Horizons fixtures, Earth orientation and the Sun; then `orbsim_view`, the camera, the pipelines, and the probe mode that verifies everything drawn after it |
+| Last task completed | [M1-03](plan/tasks/m1-03-timepoint.md), `TimePoint` and the time scales, 2026-09-10 |
+| Next task | [M1-04](plan/tasks/m1-04-leap-seconds.md), UTC, TAI and TT: the leap-second table |
+| Then | The rest of phase A — TDB and UT1, the Horizons fixtures, Earth orientation and the Sun; then `orbsim_view`, the camera, the pipelines, and the probe mode that verifies everything drawn after it |
 | Phase order | A → B → D → C → E → F → G |
 
 | Component | State |
 |---|---|
-| `src/core/` | Scalars, strong unit types, Vec3, Quat. Complete for what exists. |
+| `src/core/` | Scalars, strong unit types, Vec3, Quat, and `TimePoint` on five time scales — the representation; converting between scales is M1-04 and M1-05. Complete for what exists. |
 | `src/orbit/` | Two-body: state↔elements, universal-variable and element propagation, anomaly conversions. Correct at every scale from lunar to outer-solar-system. |
 | `src/render/` | Vulkan 1.3 device, swapchain, frame pacing, RAII handles, buffer upload, shader loading. **No pipelines, no drawing.** |
 | `src/app/` | Window, event loop, argument parsing, frame loop. |
 | `shaders/` | Four GLSL shaders compile to SPIR-V at build time and are **never loaded**. They are placeholders for phase A. |
-| `tests/` | Two Catch2 suites, 3,632 assertions in 19 test cases, plus a GPU smoke test and a libFuzzer target. |
+| `tests/` | Three Catch2 suites, 424,381 assertions in 39 test cases, plus a GPU smoke test and a libFuzzer target. |
 
 ## Test suites
 
@@ -60,21 +60,26 @@ opens a window and paces frames.** Nothing is drawn yet.
 |---|---|---|
 | `test_orbit` | 732, in 8 cases | Earth-orbit round trips, degenerate orbits, analytic values, propagator agreement, invariants, hyperbolic, Kepler solver, reported failures |
 | `test_orbit_scales` | 2900, in 11 cases | Heliocentric circles, parabolic trajectories, non-finite inputs, states that are finite but are not orbits, states with no orbital plane, a zero time step on every conic, near-rectilinear orbits, propagation composing, canonical scale invariance, bit-identical determinism, and a seeded sweep of 200 closed + 100 hyperbolic orbits around the Moon, Earth, Jupiter and the Sun |
+| `test_time` | 420,749, in 20 cases | The published epochs both ways; the calendar against `std::chrono`'s on every day of 1900–2100, and which dates exist against its `ok()`; a seeded calendar round trip; 1 ns at the end of a day and across it, and a million 1 µs steps; arithmetic by the nearest picosecond across every day boundary; ordering against the difference; every refusal by name; the Julian-date conversions against exact rational arithmetic; and, at compile time, that no scale converts to another and UTC and UT1 have no duration arithmetic |
 | `fuzz_orbit` | — | libFuzzer over the core under ASan and UBSan. Not a CTest test: run deliberately with a time budget, `cmake --preset linux-fuzz`. |
 | `orbsim_smoke` | — | Runs the app under the Vulkan validation layers for 2 s; fails on any validation error. Labelled `gpu`. |
 
-Totals: **3,632 assertions in 19 test cases**, and the same 3,632 under both
-Windows trees, under ASan, and under both Linux presets. Catch2 **v3.16.0**.
+Totals: **424,381 assertions in 39 test cases**, and the same 424,381 under
+both Windows trees, under ASan, and under both Linux presets. Catch2 **v3.16.0**.
 
-The seed for the random sweep is `20260905` and is written into
-`tests/test_orbit_scales.cpp`. A failure prints the failing case's parameters,
+The seeds for the random sweeps are written into the suites: `20260905` in
+`tests/test_orbit_scales.cpp` and `20260910` in `tests/test_time.cpp`, each the
+date its suite was written. `test_time` draws straight from the engine rather
+than through a `std::` distribution, whose algorithm the standard leaves to the
+library, so its sweep is the same dates under MSVC's library and libstdc++. A
+failure prints the failing case's parameters,
 through Catch2's `CAPTURE`, which reports them on failure rather than on every
 run. Catch2 prints a `Randomness seeded to:` line that differs between runs; it
 seeds only `GENERATE` and `--order rand`, neither of which this project uses,
-and the sweep's own generator is still seeded from `kSweepSeed`.
+and the sweeps' own generators are still seeded from `kSweepSeed`.
 `catch_discover_tests` makes each `TEST_CASE` its own CTest test, so `ctest -R`
-selects one and `ctest -N` lists **20**: the nineteen Catch2 cases plus
-`orbsim_smoke`. `ctest -LE gpu` lists the nineteen.
+selects one and `ctest -N` lists **40**: the thirty-nine Catch2 cases plus
+`orbsim_smoke`. `ctest -LE gpu` lists the thirty-nine.
 
 ## What this machine has
 
