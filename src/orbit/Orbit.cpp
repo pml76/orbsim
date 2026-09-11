@@ -8,6 +8,7 @@
 #include <algorithm>
 #include <cmath>
 #include <concepts>
+#include <cstdint>
 #include <expected>
 #include <limits>
 #include <tuple>
@@ -30,17 +31,25 @@ constexpr f64 kInf = std::numeric_limits<f64>::infinity();
 // point the periapsis direction / ascending node stops being meaningful.
 //
 // Where 1e-9 comes from, since a bare number here is exactly what section 12
-// warns about. All three are dimensionless by construction -- an eccentricity,
-// a ratio |n|/|h|, and a distance from e = 1 -- so unlike the tolerances below
-// they carry no hidden length scale. The value is the point at which the angle
-// these quantities determine stops being computable to useful precision: the
-// periapsis direction of an orbit with e = 1e-9 is set by the ninth
-// significant digit of the eccentricity vector, and f64 subtraction in
-// `evec` leaves roughly seven behind it. Below that the canonical
-// parameterisation (aop = 0, tra = argument of latitude) is not an
-// approximation -- it is the only answer that is stable.
+// warns about. Both are dimensionless by construction -- an eccentricity and a
+// ratio |n|/|h| -- so unlike the tolerances below they carry no hidden length
+// scale. The value is the point at which the angle these quantities determine
+// stops being computable to useful precision: the periapsis direction of an
+// orbit with e = 1e-9 is set by the ninth significant digit of the
+// eccentricity vector, and f64 subtraction in `evec` leaves roughly seven
+// behind it. Below that the canonical parameterisation (aop = 0, tra =
+// argument of latitude) is not an approximation -- it is the only answer that
+// is stable.
 constexpr f64 kCircularTol = 1e-9;
 constexpr f64 kEquatorialTol = 1e-9;
+
+// Element propagation refuses an eccentricity within this of 1, where the
+// classical Kepler equation is too ill-conditioned to be worth solving:
+// without the refusal it was up to 2,500% out on nearly radial and
+// near-parabolic states, and just outside it, it is still up to 3.5% out at
+// |e - 1| = 1e-9, falling as 1 / |e - 1| (measured against propagate(),
+// 2026-09-11). It no longer decides which conic a state is on; conicOf does,
+// from the energy. Dimensionless too: a distance from e = 1.
 constexpr f64 kParabolicTol = 1e-9;
 
 // Below this ratio of |h| to |r||v| -- the sine of the angle between position
@@ -75,6 +84,26 @@ constexpr f64 kSolverToleranceUlps = 4.0;
 // circle, 1 - e at periapsis, 1 + e at apoapsis, 0 on a parabola -- and
 // separates the conics at every scale.
 constexpr f64 kParabolicAlphaTol = 1e-12;
+
+// Which conic a state is on: the one test for it in this file, which
+// propagate() and elementsFromState both ask, on the dimensionless energy
+// above. Not on the eccentricity. On a nearly radial trajectory e is within a
+// hair of 1 whatever the energy, because e^2 - 1 = 2 E h^2 / mu^2 and h is
+// small, and a band on |e - 1| once called a probe 7000 km from Earth,
+// drifting sideways at 1 mm/s, a parabola -- when it is on a closed ellipse
+// with a period of 2061 s (2026-09-11).
+enum class Conic : std::uint8_t { Ellipse, Parabola, Hyperbola };
+
+[[nodiscard]] constexpr Conic conicOf(f64 alphaTimesRadius) noexcept {
+    if (alphaTimesRadius > kParabolicAlphaTol) return Conic::Ellipse;
+    if (alphaTimesRadius < -kParabolicAlphaTol) return Conic::Hyperbola;
+    return Conic::Parabola;
+}
+
+static_assert(conicOf(1.0) == Conic::Ellipse && conicOf(-1.0) == Conic::Hyperbola &&
+                  conicOf(0.0) == Conic::Parabola && conicOf(1e-13) == Conic::Parabola &&
+                  conicOf(-1e-13) == Conic::Parabola,
+              "the conic is the sign of the energy, outside a band of 1e-12 around zero");
 
 constexpr f64 clampUnit(f64 v) { return std::clamp(v, -1.0, 1.0); }
 constexpr f64 sign(f64 v) { return v < 0.0 ? -1.0 : 1.0; }
@@ -132,12 +161,11 @@ initialUniversalAnomaly(const StateVector& sv, const UniversalContext& ctx, f64 
     // both zeros and NaN included, and this one says which question it asks.
     if (std::fpclassify(seconds) == FP_ZERO) return 0.0;
 
-    if (ctx.alpha * ctx.r0 > kParabolicAlphaTol) { // ellipse
-        return ctx.sqrtMu * seconds * ctx.alpha;
-    }
+    const Conic conic = conicOf(ctx.alpha * ctx.r0);
+    if (conic == Conic::Ellipse) return ctx.sqrtMu * seconds * ctx.alpha;
 
-    if (ctx.alpha * ctx.r0 < -kParabolicAlphaTol) { // hyperbola
-        const f64 a = 1.0 / ctx.alpha;              // negative
+    if (conic == Conic::Hyperbola) {
+        const f64 a = 1.0 / ctx.alpha; // negative
         const f64 denom =
             ctx.rdotv + (sign(seconds) * std::sqrt(-ctx.mu * a) * (1.0 - (ctx.r0 * ctx.alpha)));
         return sign(seconds) * std::sqrt(-a) *
@@ -425,6 +453,37 @@ void assignInPlaneAngles(Elements& el, const OrbitFrame& frame) {
     el.tra = wrapTau(Radians{tra});
 }
 
+// Fills in sma, and keeps e on the side of 1 that matches it. Split out of
+// elementsFromState, as assignInPlaneAngles is, so neither exceeds the size
+// limit; and like it, the magnitudes are recomputed here rather than passed as
+// adjacent f64 parameters that transpose in silence.
+//
+// The conic is the energy's to decide, by the same test propagate() uses
+// (conicOf), and sma says which: finite and positive for an ellipse, negative
+// for a hyperbola, infinite for a parabola.
+//
+// And e is kept on the side of 1 the energy says. Near radial it is 1 as a
+// double for ellipses and hyperbolas alike -- a probe falling at 100 m/s with
+// a 1 um/s drift has e = 1 - 1.8e-20 -- and every consumer that branches on
+// e < 1, the anomaly conversions among them, would be guessing. Moving it to
+// the adjacent double changes it by less than the eccentricity vector's own
+// rounding.
+void assignConic(Elements& el, const StateVector& sv, GravParam mu) {
+    const f64 m = mu.value;
+    const f64 rmag = length(sv.pos);
+    const f64 vmag = length(sv.vel);
+    const f64 energy = (vmag * vmag * 0.5) - (m / rmag);
+    const f64 alpha = (2.0 / rmag) - (vmag * vmag / m);
+    const Conic conic = conicOf(alpha * rmag);
+    el.sma = Metres{conic == Conic::Parabola ? kInf : -m / (2.0 * energy)};
+    if (conic == Conic::Ellipse && !(el.ecc.value < 1.0)) {
+        el.ecc = Eccentricity{std::nextafter(1.0, 0.0)};
+    }
+    if (conic == Conic::Hyperbola && !(el.ecc.value > 1.0)) {
+        el.ecc = Eccentricity{std::nextafter(1.0, 2.0)};
+    }
+}
+
 // The postcondition Orbit.hpp promises: "degenerate orbits get a canonical
 // parameterisation rather than NaN". Two specific ways of breaking it are
 // refused by name upstream -- a magnitude that overflows, and a radial
@@ -519,9 +578,7 @@ std::expected<Elements, OrbitError> elementsFromState(const StateVector& sv, Gra
     // reported as the same thing: too little angular momentum to be an orbit.
     if (!(el.slr.value > 0.0)) return std::unexpected(OrbitError::RectilinearOrbit);
 
-    const f64 energy = (vmag * vmag * 0.5) - (m / rmag);
-    el.sma = Metres{(std::abs(el.ecc.value - 1.0) > kParabolicTol) ? -m / (2.0 * energy) : kInf};
-
+    assignConic(el, sv, mu);
     assignInPlaneAngles(el, {.r = r, .v = v, .h = h, .node = node, .evec = evec});
 
     if (!elementsAreUsable(el)) return std::unexpected(OrbitError::NotFinite);
@@ -564,10 +621,17 @@ OrbitInfo orbitInfo(const Elements& el, GravParam mu) {
     const f64 m = mu.value;
 
     OrbitInfo info;
-    info.closed = e < 1.0 - kParabolicTol;
+    // Closed is the energy's to say, through sma as elementsFromState set it,
+    // and not e < 1, which near radial is 1 whatever the energy.
+    info.closed = std::isfinite(el.sma.value) && el.sma.value > 0.0;
 
     info.periapsis = Metres{el.slr.value / (1.0 + e)};
-    info.apoapsis = Metres{info.closed ? el.slr.value / (1.0 - e) : kInf};
+    // a(1 + e), not p / (1 - e): near e = 1 the second divides by a 1 - e
+    // known only to its last bits. Measured against 60-digit references
+    // (2026-09-11), p / (1 - e) was up to 506% out on 27,242 nearly radial
+    // ellipses and 3.6e-10 on 138,754 ordinary ones; this is within 4.1e-11
+    // and 2.7e-12.
+    info.apoapsis = Metres{info.closed ? el.sma.value * (1.0 + e) : kInf};
     info.radius = Metres{el.slr.value / (1.0 + (e * std::cos(el.tra.value)))};
 
     if (info.closed) {
@@ -729,7 +793,7 @@ std::expected<StateVector, OrbitError> propagate(const StateVector& sv, GravPara
     // Whole revolutions of a closed orbit are a no-op. Folding them away keeps
     // the universal anomaly small, which is what keeps Newton convergent when
     // the sim runs at 100000x and a single dt spans months.
-    if (alpha * r0 > kParabolicAlphaTol) {
+    if (conicOf(alpha * r0) == Conic::Ellipse) {
         const f64 period = kTau / (sqrtMu * alpha * std::sqrt(alpha));
         seconds = std::fmod(seconds, period);
     }
@@ -779,9 +843,10 @@ propagateElements(const Elements& el, GravParam mu, Seconds dt) {
         return std::unexpected(OrbitError::NotFinite);
     }
     if (!(mu.value > 0.0)) return std::unexpected(OrbitError::NonPositiveGravity);
-    // The mean motion below is sqrt(mu / a^3), and a parabola has no a. Saying
-    // so beats feeding infinity to the Kepler solver and reporting that it
-    // did not converge.
+    // The mean motion below is sqrt(mu / a^3), and a parabola has no a; and
+    // within kParabolicTol of e = 1, where a nearly radial ellipse or
+    // hyperbola has a finite one, the Kepler equation below is too
+    // ill-conditioned to trust. Saying so beats feeding either to the solver.
     if (!std::isfinite(el.sma.value) || std::abs(el.ecc.value - 1.0) <= kParabolicTol) {
         return std::unexpected(OrbitError::ParabolicElements);
     }

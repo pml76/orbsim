@@ -52,7 +52,11 @@ struct StateVector {
 // their keep beyond the units: a bare `f64 sma;` here would be an
 // uninitialised read waiting to happen, and this cannot be.
 struct Elements {
-    Metres sma;       // semi-major axis. Negative for hyperbolic orbits.
+    // Semi-major axis: positive for an ellipse, negative for a hyperbola,
+    // infinite for a parabola. elementsFromState lets the energy decide which,
+    // not e -- near radial, e is 1 whatever the energy -- and keeps e on the
+    // same side of 1.
+    Metres sma;
     Eccentricity ecc; // dimensionless
     Radians inc;      // inclination, [0, pi]
     Radians lan;      // longitude of ascending node, [0, tau)
@@ -75,7 +79,7 @@ struct OrbitInfo {
     SpecificEnergy energy;       // specific orbital energy
     Metres radius;               // current radius
     MetresPerSecond speed;       // current speed
-    bool closed{};               // true for elliptic orbits (ecc < 1)
+    bool closed{};               // true for a bound orbit: a finite, positive sma
 };
 
 // --- errors ----------------------------------------------------------------
@@ -95,7 +99,11 @@ enum class OrbitError : std::uint8_t {
     NotFinite,
     DegenerateState,    // zero radius: a vessel at the exact centre of a body
     NonPositiveGravity, // mu <= 0 is not a central body
-    ParabolicElements,  // element propagation needs a finite semi-major axis
+    // Too near a parabola to propagate as elements: no finite semi-major axis,
+    // or an eccentricity within 1e-9 of 1 -- which a nearly radial ellipse or
+    // hyperbola has too -- where the Kepler equation is too ill-conditioned to
+    // trust. The state vector propagates accurately; use propagate().
+    ParabolicElements,
     // Velocity parallel to position, so the specific angular momentum is zero:
     // the trajectory is a straight line through the centre and has no orbital
     // plane, which means no inclination and no ascending node. Reachable in
@@ -115,8 +123,8 @@ enum class OrbitError : std::uint8_t {
     case OrbitError::NonPositiveGravity:
         return "gravitational parameter must be positive";
     case OrbitError::ParabolicElements:
-        return "parabolic elements have no finite semi-major axis; propagate the state vector "
-               "instead";
+        return "elements too near a parabola to propagate (no finite semi-major axis, or e "
+               "within 1e-9 of 1); propagate the state vector instead";
     case OrbitError::RectilinearOrbit:
         return "velocity is parallel to position; a radial trajectory has no orbital plane";
     case OrbitError::SolverDidNotConverge:
@@ -191,9 +199,13 @@ propagate(const StateVector& sv, GravParam mu, Seconds dt);
 
 // Advance only the anomaly of an element set, leaving the orbit shape intact.
 //
-// Needs a finite semi-major axis: a parabolic element set is reported as such
-// rather than fed to the Kepler solver, and should be propagated as a state
-// vector instead.
+// Needs a finite semi-major axis and an eccentricity at least 1e-9 from 1:
+// otherwise the element set is reported as `ParabolicElements` rather than fed
+// to the Kepler solver, and should be propagated as a state vector instead.
+// Near that band the classical Kepler equation loses accuracy fast: measured
+// against propagate(), up to 3.5% out at |e - 1| = 1e-9, falling as
+// 1 / |e - 1| to about 1e-6 at |e - 1| = 1e-6 (2026-09-11). propagate() is
+// accurate there.
 [[nodiscard]] std::expected<Elements, OrbitError>
 propagateElements(const Elements& el, GravParam mu, Seconds dt);
 

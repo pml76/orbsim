@@ -54,6 +54,39 @@ namespace {
 constexpr f64 kNaN = std::numeric_limits<f64>::quiet_NaN();
 constexpr f64 kInf = std::numeric_limits<f64>::infinity();
 
+// The energy and the semi-major axis of a state, computed here rather than by
+// the code under test: std::hypot for the lengths, and none of the orbit
+// code's formulas. For the nearly radial cases below.
+struct ConicReference {
+    SpecificEnergy energy;
+    Metres sma; // negative for a hyperbola
+    Metres radius;
+};
+
+[[nodiscard]] ConicReference conicReference(const StateVector& sv, GravParam mu) {
+    const f64 r = std::hypot(sv.pos.x, sv.pos.y, sv.pos.z);
+    const f64 v = std::hypot(sv.vel.x, sv.vel.y, sv.vel.z);
+    const f64 energy = (0.5 * v * v) - (mu.value / r);
+    return {
+        .energy = SpecificEnergy{energy},
+        .sma = Metres{-mu.value / (2.0 * energy)},
+        .radius = Metres{r},
+    };
+}
+
+// |got / want - 1|, with no floor under `want`: WithinRelTo's floor of 1e-30
+// would pass anything at the fuzzer's scale of 1e-159 m. An infinite or NaN
+// `got` fails any budget.
+[[nodiscard]] f64 relativeError(f64 got, f64 want) { return std::abs((got / want) - 1.0); }
+
+// The budget for the nearly radial cases. Their energies' two terms never come
+// within a factor of 2.4 of each other, so the subtraction amplifies rounding
+// at most 2.4-fold, and the semi-major axis, the energy, the period and the
+// mean motion each carry a handful of relative roundings on top: 1e-13 sits
+// two orders above that and eleven below the errors these cases were written
+// for.
+constexpr Tolerance kConicBudget{1e-13};
+
 } // namespace
 
 // Circular heliocentric orbits at the distances of Earth, Jupiter and Neptune.
@@ -427,6 +460,115 @@ TEST_CASE("a nearly radial hyperbola at a tiny scale is not reported as closed",
     INFO("a negative semi-major axis belongs to a hyperbola, so e > 1");
     const bool agreeOnTheConic = !(el->sma.value < 0.0) || el->ecc.value > 1.0;
     REQUIRE(agreeOnTheConic);
+
+    // And the hyperbola's size and energy, which the band |e - 1| <= 1e-9 hid:
+    // see the nearly radial cases below.
+    const ConicReference want = conicReference(state, mu);
+    INFO(std::format("sma {:.17g} m, want {:.17g}; energy {:.17g} J/kg, want {:.17g}",
+                     el->sma.value,
+                     want.sma.value,
+                     info.energy.value,
+                     want.energy.value));
+    REQUIRE(relativeError(el->sma.value, want.sma.value) <= kConicBudget.value);
+    REQUIRE(relativeError(info.energy.value, want.energy.value) <= kConicBudget.value);
+}
+
+// Nearly radial orbits at an ordinary scale: the conic is the energy's to
+// decide, not the eccentricity's (2026-09-11).
+//
+// On a nearly radial trajectory e is within a hair of 1 whatever the energy --
+// e^2 - 1 = 2 E h^2 / mu^2, and h is small -- so the band |e - 1| <= 1e-9 that
+// elementsFromState called parabolic took in ellipses and hyperbolas alike. A
+// probe 7000 km from Earth's centre, drifting sideways at 1 mm/s, is at the
+// apoapsis of an ellipse with a = 3500 km and a period of 2061 s, and
+// e = 1 - 1.8e-14; it was reported as a parabola: open, energy 0, no period.
+// The same probe leaving at 20 km/s is a hyperbola, e = 1 + 4.4e-14, with
+// 1.4e8 J/kg to spare; it was reported with energy 0.
+TEST_CASE("a nearly radial ellipse is closed, with its period", "[orbit][scales]") {
+    const StateVector state{.pos = {7000e3, 0.0, 0.0}, .vel = {0.0, 1.0e-3, 0.0}};
+    const auto el = elementsFromState(state, kMuEarth);
+    INFO("elementsFromState -> " << errorName(el));
+    REQUIRE(el.has_value());
+
+    const ConicReference want = conicReference(state, kMuEarth);
+    const f64 a = want.sma.value;
+    const f64 period = kTau * std::sqrt(a * a * a / kMuEarth.value);
+    const OrbitInfo info = orbitInfo(*el, kMuEarth);
+    INFO(std::format("sma {:.17g} m, want {:.17g}; ecc {:.17g}; energy {:.17g} J/kg, want "
+                     "{:.17g}; period {:.17g} s, want {:.17g}",
+                     el->sma.value,
+                     a,
+                     el->ecc.value,
+                     info.energy.value,
+                     want.energy.value,
+                     info.period.value,
+                     period));
+    INFO("the energy is negative: an ellipse, so e < 1 and the orbit is closed");
+    REQUIRE(el->ecc.value < 1.0);
+    REQUIRE(info.closed);
+    REQUIRE(relativeError(el->sma.value, a) <= kConicBudget.value);
+    REQUIRE(relativeError(info.energy.value, want.energy.value) <= kConicBudget.value);
+    REQUIRE(relativeError(info.period.value, period) <= kConicBudget.value);
+    REQUIRE(relativeError(info.meanMotion.value, kTau / period) <= kConicBudget.value);
+
+    // The velocity is square to the position and slower than circular, so the
+    // probe is at apoapsis: the apoapsis is where it is. p / (1 - e) divided by
+    // a 1 - e known only to its last bits; a(1 + e) does not.
+    INFO(std::format("apoapsis {:.17g} m, want {:.17g}", info.apoapsis.value, want.radius.value));
+    REQUIRE(relativeError(info.apoapsis.value, want.radius.value) <= kConicBudget.value);
+}
+
+// Closer still to radial, the eccentricity is 1 as a double. A probe falling at
+// 100 m/s with a sideways drift of 1 um/s has e = 1 - 1.8e-20, and leaving at
+// 20 km/s with the same drift, e = 1 + 4.4e-20: both round to exactly 1.0,
+// which is neither an ellipse's eccentricity nor a hyperbola's, and every
+// consumer that branches on e < 1 would have guessed. The energy knows which,
+// so e is kept on its side of 1: the nearest double below for an ellipse and
+// above for a hyperbola.
+TEST_CASE("an eccentricity that rounds to 1 keeps the side of 1 its energy says",
+          "[orbit][scales]") {
+    const StateVector falling{.pos = {7000e3, 0.0, 0.0}, .vel = {-100.0, 1.0e-6, 0.0}};
+    const auto ellipse = elementsFromState(falling, kMuEarth);
+    INFO("the falling probe -> " << errorName(ellipse));
+    REQUIRE(ellipse.has_value());
+    INFO(std::format("its eccentricity {:.17g}", ellipse->ecc.value));
+    REQUIRE(ellipse->ecc.value < 1.0);
+    REQUIRE(orbitInfo(*ellipse, kMuEarth).closed);
+    REQUIRE(relativeError(ellipse->sma.value, conicReference(falling, kMuEarth).sma.value) <=
+            kConicBudget.value);
+
+    const StateVector leaving{.pos = {7000e3, 0.0, 0.0}, .vel = {20.0e3, 1.0e-6, 0.0}};
+    const auto hyperbola = elementsFromState(leaving, kMuEarth);
+    INFO("the leaving probe -> " << errorName(hyperbola));
+    REQUIRE(hyperbola.has_value());
+    INFO(std::format("its eccentricity {:.17g}", hyperbola->ecc.value));
+    REQUIRE(hyperbola->ecc.value > 1.0);
+    REQUIRE_FALSE(orbitInfo(*hyperbola, kMuEarth).closed);
+    REQUIRE(relativeError(hyperbola->sma.value, conicReference(leaving, kMuEarth).sma.value) <=
+            kConicBudget.value);
+}
+
+// The hyperbolic half of the case above.
+TEST_CASE("a nearly radial hyperbola is open, with its energy", "[orbit][scales]") {
+    const StateVector state{.pos = {7000e3, 0.0, 0.0}, .vel = {20.0e3, 1.0e-3, 0.0}};
+    const auto el = elementsFromState(state, kMuEarth);
+    INFO("elementsFromState -> " << errorName(el));
+    REQUIRE(el.has_value());
+
+    const ConicReference want = conicReference(state, kMuEarth);
+    const OrbitInfo info = orbitInfo(*el, kMuEarth);
+    INFO(std::format("sma {:.17g} m, want {:.17g}; ecc {:.17g}; energy {:.17g} J/kg, want {:.17g}",
+                     el->sma.value,
+                     want.sma.value,
+                     el->ecc.value,
+                     info.energy.value,
+                     want.energy.value));
+    INFO("the energy is positive: a hyperbola, so e > 1 and the orbit is open");
+    REQUIRE(el->ecc.value > 1.0);
+    REQUIRE_FALSE(info.closed);
+    REQUIRE(std::isinf(info.period.value));
+    REQUIRE(relativeError(el->sma.value, want.sma.value) <= kConicBudget.value);
+    REQUIRE(relativeError(info.energy.value, want.energy.value) <= kConicBudget.value);
 }
 
 // A zero time step is the identity, on every conic and not just on the one the

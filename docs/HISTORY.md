@@ -552,6 +552,40 @@ inside the band `|e - 1| <= 1e-9` that the code calls parabolic, and
 `orbitInfo` reports energy 0 for an orbit whose energy is 5.1e123 J/kg. On a
 nearly radial trajectory e is near 1 whatever the energy.
 
+**That band turned out to misjudge ordinary states too, and it went.** The
+regression tests came first, and the two that mattered were not the fuzzer's:
+a probe 7000 km from Earth drifting sideways at 1 mm/s -- on a closed ellipse
+with a period of 2061 s -- was reported as a parabola, open, energy 0; leaving
+at 20 km/s, a hyperbola, likewise. Four prototypes were measured against
+60-digit references over 300,000 states before the owner chose. Today's band
+had the closed flag wrong for 42% of 50,000 nearly radial states, e on the
+wrong side of 1 for 9,774 of them, and the energy a median 100% out. The fix
+asks one question everywhere, the one `propagate()` already asked: the conic is
+the energy's, parabolic iff |alpha r| <= 1e-12, and `sma` says which. That left
+no conic misjudged, and on the nearly radial states the semi-major axis and
+energy within 4.1e-11 and the period within 6.1e-11. The classifier alone left
+all 200,000 ordinary orbits bit-identical; `propagate()` is bit-identical too,
+though it now asks through the same small function. Near radial, e is exactly
+1.0 as a double -- a probe falling at 100 m/s with a 1 um/s drift, e = 1 -
+1.8e-20 -- so it is now kept on the side of 1 the energy says. And the
+apoapsis became a(1 + e): p / (1 - e) divided by a 1 - e known only to its last
+bits, and had been up to 506% out on nearly radial ellipses and 3.6e-10 on
+138,754 ordinary ones, where a(1 + e) is within 4.1e-11 and 2.7e-12. That one
+change does move the apoapsis of 90% of ordinary closed orbits by a few ulp,
+four in five of them toward the reference, and the owner chose it knowing the
+bits would move. The figures first put to the owner, 5.2e-11 and 8.8e-13, came
+from a sample of 20,000; the full run above found both formulas' worst cases
+larger and the case for the change stronger. Five mutants of the fix are each
+killed by the tests aimed at it.
+
+The measurement found two more things, each made a task of its own by the
+owner rather than folded in: `orbitInfo`'s radius and speed, computed from p,
+e and the true anomaly, are ill-conditioned near the radial limit whatever the
+classifier (median 0.14% out, unbounded at worst); and `propagateElements`
+keeps its refusal within 1e-9 of e = 1 -- without it the error reached
+2,500% -- but is already up to 3.5% out just outside it, falling as
+1 / |e - 1|, where `propagate()` answers accurately.
+
 ---
 
 ## 4. The bug that justified the session
