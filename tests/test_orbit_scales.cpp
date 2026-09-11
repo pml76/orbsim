@@ -23,6 +23,7 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <format>
 #include <limits>
 #include <random>
 #include <string_view>
@@ -235,12 +236,13 @@ TEST_CASE("non-finite inputs are refused by name", "[orbit][scales]") {
 // of these came from the fuzzer rather than from anyone sitting down to think
 // of them, which is the argument for rule 13 in one paragraph.
 TEST_CASE("states that are finite but are not orbits", "[orbit][scales]") {
-    // Finite components whose magnitude is not. Squaring overflows above about
-    // 1.3e154, so lengthSq() reaches infinity from inputs that every isfinite()
-    // check passes -- and `rmag > 0.0` is then true of infinity, so the
-    // precondition let it through. A fuzzer found this (VERIFICATION.md rule
-    // 13): the elements came back reporting success, with an infinite
-    // eccentricity and a NaN argument of periapsis.
+    // Finite components whose derived quantities are not. A fuzzer found this
+    // (VERIFICATION.md rule 13) when length() squared its components, so |r|
+    // reached infinity above about 1.3e154 from inputs that every isfinite()
+    // check passes: the elements came back reporting success, with an infinite
+    // eccentricity and a NaN argument of periapsis. length() no longer
+    // overflows (2026-09-11), but for these states |h|^2 and the eccentricity
+    // vector still do, and the answer is still refused rather than returned.
     const StateVector overflowing{
         .pos = {-5.486124068796807e303, 0.0, 0.0},
         .vel = {0.0, 7.418412301374917e-68, 0.0},
@@ -340,6 +342,91 @@ TEST_CASE("states with no orbital plane", "[orbit][scales]") {
     const auto stillAnOrbit = elementsFromState(stateFromElements(thin, kMuEarth), kMuEarth);
     INFO("e = 0.9999 is still an orbit -> " << errorName(stillAnOrbit));
     REQUIRE(stillAnOrbit.has_value());
+}
+
+// length() is exact wherever its answer is representable, at every scale.
+//
+// A Pythagorean vector's length is an integer -- |(3, 4, 12)| = 13 -- and
+// scaling by a power of two changes only exponents, so (3, 4, 12) * 2^k has
+// length 13 * 2^k exactly for every k at which those four numbers are doubles:
+// an expected value that owes nothing to the code. sqrt(dot) met it only from
+// 2^-537 to 2^508, and was wrong at 1,049 of these 2,095 scales (measured):
+// below that band the squares fall into the subnormals, which keep fewer bits
+// the smaller they get, and above it they overflow. The first of those is what
+// gave the fuzzer's radial hyperbola, below, the wrong eccentricity
+// (2026-09-11).
+TEST_CASE("length is exact at every binary scale", "[core][scales]") {
+    int inexact = 0;
+    int firstInexact = 0;
+    for (int k = -1074; k <= 1020; ++k) {
+        const Vec3 v{std::scalbn(3.0, k), std::scalbn(4.0, k), std::scalbn(12.0, k)};
+        const f64 want = std::scalbn(13.0, k);
+        if (!nearlyEqual(length(v), want, Tolerance{0.0}) && inexact++ == 0) firstInexact = k;
+    }
+    INFO(std::format("{} scales inexact, the first at 2^{}", inexact, firstInexact));
+    REQUIRE(inexact == 0);
+}
+
+// The fuzzer's finding of 2026-09-11 (VERIFICATION.md rule 13), as it found it.
+// Position about 1e-158 m, velocity about 9e61 m/s, mu 4.3e-35: an open orbit
+// -- the kinetic term of the energy is 2.5 times the potential -- and a nearly
+// radial one, with |h| about 1.6e-7 of |r||v|, so e = 1 + 1.8e-13.
+// elementsFromState returned a negative semi-major axis, which is a
+// hyperbola's, with an eccentricity of 1 - 7e-9, which is an ellipse's;
+// orbitInfo believed the eccentricity, called the orbit closed, and took the
+// square root of a negative a^3.
+//
+// The cause was |r|: its square, 1.6e-316, is subnormal, so sqrt(dot) was off
+// by 7e-9, and the eccentricity by as much. The test holds e to 8 ulp of a
+// reference computed here, independently of core/Math.hpp -- std::hypot for
+// the lengths, and e^2 - 1 = 2 E h^2 / mu^2, which cancels nothing. The budget:
+// the eccentricity vector is the difference of two terms of about 4 and 5 in
+// units where e is 1, each good to an ulp or two, so its length is good to a
+// few ulp of 1; 8 ulp sits above that and four million times below the error
+// the fuzzer found.
+// Catch2 macro expansion, not written complexity. See the note above.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("a nearly radial hyperbola at a tiny scale is not reported as closed",
+          "[orbit][scales]") {
+    const StateVector state{
+        .pos = {6.6047118912273269e-313, 8.8544950093349595e-159, 8.8544945874389708e-159},
+        .vel = {2.3135945642312217e-157, -9.2559606829389177e+61, -9.2559631349317831e+61},
+    };
+    const GravParam mu{4.3333423748712802e-35};
+
+    const auto el = elementsFromState(state, mu);
+    INFO("elementsFromState -> " << errorName(el));
+    REQUIRE(el.has_value());
+
+    const f64 r = std::hypot(state.pos.x, state.pos.y, state.pos.z);
+    const f64 v = std::hypot(state.vel.x, state.vel.y, state.vel.z);
+    const Vec3 h = cross(state.pos, state.vel);
+    const f64 hOverMu = std::hypot(h.x, h.y, h.z) / mu.value;
+    const f64 energy = (0.5 * v * v) - (mu.value / r);
+    const f64 eSquaredMinusOne = 2.0 * energy * hOverMu * hOverMu;
+    const f64 eReference = 1.0 + (eSquaredMinusOne / (1.0 + std::sqrt(1.0 + eSquaredMinusOne)));
+    INFO(std::format("ecc {:.17g}, reference {:.17g}", el->ecc.value, eReference));
+    INFO("the energy is positive, so the eccentricity exceeds 1");
+    REQUIRE(el->ecc.value > 1.0);
+    constexpr Tolerance kEccentricityBudget{8.0 * std::numeric_limits<f64>::epsilon()};
+    REQUIRE_THAT(el->ecc.value, WithinAbsOf(eReference, kEccentricityBudget));
+
+    const OrbitInfo info = orbitInfo(*el, mu);
+    // Formatted by hand: Catch2 prints -4.2e-159 as "-0.0", and 17 significant
+    // digits round-trip, so a failure can be pasted back in as a case.
+    INFO(std::format("sma {:.17g} m, ecc {:.17g}, period {:.17g} s, mean motion {:.17g} rad/s",
+                     el->sma.value,
+                     el->ecc.value,
+                     info.period.value,
+                     info.meanMotion.value));
+    INFO("the energy is positive, so the orbit is open");
+    REQUIRE_FALSE(info.closed);
+    INFO("an open orbit's period and mean motion are infinite and zero, not NaN");
+    REQUIRE_FALSE(std::isnan(info.period.value));
+    REQUIRE_FALSE(std::isnan(info.meanMotion.value));
+    INFO("a negative semi-major axis belongs to a hyperbola, so e > 1");
+    const bool agreeOnTheConic = !(el->sma.value < 0.0) || el->ecc.value > 1.0;
+    REQUIRE(agreeOnTheConic);
 }
 
 // A zero time step is the identity, on every conic and not just on the one the

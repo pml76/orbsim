@@ -467,14 +467,17 @@ std::expected<Elements, OrbitError> elementsFromState(const StateVector& sv, Gra
     const f64 m = mu.value;
     const f64 vmag = length(v);
 
-    // Finite components do not imply a finite magnitude. lengthSq squares each
-    // component, so anything above about 1.3e154 overflows to infinity and
-    // every isfinite() check on the inputs still passes -- and `rmag > 0.0` is
+    // Finite components do not imply a finite magnitude. A vector whose length
+    // exceeds the largest double has an infinite length, and `rmag > 0.0` is
     // true of infinity, so the test above waves it through. A fuzzer found
-    // this: the elements came back claiming success with an infinite
+    // this when length() still squared its components and overflowed above
+    // about 1.3e154: the elements came back claiming success with an infinite
     // eccentricity and a NaN argument of periapsis, which is precisely the
     // "succeeded, and the answer is NaN" outcome the type system cannot
-    // prevent and the caller has no way to detect.
+    // prevent and the caller has no way to detect. length() is exact to 2 ulp
+    // at every scale now (core/Math.hpp), but a magnitude beyond 1.8e308 is
+    // still infinite, and the quantities below still square things; the
+    // postcondition at the end catches what overflows there.
     if (!std::isfinite(rmag) || !std::isfinite(vmag)) {
         return std::unexpected(OrbitError::NotFinite);
     }
@@ -709,10 +712,10 @@ std::expected<StateVector, OrbitError> propagate(const StateVector& sv, GravPara
     const f64 m = mu.value;
     const f64 v0 = length(sv.vel);
 
-    // Same overflow as in elementsFromState: a component above about 1.3e154
-    // squares to infinity inside lengthSq, and infinity passes the `r0 > 0.0`
-    // test above. Without this the Lagrange coefficients below are computed
-    // from infinities and the propagated state is NaN.
+    // Same as in elementsFromState: a magnitude beyond the largest double is
+    // infinite, and infinity passes the `r0 > 0.0` test above. Without this the
+    // Lagrange coefficients below are computed from infinities and the
+    // propagated state is NaN.
     if (!std::isfinite(r0) || !std::isfinite(v0)) {
         return std::unexpected(OrbitError::NotFinite);
     }

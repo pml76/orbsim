@@ -285,6 +285,16 @@ written, each in a few thousand executions:
 After the fixes: **77.4 million executions, 241 seconds, zero findings** — the
 same fuzzer that previously hit a defect within a few thousand runs.
 
+**A sixth, on 2026-09-11, after 1.1 million executions**, where two earlier runs
+that day had passed ten million each: a nearly radial hyperbola at a scale of
+1e-158 m. Its `|r|^2` is subnormal, so `length()`, then `sqrt(dot)`, was off by
+7e-9, and the eccentricity came out 1 - 7e-9 where it is 1 + 1.8e-13 — an
+ellipse's eccentricity beside a hyperbola's semi-major axis, and `orbitInfo`
+then a NaN period for an orbit it called closed. Fixed at the root: `length()`
+is exact to 2 ulp at every scale now (`core/Math.hpp`), and bit-identical to
+before wherever before was right. Afterwards: 22.6 million executions in 61
+seconds, zero findings.
+
 Highest value still to come is a **file parser** — a scenario loader, a DE440
 reader, a DDS/KTX2 header parser — because those consume untrusted bytes and are
 the classic memory-safety surface. The harness is there for them now.

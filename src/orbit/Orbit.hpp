@@ -87,10 +87,11 @@ struct OrbitInfo {
 // representation part of the declaration rather than a compiler default, and it
 // is what lets the enum be forward-declared.
 enum class OrbitError : std::uint8_t {
-    // NaN or infinity, either in an input or in a magnitude derived from one.
+    // NaN or infinity, either in an input or in a quantity derived from one.
     // The second case is not obvious and a fuzzer found it: every component of
-    // a state can be finite while |r| is not, because squaring overflows above
-    // about 1.3e154. A corrupt scenario, not an orbit.
+    // a state can be finite while |h|^2 or the eccentricity vector is not --
+    // and while |r| was, before length() became safe at every scale. A corrupt
+    // scenario, not an orbit.
     NotFinite,
     DegenerateState,    // zero radius: a vessel at the exact centre of a body
     NonPositiveGravity, // mu <= 0 is not a central body
@@ -129,9 +130,9 @@ enum class OrbitError : std::uint8_t {
 // `mu` is the standard gravitational parameter GM of the central body.
 //
 // Reports, rather than returning elements a caller cannot use: `NotFinite` for
-// a non-finite input *or* a magnitude derived from one that overflows -- every
-// component can be finite while |r| is not, because squaring overflows above
-// about 1.3e154; `NonPositiveGravity`; `DegenerateState` for a vessel at the
+// a non-finite input *or* a quantity derived from one that overflows -- every
+// component can be finite while |h|^2 or the eccentricity vector is not;
+// `NonPositiveGravity`; `DegenerateState` for a vessel at the
 // exact centre of the body; and `RectilinearOrbit` for a radial trajectory,
 // which has no orbital plane and therefore no inclination. On success every
 // element is a usable number, which is checked before returning.

@@ -20,7 +20,9 @@
 //
 #include "core/Units.hpp"
 
+#include <algorithm>
 #include <cmath>
+#include <limits>
 
 namespace orb {
 
@@ -95,7 +97,38 @@ struct Vec3 {
 }
 
 [[nodiscard]] constexpr f64 lengthSq(const Vec3& v) noexcept { return dot(v, v); }
-[[nodiscard]] inline f64 length(const Vec3& v) noexcept { return std::sqrt(dot(v, v)); }
+
+// |v|, to 2 ulp at every scale a double reaches.
+//
+// sqrt(dot(v, v)) is that good only while the sum of squares stays in the
+// normal range. Below about 1.5e-154 the squares fall into the subnormals,
+// which keep fewer significant bits the smaller they get; above about 1.3e154
+// they overflow. The first cost an eccentricity its sign: the fuzzer found a
+// position of 1.25e-158 m whose length came out 7e-9 too long, and a
+// hyperbola read as an ellipse (2026-09-11, tests/test_orbit_scales.cpp).
+//
+// So the sum is taken exactly as before wherever that loses nothing -- at or
+// above 2^-969 a subnormal square's rounding error is below 2^-106 of the sum,
+// and a finite sum of non-negative terms had none overflow -- which leaves
+// every such result bit-identical to before (measured on 5 million vectors,
+// on both toolchains). Outside that, each component is scaled by the power of
+// two that brings the largest into [1, 2), which is exact because only the
+// exponent changes, and the square root is scaled back by the same power,
+// exact again. Per component, because scalbn(1.0, -k) itself overflows when
+// the largest component is subnormal.
+[[nodiscard]] inline f64 length(const Vec3& v) noexcept {
+    constexpr f64 kSmallestExactSum = 0x1p-969;
+    const f64 sq = dot(v, v);
+    if (sq >= kSmallestExactSum && sq <= std::numeric_limits<f64>::max()) return std::sqrt(sq);
+    const f64 largest = std::max({std::abs(v.x), std::abs(v.y), std::abs(v.z)});
+    // Zero, or an infinite component: nothing to scale, and the plain sum
+    // already gives 0 or infinity. A NaN component comes out NaN either way.
+    if (!(largest > 0.0) || !std::isfinite(largest)) return std::sqrt(sq);
+    const int exponent = std::ilogb(largest);
+    const Vec3 scaled{
+        std::scalbn(v.x, -exponent), std::scalbn(v.y, -exponent), std::scalbn(v.z, -exponent)};
+    return std::scalbn(std::sqrt(dot(scaled, scaled)), exponent);
+}
 
 // Returns the zero vector for a zero-length input rather than NaN; callers in
 // the orbital code rely on this to stay well-behaved in degenerate orbits.

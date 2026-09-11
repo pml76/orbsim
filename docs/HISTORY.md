@@ -526,6 +526,32 @@ libFuzzer, ASan and UBSan, runs 3.8 million inputs in 30 s, and reproduces
 the crash. The owner ruled for both: the bug fixed before M1-04, test first,
 and fuzzing enabled on Windows beside `linux-fuzz`.
 
+**The bug was not in the orbit code.** The regression test came first and
+failed as the fuzzer had. Measuring then found the cause one layer down:
+`|r|` was 1.25e-158 m, its square 1.6e-316 is subnormal, and `length()` --
+`sqrt(dot(v, v))` -- was off by 6.98e-9, exactly the error in the
+eccentricity. The true eccentricity is 1 + 1.8e-13; a first estimate of
+1 + 1.8e-11, made by hand from the wrong angular momentum, was corrected by
+computing it. Three fixes were measured before one was recommended: refusing
+such states, `std::hypot`, which shifts 3.5% of all lengths by an ulp and costs
+two to eight times as much, and a guarded `length()`: today's `sqrt(dot)`
+wherever the sum of squares is at least 2^-969, an exact power-of-two rescaling
+outside it. The owner chose the third. It is bit-identical to before on 5
+million normal-range vectors on both toolchains, costs at most 0.7 ns more per
+call, and is exact on (3, 4, 12) * 2^k at all 2,095 binary scales, where the
+old one failed at 1,049.
+Writing it caught a flaw in its own measurement: scaling by `scalbn(1.0, -k)`
+overflows when the largest component is subnormal, the first probe's reference
+shared the flaw, and so the all-subnormal vectors had been skipped rather than
+measured. Scaling each component fixed both; three mutants of the new code are
+each killed by the tests written for it.
+
+Fixing the length exposed a second, older limitation, which the owner made a
+task of its own: with its eccentricity now right, 1 + 1.8e-13, the state falls
+inside the band `|e - 1| <= 1e-9` that the code calls parabolic, and
+`orbitInfo` reports energy 0 for an orbit whose energy is 5.1e123 J/kg. On a
+nearly radial trajectory e is near 1 whatever the energy.
+
 ---
 
 ## 4. The bug that justified the session
