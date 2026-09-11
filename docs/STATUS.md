@@ -41,7 +41,7 @@ opens a window and paces frames.** Nothing is drawn yet.
 |---|---|
 | Current milestone | 1 — Earth, orbit track, Orbit MFD |
 | Last task completed | [M1-03](plan/tasks/m1-03-timepoint.md), `TimePoint` and the time scales, 2026-09-10 |
-| Before M1-04 | One commit from [ADR 0017](adr/0017-every-warning-is-an-error.md): `tests/fuzz_orbit.cpp` brought under lint, which it never was (13 findings) |
+| Before M1-04 | Two findings of 2026-09-11, by the owner's decision. **The fuzzer's first bug**: for a nearly radial hyperbolic state, `elementsFromState` returns a hyperbola's semi-major axis with an ellipse's eccentricity (1 - 7e-9 where the truth is about 1 + 1.8e-11), and `orbitInfo` then reports a NaN period as closed; a regression test first, then the fix options to the owner. **Fuzzing on Windows**, which works (measured) although `CMakeLists.txt` refuses it, to be enabled beside `linux-fuzz` |
 | Next task | [M1-04](plan/tasks/m1-04-leap-seconds.md), UTC, TAI and TT: the leap-second table |
 | Then | The rest of phase A — the Horizons fixtures (M1-06, now ahead of M1-05); TDB and UT1, where ERFA is pinned; Earth orientation with nutation, and the Sun, both computed by ERFA; then `orbsim_view`, the camera, the pipelines, and the probe mode that verifies everything drawn after it |
 | Phase order | A → B → D → C → E → F → G |

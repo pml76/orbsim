@@ -28,6 +28,12 @@
 //     cmake --build build/linux-fuzz
 //     ./build/linux-fuzz/fuzz_orbit -max_total_time=60
 //
+// Every tree also compiles this file without libFuzzer, into
+// orbsim_fuzz_objects, so that the warnings and check's lint cover it on
+// Windows too.
+//
+#include "core/Math.hpp"
+#include "core/Units.hpp"
 #include "orbit/Orbit.hpp"
 
 #include <array>
@@ -57,13 +63,17 @@ void requireNoNaN(const Vec3& v) {
 }
 
 void checkElements(const Elements& el, GravParam mu) {
-    for (const double value : std::array{el.sma.value,
-                                         el.ecc.value,
-                                         el.inc.value,
-                                         el.lan.value,
-                                         el.aop.value,
-                                         el.tra.value,
-                                         el.slr.value}) {
+    // std::to_array rather than a braced std::array, which leans on brace
+    // elision -- what gcc's -Wmissing-braces reports.
+    for (const double value : std::to_array<double>({
+             el.sma.value,
+             el.ecc.value,
+             el.inc.value,
+             el.lan.value,
+             el.aop.value,
+             el.tra.value,
+             el.slr.value,
+         })) {
         require(!std::isnan(value));
     }
 
@@ -71,13 +81,15 @@ void checkElements(const Elements& el, GravParam mu) {
     // NonPositiveGravity rather than returning a value otherwise, so
     // orbitInfo's precondition holds here.
     const OrbitInfo info = orbitInfo(el, mu);
-    for (const double value : std::array{info.periapsis.value,
-                                         info.apoapsis.value,
-                                         info.period.value,
-                                         info.meanMotion.value,
-                                         info.energy.value,
-                                         info.radius.value,
-                                         info.speed.value}) {
+    for (const double value : std::to_array<double>({
+             info.periapsis.value,
+             info.apoapsis.value,
+             info.period.value,
+             info.meanMotion.value,
+             info.energy.value,
+             info.radius.value,
+             info.speed.value,
+         })) {
         require(!std::isnan(value));
     }
 }
@@ -88,13 +100,16 @@ constexpr std::size_t kBytesNeeded = kDoublesNeeded * sizeof(double);
 
 } // namespace
 
-// The name and signature are libFuzzer's, not this codebase's, so the naming
-// check cannot apply to it. libFuzzer declares it in its own driver, in no
-// header this file can include, which is what -Wmissing-prototypes reports; it
-// is off for this definition (ADR 0017).
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wmissing-prototypes"
+// The entry point, declared as libFuzzer's own driver declares it. libFuzzer
+// ships no header for it, and a definition with no declaration before it is
+// what clang's -Wmissing-prototypes and gcc's -Wmissing-declarations report;
+// declaring it answers both rather than silencing either. The name and
+// signature are libFuzzer's, not this codebase's, so the naming check cannot
+// apply to them, and clang-tidy reports the name here, at its first
+// declaration.
 // NOLINTNEXTLINE(readability-identifier-naming)
+extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size);
+
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size) {
     if (size < kBytesNeeded) return 0;
 
@@ -102,20 +117,29 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     // type-punning through a reinterpret_cast is undefined -- which UBSan would
     // rightly report as a bug in this harness rather than in the code under it.
     // libFuzzer hands the input over as a pointer and a size, and the size is
-    // checked above; a C library copy from a bare pointer is what
+    // checked above; a C library copy from a bare pointer is what clang's
     // -Wunsafe-buffer-usage-in-libc-call reports, and it is off for this one
-    // (ADR 0017).
+    // (ADR 0017) -- for clang alone, since gcc has no such warning and reports
+    // a pragma it does not recognise.
     std::array<double, kDoublesNeeded> raw{};
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-libc-call"
+#endif
     std::memcpy(raw.data(), data, kBytesNeeded);
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
 
-    const StateVector sv{.pos = {raw[0], raw[1], raw[2]}, .vel = {raw[3], raw[4], raw[5]}};
-    const GravParam mu{raw[6]};
+    // Named rather than indexed: the binding has exactly as many names as the
+    // array has elements, which the compiler checks, so no read can fall
+    // outside it.
+    const auto [posX, posY, posZ, velX, velY, velZ, muValue] = raw;
+    const StateVector sv{.pos = {posX, posY, posZ}, .vel = {velX, velY, velZ}};
+    const GravParam mu{muValue};
 
     // The time step reuses an input word so the fuzzer can steer it too.
-    const Seconds dt{raw[3]};
+    const Seconds dt{velX};
 
     if (const auto el = elementsFromState(sv, mu)) checkElements(*el, mu);
 
@@ -126,4 +150,3 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
 
     return 0;
 }
-#pragma clang diagnostic pop

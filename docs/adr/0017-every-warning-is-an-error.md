@@ -185,3 +185,12 @@ The example also taught something false, and now does not: its comments and
 README called the defaulted `==` on `Vec3` and `OrbitPath` bit-exact, and
 `==` "the only correct operator" for bit identity. A defaulted `==` on doubles
 is numeric equality. It says +0.0 equals -0.0, and that a NaN equals nothing.
+
+## Update, 2026-09-11: the fuzz target is linted
+
+`tests/fuzz_orbit.cpp` is compiled in every tree now, into the object library
+`orbsim_fuzz_objects`, and linted by `check`. Its entry point is declared
+before it is defined, which satisfies clang's `-Wmissing-prototypes` and gcc's
+`-Wmissing-declarations` both, so the clang pragma listed in the table above
+for it is gone; the `memcpy` of libFuzzer's input keeps its exemption, now
+inside `#ifdef __clang__`, because gcc compiles the file too.

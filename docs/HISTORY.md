@@ -501,6 +501,31 @@ both compilers, one of them rewritten because it tested the `==` that is gone;
 six mutants of its new compile-time proofs fail to compile, each on its own
 assertion.
 
+**Then the fuzz target came under lint, and the fuzzer found its first bug.**
+`tests/fuzz_orbit.cpp` had never been linted -- it was missing from the list,
+and Windows never compiled it. Every tree now compiles it into an object
+library that nothing links, so `check` lints it (a planted `raw[3]` was
+seen to fail the lint target). Its 13 findings were fixed: the missing
+includes, two trailing commas, and eight indexed reads that became a
+structured binding. The entry point is now declared before it is defined,
+which answers clang's `-Wmissing-prototypes` and gcc's `-Wmissing-declarations`
+alike and retires a pragma.
+
+The verification run of `linux-fuzz` then stopped after 1,132,833 inputs: for
+a nearly radial hyperbolic state -- position about 1e-158 m, velocity about
+9e61 m/s, mu 4.3e-35 -- `elementsFromState` returned a negative semi-major
+axis with an eccentricity just below 1, and `orbitInfo` a NaN period for an
+orbit it called closed. Earlier runs the same day had passed 10 million inputs
+twice; fuzzing is a search, and this one got further. The bug predates the
+day: it reproduces with the whole tree at `23690d9`.
+
+And the reason given for fuzzing only in WSL -- "clang's libFuzzer does not
+target the MSVC ABI" -- turned out to be false when measured. The Windows LLVM
+23.1.0 ships the libFuzzer runtime, and `fuzz_orbit` builds there with
+libFuzzer, ASan and UBSan, runs 3.8 million inputs in 30 s, and reproduces
+the crash. The owner ruled for both: the bug fixed before M1-04, test first,
+and fuzzing enabled on Windows beside `linux-fuzz`.
+
 ---
 
 ## 4. The bug that justified the session

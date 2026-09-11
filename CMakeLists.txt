@@ -261,6 +261,17 @@ endforeach()
 # build that cannot link.
 # ---------------------------------------------------------------------------
 option(ORBSIM_BUILD_FUZZERS "Build the libFuzzer targets (Linux/WSL only)" OFF)
+
+# The fuzz targets' sources are compiled in every tree as well, into an object
+# library nothing links, without libFuzzer: so that the full warning set and
+# check's lint see them on Windows, where the fuzzer itself cannot be built.
+# Until 2026-09-11 nothing linted tests/fuzz_orbit.cpp at all (ADR 0017).
+set(ORBSIM_FUZZ_SOURCES
+        tests/fuzz_orbit.cpp
+)
+add_library(orbsim_fuzz_objects OBJECT ${ORBSIM_FUZZ_SOURCES})
+target_link_libraries(orbsim_fuzz_objects PRIVATE orbsim_core orbsim_warnings)
+
 if(ORBSIM_BUILD_FUZZERS)
     if(WIN32)
         message(FATAL_ERROR "ORBSIM_BUILD_FUZZERS: clang's libFuzzer does not target the MSVC ABI. "
@@ -492,7 +503,8 @@ endif()
 find_program(ORBSIM_CLANG_TIDY clang-tidy)
 find_program(ORBSIM_CLANG_FORMAT clang-format)
 
-set(ORBSIM_LINT_SOURCES ${ORBSIM_CORE_SOURCES} ${ORBSIM_TEST_SUPPORT_SOURCES})
+set(ORBSIM_LINT_SOURCES
+        ${ORBSIM_CORE_SOURCES} ${ORBSIM_TEST_SUPPORT_SOURCES} ${ORBSIM_FUZZ_SOURCES})
 foreach(test_name IN LISTS ORBSIM_TESTS)
     list(APPEND ORBSIM_LINT_SOURCES tests/${test_name}.cpp)
 endforeach()
