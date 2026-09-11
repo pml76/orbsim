@@ -448,7 +448,20 @@ asked for.
   rejects `#pragma GCC diagnostic ignored "-Wabi-tag"` as an unknown warning
   group, which `-Weverything` makes an error, so a gcc-only exemption sits
   inside `#if defined(__GNUC__) && !defined(__clang__)`, as in
-  `tests/OrbitTestSupport.hpp`.
+  `tests/OrbitTestSupport.hpp`. The reverse holds too: gcc reports every
+  `#pragma clang diagnostic` line under `-Wall` (`-Wunknown-pragmas`,
+  measured), so in code both compilers build a clang-only exemption sits inside
+  `#ifdef __clang__` -- `#ifdef`, because clang-tidy's
+  `readability-use-concise-preprocessor-directives` rejects
+  `#if defined(__clang__)`. The worked example's tests do this.
+- **gcc reports `[[clang::lifetimebound]]` as an ignored attribute**
+  (`-Wattributes`) wherever it is written, with its default flags as well --
+  measured 2026-09-11 on a parameter and on the implicit object. orbsim's
+  sixteen uses are all in the renderer, which gcc does not build. The worked
+  example's one use is exempted by a gcc-only pragma at the site, by the
+  owner's ruling. gcc-14 also accepts `-Wno-attributes=clang::lifetimebound`,
+  which exempts that attribute and nothing else -- a misspelt one is still
+  reported -- and which clang rejects; all three measured.
 - **`-Weverything` includes `-Wshadow-header`**, so a probe that shadows one
   of our headers from another include directory -- the easy way to compile a
   mutated copy -- fails before it tests anything, and looks like a killed

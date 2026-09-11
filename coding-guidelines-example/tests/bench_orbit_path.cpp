@@ -75,7 +75,12 @@ struct Timing {
 
 } // namespace
 
-// [S7] Nothing escapes main; see the test executables for the same guard.
+// [S7] Nothing escapes main; see the test executables for the same guard, and
+// tests/test_units.cpp for why one clang warning is off for it.
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-libc-call"
+#endif
 int main() {
     try {
         std::print("orbex :: orbit path benchmark\n\n");
@@ -114,3 +119,6 @@ int main() {
         return 2;
     }
 }
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif

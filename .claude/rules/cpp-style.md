@@ -25,9 +25,11 @@ shape.
 - The rules applied to real code: [`coding-guidelines-example/`](../../coding-guidelines-example/)
   and its [README coverage map](../../coding-guidelines-example/README.md)
 
-The example builds clean under the full warning set as errors, passes its
-checks, and produces zero clang-tidy findings at `WarningsAsErrors: '*'`. That
-is the bar for new code in `src/` too. It is a separate project, built from
+The example builds clean under the same warning policy as `src/` -- clang's
+`-Weverything` and gcc-14's full list, as errors
+([ADR 0017](../../docs/adr/0017-every-warning-is-an-error.md)) -- passes its
+checks under both compilers, and produces zero clang-tidy findings at
+`WarningsAsErrors: '*'`. That is the bar for new code in `src/` too. It is a separate project, built from
 the repository root with:
 
 ```

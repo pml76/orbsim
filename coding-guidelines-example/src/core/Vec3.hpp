@@ -12,8 +12,11 @@
 // on its own. The build proves that mechanically rather than trusting it --
 // see the orbex_header_selfcheck target in CMakeLists.txt.
 //
+#include <bit>
 #include <cmath>
 #include <compare>
+#include <concepts>
+#include <cstdint>
 #include <numbers>
 
 namespace orbex {
@@ -26,6 +29,14 @@ using f64 = double;
 inline constexpr f64 kPi = std::numbers::pi_v<f64>;
 inline constexpr f64 kTau = 2.0 * kPi;
 
+// [S19] The bits of a double, for the one comparison whose claim is bit
+// identity: a determinism check. +0.0 and -0.0 are equal as numbers and differ
+// here, and a NaN, never equal to itself as a number, is identical to its own
+// bits -- which is why `==` is not bit identity, and why this exists.
+[[nodiscard]] constexpr std::uint64_t bitsOf(f64 v) noexcept {
+    return std::bit_cast<std::uint64_t>(v);
+}
+
 // [S2] A strong type for the third argument of nearlyEqual. Without it the
 // signature is (f64, f64, f64) and `nearlyEqual(a, tolerance, b)` compiles
 // silently -- exactly the transposition I.24 is about.
@@ -35,12 +46,18 @@ struct Tolerance {
     constexpr Tolerance() noexcept = default;
     explicit constexpr Tolerance(f64 v) noexcept : value(v) {}
 
+    // [S11] Ordering, and no `==`: a defaulted <=> brings a defaulted `==`
+    // with it, and on a double that is the comparison section 11 forbids and
+    // -Wfloat-equal reports. Every strong type in the example does the same.
     [[nodiscard]] constexpr auto operator<=>(const Tolerance&) const noexcept = default;
+    bool operator==(const Tolerance&) const = delete;
 };
 
 // [S11] The only float comparison this example permits. `==` on doubles is
 // wrong at runtime and equally wrong inside a static_assert, because it is the
-// same arithmetic either way.
+// same arithmetic either way. An exact result is compared with a zero
+// tolerance; a determinism check, where bit identity is the claim, says so by
+// name, with bitIdentical().
 //
 // The remaining two parameters are genuinely interchangeable -- |a-b| is
 // commutative -- so transposing them cannot produce a wrong answer.
@@ -74,10 +91,15 @@ struct Vec3 {
         return {.x = x * scale, .y = y * scale, .z = z * scale};
     }
 
-    // [S19] Bit-exact equality, which is precisely what a determinism test
-    // needs. It is deliberately not an approximate comparison; nearlyEqual is
-    // for that, and confusing the two is how a determinism test stops testing.
-    [[nodiscard]] constexpr bool operator==(const Vec3&) const noexcept = default;
+    // [S19] Bit identity, which is precisely what a determinism test needs --
+    // and which a defaulted `==` is not: it says +0.0 equals -0.0, and a NaN
+    // equals nothing. It is deliberately not an approximate comparison either;
+    // nearlyEqual is for that, and confusing the two is how a determinism test
+    // stops testing. [S11] So Vec3 has no `==` at all.
+    [[nodiscard]] constexpr bool bitIdentical(const Vec3& other) const noexcept {
+        return bitsOf(x) == bitsOf(other.x) && bitsOf(y) == bitsOf(other.y) &&
+               bitsOf(z) == bitsOf(other.z);
+    }
 };
 
 [[nodiscard]] constexpr f64 dot(const Vec3& a, const Vec3& b) noexcept {
@@ -106,13 +128,29 @@ inline constexpr Vec3 kUnitY{.x = 0.0, .y = 1.0, .z = 0.0};
 inline constexpr Vec3 kUnitZ{.x = 0.0, .y = 0.0, .z = 1.0};
 inline constexpr Vec3 kOneTwoThree{.x = 1.0, .y = 2.0, .z = 3.0};
 
-static_assert(cross(kUnitX, kUnitY) == kUnitZ);
+// Every result below is exact, so the tolerance is zero. A vector is compared
+// through the squared length of the difference, which is zero only when every
+// component is: the components are small integers, so no nonzero difference
+// can square to an underflowed zero.
+static_assert(nearlyEqual(lengthSquared(cross(kUnitX, kUnitY) - kUnitZ), 0.0, Tolerance{0.0}));
 static_assert(nearlyEqual(dot(kOneTwoThree, Vec3{.x = 4.0, .y = 5.0, .z = 6.0}),
                           32.0,
                           Tolerance{0.0}));
 static_assert(nearlyEqual(lengthSquared(Vec3{.x = 3.0, .y = 4.0, .z = 0.0}), 25.0, Tolerance{0.0}));
-static_assert(kOneTwoThree - Vec3{.x = 1.0, .y = 2.0, .z = 3.0} == Vec3{});
-static_assert(kOneTwoThree * 2.0 == Vec3{.x = 2.0, .y = 4.0, .z = 6.0});
+static_assert(nearlyEqual(lengthSquared(kOneTwoThree - Vec3{.x = 1.0, .y = 2.0, .z = 3.0}),
+                          0.0,
+                          Tolerance{0.0}));
+static_assert(nearlyEqual(lengthSquared((kOneTwoThree * 2.0) - Vec3{.x = 2.0, .y = 4.0, .z = 6.0}),
+                          0.0,
+                          Tolerance{0.0}));
+
+// [S19] bitIdentical compares every component, and tells the two zeros apart.
+static_assert(kOneTwoThree.bitIdentical(Vec3{.x = 1.0, .y = 2.0, .z = 3.0}));
+static_assert(!Vec3{}.bitIdentical(Vec3{.x = -0.0, .y = 0.0, .z = 0.0}) &&
+              !Vec3{}.bitIdentical(Vec3{.x = 0.0, .y = -0.0, .z = 0.0}) &&
+              !Vec3{}.bitIdentical(Vec3{.x = 0.0, .y = 0.0, .z = -0.0}));
+static_assert(!std::equality_comparable<Tolerance> && !std::equality_comparable<Vec3>,
+              "exact equality of a double is spelled out");
 
 } // namespace orbex
 

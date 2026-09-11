@@ -10,6 +10,7 @@
 
 #include "core/Units.hpp"
 
+#include <concepts>
 #include <cstdio>
 #include <exception>
 #include <print>
@@ -40,9 +41,18 @@ static_assert(std::is_trivially_copyable_v<Radians>);
 static_assert(std::is_trivially_destructible_v<Radians>);
 static_assert(std::is_nothrow_move_constructible_v<Metres>);
 
-// [S6] No strong type can be created uninitialized.
-static_assert(Radians{}.value == 0.0);
-static_assert(Metres{}.value == 0.0);
+// [S6] No strong type can be created uninitialized. [S11] Exactly zero, so a
+// zero tolerance rather than `==`.
+static_assert(nearlyEqual(Radians{}.value, 0.0, Tolerance{0.0}));
+static_assert(nearlyEqual(Metres{}.value, 0.0, Tolerance{0.0}));
+
+// [S11] No strong type has a floating-point `==`: each deletes the one its
+// defaulted <=> would bring. Exact equality is spelled out, or it is not
+// written at all.
+static_assert(!std::equality_comparable<Radians> && !std::equality_comparable<Degrees> &&
+                  !std::equality_comparable<Metres> && !std::equality_comparable<Seconds> &&
+                  !std::equality_comparable<Eccentricity> && !std::equality_comparable<GravParam>,
+              "exact equality of a double is spelled out");
 
 void testConversionsRoundTrip(test::Run& run) {
     test::section("angle conversions round-trip");
@@ -71,7 +81,13 @@ void testOrderingIsUsable(test::Run& run) {
 
     test::check(run, Metres{100.0} < Metres{200.0}, "metres order");
     test::check(run, Eccentricity{0.5} > Eccentricity{0.1}, "eccentricities order");
-    test::check(run, Radians{1.0} == Radians{1.0}, "identical angles compare equal");
+    // [S11] Equal values are ordered neither way. There is no `==` to ask
+    // instead; the static_assert above proves that.
+    constexpr Radians kAngle{1.0};
+    constexpr Radians kSameAngle{1.0};
+    test::check(run,
+                !(kAngle < kSameAngle) && !(kAngle > kSameAngle),
+                "identical angles are ordered neither way");
 }
 
 // [S10][S21] The "abstractions cost performance" myth, answered with a
@@ -103,9 +119,10 @@ void testZeroOverhead(test::Run& run) {
 
     // Bit-identical, not merely close: the two forms perform the same
     // arithmetic in the same order, so anything else would mean the abstraction
-    // changed the computation.
+    // changed the computation. [S19] Compared as bits, because that is the
+    // claim; `==` would call +0.0 and -0.0 the same.
     test::check(run,
-                sumViaStrongType(kSamples) == sumViaBareDouble(kSamples),
+                bitsOf(sumViaStrongType(kSamples)) == bitsOf(sumViaBareDouble(kSamples)),
                 "strong-typed and bare arithmetic agree bit-for-bit");
 }
 
@@ -119,6 +136,16 @@ void testZeroOverhead(test::Run& run) {
 //
 // The handlers use std::fputs rather than std::print because a reporting path
 // that can itself throw is not a reporting path.
+//
+// std::fputs is the C library's interface: a function taking an unbounded
+// string, which is what clang's -Wunsafe-buffer-usage-in-libc-call reports.
+// It is off for this function alone, and for clang alone -- gcc has no such
+// warning, and under -Wall reports a pragma it does not recognise (the parent
+// project's ADR 0017). The same holds for every main in tests/.
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-libc-call"
+#endif
 int main() {
     try {
         std::print("orbex :: units\n\n");
@@ -141,3 +168,6 @@ int main() {
         return 2;
     }
 }
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif

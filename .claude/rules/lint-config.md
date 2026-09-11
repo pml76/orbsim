@@ -82,7 +82,8 @@ reported clean.
 **The compiler's warnings are the other half, and the same rules hold**
 ([ADR 0017](../../docs/adr/0017-every-warning-is-an-error.md)). clang builds
 with `-Weverything` and gcc with the list `scripts/gcc-warnings.py` generates
-into `cmake/GccWarnings.cmake`, as errors. A `-Wno-` in `CMakeLists.txt` or an
+into `cmake/GccWarnings.cmake` -- and into the worked example's own copy,
+`coding-guidelines-example/cmake/GccWarnings.cmake` -- as errors. A `-Wno-` in `CMakeLists.txt` or an
 entry in the script's `EXCLUDED` is a project-wide suppression, which is the
 owner's decision and carries its reason beside it. Our own code is fixed. A
 warning raised where our code meets a library's interface is switched off at

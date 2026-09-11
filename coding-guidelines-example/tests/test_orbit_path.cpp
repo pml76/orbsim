@@ -70,7 +70,8 @@ void testGeometry(test::Run& run) {
     const f64 apoapsis = elements.semiMajorAxis.value * (1.0 + e);
 
     // [S9] An algorithm states the intent; an index loop would only imply it.
-    const bool onOrbit = std::ranges::all_of(path->points(), [&](const Vec3& point) {
+    // [S7] The predicate cannot throw, and says so (E.8).
+    const bool onOrbit = std::ranges::all_of(path->points(), [&](const Vec3& point) noexcept {
         const f64 radius = length(point);
         return radius >= periapsis * (1.0 - 1e-9) && radius <= apoapsis * (1.0 + 1e-9);
     });
@@ -173,12 +174,12 @@ void testDeterminism(test::Run& run) {
     test::check(run, first.has_value() && second.has_value(), "both runs succeed");
     if (!first || !second) return;
 
-    // [S11][S19] The one place where comparing doubles with == is not merely
+    // [S11][S19] The one place where comparing doubles exactly is not merely
     // permitted but the entire point. The claim is bit-identical reproduction,
     // and any tolerance at all would conceal exactly the drift being tested
-    // for. Section 11 forbids *approximate* comparison spelled `==`; this is
-    // not that.
-    test::check(run, *first == *second, "identical inputs give bit-identical output");
+    // for. So the comparison is the claim, by name: bit identity, which `==`
+    // is not -- it calls +0.0 and -0.0 equal and a NaN unequal to itself.
+    test::check(run, first->bitIdentical(*second), "identical inputs give bit-identical output");
 }
 
 // [S13] Two paths sampled concurrently. There is no mutex anywhere, because
@@ -232,19 +233,21 @@ void testCameraRelativeUpload(test::Run& run) {
 
     // The camera sits exactly on the first point, so that vertex must land on
     // the origin. Subtracting in f64 makes this exact; narrowing first would
-    // leave a residue of tens of metres.
-    // Named rather than written as `== gfx::PathVertex{},` inline: clang-tidy
-    // 23's readability-trailing-comma reads the argument separator after an
-    // empty braced initialiser as that list's trailing comma, and its fix-it
-    // deletes it, producing code that does not compile.
-    const gfx::PathVertex origin{};
-    test::check(run, vertices.front() == origin, "the point under the camera is exact");
+    // leave a residue of tens of metres. [S11] Exactly zero, so each component
+    // is compared at a zero tolerance; widening an f32 to f64 is exact.
+    const gfx::PathVertex& underCamera = vertices.front();
+    test::check(run,
+                nearlyEqual(static_cast<f64>(underCamera.x), 0.0, Tolerance{0.0}) &&
+                    nearlyEqual(static_cast<f64>(underCamera.y), 0.0, Tolerance{0.0}) &&
+                    nearlyEqual(static_cast<f64>(underCamera.z), 0.0, Tolerance{0.0}),
+                "the point under the camera is exact");
 
     // Camera-relative magnitudes must stay in the range where an f32 still has
     // sub-metre resolution -- which is the entire reason for the subtraction.
-    const bool withinFloatComfort = std::ranges::all_of(vertices, [](const gfx::PathVertex& v) {
-        return std::abs(v.x) < 2.0e7F && std::abs(v.y) < 2.0e7F && std::abs(v.z) < 2.0e7F;
-    });
+    const bool withinFloatComfort =
+        std::ranges::all_of(vertices, [](const gfx::PathVertex& v) noexcept {
+            return std::abs(v.x) < 2.0e7F && std::abs(v.y) < 2.0e7F && std::abs(v.z) < 2.0e7F;
+        });
     test::check(run, withinFloatComfort, "camera-relative values stay in f32's comfortable range");
 }
 
@@ -257,7 +260,12 @@ void testCameraRelativeUpload(test::Run& run) {
 // ignored" rule the rest of the example follows, applied at the top.
 //
 // The handlers use std::fputs rather than std::print because a reporting path
-// that can itself throw is not a reporting path.
+// that can itself throw is not a reporting path. Its warning is off for clang
+// here alone, for the reason given in tests/test_units.cpp.
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-libc-call"
+#endif
 int main() {
     try {
         std::print("orbex :: orbit path\n\n");
@@ -283,3 +291,6 @@ int main() {
         return 2;
     }
 }
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif

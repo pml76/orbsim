@@ -6,9 +6,15 @@ compiler for every warning it knows, keeps those that apply to C++, and writes
 them to cmake/GccWarnings.cmake, which CMakeLists.txt includes for a gcc build.
 ADR 0017 is why; the owner's rule is as many warnings as possible, as errors.
 
-Re-run it whenever gcc is upgraded, from inside WSL, and commit the result:
+Re-run it whenever gcc is upgraded, from inside WSL, for both projects, and
+commit the results:
 
     python3 scripts/gcc-warnings.py g++-14 cmake/GccWarnings.cmake
+    python3 scripts/gcc-warnings.py g++-14 \
+        coding-guidelines-example/cmake/GccWarnings.cmake ORBEX_GCC_WARNINGS
+
+The worked example keeps its own copy, under its own variable name, because
+it builds on its own; the two lists are the same list.
 
 A new gcc brings new warnings, and they arrive the same way a new clang's do
 under -Weverything: as errors, to be triaged.
@@ -107,10 +113,11 @@ def accepted(compiler: str, flag: str, source: str) -> bool:
 
 
 def main(argv: list[str]) -> int:
-    if len(argv) != 3:
-        print(__doc__.strip().splitlines()[-1], file=sys.stderr)
+    if len(argv) not in (3, 4):
+        print("usage: gcc-warnings.py COMPILER OUTPUT [VARIABLE]", file=sys.stderr)
         return 2
     compiler, output = argv[1], argv[2]
+    variable = argv[3] if len(argv) == 4 else "ORBSIM_GCC_WARNINGS"
     try:
         version = subprocess.run([compiler, "--version"], capture_output=True, text=True,
                                  check=True).stdout.splitlines()[0]
@@ -146,7 +153,7 @@ def main(argv: list[str]) -> int:
             out.write("# Rejected by this compiler for C++, and so absent:\n")
             for flag in rejected:
                 out.write(f"#   {flag}\n")
-        out.write("set(ORBSIM_GCC_WARNINGS\n")
+        out.write(f"set({variable}\n")
         for flag in flags:
             out.write(f"    {flag}\n")
         out.write(")\n")

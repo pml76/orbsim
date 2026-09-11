@@ -21,13 +21,12 @@
 namespace orbex::gfx {
 
 // What a vertex shader consumes. f32, because that is what a GPU has.
-// [S4] Rule of Zero, [S6] every member default-initialized.
+// [S4] Rule of Zero, [S6] every member default-initialized. [S11] No `==`:
+// on floats it is the comparison section 11 forbids.
 struct PathVertex {
     f32 x{};
     f32 y{};
     f32 z{};
-
-    [[nodiscard]] constexpr bool operator==(const PathVertex&) const noexcept = default;
 };
 
 // Converts world-space f64 positions into camera-relative f32 vertices.

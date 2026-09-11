@@ -160,3 +160,28 @@ is the design working.
   lint list, and Windows has no compile command for it; clang-tidy in the
   `linux-fuzz` tree reports 13 findings. Found while this was done, and
   decided as a follow-up commit.
+
+## Update, 2026-09-11: the worked example
+
+The same policy went into `coding-guidelines-example/` the same day, with
+three rulings of the owner's. **gcc too**: the example had only ever been
+built with clang. It keeps its own copy of the generated list,
+`coding-guidelines-example/cmake/GccWarnings.cmake`, written by the same
+script under the variable `ORBEX_GCC_WARNINGS`, so that it still builds on its
+own. It now builds clean under gcc-14 in both build types. **Its tests**: the
+determinism check asserts `bitIdentical()`, the vertex under the camera is
+compared component by component at a zero tolerance, and "identical angles
+compare equal" -- a test of the `==` that no longer exists -- became
+"identical angles are ordered neither way", so the example keeps its 47
+checks. **clang's attribute under gcc**: gcc reports
+`[[clang::lifetimebound]]` as an ignored attribute (`-Wattributes`) wherever it
+is written, with its default flags as well. The example's one use is answered
+by a gcc-only pragma at the site. The alternative put to the owner was gcc's
+own `-Wno-attributes=clang::lifetimebound`, which exempts that one attribute
+and nothing else. orbsim's sixteen uses never reach gcc, which does not build
+the renderer.
+
+The example also taught something false, and now does not: its comments and
+README called the defaulted `==` on `Vec3` and `OrbitPath` bit-exact, and
+`==` "the only correct operator" for bit identity. A defaulted `==` on doubles
+is numeric equality. It says +0.0 equals -0.0, and that a NaN equals nothing.

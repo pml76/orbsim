@@ -27,7 +27,11 @@ struct Radians {
     // and rebuilds the exact problem it was introduced to solve.
     explicit constexpr Radians(f64 v) noexcept : value(v) {}
 
+    // [S11] Ordering, and no `==`, for the reason given on Tolerance in
+    // core/Vec3.hpp: a defaulted <=> would bring a floating-point `==` with it.
+    // Every type below does the same.
     [[nodiscard]] constexpr auto operator<=>(const Radians&) const noexcept = default;
+    bool operator==(const Radians&) const = delete;
 };
 
 struct Degrees {
@@ -37,6 +41,7 @@ struct Degrees {
     explicit constexpr Degrees(f64 v) noexcept : value(v) {}
 
     [[nodiscard]] constexpr auto operator<=>(const Degrees&) const noexcept = default;
+    bool operator==(const Degrees&) const = delete;
 };
 
 struct Metres {
@@ -46,6 +51,7 @@ struct Metres {
     explicit constexpr Metres(f64 v) noexcept : value(v) {}
 
     [[nodiscard]] constexpr auto operator<=>(const Metres&) const noexcept = default;
+    bool operator==(const Metres&) const = delete;
 };
 
 struct Seconds {
@@ -55,6 +61,7 @@ struct Seconds {
     explicit constexpr Seconds(f64 v) noexcept : value(v) {}
 
     [[nodiscard]] constexpr auto operator<=>(const Seconds&) const noexcept = default;
+    bool operator==(const Seconds&) const = delete;
 };
 
 // Dimensionless, but not interchangeable with any other dimensionless quantity.
@@ -66,6 +73,7 @@ struct Eccentricity {
     explicit constexpr Eccentricity(f64 v) noexcept : value(v) {}
 
     [[nodiscard]] constexpr auto operator<=>(const Eccentricity&) const noexcept = default;
+    bool operator==(const Eccentricity&) const = delete;
 };
 
 // Standard gravitational parameter GM, in m^3/s^2.
@@ -76,6 +84,7 @@ struct GravParam {
     explicit constexpr GravParam(f64 v) noexcept : value(v) {}
 
     [[nodiscard]] constexpr auto operator<=>(const GravParam&) const noexcept = default;
+    bool operator==(const GravParam&) const = delete;
 };
 
 [[nodiscard]] constexpr Radians toRadians(Degrees d) noexcept {
@@ -115,7 +124,8 @@ static_assert(nearlyEqual(toRadians(toDegrees(Radians{1.0})).value, 1.0, Toleran
 // naming the quantity says what is under test and needs no parentheses at all.
 inline constexpr Metres kOneKilometre = 1.0_km;
 static_assert(nearlyEqual(kOneKilometre.value, 1000.0, Tolerance{0.0}));
-static_assert(180.0_deg == Degrees{180.0});
+inline constexpr Degrees kHalfTurnInDegrees = 180.0_deg;
+static_assert(nearlyEqual(kHalfTurnInDegrees.value, 180.0, Tolerance{0.0}));
 
 } // namespace orbex
 

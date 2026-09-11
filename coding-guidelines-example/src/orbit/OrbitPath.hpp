@@ -16,6 +16,7 @@
 #include "core/Units.hpp"
 #include "core/Vec3.hpp"
 
+#include <algorithm>
 #include <cstddef>
 #include <cstdint>
 #include <expected>
@@ -110,13 +111,37 @@ public:
 
     // [S5] const member functions, and a span rather than a reference to the
     // vector: the caller gets a view it cannot resize and cannot accidentally
-    // take a copy of.
-    [[nodiscard]] std::span<const Vec3> points() const noexcept { return points_; }
+    // take a copy of. The view points into this path, and says so with
+    // [[clang::lifetimebound]], so clang can report one kept past the path.
+    //
+    // gcc does not know clang's attribute and reports it as ignored
+    // (-Wattributes). That warning is off for gcc on this declaration alone,
+    // by the owner's ruling on the parent project's ADR 0017; it stays on
+    // everywhere else, where it catches a misspelt attribute.
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wattributes"
+#endif
+    [[nodiscard]] std::span<const Vec3> points() const noexcept [[clang::lifetimebound]] {
+        return points_;
+    }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
     [[nodiscard]] std::size_t size() const noexcept { return points_.size(); }
     [[nodiscard]] Seconds period() const noexcept { return period_; }
 
-    // [S19] Bit-exact, because that is what the determinism test asserts.
-    [[nodiscard]] bool operator==(const OrbitPath&) const noexcept = default;
+    // [S19] Bit identity, because that is what the determinism test asserts:
+    // every point and the period, compared as bits. A defaulted `==` would
+    // compare them as numbers, which is a weaker claim and a floating-point
+    // `==` besides [S11].
+    [[nodiscard]] bool bitIdentical(const OrbitPath& other) const noexcept {
+        return bitsOf(period_.value) == bitsOf(other.period_.value) &&
+               std::ranges::equal(
+                   points_, other.points_, [](const Vec3& a, const Vec3& b) noexcept {
+                       return a.bitIdentical(b);
+                   });
+    }
 
 private:
     // [S6] A member initializer list in declaration order. Assigning in the

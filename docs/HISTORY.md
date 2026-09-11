@@ -485,6 +485,22 @@ Everything agreed afterwards: the same 424,381 assertions in both Windows
 trees, under ASan, under `linux-sanitize` and under `linux-gcc`, and
 10,278,807 fuzz runs in 61 s with nothing found.
 
+**The worked example followed the same day, and taught something false until
+it did.** Its comments called the defaulted `==` on `Vec3` and `OrbitPath`
+bit-exact, and its README called `==` "the only correct operator" for bit
+identity. A defaulted `==` on doubles is numeric equality, which calls +0.0
+and -0.0 equal. The example now says `bitIdentical()`, and its strong types
+delete the `==` their `<=>` would bring. It had only ever been built with
+clang. gcc-14 built it, measured first, and the full list found three
+lambdas that could not throw and did not say so, and one braced `std::array`
+that leaned on brace elision; both were fixed. It also found that gcc reports
+`[[clang::lifetimebound]]` as an ignored attribute wherever it is written,
+with its default flags too; the owner ruled for a gcc-only pragma at the
+site. The example keeps its 47 checks under
+both compilers, one of them rewritten because it tested the `==` that is gone;
+six mutants of its new compile-time proofs fail to compile, each on its own
+assertion.
+
 ---
 
 ## 4. The bug that justified the session

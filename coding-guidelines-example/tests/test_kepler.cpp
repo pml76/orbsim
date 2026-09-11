@@ -40,8 +40,10 @@ static_assert(std::is_invocable_v<decltype(solveKepler), Radians, Eccentricity>,
 void testSatisfiesKeplersEquation(test::Run& run) {
     test::section("solutions satisfy M = E - e*sin(E)");
 
-    // [S8] std::array, never a C array: it knows its own size.
-    constexpr std::array kEccentricities{0.0, 0.1, 0.5, 0.9, 0.99, 0.999};
+    // [S8] std::array, never a C array: it knows its own size. std::to_array
+    // rather than a braced list, which would lean on brace elision -- what
+    // gcc's -Wmissing-braces reports.
+    constexpr auto kEccentricities = std::to_array<f64>({0.0, 0.1, 0.5, 0.9, 0.99, 0.999});
 
     for (const f64 e : kEccentricities) {
         f64 worstResidual = 0.0;
@@ -165,7 +167,12 @@ void testWrapping(test::Run& run) {
 // ignored" rule the rest of the example follows, applied at the top.
 //
 // The handlers use std::fputs rather than std::print because a reporting path
-// that can itself throw is not a reporting path.
+// that can itself throw is not a reporting path. Its warning is off for clang
+// here alone, for the reason given in tests/test_units.cpp.
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-libc-call"
+#endif
 int main() {
     try {
         std::print("orbex :: kepler\n\n");
@@ -189,3 +196,6 @@ int main() {
         return 2;
     }
 }
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
