@@ -416,6 +416,18 @@ polar motion -- the largest pole excursion in the IERS EOP 20 C04 series,
 0.01° and 2e-4 AU to 0.1" and 1e-6 AU, which is why the Horizons fixture must
 now be geometric: aberration alone is 20.5".
 
+Two more rulings followed the same day. **M1-06 runs before M1-05** (decision
+30): M1-05's reference values arrive through M1-06's reader, which the queue
+had placed after it -- an ordering fault present since the plan was written,
+seen only when M1-05 was rewritten. And **the Sun outside ERFA's span is
+reported by name** (decision 31). Pinning down that span from ERFA's code,
+rather than its prose, found that "1900-2100" is 100 Julian years either side
+of J2000 and ends on 2100-01-01T12:00 -- and that the boundary test first
+written for it, a picosecond outside, would have failed a correct
+implementation, because ERFA's own date arithmetic resolves only 0.63 µs
+there. Measured, it reports a picosecond outside as inside and a millisecond
+outside as outside; the test now uses the millisecond.
+
 ---
 
 ## 4. The bug that justified the session

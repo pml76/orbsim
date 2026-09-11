@@ -191,6 +191,8 @@ claims to outlive the conversation.
 | 25 | Night lights in phase B; the water mask deferred | Register only |
 | 26 | Hard-coded scenarios, no configuration file | Register only, and section 6 above |
 | 27–29 | ERFA computes the astronomy; the time scales' arithmetic stays exact and ours; nutation is modelled | [ADR 0016](../adr/0016-the-astronomy-is-erfa.md), and section 9 below |
+| 30 | M1-06 runs before M1-05 | Register only, and [the task queue](milestone-1-tasks.md) |
+| 31 | The Sun outside ERFA's span is reported by name | [ADR 0016](../adr/0016-the-astronomy-is-erfa.md)'s update, and [M1-08](tasks/m1-08-solar-position.md) |
 
 Two further amendments were made in the same pass and belong to no decision in
 the table: [ADR 0005](../adr/0005-correctness-is-enforced-by-tools.md) gained a
@@ -220,6 +222,8 @@ Numbered on from 26 so that a reference to a decision number stays unambiguous.
 | 27 | How ERFA is used | **ERFA computes the astronomy** — TDB − TT, the celestial-to-terrestrial rotation, the Sun — fetched and pinned like every other dependency, built unedited, and called from `src/astro/` through typed wrappers. Its validation runs in `check`. Considered: ERFA as a reference only, a verbatim copy, a port into the house style. Ruled 2026-09-11 |
 | 28 | The time scales' own arithmetic | **Stays exact and ours.** UTC, TAI and TT are integer picoseconds in `core/Time.hpp`; ERFA's `eraDat` extrapolates past its table, which ADR 0009 rules out. Ruled 2026-09-11 |
 | 29 | Nutation | **Modelled**, IAU 2000A through ERFA, where decision 14 had deferred it as 1,365 terms to transcribe. The frame's model error falls from ≤ 40″ to ≤ 14.1″. Ruled 2026-09-11 |
+| 30 | M1-05 and M1-06 | **M1-06 runs first.** M1-05 checks TDB against values that arrive through M1-06's fixture reader, which the queue had placed after it — an ordering fault in the plan since 2026-09-08. The task numbers stay, because commits and records cite them. Considered: M1-05 keeping its reference values as a table in the test source. Ruled 2026-09-11 |
+| 31 | The Sun outside ERFA's span | **Reported by name**, `OutsideEphemerisRange`, from ERFA's own status: outside JD 2415020.0–2488070.0 TDB, which is 1899-12-31T12:00 to 2100-01-01T12:00. Considered: accepting the accuracy loss ERFA documents there. Ruled 2026-09-11 |
 
 The M1-03 rulings of 2026-09-10 — the storage of an instant, the day boundary,
 the arithmetic contract, one error per calendar field, years 1–9999, the

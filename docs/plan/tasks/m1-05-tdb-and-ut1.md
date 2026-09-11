@@ -1,7 +1,8 @@
 # M1-05 — TDB and UT1
 
 Phase: A | Status: not started
-Prerequisites: M1-04
+Prerequisites: M1-04, M1-06 — which now runs first (decision 30), because the
+reference values below arrive through its fixture reader
 Decided by: [ADR 0009](../../adr/0009-time-is-a-type-with-a-scale.md), [ADR 0016](../../adr/0016-the-astronomy-is-erfa.md)
 
 **Amended 2026-09-11** (decisions 27–29): TDB − TT is ERFA's `eraDtdb`

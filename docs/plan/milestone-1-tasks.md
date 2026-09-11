@@ -111,12 +111,17 @@ unchanged. Inside the phases, three things drive the ordering:
 
 ## Phase A — render foundations, the time system, the quality path
 
+**06 runs before 05**, since 2026-09-11 (decision 30): M1-05 checks TDB
+against reference values that arrive through M1-06's fixture reader. The
+numbers are identifiers and were not changed, because commits, records and
+HISTORY already cite them.
+
 | # | Task | Prerequisites | Ends with |
 |---|---|---|---|
 | [03](tasks/m1-03-timepoint.md) | `TimePoint` and the time scales | 01 | A time that knows which scale it is in |
 | [04](tasks/m1-04-leap-seconds.md) | UTC, TAI and TT | 03 | Leap seconds, and an expiry that reports |
-| [05](tasks/m1-05-tdb-and-ut1.md) | TDB and UT1, and ERFA pinned | 04 | All five scales, with ΔUT1 = 0 recorded as model error |
 | [06](tasks/m1-06-horizons-fixtures.md) | The Horizons fixture format | 01, 03 | External truth, committed and readable |
+| [05](tasks/m1-05-tdb-and-ut1.md) | TDB and UT1, and ERFA pinned | 04, 06 | All five scales, with ΔUT1 = 0 recorded as model error |
 | [07](tasks/m1-07-earth-orientation.md) | Precession, nutation and the Earth rotation angle | 05, 06 | A body-fixed frame, 0.1″ against an independent implementation |
 | [08](tasks/m1-08-solar-position.md) | Solar position | 05, 06, 07 | Sun direction and distance, 0.1″ against Horizons |
 | [09](tasks/m1-09-orbsim-view.md) | The `orbsim_view` library and `Mat4` | 01 | A Vulkan-free render library the tests can link |

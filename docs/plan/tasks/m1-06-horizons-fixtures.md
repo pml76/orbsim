@@ -4,6 +4,11 @@ Phase: A | Status: not started
 Prerequisites: M1-01, M1-03
 Decided by: [ADR 0009](../../adr/0009-time-is-a-type-with-a-scale.md), [ADR 0016](../../adr/0016-the-astronomy-is-erfa.md)
 
+**Moved ahead of M1-05 on 2026-09-11** (decision 30). M1-05 checks TDB
+against an independent implementation's values, and those arrive through this
+reader, so the reader has to exist first. Both prerequisites were already
+done.
+
 ## Purpose
 
 `VERIFICATION.md` rule 3 has been marked **to build** since the document was
@@ -51,7 +56,8 @@ early, and deliberately plainly.
 
 ## Out of scope
 
-Any consumer of the fixtures — M1-07 is the first. A binary format. A downloader.
+Any consumer of the fixtures — M1-05 is the first, with its TDB reference
+values, and M1-07 and M1-08 follow. A binary format. A downloader.
 Fixtures for anything but the Sun; the GMAT trajectory fixture has its own task
 (M1-68) and reuses this format.
 

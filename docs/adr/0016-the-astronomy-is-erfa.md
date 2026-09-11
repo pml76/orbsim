@@ -124,3 +124,15 @@ library files with **zero warnings** under `-Wall -Wextra -Wpedantic
 - **What the Sun wrapper does outside 1900-2100**, where `eraEpv00` warns that
   its stated accuracy lapses. That is [M1-08](../plan/tasks/m1-08-solar-position.md)'s
   question, put to the owner before that task starts.
+
+## Update, 2026-09-11: the Sun outside ERFA's span is reported by name
+
+Answered the same day, as decision 31 of the register: the Sun wrapper
+reports a date outside `eraEpv00`'s span as `OutsideEphemerisRange`, taking the
+boundary from ERFA's own status, and both of its functions return a
+`std::expected`. Measured with ERFA, the span is **100 Julian years either side
+of J2000**, JD 2415020.0 to 2488070.0 TDB -- 1899-12-31T12:00 to
+2100-01-01T12:00, both ends inside -- so "1900-2100" ends on 1 January 2100.
+ERFA resolves that boundary only to its arithmetic's resolution, about 0.63 µs
+at 36 525 days from J2000: a date a picosecond outside reports as inside, and
+a millisecond outside does not.

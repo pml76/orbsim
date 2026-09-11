@@ -42,7 +42,7 @@ opens a window and paces frames.** Nothing is drawn yet.
 | Current milestone | 1 — Earth, orbit track, Orbit MFD |
 | Last task completed | [M1-03](plan/tasks/m1-03-timepoint.md), `TimePoint` and the time scales, 2026-09-10 |
 | Next task | [M1-04](plan/tasks/m1-04-leap-seconds.md), UTC, TAI and TT: the leap-second table |
-| Then | The rest of phase A — TDB and UT1, where ERFA is pinned; the Horizons fixtures; Earth orientation with nutation, and the Sun, both computed by ERFA; then `orbsim_view`, the camera, the pipelines, and the probe mode that verifies everything drawn after it |
+| Then | The rest of phase A — the Horizons fixtures (M1-06, now ahead of M1-05); TDB and UT1, where ERFA is pinned; Earth orientation with nutation, and the Sun, both computed by ERFA; then `orbsim_view`, the camera, the pipelines, and the probe mode that verifies everything drawn after it |
 | Phase order | A → B → D → C → E → F → G |
 
 | Component | State |
