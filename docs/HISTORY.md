@@ -750,6 +750,152 @@ for that one capability, which `docs/STATUS.md` now says in those words.
 Nothing on the fuzzed path allocates, so it finds nothing today -- but it is the
 only place a leak could be found at all.
 
+### Elements to the resolution of a double, 2026-09-12
+
+**`elementsFromState` was backward stable and not forward accurate.** It
+returned the elements of *some* state very near the one it was given, which is
+the most a plain-double formulation can promise, and on a nearly radial orbit
+that is not enough: |h| is the difference of two products that agree to fifteen
+digits, so |h|^2/mu kept almost none of them and the semi-latus rectum came
+back 1.1e-5 wrong. Measured against 60-digit references, the worst case in each
+family, before:
+
+| family | worst |
+|---|---|
+| ordinary | 2.2e-14 |
+| nearly radial | `slr` 1.1e-5, `inc` 4.9e-6, `lan` 1.1e-5 |
+| near-parabolic, outside the band | `sma` 7.1e-4 |
+| hyperbolic asymptote | `slr` 3.7e-8 |
+| nearly circular | `ecc` 1.7e-7, `aop` 1.4e-7 |
+| at 1e-112 m | `slr` 0.98, `aop` 0.94 rad |
+| mu from 1e-20 to 1e30 | `sma` 1.2e-11 |
+
+Every one of those is now at or under 1.04e-15, and the median is 0.3 u. The
+change is not a better formula but a different arithmetic: the steps that
+cancel are carried in double-double ([`src/core/DoubleDouble.hpp`](../src/core/DoubleDouble.hpp)),
+and position, velocity and mu are each split into a mantissa and a power of two
+first, so no product is ever formed at the top or the bottom of the range. The
+last line of that table is what the scaling buys on its own -- at 1e-112 m
+every squared component falls into the subnormals, where a double keeps fewer
+bits the smaller it gets.
+
+**Dekker's splitting rather than `std::fma`, deliberately.** The fused form is
+shorter and quicker, and it would give a different answer on a target without
+the instruction, which this project's bit-identity claims would notice.
+Splitting uses only +, - and *, each correctly rounded by IEEE 754. Measured:
+the arithmetic half of the conversion is bit-for-bit identical across clang on
+Windows, clang under WSL and gcc-14 over 56,532 states. The angles are not, and
+cannot be -- `atan2`, `acos` and `hypot` disagree between UCRT and glibc on
+identical inputs, which was measured rather than assumed, and which today's
+code was already exposed to.
+
+**Three defects in the double-double kit, all found by measurement rather than
+by reading it.**
+
+- **Dekker's split overflows above 2^996, silently.** The splitting constant is
+  2^27 + 1, so the multiplication inside it overflows while the product being
+  corrected is still perfectly finite -- and what comes back is a correct
+  leading term with a NaN error term. A state whose r v^2 / mu is 1.6e305, an
+  ordinary double, reached it and returned a NaN eccentricity. The remedy is
+  the QD library's: split a copy scaled down by 2^28 and scale the halves back.
+- **The length of the eccentricity vector overflows above e = 1e154.** A sum of
+  three squares does. libFuzzer had already found the state that does it -- the
+  hyperbola with e = 9.3e239 that `tests/test_orbit_scales.cpp` keeps as "an
+  underflowing semi-major axis is not a NaN radius" -- and the first production
+  version of this change turned that test red, because the eccentricity vector
+  needs the same power-of-two treatment as the inputs.
+- **`sqrtOf` collapsed a NaN to zero.** That is the worst answer available: a
+  length of zero is plausible, so nothing downstream notices, and an escape
+  trajectory would have been reported with a circular orbit's eccentricity.
+
+**An intermediate that legitimately overflows must stay an overflow.** r v^2 /
+mu is 1e900 for a state a caller can hand over, and the semi-major axis that
+depends on it is a correctly underflowed zero. Every operation in the kit
+therefore falls back to the plain double result the moment its own output stops
+being finite, rather than computing a correction term out of infinities.
+
+**What it costs.** 175 ns to 465 ns per conversion, 2.66x, measured over 200,000
+states. Nothing in `src/` calls `elementsFromState` yet -- only the tests and
+the fuzzer do -- and the eventual caller is the Orbit MFD at frame rate, so the
+owner's decision was to take all of it.
+
+**One behaviour change, approved rather than assumed.** 415 of 2,467 states at
+absurd scales -- |r| = 1e300 with |v| = 1e-300, where the true eccentricity
+exceeds 1.8e308 -- now report `NotFinite` instead of returning a finite number
+wrong by hundreds of orders of magnitude. No state in any physically meaningful
+family changed, which was checked by re-running every state the old code
+accepted.
+
+**The circular threshold moved from 1e-9 to 1e-15, and the reason it existed
+was wrong.** Below it, `tra` is reported as the argument of latitude while
+`ecc` keeps its value, so a consumer rebuilding the radius from
+slr / (1 + e cos tra) is out by about 2e. The old comment justified 1e-9 by
+saying the periapsis direction stops being computable there. Both halves of
+that turned out to be false: the eccentricity vector is now formed in
+double-double and keeps about sixteen digits, and -- the decisive part -- an
+ill-conditioned angle costs a round trip *nothing*, because the error in `tra`
+is multiplied by e when the position is rebuilt. The threshold was creating the
+error it existed to avoid. Measured worst state-elements-state error, 4,000
+states per decade:
+
+| e | before | after |
+|---|---|---|
+| [1e-10, 1e-9) | 1.97e-9 | 1.8e-15 |
+| [1e-12, 1e-11) | 1.87e-11 | 1.8e-15 |
+| [1e-15, 1e-14) | 2.09e-14 | 2.1e-15 |
+| [1e-16, 1e-15) | 5.46e-15 | 5.5e-15 |
+
+Three repairs were measured, not one. Forcing `ecc` to zero when the threshold
+fires -- the obvious first guess -- only halves the error, and removing the
+threshold altogether is marginally better than moving it but withdraws the
+header's promise of a canonical answer for a circular orbit. The owner chose to
+move it to where the substitution stops being measurable.
+
+**The equatorial threshold beside it does not move, and that is not an
+oversight.** It sets `lan` to zero and measures the in-plane angles from the
+x-axis, so lan + aop is preserved and the element set stays self consistent.
+Measured flat at 2e-15 for inclinations from 1e-17 to 1e-5, including states
+where both degeneracies fire at once.
+
+**Two formulations changed for reasons that are not about cancellation.**
+`inc` was `acos(h.z / |h|)`, which loses half its digits as its argument
+approaches +-1 -- an orbit approaching the equator from either side -- so an
+inclination of pi - 1e-4 was 1.6e-13 out and is now 3.3e-16. And `tra` now
+comes from the pair (e cos nu, e sin nu) that the conversion already has,
+rather than from the angle between the eccentricity vector and the position,
+which is a vector that has become shorter than its own rounding on a nearly
+circular orbit.
+
+**The suite's own deferrals came due.** Two comments in
+`tests/test_orbit_scales.cpp` said the sweeps stopped where they did because of
+exactly these two defects. The hyperbolic sweep now runs to r/|a| = 1e6 rather
+than 1e3, and the small-eccentricity sweep down to 1e-16 rather than 2e-9, both
+inside the budget that was already there: tightening its factor until it fails
+puts the worst case between 8.5 and 9.3 u over the wider ranges, unchanged from
+the narrower ones.
+
+**The second toolchain found something, which is what it is for.** One
+`static_assert` claimed that a product which overflows comes back infinite
+rather than NaN. clang evaluates that in a constant expression and accepts it;
+gcc-14 refuses to compile it, because an operation that overflows is not a
+constant expression. Both are within their rights. The claim is true and worth
+testing, so it moved to the runtime suite, where the two agree -- rather than
+being written as an assertion that one compiler permits and the other does not.
+
+**Verification.** The product in the kit is checked against `std::fma`, which
+computes the same rounding error by a completely different route -- usually a
+hardware instruction -- over 20,000 operands spanning every scale, bit for bit;
+the sum against `std::int64_t` arithmetic. The counts are set by what the Debug
+tree costs rather than by what is available: an unoptimised double-double
+operation plus a Catch2 assertion is about 200 us there, so 200,000 product
+cases added 40 seconds to every `check`. Nothing is lost by cutting them --
+these are exactness properties, not rare events, and every planted mutant is
+still killed at the lower counts. Thirteen planted mutants were
+all killed, four of them at compile time by the header's own `static_assert`s,
+which are more sensitive than the runtime tests: a constant expression is not
+allowed to overflow, so removing an overflow guard stops the header compiling
+at all.
+
 ---
 
 ## 4. The bug that justified the session

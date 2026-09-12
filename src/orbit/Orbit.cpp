@@ -1,6 +1,7 @@
 #include "orbit/Orbit.hpp"
 
 #include "core/Contract.hpp"
+#include "core/DoubleDouble.hpp"
 #include "core/Math.hpp"
 #include "core/Scalar.hpp"
 #include "core/Units.hpp"
@@ -27,20 +28,47 @@ constexpr f64 kInf = std::numeric_limits<f64>::infinity();
     return isFinite(sv.pos) && isFinite(sv.vel);
 }
 
+// core/DoubleDouble.hpp declares isFinite(f64), and the two overloads above
+// would otherwise hide it: unqualified lookup stops at the first scope holding
+// the name, and this anonymous namespace is that scope. Naming it here keeps
+// the overload set whole, so isFinite reads the same whatever it is given.
+using orb::isFinite;
+
 // An orbit is treated as circular / equatorial below these thresholds, at which
 // point the periapsis direction / ascending node stops being meaningful.
 //
-// Where 1e-9 comes from, since a bare number here is exactly what section 12
-// warns about. Both are dimensionless by construction -- an eccentricity and a
-// ratio |n|/|h| -- so unlike the tolerances below they carry no hidden length
-// scale. The value is the point at which the angle these quantities determine
-// stops being computable to useful precision: the periapsis direction of an
-// orbit with e = 1e-9 is set by the ninth significant digit of the
-// eccentricity vector, and f64 subtraction in `evec` leaves roughly seven
-// behind it. Below that the canonical parameterisation (aop = 0, tra =
-// argument of latitude) is not an approximation -- it is the only answer that
-// is stable.
-constexpr f64 kCircularTol = 1e-9;
+// Both are dimensionless by construction -- an eccentricity and a ratio
+// |n|/|h| -- so unlike the tolerances below they carry no hidden length scale.
+//
+// Where 1e-15 comes from, since a bare number here is exactly what section 12
+// warns about. Substituting the argument of latitude for the true anomaly
+// while `ecc` keeps its value leaves an element set that is not self
+// consistent: a consumer rebuilds the radius from slr / (1 + e cos tra) with a
+// tra that is not measured from periapsis, and is wrong by about 2e. So the
+// threshold belongs where 2e is no longer measurable, which is the resolution
+// of a double, and not where the periapsis direction stops being well
+// determined.
+//
+// It used to be 1e-9, on the second of those arguments: the direction of
+// periapsis at e = 1e-9 is set by the ninth digit of the eccentricity vector,
+// and plain f64 subtraction left about seven. Both halves of that have since
+// been measured wrong. The eccentricity vector is now formed in
+// double-double, so it keeps about sixteen; and an ill-conditioned angle costs
+// a round trip nothing, because the error in tra is multiplied by e when the
+// position is rebuilt. Measured over 4,000 states per decade of eccentricity
+// (2026-09-12), the worst state-elements-state error:
+//
+//   e in [1e-10, 1e-9)   1.97e-9   ->  1.8e-15
+//   e in [1e-12, 1e-11)  1.87e-11  ->  1.8e-15
+//   e in [1e-15, 1e-14)  2.09e-14  ->  2.1e-15
+//   e in [1e-16, 1e-15)  5.46e-15  ->  5.5e-15   (the canonical form fires)
+//
+// The equatorial threshold has the same shape and does not have the defect,
+// which is why it keeps its value: it sets lan to zero and measures the
+// in-plane angles from the x-axis, so lan + aop is preserved and the element
+// set stays consistent. Measured flat at 2e-15 for inclinations from 1e-17 to
+// 1e-5, on the same states.
+constexpr f64 kCircularTol = 1e-15;
 constexpr f64 kEquatorialTol = 1e-9;
 
 // Below this ratio of |h| to |r||v| -- the sine of the angle between position
@@ -96,7 +124,6 @@ static_assert(conicOf(1.0) == Conic::Ellipse && conicOf(-1.0) == Conic::Hyperbol
                   conicOf(-1e-13) == Conic::Parabola,
               "the conic is the sign of the energy, outside a band of 1e-12 around zero");
 
-constexpr f64 clampUnit(f64 v) { return std::clamp(v, -1.0, 1.0); }
 constexpr f64 sign(f64 v) { return v < 0.0 ? -1.0 : 1.0; }
 
 // x - sin x and sinh x - x: both are x^3/6 to first order, and both are written
@@ -443,15 +470,186 @@ solveUniversalAnomaly(const UniversalContext& ctx, f64 seconds) {
     };
 }
 
-// The four vectors the in-plane angles are measured from. Grouped into a struct
-// rather than passed as four adjacent Vec3 parameters, which would transpose in
-// silence (I.24, and `bugprone-easily-swappable-parameters` would say so).
+// --- the conversion in double-double ---------------------------------------
+//
+// Everything from here to elementsFromState carries the cancelling steps in
+// core/DoubleDouble.hpp. The reason is section 3 of the guidelines and one
+// measurement: on a nearly radial orbit |h| is the difference of two products
+// that agree to fifteen digits, so |h|^2/mu kept almost none of them and the
+// semi-latus rectum came out 1.1e-5 wrong; on a near-parabolic one v^2/2 and
+// mu/r agree to twelve, and the semi-major axis was 7.1e-4 wrong outside the
+// band. Both are now at the resolution of a double. The figures per family are
+// in the header comment of core/DoubleDouble.hpp.
+
+// A vector as a mantissa vector and one shared power of two, which is exact.
+// Products of two such vectors then stay of order one, which matters twice
+// over: Dekker's split has a ceiling, and a squared component of a 1e-112 m
+// position falls into the subnormals, where it keeps fewer bits the smaller it
+// gets. That second one cost a 1e-112 m orbit 98% of its semi-latus rectum.
+struct ScaledVec {
+    Vec3 unit;      // scaled so the largest component lands in [0.5, 1)
+    int exponent{}; // the vector is unit * 2^exponent, exactly
+};
+
+[[nodiscard]] ScaledVec factorOutScale(const Vec3& v) noexcept {
+    const f64 largest = std::max({std::abs(v.x), std::abs(v.y), std::abs(v.z)});
+    // Zero, an infinity or a NaN: nothing to scale, and every quantity built
+    // from it comes out the same whether it is scaled or not.
+    if (!(largest > 0.0) || !isFinite(largest)) return {.unit = v, .exponent = 0};
+    const int exponent = std::ilogb(largest) + 1;
+    // Per component, as core/Math.hpp's length() does, because scalbn(1.0, -k)
+    // would itself overflow when the largest component is subnormal.
+    return {
+        .unit = Vec3{std::scalbn(v.x, -exponent),
+                     std::scalbn(v.y, -exponent),
+                     std::scalbn(v.z, -exponent)},
+        .exponent = exponent,
+    };
+}
+
+// A vector whose components are double-doubles.
+struct Vec3Exact {
+    DoubleDouble x, y, z;
+};
+
+// The dot and cross products with every product and every sum exact. This is
+// where the whole benefit comes from: r x v cancels to nothing when the
+// velocity is nearly parallel to the position, and a plain cross product has
+// already thrown the answer away by the time anything else sees it.
+[[nodiscard]] DoubleDouble dotExact(const Vec3& a, const Vec3& b) noexcept {
+    return (twoProduct(a.x, b.x) + twoProduct(a.y, b.y)) + twoProduct(a.z, b.z);
+}
+
+[[nodiscard]] Vec3Exact crossExact(const Vec3& a, const Vec3& b) noexcept {
+    return {
+        .x = twoProduct(a.y, b.z) - twoProduct(a.z, b.y),
+        .y = twoProduct(a.z, b.x) - twoProduct(a.x, b.z),
+        .z = twoProduct(a.x, b.y) - twoProduct(a.y, b.x),
+    };
+}
+
+[[nodiscard]] DoubleDouble normSquaredExact(const Vec3Exact& v) noexcept {
+    return ((v.x * v.x) + (v.y * v.y)) + (v.z * v.z);
+}
+
+[[nodiscard]] Vec3 roundedToDouble(const Vec3Exact& v) noexcept {
+    return {toDouble(v.x), toDouble(v.y), toDouble(v.z)};
+}
+
+// The same trick again, for a vector that is already in double-double. The
+// eccentricity vector needs it for the reason the inputs do: its length is a
+// sum of three squares, which overflows once a component passes 1e154, and
+// what comes back is then an infinity rather than the large number it should
+// be. libFuzzer found the state that does it -- a hyperbola with e = 9.3e239,
+// which the whole conversion reported as NotFinite until this was here
+// (tests/test_orbit_scales.cpp, "an underflowing semi-major axis").
+struct ScaledVec3Exact {
+    Vec3Exact unit;
+    int exponent{};
+};
+
+[[nodiscard]] ScaledVec3Exact factorOutScale(const Vec3Exact& v) noexcept {
+    const f64 largest = std::max({std::abs(v.x.hi), std::abs(v.y.hi), std::abs(v.z.hi)});
+    if (!(largest > 0.0) || !isFinite(largest)) return {.unit = v, .exponent = 0};
+    const int exponent = std::ilogb(largest) + 1;
+    return {
+        .unit =
+            {
+                .x = scaleByTwoPower(v.x, -exponent),
+                .y = scaleByTwoPower(v.y, -exponent),
+                .z = scaleByTwoPower(v.z, -exponent),
+            },
+        .exponent = exponent,
+    };
+}
+
+// Every quantity the elements are built from, with the scaling unwound.
+//
+// The three dimensionless ones are the point. `alphaRadius` is 2 - r v^2 / mu,
+// which is alpha * r, and it is the subtraction that decides the conic and
+// sizes the semi-major axis. `eCosNu` is p/r - 1, and `eSinNu` is
+// (r . v) |h| / (mu r); neither cancels, and the pair fixes the true anomaly
+// without ever normalising a vector that has become shorter than its own
+// rounding.
+struct ExactState {
+    DoubleDouble rmag;        // |r|
+    DoubleDouble vmag;        // |v|
+    DoubleDouble slr;         // |h|^2 / mu
+    DoubleDouble alphaRadius; // 2 - r v^2 / mu
+    DoubleDouble ecc;         // |evec|
+    DoubleDouble eCosNu;
+    DoubleDouble eSinNu;
+    Vec3 h;        // r x v, on the scaled vectors: a direction, not a magnitude
+    Vec3 evec;     // toward periapsis, likewise a direction; `ecc` is its length
+    f64 hOverRv{}; // |h| / (|r| |v|), the sine of the angle between r and v
+};
+
+[[nodiscard]] ExactState exactStateOf(const StateVector& sv, GravParam mu) noexcept {
+    const ScaledVec r = factorOutScale(sv.pos);
+    const ScaledVec v = factorOutScale(sv.vel);
+    int muExponent = 0;
+    const DoubleDouble muMantissa = exact(std::frexp(mu.value, &muExponent));
+
+    const DoubleDouble rmagScaled = sqrtOf(dotExact(r.unit, r.unit));
+    const DoubleDouble vSquared = dotExact(v.unit, v.unit);
+    const DoubleDouble vmagScaled = sqrtOf(vSquared);
+    const DoubleDouble rdotvScaled = dotExact(r.unit, v.unit);
+    const Vec3Exact hExact = crossExact(r.unit, v.unit);
+    const DoubleDouble hSquared = normSquaredExact(hExact);
+    const DoubleDouble hmagScaled = sqrtOf(hSquared);
+
+    // p/r, e cos nu and e sin nu all carry this one power of two, and each is
+    // a ratio of order-one quantities until it is applied.
+    const int anomalyExponent = r.exponent + (2 * v.exponent) - muExponent;
+    const DoubleDouble overMuR = muMantissa * rmagScaled;
+    const DoubleDouble pOverR = scaleByTwoPower(hSquared / overMuR, anomalyExponent);
+    const DoubleDouble rvSquaredOverMu =
+        scaleByTwoPower((rmagScaled * vSquared) / muMantissa, anomalyExponent);
+
+    // The eccentricity vector as rhat (r v^2/mu - 1) - v (r . v) / mu. The
+    // same vector as (r (v^2 - mu/r) - v (r . v)) / mu, rearranged so that the
+    // only subtraction left is the one that genuinely cancels -- on a circular
+    // orbit, where the answer is zero -- and so that both terms are of order
+    // one whatever the scales are.
+    const DoubleDouble aMinusOne = rvSquaredOverMu - exact(1.0);
+    const auto component = [&](f64 rUnit, f64 vUnit) {
+        const DoubleDouble radial = (exact(rUnit) / rmagScaled) * aMinusOne;
+        const DoubleDouble along =
+            scaleByTwoPower((exact(vUnit) * rdotvScaled) / muMantissa, anomalyExponent);
+        return radial - along;
+    };
+    const ScaledVec3Exact evec = factorOutScale({
+        .x = component(r.unit.x, v.unit.x),
+        .y = component(r.unit.y, v.unit.y),
+        .z = component(r.unit.z, v.unit.z),
+    });
+
+    return {
+        .rmag = scaleByTwoPower(rmagScaled, r.exponent),
+        .vmag = scaleByTwoPower(vmagScaled, v.exponent),
+        .slr = scaleByTwoPower(hSquared / muMantissa,
+                               (2 * r.exponent) + (2 * v.exponent) - muExponent),
+        .alphaRadius = exact(2.0) - rvSquaredOverMu,
+        .ecc = scaleByTwoPower(sqrtOf(normSquaredExact(evec.unit)), evec.exponent),
+        .eCosNu = pOverR - exact(1.0),
+        .eSinNu = scaleByTwoPower((rdotvScaled * hmagScaled) / overMuR, anomalyExponent),
+        .h = roundedToDouble(hExact),
+        .evec = roundedToDouble(evec.unit),
+        .hOverRv = toDouble(hmagScaled / (rmagScaled * vmagScaled)),
+    };
+}
+
+// The vectors and the two anomaly components the in-plane angles are measured
+// from. Grouped into a struct rather than passed as adjacent Vec3 parameters,
+// which would transpose in silence (I.24, and
+// `bugprone-easily-swappable-parameters` would say so).
 struct OrbitFrame {
-    Vec3 r;    // position
-    Vec3 v;    // velocity
+    Vec3 r;    // position, for the argument of latitude of a circular orbit
     Vec3 h;    // specific angular momentum
     Vec3 node; // toward the ascending node; zero for an equatorial orbit
     Vec3 evec; // toward periapsis; zero for a circular orbit
+    f64 eCosNu{};
+    f64 eSinNu{};
 };
 
 // Fills in lan, aop and tra, which is where the degenerate cases live: a
@@ -465,7 +663,6 @@ struct OrbitFrame {
 void assignInPlaneAngles(Elements& el, const OrbitFrame& frame) {
     const f64 nmag = length(frame.node);
     const f64 hmag = length(frame.h);
-    const f64 rdotv = dot(frame.r, frame.v);
 
     const bool circular = el.ecc.value < kCircularTol;
     const bool equatorial = nmag < kEquatorialTol * hmag;
@@ -485,23 +682,36 @@ void assignInPlaneAngles(Elements& el, const OrbitFrame& frame) {
         return;
     }
 
-    f64 aop = angleBetween(ref, frame.evec).value;
-    if (dot(cross(ref, frame.evec), frame.h) < 0.0) aop = kTau - aop;
-    el.aop = wrapTau(Radians{aop});
+    // One atan2 rather than an unsigned angle plus a sign test. The sine is
+    // the component of ref x evec along h and the cosine is ref . evec, so
+    // |ref| and |evec| are common factors that atan2 does not care about --
+    // which is what makes this work when the eccentricity vector is short. The
+    // half-turn falls out of the pair instead of needing a second test.
+    const f64 aopSine = dot(cross(ref, frame.evec), frame.h) / hmag;
+    const f64 aopCosine = dot(ref, frame.evec);
+    el.aop = wrapTau(Radians{std::atan2(aopSine, aopCosine)});
 
-    f64 tra = angleBetween(frame.evec, frame.r).value;
-    if (rdotv < 0.0) tra = kTau - tra; // inbound half of the orbit
-    el.tra = wrapTau(Radians{tra});
+    // The true anomaly from e sin nu and e cos nu, which the conversion has
+    // already formed without cancellation: p/r - 1 and (r . v) |h| / (mu r).
+    // Neither is a vector that has become shorter than its own rounding, which
+    // is what the angle between the eccentricity vector and the position
+    // becomes on a nearly circular orbit.
+    el.tra = wrapTau(Radians{std::atan2(frame.eSinNu, frame.eCosNu)});
 }
 
 // Fills in sma, and keeps e on the side of 1 that matches it. Split out of
 // elementsFromState, as assignInPlaneAngles is, so neither exceeds the size
-// limit; and like it, the magnitudes are recomputed here rather than passed as
-// adjacent f64 parameters that transpose in silence.
+// limit.
 //
 // The conic is the energy's to decide, by the same test propagate() uses
 // (conicOf), and sma says which: finite and positive for an ellipse, negative
 // for a hyperbola, infinite for a parabola.
+//
+// alpha * r is 2 - r v^2 / mu, and the exact state carries it as one
+// double-double rather than as the difference of two plain doubles that agree
+// to twelve digits near a parabola. That matters twice: it is what the conic
+// is decided on, and a = r / (alpha r) is the semi-major axis, which was 7.1e-4
+// out just outside the band before this.
 //
 // And e is kept on the side of 1 the energy says. Near radial it is 1 as a
 // double for ellipses and hyperbolas alike -- a probe falling at 100 m/s with
@@ -509,14 +719,9 @@ void assignInPlaneAngles(Elements& el, const OrbitFrame& frame) {
 // e < 1, the anomaly conversions among them, would be guessing. Moving it to
 // the adjacent double changes it by less than the eccentricity vector's own
 // rounding.
-void assignConic(Elements& el, const StateVector& sv, GravParam mu) {
-    const f64 m = mu.value;
-    const f64 rmag = length(sv.pos);
-    const f64 vmag = length(sv.vel);
-    const f64 energy = (vmag * vmag * 0.5) - (m / rmag);
-    const f64 alpha = (2.0 / rmag) - (vmag * vmag / m);
-    const Conic conic = conicOf(alpha * rmag);
-    el.sma = Metres{conic == Conic::Parabola ? kInf : -m / (2.0 * energy)};
+void assignConic(Elements& el, const ExactState& state) {
+    const Conic conic = conicOf(toDouble(state.alphaRadius));
+    el.sma = Metres{conic == Conic::Parabola ? kInf : toDouble(state.rmag / state.alphaRadius)};
     if (conic == Conic::Ellipse && !(el.ecc.value < 1.0)) {
         el.ecc = Eccentricity{std::nextafter(1.0, 0.0)};
     }
@@ -628,17 +833,15 @@ std::expected<Elements, OrbitError> elementsFromState(const StateVector& sv, Gra
     if (!isFinite(sv) || !std::isfinite(mu.value)) return std::unexpected(OrbitError::NotFinite);
     if (!(mu.value > 0.0)) return std::unexpected(OrbitError::NonPositiveGravity);
 
-    const Vec3& r = sv.pos;
-    const Vec3& v = sv.vel;
+    // Everything the elements are built from, computed once, with every
+    // cancelling step carried in double-double. See exactStateOf above.
+    const ExactState state = exactStateOf(sv, mu);
+    const f64 rmag = toDouble(state.rmag);
 
-    const f64 rmag = length(r);
     // Reported rather than asserted: a scenario file can put a vessel at the
     // exact centre of a planet, and that is something to explain to the user
     // rather than a bug in this file.
     if (!(rmag > 0.0)) return std::unexpected(OrbitError::DegenerateState);
-
-    const f64 m = mu.value;
-    const f64 vmag = length(v);
 
     // Finite components do not imply a finite magnitude. A vector whose length
     // exceeds the largest double has an infinite length, and `rmag > 0.0` is
@@ -647,53 +850,61 @@ std::expected<Elements, OrbitError> elementsFromState(const StateVector& sv, Gra
     // about 1.3e154: the elements came back claiming success with an infinite
     // eccentricity and a NaN argument of periapsis, which is precisely the
     // "succeeded, and the answer is NaN" outcome the type system cannot
-    // prevent and the caller has no way to detect. length() is exact to 2 ulp
-    // at every scale now (core/Math.hpp), but a magnitude beyond 1.8e308 is
-    // still infinite, and the quantities below still square things; the
-    // postcondition at the end catches what overflows there.
-    if (!std::isfinite(rmag) || !std::isfinite(vmag)) {
+    // prevent and the caller has no way to detect. The magnitudes are scaled
+    // now and so are exact at every scale, but one beyond 1.8e308 is still
+    // infinite; the postcondition at the end catches what overflows past here.
+    if (!isFinite(rmag) || !isFinite(toDouble(state.vmag))) {
         return std::unexpected(OrbitError::NotFinite);
     }
-    const f64 rdotv = dot(r, v);
-
-    const Vec3 h = cross(r, v); // specific angular momentum
-    const f64 hmag = length(h);
 
     // A radial trajectory has no orbital plane, and `inc` below would be
-    // acos(h.z / hmag) = acos(0/0) = NaN returned as a success. The test is
-    // dimensionless on purpose (section 12, and the lesson of this file):
-    // hmag / (rmag * vmag) is |sin| of the angle between position and
-    // velocity, so the threshold compares like with like at every scale.
+    // atan2(0, 0) = 0 returned as a success. The test is dimensionless on
+    // purpose (section 12, and the lesson of this file): |h| / (|r| |v|) is
+    // |sin| of the angle between position and velocity, so the threshold
+    // compares like with like at every scale. It is formed as a ratio of
+    // scaled quantities rather than as hmag > tol * rmag * vmag, so that the
+    // product on the right cannot overflow at the top of the range.
     //
     // 1e-12 does not clip real orbits. That ratio is the cosine of the flight
     // path angle, and reaching 1e-12 needs an eccentricity within about 1e-24
     // of 1 -- indistinguishable from a straight line in f64. The e = 0.9999
     // case in the suite sits around 1e-2.
-    if (!(hmag > kRectilinearTol * rmag * vmag)) {
+    if (!(state.hOverRv > kRectilinearTol)) {
         return std::unexpected(OrbitError::RectilinearOrbit);
     }
 
-    const Vec3 node = cross(Vec3{0, 0, 1}, h); // points at the ascending node
-
-    // The eccentricity vector points from the focus toward periapsis.
-    const Vec3 evec = (r * ((vmag * vmag) - (m / rmag)) - v * rdotv) / m;
-
     Elements el;
-    el.ecc = Eccentricity{length(evec)};
-    el.slr = Metres{hmag * hmag / m};
-    el.inc = Radians{std::acos(clampUnit(h.z / hmag))};
+    el.ecc = Eccentricity{toDouble(state.ecc)};
+    el.slr = Metres{toDouble(state.slr)};
 
     // Every conic has a positive semi-latus rectum, so a zero here is not an
-    // orbit shape -- it is `hmag * hmag` underflowing, which the ratio test
-    // above cannot see because it never squares anything. The consequence
-    // downstream is that orbitInfo's radius becomes slr / (1 + e cos v) =
-    // 0/0 at the asymptote of the parabola this then looks like. Same
-    // conclusion as the ratio test, reached by a different route, so it is
-    // reported as the same thing: too little angular momentum to be an orbit.
+    // orbit shape -- it is |h|^2 underflowing, which the ratio test above
+    // cannot see because it never squares anything. The consequence downstream
+    // is that orbitInfo's radius becomes slr / (1 + e cos v) = 0/0 at the
+    // asymptote of the parabola this then looks like. Same conclusion as the
+    // ratio test, reached by a different route, so it is reported as the same
+    // thing: too little angular momentum to be an orbit.
     if (!(el.slr.value > 0.0)) return std::unexpected(OrbitError::RectilinearOrbit);
 
-    assignConic(el, sv, mu);
-    assignInPlaneAngles(el, {.r = r, .v = v, .h = h, .node = node, .evec = evec});
+    // atan2 against the in-plane magnitude rather than acos(h.z / |h|). acos
+    // loses half its digits where its argument approaches +-1, which is an
+    // orbit approaching the equator from either side: the error goes as the
+    // square root of the rounding, so 1.6e-13 at an inclination of pi - 1e-4
+    // became 3.3e-16 when this changed.
+    el.inc = Radians{std::atan2(std::hypot(state.h.x, state.h.y), state.h.z)};
+
+    const Vec3 node = cross(Vec3{0, 0, 1}, state.h); // points at the ascending node
+
+    assignConic(el, state);
+    assignInPlaneAngles(el,
+                        {
+                            .r = sv.pos,
+                            .h = state.h,
+                            .node = node,
+                            .evec = state.evec,
+                            .eCosNu = toDouble(state.eCosNu),
+                            .eSinNu = toDouble(state.eSinNu),
+                        });
 
     if (!elementsAreUsable(el)) return std::unexpected(OrbitError::NotFinite);
     return el;

@@ -279,6 +279,7 @@ target_link_libraries(orbsim_test_support PUBLIC
 )
 
 set(ORBSIM_TESTS
+        test_double_double
         test_orbit
         test_orbit_scales
         test_time
@@ -527,6 +528,7 @@ orbsim_add_header_selfcheck(orbsim_header_selfcheck orbsim_core
         core/Contract.hpp
         core/Scalar.hpp
         core/Units.hpp
+        core/DoubleDouble.hpp
         core/Math.hpp
         core/Time.hpp
         orbit/Orbit.hpp

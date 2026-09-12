@@ -1451,11 +1451,16 @@ namespace {
 // budget. The formulation this replaced needed 3.5e8 on the same states, and on
 // 417 of them no factor at all would have done: the radius came back infinite.
 //
-// The second factor is not orbitInfo's. Far out on a hyperbola the eccentricity
-// vector in elementsFromState cancels, and the anomaly it stores loses about
-// 2e-15 r/|a| rad with it; `docs/STATUS.md` carries that as its own task. The
-// sweep below therefore stops at r/|a| = 1e3, where the elements still mean
-// something.
+// The second factor is not orbitInfo's either: it is how steeply the radius
+// and the speed depend on an anomaly that is only a double, which is what
+// |alpha r| measures. It used to carry a second job as well -- far out on a
+// hyperbola the eccentricity vector in elementsFromState cancelled, and the
+// anomaly it stored lost about 2e-15 r/|a| rad with it, so this sweep stopped
+// at r/|a| = 1e3 where the elements still meant something. That is fixed
+// (2026-09-12, core/DoubleDouble.hpp), and the sweep now runs to r/|a| = 1e6
+// and down to e = 1e-16. Over those wider ranges the worst case is still
+// between 8.5 and 9.3 u, measured by tightening this factor until it fails,
+// so the budget of 40 is about four times it.
 //
 // The additive term is the parabolic band's. Where the energy puts a state
 // within 1e-12 of a parabola, elementsFromState stores an infinite sma, and
@@ -1585,14 +1590,17 @@ void sweepNearParabolicOrbits(Sampler& sampler) {
     }
 }
 
-// The other degenerate end. Above e = 1e-9 the periapsis direction is still
-// computable, so the true anomaly still means something; below it
-// elementsFromState switches to the argument of latitude, which costs up to
-// 2e in the radius -- its own task in `docs/STATUS.md`, not this budget.
+// The other degenerate end, down to e = 1e-16. It used to stop at 2e-9,
+// because below 1e-9 elementsFromState substituted the argument of latitude
+// for the true anomaly while leaving `ecc` alone, and the radius a consumer
+// rebuilt from that pair was out by about 2e -- 1.8e-9 at the threshold, which
+// is 12.6 mm at 7000 km. The substitution now happens below 1e-15 instead,
+// where 2e is the resolution of a double (2026-09-12, and the note on
+// kCircularTol in Orbit.cpp says why that is the right place for it).
 void sweepSmallEccentricities(Sampler& sampler) {
     for (std::size_t i = 0; i < kRoundTripCases; ++i) {
         const Body& body = kBodies.at(i % kBodies.size());
-        const Eccentricity ecc{sampler.logUniform({.lo = 2e-9, .hi = 1e-2})};
+        const Eccentricity ecc{sampler.logUniform({.lo = 1e-16, .hi = 1e-2})};
         const f64 sma = sampler.logUniform(
             {.lo = body.minPeriapsis.value / (1.0 - ecc.value), .hi = body.maxSma.value});
         const Elements el{
@@ -1622,7 +1630,7 @@ void sweepHyperbolicAsymptotes(Sampler& sampler) {
         const f64 slr = -sma * ((ecc.value * ecc.value) - 1.0);
         // Never inside periapsis, whatever r/|a| was drawn.
         const f64 radius =
-            std::max(slr / (1.0 + ecc.value), -sma * sampler.logUniform({.lo = 1e-3, .hi = 1e3}));
+            std::max(slr / (1.0 + ecc.value), -sma * sampler.logUniform({.lo = 1e-3, .hi = 1e6}));
         const f64 tra = std::acos(std::clamp(((slr / radius) - 1.0) / ecc.value, -1.0, 1.0));
         const Elements el{
             .sma = Metres{sma},
@@ -1850,4 +1858,288 @@ TEST_CASE("element propagation agrees with the state propagator on every conic",
     sweepNearParabolicPropagation(sampler);
     sweepParabolicPropagation(sampler);
     sweepNearCircularPropagation(sampler);
+}
+
+// --- elementsFromState, element by element ---------------------------------
+
+namespace {
+
+// Every element of one measured state, with the reference computed at 60
+// decimal digits from those exact input doubles and then rounded to the
+// nearest double. The reference follows the same definitions the code does --
+// p is |h|^2/mu, e is the eccentricity vector's length, nu is the angle from
+// that vector to the position -- and evaluates them exactly, so the difference
+// is the implementation's own rounding and nothing else.
+//
+// Each of these was the worst state for one element among 56,532 drawn across
+// nine families (2026-09-12). Two kinds of designed behaviour are excluded
+// from the selection rather than asserted against: the parabolic band, where
+// an infinite sma is the intended answer, and the nudge in assignConic that
+// moves an eccentricity rounding to 1 onto the side of 1 the energy says.
+struct ElementCase {
+    std::string_view name;
+    std::string_view symptom;
+    StateVector state;
+    GravParam mu;
+    Elements want;
+};
+
+// 40 u, the same factor orbitInfo's contract uses. Every element of every case
+// below was measured at or under 9.4 u with the double-double conversion, the
+// loosest being 1.04e-15, so the budget is four times the worst measurement.
+// The angles are compared absolutely, in radians, because they are O(1)
+// quantities and a relative error would be meaningless near zero.
+constexpr f64 kElementFactor = 40.0;
+constexpr f64 kElementBudget = kElementFactor * kUnitRoundoff;
+
+// Shortest way round the circle, so 0 and tau are the same angle.
+[[nodiscard]] f64 angularError(Radians got, Radians want) {
+    const f64 wrapped = std::fmod(std::abs(got.value - want.value), kTau);
+    return std::min(wrapped, kTau - wrapped);
+}
+
+void checkEveryElement(const ElementCase& test) {
+    const auto el = elementsFromState(test.state, test.mu);
+    INFO("elementsFromState -> " << errorName(el));
+    REQUIRE(el.has_value());
+
+    INFO(std::format("case \"{}\": {}", test.name, test.symptom));
+    INFO(std::format("budget {:.3g} relative, and the same in radians", kElementBudget));
+
+    struct Magnitude {
+        std::string_view name;
+        f64 got;
+        f64 want;
+    };
+    for (const Magnitude& m : std::to_array<Magnitude>({
+             {.name = "sma", .got = el->sma.value, .want = test.want.sma.value},
+             {.name = "ecc", .got = el->ecc.value, .want = test.want.ecc.value},
+             {.name = "slr", .got = el->slr.value, .want = test.want.slr.value},
+         })) {
+        INFO(std::format("{} {:.17g}, want {:.17g}, out by {:.3g}",
+                         m.name,
+                         m.got,
+                         m.want,
+                         relativeError(m.got, m.want)));
+        REQUIRE(relativeError(m.got, m.want) <= kElementBudget);
+    }
+
+    struct Angle {
+        std::string_view name;
+        Radians got;
+        Radians want;
+    };
+    for (const Angle& a : std::to_array<Angle>({
+             {.name = "inc", .got = el->inc, .want = test.want.inc},
+             {.name = "lan", .got = el->lan, .want = test.want.lan},
+             {.name = "aop", .got = el->aop, .want = test.want.aop},
+             {.name = "tra", .got = el->tra, .want = test.want.tra},
+         })) {
+        INFO(std::format("{} {:.17g} rad, want {:.17g}, out by {:.3g}",
+                         a.name,
+                         a.got.value,
+                         a.want.value,
+                         angularError(a.got, a.want)));
+        REQUIRE(angularError(a.got, a.want) <= kElementBudget);
+    }
+}
+
+} // namespace
+
+// Seven measured states, one per failure mechanism. Before the double-double
+// conversion these were out by up to 1.1e-5 in the semi-latus rectum of a
+// nearly radial orbit, 7.1e-4 in the semi-major axis of a near-parabolic one,
+// and 0.98 -- that is, all of it -- in the semi-latus rectum at 1e-112 m.
+TEST_CASE("elementsFromState is accurate to the resolution of a double", "[orbit][scales]") {
+    // Nearly radial. |h| is the difference of two products that agree to
+    // fifteen digits, so |h|^2/mu keeps almost none of them, and every angle
+    // measured from the node goes with it.
+    SECTION("a nearly radial orbit, semi-latus rectum") {
+        checkEveryElement({
+            .name = "radial/slr",
+            .symptom = "slr was out by 1.1e-5, lan by 1.8e-6 rad",
+            .state =
+                {
+                    .pos = {98115305.6517241, -36899386.05634015, -63434678.16796173},
+                    .vel = {35263.74015082627, -13262.052775336871, -22799.134065214468},
+                },
+            .mu = GravParam{1.26686534e17},
+            .want =
+                {
+                    .sma = Metres{984109853.7716752},
+                    .ecc = Eccentricity{1.0},
+                    .inc = Radians{1.6530067199888987},
+                    .lan = Radians{5.873583714414224},
+                    .aop = Radians{2.595342089300744},
+                    // kPi plus the exact offset rather than the decimal, which
+                    // is the same double: a nearly radial orbit sits at its far
+                    // apsis, so the reference is always within a nanoradian of
+                    // pi, and `modernize-use-std-numbers` reports any literal
+                    // that close to a named constant. Written this way it also
+                    // says what it means.
+                    .tra = Radians{kPi + -2.4008794952123935e-11},
+                    .slr = Metres{3.765682093767872e-14},
+                },
+        });
+    }
+
+    SECTION("a nearly radial orbit, in-plane angles") {
+        checkEveryElement({
+            .name = "radial/aop",
+            .symptom = "aop was out by 7.5e-6 rad, lan by 8.3e-6, inc by 2.5e-6, slr by 1.1e-5",
+            .state =
+                {
+                    .pos = {41748328800.00065, 50413494846.746025, 28790214535.44694},
+                    .vel = {95.73084603298135, 115.60047196533479, 66.01729156934707},
+                },
+            .mu = GravParam{398600441800000.0},
+            .want =
+                {
+                    .sma = Metres{-25327823861.335873},
+                    .ecc = Eccentricity{1.0},
+                    .inc = Radians{2.7026987962183653},
+                    .lan = Radians{2.0930065922253807},
+                    .aop = Radians{4.3868367873725855},
+                    .tra = Radians{kPi + -5.193623309196482e-11},
+                    .slr = Metres{3.999035826672676e-11},
+                },
+        });
+    }
+
+    // Outside the parabolic band, so an infinite sma is not the answer here:
+    // v^2/2 and mu/r agree to twelve digits and the energy keeps four.
+    SECTION("a near-parabolic orbit outside the band, semi-major axis") {
+        checkEveryElement({
+            .name = "parabolic/sma",
+            .symptom = "sma was out by 7.1e-4, at |alpha r| = 1.2e-9, outside the 1e-12 band",
+            .state =
+                {
+                    .pos = {-640755300159.4368, 29100549031.838127, 346946167705.056},
+                    .vel = {-2.2807014201260682, 32.969662883052614, -0.9995679123141444},
+                },
+            .mu = GravParam{398600441800000.0},
+            .want =
+                {
+                    .sma = Metres{6.583308070576134e+23},
+                    .ecc = Eccentricity{0.9999999999989005},
+                    .inc = Radians{2.6396867135064164},
+                    .lan = Radians{4.836596791006594},
+                    .aop = Radians{1.5475516847830715},
+                    .tra = Radians{0.1722502705583468},
+                    .slr = Metres{1447681396713.5178},
+                },
+        });
+    }
+
+    // Far out along a hyperbola's asymptote, where the eccentricity vector
+    // cancels for the other reason.
+    SECTION("a hyperbola far out along its asymptote") {
+        checkEveryElement({
+            .name = "asymptote/slr",
+            .symptom = "slr was out by 3.7e-8",
+            .state =
+                {
+                    .pos = {184933078210043.56, 12227088438166.695, 154761708918660.75},
+                    .vel = {515460.5071996036, 34080.33415690606, 431364.41700335406},
+                },
+            .mu = GravParam{1.32712440018e20},
+            .want =
+                {
+                    .sma = Metres{-293005379.96767074},
+                    .ecc = Eccentricity{1.0000034505920776},
+                    .inc = Radians{1.7765735746548228},
+                    .lan = Radians{0.24121218097744143},
+                    .aop = Radians{3.858093101748927},
+                    .tra = Radians{3.138965643681166},
+                    .slr = Metres{2022.0875743110084},
+                },
+        });
+    }
+
+    // Nearly circular: the eccentricity vector is the difference of two
+    // vectors agreeing to nine digits, and its length is what is left.
+    SECTION("a nearly circular orbit, eccentricity") {
+        checkEveryElement({
+            .name = "smalle/ecc",
+            .symptom = "ecc was out by 1.7e-7 at a true e of 2.4e-9",
+            .state =
+                {
+                    .pos = {89977497286.24823, 325806749198.3961, -6363974265.222106},
+                    .vel = {-33.02472617867604, 9.071987671541756, -2.4776024906511935},
+                },
+            .mu = GravParam{398600441800000.0},
+            .want =
+                {
+                    .sma = Metres{338062845427.7559},
+                    .ecc = Eccentricity{2.410249444739502e-09},
+                    .inc = Radians{0.07463870595147103},
+                    .lan = Radians{4.18840882891478},
+                    .aop = Radians{0.26957632809726984},
+                    .tra = Radians{3.1272246403208896},
+                    .slr = Metres{338062845427.7559},
+                },
+        });
+    }
+
+    // A whole orbit at 1e-112 m around a mu of 1e-213. Nothing here is
+    // physical; it is the scale at which every squared quantity falls into the
+    // subnormals, and the elements are still a well-posed function of the
+    // input doubles.
+    SECTION("an orbit far below any physical scale") {
+        checkEveryElement({
+            .name = "tiny/slr",
+            .symptom = "slr was out by 0.98 and aop by 0.31 rad -- the squares went subnormal",
+            .state =
+                {
+                    .pos =
+                        {
+                            1.1255796242117575e-112,
+                            -2.335524288160757e-112,
+                            -1.7843712448117626e-112,
+                        },
+                    .vel =
+                        {
+                            -5.622784877953291e-51,
+                            1.129129308921512e-52,
+                            2.0383290377229924e-51,
+                        },
+                },
+            .mu = GravParam{6.762040535602958e-213},
+            .want =
+                {
+                    .sma = Metres{9.408723759066775e-112},
+                    .ecc = Eccentricity{0.7793327632486454},
+                    .inc = Radians{2.537170817576543},
+                    .lan = Radians{3.673972445843512},
+                    .aop = Radians{6.126893603302964},
+                    .tra = Radians{4.9372615743387795},
+                    .slr = Metres{3.6942454754304065e-112},
+                },
+        });
+    }
+
+    // A small mu with a large state: the division by mu in the eccentricity
+    // vector is where this one loses its digits.
+    SECTION("an orbit around a very small gravitational parameter") {
+        checkEveryElement({
+            .name = "muwide/sma",
+            .symptom = "sma was out by 1.2e-11 with mu = 7.3e7",
+            .state =
+                {
+                    .pos = {33533205800013.06, 17263837004043.322, -2700443730722.6323},
+                    .vel = {0.001461083271751538, 0.0011796325768950588, -0.00055901478564361},
+                },
+            .mu = GravParam{72579463.2331308},
+            .want =
+                {
+                    .sma = Metres{8.272163997668141e+17},
+                    .ecc = Eccentricity{0.9999961169100106},
+                    .inc = Radians{0.844951349416489},
+                    .lan = Radians{3.5534480537245505},
+                    .aop = Radians{0.6871285419999764},
+                    .tra = Radians{2.550093699048564},
+                    .slr = Metres{6424298968899.643},
+                },
+        });
+    }
 }

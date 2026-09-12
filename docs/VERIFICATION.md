@@ -281,8 +281,15 @@ annotations switched off.
 kinds of undefined behaviour — signed overflow, division by zero, an over-wide
 shift, an out-of-range float cast, a null dereference, a misaligned store, an
 invalid bool and an invalid enum — Windows and Linux returned the same verdict
-on every one. Throughput is within a fifth: 248k executions a second against
-315k.
+on every one. Throughput was within a fifth when that was measured: 248k
+executions a second against 315k.
+
+Both numbers are now much lower, and the reason is worth knowing rather than
+worth fixing. `elementsFromState` carries its cancelling steps in
+double-double since 2026-09-12, which is 2.66x the work unsanitized and rather
+more than that with ASan instrumenting every access: the same preset now runs
+about 28k executions a second. That is still 5 million cases in three minutes,
+which is what the budget is for.
 
 **`linux-fuzz` stays, for LeakSanitizer, which does not exist on Windows.** A
 planted 64-byte leak is reported under WSL and passes silently on Windows.

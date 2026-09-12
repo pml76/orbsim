@@ -244,7 +244,7 @@ directory's `orbex::`). Recoverable with
 ASan and the MSVC *debug* C runtime cannot share a heap: every sanitized
 executable died at startup with a bad-free inside `ucrtbased.dll` before
 reaching `main`. The preset builds RelWithDebInfo with `-DNDEBUG` removed, so
-assertions are live but the release runtime is used. Verified: all three suites
+assertions are live but the release runtime is used. Verified: all four suites
 pass under ASan and `NDEBUG` appears nowhere in the generated build.
 
 Two Windows-specific workarounds ride along.

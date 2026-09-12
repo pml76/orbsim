@@ -38,6 +38,14 @@ struct StateVector {
 // becomes the argument of latitude; an equatorial orbit has no ascending node,
 // so `lan` is zero and in-plane angles are measured from the x-axis instead.
 //
+// "Circular" means e < 1e-15 and "equatorial" |n|/|h| < 1e-9, and the two
+// numbers differ for a reason worth knowing before relying on either: the
+// equatorial substitution preserves lan + aop, so the element set stays
+// self consistent and costs a round trip nothing, while the circular one
+// replaces `tra` without touching `ecc`, so it costs about 2e. Its threshold
+// therefore sits where 2e is the resolution of a double. Orbit.cpp, on
+// kCircularTol, has the measurements.
+//
 // Where no canonical answer exists, `elementsFromState` reports instead of
 // inventing one. A radial trajectory has no orbital plane at all, so there is
 // no inclination to fall back on -- that is `RectilinearOrbit`. A state whose
@@ -143,6 +151,30 @@ enum class OrbitError : std::uint8_t {
 // exact centre of the body; and `RectilinearOrbit` for a radial trajectory,
 // which has no orbital plane and therefore no inclination. On success every
 // element is a usable number, which is checked before returning.
+//
+// **Every element is the nearest double to the exact conversion of the input
+// doubles**, to within 40 u, u = 2^-53. That is not a property of the formulae
+// but of how they are evaluated: the steps that cancel are carried in
+// double-double (core/DoubleDouble.hpp), and the whole state is scaled by a
+// power of two first, so the result does not depend on where in a double's
+// range the orbit sits. Measured against 60-digit references over 56,532
+// states across nine families on three toolchains (2026-09-12), the worst case
+// was 9.4 u and the median 0.3 u, with no family and no scale behaving
+// differently from any other. Before this the same measurement gave 1.1e-5 on
+// the semi-latus rectum of a nearly radial orbit, 7.1e-4 on the semi-major
+// axis just outside the parabolic band, and 0.98 on the semi-latus rectum of
+// an orbit at 1e-112 m.
+//
+// Two things are deliberately *not* the nearest double, and both are documented
+// where they are decided in Orbit.cpp: `sma` is infinite inside the parabolic
+// band, which is the conic the energy says rather than an approximation of a
+// nearby one; and an `ecc` that rounds to 1 is moved to the adjacent double on
+// the side of 1 the energy says.
+//
+// A state whose exact elements are not doubles at all is reported rather than
+// approximated. |r| = 1e300 with |v| = 1e-300 has an eccentricity above
+// 1.8e308, and what comes back is `NotFinite`; it used to be a finite number
+// that was wrong by hundreds of orders of magnitude.
 [[nodiscard]] std::expected<Elements, OrbitError> elementsFromState(const StateVector& sv,
                                                                     GravParam mu);
 [[nodiscard]] StateVector stateFromElements(const Elements& el, GravParam mu);
@@ -159,23 +191,29 @@ enum class OrbitError : std::uint8_t {
 //
 // with kappa = |r.v| / |h| for the radius and |r.v| mu / (r v^2 |h|) for the
 // speed -- the two log-derivatives with respect to the anomaly -- and
-// alpha r = 2 - r v^2 / mu. That second factor is `elementsFromState`'s rather
-// than this function's: far out on a hyperbola its eccentricity vector cancels,
-// and the anomaly it stores loses about 2e-15 r/|a| rad with it.
-// `tests/test_orbit_scales.cpp` asserts the law over a seeded sweep.
+// alpha r = 2 - r v^2 / mu, which is how steeply they depend on an anomaly that
+// is only a double. `tests/test_orbit_scales.cpp` asserts the law over a seeded
+// sweep, now out to r/|a| = 1e6 and down to e = 1e-16; the second factor used
+// to carry `elementsFromState`'s own error as well, because far out on a
+// hyperbola its eccentricity vector cancelled, and that is fixed.
 //
-// Three regimes sit outside it, and no formulation reaches past them from these
-// elements:
+// Two regimes sit outside the law, and no formulation reaches past them from
+// these elements:
 //   - inside the parabolic band, where the energy puts a state within 1e-12 of
 //     a parabola, `sma` is infinite and what comes back is the parabola through
 //     that state: up to |alpha r| / 2, and so at most 5e-13, away from the
 //     truth;
-//   - below e = 1e-9, where `tra` is the argument of latitude rather than the
-//     true anomaly: up to 2e, which is 1.8e-9 or 12.6 mm at 7000 km;
 //   - at an apsis of a nearly radial orbit, where the first-order term above is
 //     zero and the second order is what is left: a probe drifting at 1 mm/s has
 //     its speed 2.4e-5 out, because the double nearest pi is 1.2e-16 short of
 //     it.
+//
+// A third used to: below e = 1e-9 `tra` was the argument of latitude rather
+// than the true anomaly while `ecc` kept its value, and the radius rebuilt
+// from that pair was out by up to 2e -- 1.8e-9, or 12.6 mm at 7000 km. The
+// substitution now happens below e = 1e-15 instead, where 2e is the resolution
+// of a double; the note on kCircularTol in Orbit.cpp says why that is the right
+// place for it, and why the equatorial threshold beside it does not move.
 //
 // **A caller holding the state vector should read the radius and the speed off
 // it** -- |r| and |v| are exact there, and this function is for a caller that
