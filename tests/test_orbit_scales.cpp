@@ -215,15 +215,21 @@ TEST_CASE("parabolic trajectories", "[orbit][scales]") {
         REQUIRE_THAT(back->vel, WithinRelVec(para.vel, Tolerance{1e-9}));
     }
 
-    // Element propagation needs a finite semi-major axis and says so, instead
-    // of feeding an infinity into the Kepler solver and reporting that it
-    // "did not converge".
+    // Element propagation used to refuse this element set: no finite semi-major
+    // axis, and the classical Kepler equation has no parabolic branch. Since
+    // 2026-09-12 it runs the same universal solve propagate() does, where a
+    // parabola is the case psi = 0 rather than a special one, so it answers --
+    // and the two propagators must land in the same place.
     const auto viaElements = propagateElements(*el, kMuEarth, 100.0_s);
-    const bool refusedAsParabolic =
-        !viaElements.has_value() && viaElements.error() == OrbitError::ParabolicElements;
-    INFO("propagateElements refuses parabolic elements, specifically -> "
-         << errorName(viaElements));
-    REQUIRE(refusedAsParabolic);
+    INFO("propagateElements on a parabola -> " << errorName(viaElements));
+    REQUIRE(viaElements.has_value());
+
+    const auto viaState = propagate(para, kMuEarth, 100.0_s);
+    INFO(errorName(viaState));
+    REQUIRE(viaState.has_value());
+    INFO("the two propagators agree on a parabola");
+    REQUIRE_THAT(stateFromElements(*viaElements, kMuEarth).pos,
+                 WithinRelVec(viaState->pos, Tolerance{1e-12}));
 }
 
 // NaN and infinity are what a corrupt scenario file produces. They must be
@@ -273,7 +279,7 @@ TEST_CASE("non-finite inputs are refused by name", "[orbit][scales]") {
     REQUIRE_THAT(still->pos, WithinRelVec(leo.pos, Tolerance{0.0}));
 
     REQUIRE(!describe(OrbitError::NotFinite).empty());
-    REQUIRE(!describe(OrbitError::ParabolicElements).empty());
+    REQUIRE(!describe(OrbitError::DegenerateState).empty());
     REQUIRE(!describe(OrbitError::RectilinearOrbit).empty());
 }
 
@@ -681,6 +687,172 @@ TEST_CASE("an underflowing semi-major axis is not a NaN radius", "[orbit][scales
     // anomaly, not the anomaly's position along the conic.
     INFO("the speed still means something");
     REQUIRE(relativeError(info.speed.value, conicReference(state, mu).speed.value) <= 1e-6);
+}
+
+// Five orbits through the same periapsis, 7000 km up, differing by at most
+// 2e-9 in eccentricity: an ellipse and a hyperbola either side of the refusal
+// band, one inside it, and the parabola itself. Started at the same true
+// anomaly and propagated the same 2782.9 s, they must arrive within a few
+// billionths of the same place -- that is what "within 2e-9 of a parabola"
+// means.
+//
+// Until 2026-09-12 `propagateElements` refused two of the five, and was 9.3e-4
+// out on the inbound ellipse while being 2.2e-9 out on the same orbit taken
+// outbound. The difference was the wrap: with the true anomaly past pi the
+// eccentric anomaly comes out just under tau, the mean anomaly is then tau
+// minus something tiny, and the tiny part is the whole answer.
+//
+// The expected values are the Kepler equation of each conic solved in 60-digit
+// decimal arithmetic from these same doubles (`scratchpad/pe/reference.py`,
+// self-checked against dt = 0, forward-and-back, and a whole period). The
+// budget is 1e-12 of the radius, which is 4e-5 m here and about a hundred times
+// what the fixed code measures.
+TEST_CASE("element propagation holds on both sides of a parabola", "[orbit][scales]") {
+    struct Case {
+        std::string_view name;
+        Metres sma;
+        Eccentricity ecc;
+        Radians expected; // 60-digit reference, rounded to a double
+    };
+    // Periapsis 7000 km, so p = 1.4e7 m; the step is three times sqrt(q^3/mu).
+    constexpr Metres kSlr{1.4e7};
+    constexpr Radians kStart{5.4000000000000004};
+    constexpr Seconds kStep{2782.9117013432488};
+    const std::array cases = std::to_array<Case>({
+        Case{
+            .name = "an ellipse 2e-9 inside a parabola",
+            .sma = Metres{3499999904697733.5},
+            .ecc = Eccentricity{0.99999999799999995},
+            .expected = Radians{1.6936408726557204},
+        },
+        Case{
+            .name = "an ellipse 5e-10 inside a parabola, which is refused today",
+            .sma = Metres{13999998841634902.0},
+            .ecc = Eccentricity{0.99999999949999996},
+            .expected = Radians{1.6936408733653279},
+        },
+        Case{
+            .name = "the parabola itself, which is refused today",
+            .sma = Metres{kInf},
+            .ecc = Eccentricity{1.0},
+            .expected = Radians{1.6936408736018638},
+        },
+        Case{
+            .name = "a hyperbola 2e-9 outside a parabola",
+            .sma = Metres{-3500000098986763.0},
+            .ecc = Eccentricity{1.0000000019999999},
+            .expected = Radians{1.6936408745480071},
+        },
+    });
+
+    for (const Case& c : cases) {
+        CAPTURE(c.name);
+        const Elements el{
+            .sma = c.sma,
+            .ecc = c.ecc,
+            .inc = Radians{0.0},
+            .lan = Radians{0.0},
+            .aop = Radians{0.0},
+            .tra = kStart,
+            .slr = kSlr,
+        };
+        const auto moved = propagateElements(el, kMuEarth, kStep);
+        INFO("propagateElements -> " << errorName(moved));
+        REQUIRE(moved.has_value());
+
+        Elements want = el;
+        want.tra = c.expected;
+        INFO(std::format("true anomaly {:.17g}, want {:.17g}", moved->tra.value, c.expected.value));
+        REQUIRE_THAT(stateFromElements(*moved, kMuEarth).pos,
+                     WithinRelVec(stateFromElements(want, kMuEarth).pos, Tolerance{1e-12}));
+    }
+}
+
+// The same orbit as the first case above, taken outbound rather than inbound,
+// and stepped a hundred times further. Neither was refused by the formulation
+// this replaced, and both were wrong: 2.2e-9 and 6.2e-6 of the radius.
+TEST_CASE("element propagation holds outbound and over a long step", "[orbit][scales]") {
+    constexpr Metres kSlr{1.4e7};
+    const Elements el{
+        .sma = Metres{3499999904697733.5},
+        .ecc = Eccentricity{0.99999999799999995},
+        .inc = Radians{0.0},
+        .lan = Radians{0.0},
+        .aop = Radians{0.0},
+        .tra = Radians{0.90000000000000002},
+        .slr = kSlr,
+    };
+    const auto outbound = propagateElements(el, kMuEarth, Seconds{2782.9117013432488});
+    INFO("propagateElements outbound -> " << errorName(outbound));
+    REQUIRE(outbound.has_value());
+    Elements want = el;
+    want.tra = Radians{1.9687811287167955}; // 60-digit reference
+    INFO(std::format("outbound {:.17g}, want {:.17g}", outbound->tra.value, want.tra.value));
+    REQUIRE_THAT(stateFromElements(*outbound, kMuEarth).pos,
+                 WithinRelVec(stateFromElements(want, kMuEarth).pos, Tolerance{1e-12}));
+
+    Elements inbound = el;
+    inbound.tra = Radians{5.4000000000000004};
+    const auto far = propagateElements(inbound, kMuEarth, Seconds{278291.17013432487});
+    INFO("propagateElements over 300 periapsis times -> " << errorName(far));
+    REQUIRE(far.has_value());
+    want.tra = Radians{2.9067816679180335}; // 60-digit reference
+    INFO(std::format("long step {:.17g}, want {:.17g}", far->tra.value, want.tra.value));
+    REQUIRE_THAT(stateFromElements(*far, kMuEarth).pos,
+                 WithinRelVec(stateFromElements(want, kMuEarth).pos, Tolerance{1e-12}));
+}
+
+// A million periapsis times from the same periapsis, on the two conics 2e-9
+// either side of the parabola. They part company in the eighth digit of the
+// true anomaly by then, which is the point: the semi-major axis has to come
+// from `sma`, where it is exact, and not be recovered from the shape at the
+// current radius, where 2/r and v^2/mu agree to fifteen digits and their
+// difference is the whole of 1/a. Recovering it that way moves these two
+// answers by 2.8e-12 of the radius, which is what the budget below is set to
+// catch.
+TEST_CASE("element propagation keeps the semi-major axis it was given", "[orbit][scales]") {
+    struct Case {
+        std::string_view name;
+        Metres sma;
+        Eccentricity ecc;
+        Radians expected; // 60-digit reference
+    };
+    const std::array cases = std::to_array<Case>({
+        Case{
+            .name = "an ellipse 2e-9 inside a parabola",
+            .sma = Metres{3499999904697733.5},
+            .ecc = Eccentricity{0.99999999799999995},
+            .expected = Radians{3.1260267023022133},
+        },
+        Case{
+            .name = "a hyperbola 2e-9 outside a parabola",
+            .sma = Metres{-3500000098986763.0},
+            .ecc = Eccentricity{1.0000000019999999},
+            .expected = Radians{3.1260264967557301},
+        },
+    });
+
+    for (const Case& c : cases) {
+        CAPTURE(c.name);
+        const Elements el{
+            .sma = c.sma,
+            .ecc = c.ecc,
+            .inc = Radians{0.0},
+            .lan = Radians{0.0},
+            .aop = Radians{0.0},
+            .tra = Radians{1.5},
+            .slr = Metres{1.4e7},
+        };
+        const auto moved = propagateElements(el, kMuEarth, Seconds{927637233.78108299});
+        INFO("propagateElements -> " << errorName(moved));
+        REQUIRE(moved.has_value());
+
+        Elements want = el;
+        want.tra = c.expected;
+        INFO(std::format("true anomaly {:.17g}, want {:.17g}", moved->tra.value, c.expected.value));
+        REQUIRE_THAT(stateFromElements(*moved, kMuEarth).pos,
+                     WithinRelVec(stateFromElements(want, kMuEarth).pos, Tolerance{1e-12}));
+    }
 }
 
 // The hyperbolic half of the case above.
@@ -1478,4 +1650,204 @@ TEST_CASE("orbitInfo's radius and speed stay within the elements' conditioning",
     sweepNearParabolicOrbits(sampler);
     sweepSmallEccentricities(sampler);
     sweepHyperbolicAsymptotes(sampler);
+}
+
+// --- element propagation, across the parabola --------------------------------
+
+namespace {
+
+// propagateElements runs the same universal-variable solve propagate() does,
+// driven from the elements. The two therefore share a solver but not an input:
+// one takes 1/a from `sma`, the other recovers it from 2/r - v^2/mu, and near
+// e = 1 those differ by everything that cancellation costs. Agreement between
+// them is still evidence, because the inputs travel different routes.
+//
+// Measured against 60-digit references over 40,024 element sets (2026-09-12),
+// element propagation is within 7.0e-12 of the radius everywhere, and the state
+// propagator within 5.3e-11, so 1e-9 for the pair is a hundredfold margin.
+// Reversibility is the tighter claim -- the same solve run backwards -- and is
+// held to 1e-11.
+constexpr std::size_t kPropagationCases = 500; // per family below
+constexpr Tolerance kPropagatorsAgree{1e-9};
+
+// Stepping back is not free of the round trip's conditioning, and three things
+// set what it can be worth. The anomaly at the far end is a double, and the
+// position there moves with it by kappa = |e sin nu| r / p per radian -- the
+// same kappa the radius and the speed carry above. The time is a double too:
+// the step is known to about u |dt|, which displaces the far end along its own
+// path by |dt| v / r of the radius, and a hundred revolutions of a closed orbit
+// is fifty of those. And an error at the far end comes back multiplied: the far
+// end of an eccentric orbit is the slow one, so an error there is a longer time
+// and therefore a bigger arc back here, by the ratio of the two angular rates,
+// (v_here r_far) / (v_far r_here).
+//
+// Measured over 40,024 round trips (2026-09-12), the worst needed 473 times
+// u (1 + kappa + swept)(1 + leverage) -- on an ordinary orbit, where all three
+// terms are small and the constant is doing the work -- and 98 near a parabola,
+// where they are not. The factor below is four times that worst.
+constexpr f64 kReversibilityFactor = 2000.0;
+
+[[nodiscard]] Tolerance
+reversibilityBudget(const Elements& start, const Elements& end, GravParam mu, Seconds dt) {
+    const OrbitInfo far = orbitInfo(end, mu);
+    const OrbitInfo home = orbitInfo(start, mu);
+    const f64 kappa =
+        std::abs(end.ecc.value * std::sin(end.tra.value)) * far.radius.value / end.slr.value;
+    const f64 swept = std::abs(dt.value) * home.speed.value / home.radius.value;
+    const f64 leverage =
+        (home.speed.value * far.radius.value) / (far.speed.value * home.radius.value);
+    return Tolerance{kReversibilityFactor * kUnitRoundoff * (1.0 + kappa + swept) *
+                     (1.0 + leverage)};
+}
+
+// The element set of a conic at a given distance from e = 1, built from p and a
+// because that pair carries e - 1 to full relative precision. `offset` is
+// e - 1: negative for an ellipse, positive for a hyperbola, zero for the
+// parabola, which takes an infinite semi-major axis.
+[[nodiscard]] Elements conicNear(Metres slr, f64 offset, Radians trueAnomaly, Sampler& sampler) {
+    const f64 eccentricity = 1.0 + offset;
+    // fpclassify rather than `== 0.0`, which -Wfloat-equal reports: the two
+    // agree on every input, and this one says which question it asks.
+    const f64 sma = (std::fpclassify(offset) == FP_ZERO)
+                        ? kInf
+                        : slr.value / (1.0 - (eccentricity * eccentricity));
+    return {
+        .sma = Metres{sma},
+        .ecc = Eccentricity{std::isfinite(sma) ? std::sqrt(1.0 - (slr.value / sma)) : 1.0},
+        .inc = sampler.angle(kPi),
+        .lan = sampler.angle(kTau),
+        .aop = sampler.angle(kTau),
+        .tra = trueAnomaly,
+        .slr = slr,
+    };
+}
+
+// One element set and one step: the two propagators land in the same place, and
+// stepping back returns the anomaly it started from.
+void checkElementPropagation(const Elements& el, GravParam mu, Seconds dt) {
+    const auto moved = propagateElements(el, mu, dt);
+    INFO("propagateElements -> " << errorName(moved));
+    REQUIRE(moved.has_value());
+
+    const auto viaState = propagate(stateFromElements(el, mu), mu, dt);
+    INFO("propagate -> " << errorName(viaState));
+    REQUIRE(viaState.has_value());
+    INFO(std::format("true anomaly {:.17g} -> {:.17g}", el.tra.value, moved->tra.value));
+    REQUIRE_THAT(stateFromElements(*moved, mu).pos, WithinRelVec(viaState->pos, kPropagatorsAgree));
+
+    const auto back = propagateElements(*moved, mu, -dt);
+    INFO("propagateElements back -> " << errorName(back));
+    REQUIRE(back.has_value());
+    const Tolerance budget = reversibilityBudget(el, *moved, mu, dt);
+    INFO(std::format("reversibility budget {:.3g}", budget.value));
+    REQUIRE_THAT(stateFromElements(*back, mu).pos,
+                 WithinRelVec(stateFromElements(el, mu).pos, budget));
+}
+
+// A true anomaly the conic actually reaches: a hyperbola only covers the arc
+// inside its asymptotes, and the ends of that arc are where p / (1 + e cos nu)
+// runs away.
+[[nodiscard]] Radians anomalyOn(const Elements& el, Sampler& sampler) {
+    if (el.ecc.value <= 1.0) return sampler.angle(kTau);
+    const f64 limit = std::acos(-1.0 / el.ecc.value);
+    const f64 inside = 1.0 - sampler.logUniform({.lo = 1e-9, .hi = 0.5});
+    return Radians{((2.0 * sampler.fraction()) - 1.0) * limit * inside};
+}
+
+// Ordinary shapes, as a control: nothing here is near a parabola.
+void sweepOrdinaryPropagation(Sampler& sampler) {
+    for (std::size_t i = 0; i < kPropagationCases; ++i) {
+        const Body& body = kBodies.at(i % kBodies.size());
+        const Metres slr{
+            sampler.logUniform({.lo = body.minPeriapsis.value, .hi = body.maxSma.value})};
+        const bool closed = sampler.fraction() < 0.5;
+        const f64 offset =
+            closed ? -(0.05 + (sampler.fraction() * 0.9)) : 0.05 + (sampler.fraction() * 4.0);
+        Elements el = conicNear(slr, offset, Radians{0.0}, sampler);
+        el.tra = anomalyOn(el, sampler);
+        const f64 scale = std::abs(el.sma.value);
+        const Seconds dt{sampler.logUniform({.lo = 1e-3, .hi = 1e2}) *
+                         std::sqrt(scale * scale * scale / body.mu.value) *
+                         ((sampler.fraction() < 0.5) ? 1.0 : -1.0)};
+        CAPTURE(kSweepSeed, i, body.name, slr.value, el.ecc.value, el.tra.value, dt.value);
+        checkElementPropagation(el, body.mu, dt);
+    }
+}
+
+// Either side of the parabola, from a tenth away down to the last bit a double
+// can hold: the band the old formulation refused, and the decade outside it
+// where it was still 1.5% out.
+void sweepNearParabolicPropagation(Sampler& sampler) {
+    for (std::size_t i = 0; i < kPropagationCases; ++i) {
+        const Body& body = kBodies.at(i % kBodies.size());
+        const Metres slr{
+            sampler.logUniform({.lo = body.minPeriapsis.value, .hi = body.maxSma.value})};
+        const f64 offset = sampler.logUniform({.lo = 1e-16, .hi = 1e-1}) *
+                           ((sampler.fraction() < 0.5) ? 1.0 : -1.0);
+        Elements el = conicNear(slr, offset, Radians{0.0}, sampler);
+        el.tra = anomalyOn(el, sampler);
+        // The time scale of a parabola has no semi-major axis in it: sqrt of
+        // the periapsis distance cubed over mu is the one every conic shares.
+        const f64 periapsis = 0.5 * slr.value;
+        const Seconds dt{sampler.logUniform({.lo = 1e-2, .hi = 1e4}) *
+                         std::sqrt(periapsis * periapsis * periapsis / body.mu.value) *
+                         ((sampler.fraction() < 0.5) ? 1.0 : -1.0)};
+        CAPTURE(kSweepSeed, i, body.name, slr.value, offset, el.tra.value, dt.value);
+        checkElementPropagation(el, body.mu, dt);
+    }
+}
+
+// The parabola itself, which had no answer at all before 2026-09-12.
+void sweepParabolicPropagation(Sampler& sampler) {
+    for (std::size_t i = 0; i < kPropagationCases; ++i) {
+        const Body& body = kBodies.at(i % kBodies.size());
+        const Metres slr{
+            sampler.logUniform({.lo = body.minPeriapsis.value, .hi = body.maxSma.value})};
+        Elements el = conicNear(slr, 0.0, Radians{0.0}, sampler);
+        el.tra = anomalyOn(el, sampler);
+        const f64 periapsis = 0.5 * slr.value;
+        const Seconds dt{sampler.logUniform({.lo = 1e-2, .hi = 1e4}) *
+                         std::sqrt(periapsis * periapsis * periapsis / body.mu.value) *
+                         ((sampler.fraction() < 0.5) ? 1.0 : -1.0)};
+        CAPTURE(kSweepSeed, i, body.name, slr.value, el.tra.value, dt.value);
+        checkElementPropagation(el, body.mu, dt);
+    }
+}
+
+// Small eccentricities, where the anomaly is measured from a periapsis that is
+// barely there: the case that reading the new anomaly off p/r - 1 could not
+// answer, because on a circle there is nothing to measure from.
+void sweepNearCircularPropagation(Sampler& sampler) {
+    for (std::size_t i = 0; i < kPropagationCases; ++i) {
+        const Body& body = kBodies.at(i % kBodies.size());
+        const Eccentricity ecc{sampler.logUniform({.lo = 1e-13, .hi = 1e-2})};
+        const f64 sma = sampler.logUniform(
+            {.lo = body.minPeriapsis.value / (1.0 - ecc.value), .hi = body.maxSma.value});
+        const Elements el{
+            .sma = Metres{sma},
+            .ecc = ecc,
+            .inc = sampler.angle(kPi),
+            .lan = sampler.angle(kTau),
+            .aop = sampler.angle(kTau),
+            .tra = sampler.angle(kTau),
+            .slr = Metres{sma * (1.0 - (ecc.value * ecc.value))},
+        };
+        const Seconds dt{sampler.logUniform({.lo = 1e-3, .hi = 1e2}) *
+                         std::sqrt(sma * sma * sma / body.mu.value) *
+                         ((sampler.fraction() < 0.5) ? 1.0 : -1.0)};
+        CAPTURE(kSweepSeed, i, body.name, sma, ecc.value, el.tra.value, dt.value);
+        checkElementPropagation(el, body.mu, dt);
+    }
+}
+
+} // namespace
+
+// Four families, one Sampler, drawn from in this order.
+TEST_CASE("element propagation agrees with the state propagator on every conic",
+          "[orbit][scales]") {
+    Sampler sampler;
+    sweepOrdinaryPropagation(sampler);
+    sweepNearParabolicPropagation(sampler);
+    sweepParabolicPropagation(sampler);
+    sweepNearCircularPropagation(sampler);
 }

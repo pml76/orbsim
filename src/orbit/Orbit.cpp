@@ -43,15 +43,6 @@ constexpr f64 kInf = std::numeric_limits<f64>::infinity();
 constexpr f64 kCircularTol = 1e-9;
 constexpr f64 kEquatorialTol = 1e-9;
 
-// Element propagation refuses an eccentricity within this of 1, where the
-// classical Kepler equation is too ill-conditioned to be worth solving:
-// without the refusal it was up to 2,500% out on nearly radial and
-// near-parabolic states, and just outside it, it is still up to 3.5% out at
-// |e - 1| = 1e-9, falling as 1 / |e - 1| (measured against propagate(),
-// 2026-09-11). It no longer decides which conic a state is on; conicOf does,
-// from the energy. Dimensionless too: a distance from e = 1.
-constexpr f64 kParabolicTol = 1e-9;
-
 // Below this ratio of |h| to |r||v| -- the sine of the angle between position
 // and velocity -- the trajectory is radial and has no orbital plane at all.
 // Dimensionless, like the three above. See the use site for why 1e-12 cannot
@@ -108,21 +99,65 @@ static_assert(conicOf(1.0) == Conic::Ellipse && conicOf(-1.0) == Conic::Hyperbol
 constexpr f64 clampUnit(f64 v) { return std::clamp(v, -1.0, 1.0); }
 constexpr f64 sign(f64 v) { return v < 0.0 ? -1.0 : 1.0; }
 
-// Stumpff functions C(psi) and S(psi), the series that make the universal
-// variable formulation conic-agnostic. Near psi = 0 the closed forms evaluate
-// to 0/0, so a truncated series takes over.
-void stumpff(f64 psi, f64& c2, f64& c3) {
-    if (psi > 1e-6) {
+// x - sin x and sinh x - x: both are x^3/6 to first order, and both are written
+// as the series where the subtraction would take everything. The series runs to
+// x^15/15!, which leaves 2e-20 relative at the switch of 1/2; truncating it at
+// x^9/9! instead left 6e-10, and that showed up as a 1.7e-10 position error.
+//
+// They exist because the Stumpff functions below are exactly these differences,
+// and because the elliptic Kepler equation is E - e sin E, which is the same
+// cancellation wearing a different hat.
+[[nodiscard]] f64 xMinusSin(f64 x) noexcept {
+    if (std::abs(x) > 0.5) return x - std::sin(x);
+    const f64 x2 = x * x;
+    return x * x2 *
+           ((1.0 / 6.0) -
+            (x2 * ((1.0 / 120.0) -
+                   (x2 * ((1.0 / 5040.0) -
+                          (x2 * ((1.0 / 362880.0) - (x2 * ((1.0 / 39916800.0) -
+                                                           (x2 * ((1.0 / 6227020800.0) -
+                                                                  (x2 / 1307674368000.0))))))))))));
+}
+
+[[nodiscard]] f64 sinhMinusX(f64 x) noexcept {
+    if (std::abs(x) > 0.5) return std::sinh(x) - x;
+    const f64 x2 = x * x;
+    return x * x2 *
+           ((1.0 / 6.0) +
+            (x2 * ((1.0 / 120.0) +
+                   (x2 * ((1.0 / 5040.0) +
+                          (x2 * ((1.0 / 362880.0) + (x2 * ((1.0 / 39916800.0) +
+                                                           (x2 * ((1.0 / 6227020800.0) +
+                                                                  (x2 / 1307674368000.0))))))))))));
+}
+
+// Stumpff functions C(psi) and S(psi), which make the universal-variable
+// formulation conic-agnostic: psi > 0 on an ellipse, < 0 on a hyperbola, 0 on a
+// parabola, and both functions are analytic across it.
+//
+// Every term is written so that nothing cancels: 1 - cos s is 2 sin^2(s/2),
+// cosh s - 1 is 2 sinh^2(s/2), and the odd differences are the series above.
+// The previous version used the closed forms above |psi| = 1e-6 and a
+// three-term series below it, and both sides of that switch were wrong where
+// they met: at psi = -1.25e-6, (sinh s - s) is a difference of two numbers
+// agreeing to seven digits, so c3 came out 4e-7 wrong in relative terms.
+// Measured against 60-digit references (2026-09-12), that cost `propagate()` up
+// to 1.9e-7 of the radius on nearly parabolic trajectories and 2.5e-7 within
+// 1e-9 of a parabola; this version is 5.3e-11 and 7.0e-12 there.
+void stumpff(f64 psi, f64& c2, f64& c3) noexcept {
+    if (psi > 0.0) {
         const f64 s = std::sqrt(psi);
-        c2 = (1.0 - std::cos(s)) / psi;
-        c3 = (s - std::sin(s)) / (psi * s);
-    } else if (psi < -1e-6) {
+        const f64 halfSin = std::sin(0.5 * s);
+        c2 = 2.0 * halfSin * halfSin / psi;
+        c3 = xMinusSin(s) / (psi * s);
+    } else if (psi < 0.0) {
         const f64 s = std::sqrt(-psi);
-        c2 = (1.0 - std::cosh(s)) / psi;
-        c3 = (std::sinh(s) - s) / (s * s * s);
+        const f64 halfSinh = std::sinh(0.5 * s);
+        c2 = 2.0 * halfSinh * halfSinh / (-psi);
+        c3 = sinhMinusX(s) / (s * s * s);
     } else {
-        c2 = 0.5 - (psi / 24.0) + (psi * psi / 720.0);
-        c3 = (1.0 / 6.0) - (psi / 120.0) + (psi * psi / 5040.0);
+        c2 = 0.5;
+        c3 = 1.0 / 6.0;
     }
 }
 
@@ -140,10 +175,10 @@ struct UniversalContext {
     f64 r0{};     // |r| at the start of the step
     f64 rdotv{};  // r . v at the start of the step
     f64 alpha{};  // 1/a, the reciprocal semi-major axis
+    f64 slr{};    // semi-latus rectum, for the parabolic starting guess alone
 };
 
-[[nodiscard]] f64
-initialUniversalAnomaly(const StateVector& sv, const UniversalContext& ctx, f64 seconds) {
+[[nodiscard]] f64 initialUniversalAnomaly(const UniversalContext& ctx, f64 seconds) {
     // A zero-length step has zero universal anomaly on every conic, and saying
     // so before the conic dispatch is a correctness fix rather than a shortcut.
     // The hyperbolic guess below takes the log of a quantity proportional to
@@ -172,9 +207,10 @@ initialUniversalAnomaly(const StateVector& sv, const UniversalContext& ctx, f64 
                std::log(-2.0 * ctx.mu * ctx.alpha * seconds / denom);
     }
 
-    // Parabola: Barker's equation, solved through the cubic substitution.
-    const f64 hmag = length(cross(sv.pos, sv.vel));
-    const f64 p = hmag * hmag / ctx.mu;
+    // Parabola: Barker's equation, solved through the cubic substitution. The
+    // semi-latus rectum comes in with the context -- a caller holding elements
+    // has it exactly, and one holding a state computes it from |r x v| once.
+    const f64 p = ctx.slr;
     const f64 s = 0.5 * std::atan(1.0 / (3.0 * std::sqrt(ctx.mu / (p * p * p)) * seconds));
     const f64 w = std::atan(std::cbrt(std::tan(s)));
     return std::sqrt(p) * 2.0 / std::tan(2.0 * w);
@@ -344,7 +380,7 @@ template <std::invocable<f64> Fn>
 // exists for every valid two-body state, so declining to answer was always a
 // weakness of the method rather than a property of the problem.
 [[nodiscard]] std::expected<UniversalSolution, OrbitError>
-solveUniversalAnomaly(const StateVector& sv, const UniversalContext& ctx, f64 seconds) {
+solveUniversalAnomaly(const UniversalContext& ctx, f64 seconds) {
     const f64 target = ctx.sqrtMu * seconds;
 
     // chi = 0 exactly; see the guard in the guess, and why it is fpclassify.
@@ -356,7 +392,7 @@ solveUniversalAnomaly(const StateVector& sv, const UniversalContext& ctx, f64 se
 
     // Start from the conic-specific guess where it is usable, and from a
     // length scale where it is not -- sqrt(r0) has the units of chi.
-    f64 far = initialUniversalAnomaly(sv, ctx, seconds);
+    f64 far = initialUniversalAnomaly(ctx, seconds);
     if (!std::isfinite(far) || (far * direction) <= 0.0) far = direction * std::sqrt(ctx.r0);
 
     // Expand outward until the residual changes sign, which brackets the root.
@@ -399,7 +435,12 @@ solveUniversalAnomaly(const StateVector& sv, const UniversalContext& ctx, f64 se
     // the root, so evaluate once more there rather than carrying them out of
     // the loop -- which is also what keeps chi and its c2/c3 consistent.
     const UniversalTerms fin = evaluateUniversal(*solved, ctx);
-    return UniversalSolution{.chi = *solved, .psi = fin.psi, .c2 = fin.c2, .c3 = fin.c3};
+    return UniversalSolution{
+        .chi = *solved,
+        .psi = fin.psi,
+        .c2 = fin.c2,
+        .c3 = fin.c3,
+    };
 }
 
 // The four vectors the in-plane angles are measured from. Grouped into a struct
@@ -533,24 +574,50 @@ void assignConic(Elements& el, const StateVector& sv, GravParam mu) {
 // own floor -- tests/test_orbit_scales.cpp states it as a conditioning law.
 // The switch point is not delicate: -1/4 and -3/4 were measured too, and move
 // the worst case by less than a quarter.
+// e - 1, from p and a rather than from e: e^2 - 1 = -p/a, so
+// e - 1 = -(p/a)/(1 + e), and near the radial limit that keeps every digit
+// where the stored e has only its last one. Zero on a parabola, which is what
+// an infinite sma means.
+//
+// Not finite when p/a overflows -- a hyperbola with so much energy that
+// -mu/(2E) underflows to -0, which libFuzzer found on 2026-09-12. Callers fall
+// back to the stored e there; with e = 9.3e239 nothing cancels anyway.
+[[nodiscard]] f64 eccentricityMinusOne(const Elements& el) noexcept {
+    if (!std::isfinite(el.sma.value)) return 0.0;
+    return -(el.slr.value / el.sma.value) / (1.0 + el.ecc.value);
+}
+
 [[nodiscard]] f64 onePlusECosTrueAnomaly(const Elements& el) noexcept {
     const f64 e = el.ecc.value;
     const f64 trueAnomaly = el.tra.value;
     const f64 eCosNu = e * std::cos(trueAnomaly);
     if (eCosNu >= -0.5) return 1.0 + eCosNu;
 
-    // A parabola has no finite a and takes e - 1 = 0. So does an orbit whose
-    // p/a overflows, which libFuzzer found on 2026-09-12: a hyperbola with so
-    // much energy that -mu/(2E) underflows to -0 leaves p/a infinite, and this
-    // returned an infinite factor and a NaN speed. There is nothing to rebuild
-    // in that case anyway -- e was 9.3e239, and 1 + e cos v with an e like that
-    // cannot lose a bit to cancellation -- so the straight form answers.
-    const f64 eMinusOne =
-        std::isfinite(el.sma.value) ? -(el.slr.value / el.sma.value) / (1.0 + e) : 0.0;
+    const f64 eMinusOne = eccentricityMinusOne(el);
     if (!std::isfinite(eMinusOne)) return 1.0 + eCosNu;
 
     const f64 halfCos = std::cos(0.5 * trueAnomaly);
     return (2.0 * halfCos * halfCos) + (eMinusOne * std::cos(trueAnomaly));
+}
+
+// e + cos v, written as (e - 1) + (1 + cos v) for the reason above: at v = pi
+// on a nearly parabolic orbit the two terms of the sum are each tiny and the
+// straight form is the difference of two numbers near 1. It is the perifocal
+// velocity's second component, over sqrt(mu/p).
+//
+// Unlike its sibling, no test pins this one, and the comment says so rather
+// than implying otherwise: written straight, it moves the propagated position
+// by at most 9.7e-13 anywhere it was looked for (2026-09-12 -- |e - 1| from
+// 1e-14 to 1e-5, true anomalies from 2.8 to 3.6, steps of up to a million
+// periapsis times either way), which is under the tightest budget the suite can
+// justify. It is here because at v = pi exactly the straight form has no
+// correct digits at all, and because its sibling two lines up would be
+// inconsistent without it.
+[[nodiscard]] f64 eccentricityPlusCosTrueAnomaly(const Elements& el) noexcept {
+    const f64 eMinusOne = eccentricityMinusOne(el);
+    if (!std::isfinite(eMinusOne)) return el.ecc.value + std::cos(el.tra.value);
+    const f64 halfCos = std::cos(0.5 * el.tra.value);
+    return eMinusOne + (2.0 * halfCos * halfCos);
 }
 
 } // namespace
@@ -814,6 +881,54 @@ std::expected<Radians, OrbitError> meanToEccentricAnomaly(Radians meanAnomaly, E
 
 // --- propagation -----------------------------------------------------------
 
+namespace {
+
+// The state at the end of the step, as a linear combination of the state at the
+// start: the Lagrange coefficients. Split out of propagate() so that it does
+// one thing and stays inside the size limit (F.2).
+//
+// g is t - chi^3 c3 / sqrt(mu), written here as the rest of the universal
+// Kepler equation, which is the same number: sqrt(mu) t *is* the sum of the
+// three terms, so subtracting one of them leaves the other two. Far out on a
+// nearly parabolic trajectory those two sides agree to seven digits and their
+// difference is the whole coefficient -- measured at up to 1.9e-7 of the radius
+// (2026-09-12).
+[[nodiscard]] std::expected<StateVector, OrbitError>
+lagrangeStep(const StateVector& sv, const UniversalContext& ctx, const UniversalSolution& solved) {
+    const f64 chi = solved.chi;
+    const f64 psi = solved.psi;
+    const f64 c2 = solved.c2;
+    const f64 c3 = solved.c3;
+    const f64 sigma = ctx.rdotv / ctx.sqrtMu;
+
+    const f64 f = 1.0 - ((chi * chi / ctx.r0) * c2);
+    const f64 g = ((sigma * chi * chi * c2) + (ctx.r0 * chi * (1.0 - (psi * c3)))) / ctx.sqrtMu;
+    const Vec3 rNew = (sv.pos * f) + (sv.vel * g);
+    const f64 rMag = length(rNew);
+
+    // This was ORBSIM_ENSURES(rMag > 0.0), and that was the wrong half of the
+    // ADR 0002 split. A caller can reach it: with an enormous speed and a
+    // gravitational parameter to match, the Lagrange combination overflows or
+    // cancels onto the origin, and a Debug build then aborted the process on
+    // user input. A fuzzer found it. The rule is that a condition a caller can
+    // produce is reported, and only what a bug in this file could produce is
+    // asserted -- so this is reported, by name, for each way it can fail.
+    if (!std::isfinite(rMag)) return std::unexpected(OrbitError::NotFinite);
+    if (!(rMag > 0.0)) return std::unexpected(OrbitError::DegenerateState);
+
+    const f64 gdot = 1.0 - ((chi * chi / rMag) * c2);
+    const f64 fdot = (ctx.sqrtMu / (rMag * ctx.r0)) * chi * ((psi * c3) - 1.0);
+    const StateVector out{.pos = rNew, .vel = (sv.pos * fdot) + (sv.vel * gdot)};
+
+    // The same postcondition elementsFromState carries: a success must be a
+    // usable number. The velocity can still overflow after the position has
+    // survived, because fdot divides by rMag.
+    if (!isFinite(out)) return std::unexpected(OrbitError::NotFinite);
+    return out;
+}
+
+} // namespace
+
 std::expected<StateVector, OrbitError> propagate(const StateVector& sv, GravParam mu, Seconds dt) {
     // Checked first and by name. NaN passes every comparison below unnoticed
     // and then comes out of Newton as "did not converge", which is true but
@@ -855,71 +970,120 @@ std::expected<StateVector, OrbitError> propagate(const StateVector& sv, GravPara
         seconds = std::fmod(seconds, period);
     }
 
-    const UniversalContext ctx{.mu = m, .sqrtMu = sqrtMu, .r0 = r0, .rdotv = rdotv, .alpha = alpha};
-    const auto solved = solveUniversalAnomaly(sv, ctx, seconds);
+    // The semi-latus rectum, which only the parabolic starting guess uses.
+    const f64 hmag = length(cross(sv.pos, sv.vel));
+    const UniversalContext ctx{
+        .mu = m,
+        .sqrtMu = sqrtMu,
+        .r0 = r0,
+        .rdotv = rdotv,
+        .alpha = alpha,
+        .slr = hmag * hmag / m,
+    };
+    const auto solved = solveUniversalAnomaly(ctx, seconds);
     if (!solved) return std::unexpected(solved.error());
-
-    const f64 chi = solved->chi;
-    const f64 psi = solved->psi;
-    const f64 c2 = solved->c2;
-    const f64 c3 = solved->c3;
-
-    // Lagrange coefficients: the new state is a linear combination of the old
-    // position and velocity vectors.
-    const f64 f = 1.0 - ((chi * chi / r0) * c2);
-    const f64 g = seconds - ((chi * chi * chi / sqrtMu) * c3);
-    const Vec3 rNew = sv.pos * f + sv.vel * g;
-
-    const f64 rMag = length(rNew);
-
-    // This was ORBSIM_ENSURES(rMag > 0.0), and that was the wrong half of the
-    // ADR 0002 split. A caller can reach it: with an enormous speed and a
-    // gravitational parameter to match, the Lagrange combination overflows or
-    // cancels onto the origin, and a Debug build then aborted the process on
-    // user input. A fuzzer found it. The rule is that a condition a caller can
-    // produce is reported, and only what a bug in this file could produce is
-    // asserted -- so this is reported, by name, for each way it can fail.
-    if (!std::isfinite(rMag)) return std::unexpected(OrbitError::NotFinite);
-    if (!(rMag > 0.0)) return std::unexpected(OrbitError::DegenerateState);
-
-    const f64 gdot = 1.0 - ((chi * chi / rMag) * c2);
-    const f64 fdot = (sqrtMu / (rMag * r0)) * chi * ((psi * c3) - 1.0);
-    const Vec3 vNew = sv.pos * fdot + sv.vel * gdot;
-
-    const StateVector out{.pos = rNew, .vel = vNew};
-    // The same postcondition elementsFromState carries: a success must be a
-    // usable number. The velocity can still overflow after the position has
-    // survived, because fdot divides by rMag.
-    if (!isFinite(out)) return std::unexpected(OrbitError::NotFinite);
-    return out;
+    return lagrangeStep(sv, ctx, *solved);
 }
 
+// The same universal-variable solve the state propagator runs, driven from the
+// elements instead of from a state vector. That is the whole change of
+// 2026-09-12, and it is worth stating why.
+//
+// The classical route -- true anomaly to eccentric to mean, add n dt, and back
+// -- has two problems near e = 1, and only one of them was the famous one. The
+// famous one is that the Kepler equation is ill-conditioned there. The other,
+// which the measurement found and which dominated, is a wrap: with the true
+// anomaly past pi the eccentric anomaly comes out just under tau, the mean
+// anomaly is then tau minus something tiny, and the tiny part is the answer.
+// The same orbit taken outbound was 2.2e-9 out and inbound 9.3e-4 out.
+//
+// The universal formulation has no anomaly to wrap and no conic to branch on:
+// psi carries the shape, the Stumpff functions are analytic through zero, and
+// alpha = 1/a comes from the elements exactly rather than from 2/r - v^2/mu,
+// which cancels to nothing when the orbit is nearly parabolic. The new true
+// anomaly is then read off the perifocal position the solve lands on, for the
+// reason given where that happens.
+//
+// Measured against 60-digit references over 40,024 element sets (2026-09-12),
+// worst relative position error, against the classical route it replaces:
+//
+//   20,000 nearly parabolic   1.5e-2   ->  3.2e-12
+//    8,000 within 1e-9 of e=1 refused  ->  7.0e-12
+//    2,000 exactly parabolic  refused  ->  1.0e-13
+//   10,000 ordinary           5.9e-13  ->  2.1e-12
+//
+// which is why there is no longer anything to refuse: the refusal band, and the
+// `ParabolicElements` error with it, are gone.
 std::expected<Elements, OrbitError>
 propagateElements(const Elements& el, GravParam mu, Seconds dt) {
     if (!std::isfinite(mu.value) || !std::isfinite(dt.value)) {
         return std::unexpected(OrbitError::NotFinite);
     }
     if (!(mu.value > 0.0)) return std::unexpected(OrbitError::NonPositiveGravity);
-    // The mean motion below is sqrt(mu / a^3), and a parabola has no a; and
-    // within kParabolicTol of e = 1, where a nearly radial ellipse or
-    // hyperbola has a finite one, the Kepler equation below is too
-    // ill-conditioned to trust. Saying so beats feeding either to the solver.
-    if (!std::isfinite(el.sma.value) || std::abs(el.ecc.value - 1.0) <= kParabolicTol) {
-        return std::unexpected(OrbitError::ParabolicElements);
+    // The shape has to be usable: a positive, finite semi-latus rectum -- the
+    // one parameter every conic has -- and a semi-major axis that is not zero
+    // and not NaN. An infinite one is a parabola and is welcome.
+    if (!std::isfinite(el.slr.value) || !(el.slr.value > 0.0) || !(std::abs(el.sma.value) > 0.0) ||
+        !elementsAreUsable(el)) {
+        return std::unexpected(OrbitError::NotFinite);
     }
 
-    const Radians eccentricAtStart = trueToEccentricAnomaly(el.tra, el.ecc);
-    const Radians meanAtStart = eccentricToMeanAnomaly(eccentricAtStart, el.ecc);
+    const f64 m = mu.value;
+    const f64 sqrtMu = std::sqrt(m);
+    const f64 p = el.slr.value;
+    const f64 e = el.ecc.value;
+    // 1/a: zero on a parabola, which is exactly what an infinite sma means.
+    const f64 alpha = std::isfinite(el.sma.value) ? 1.0 / el.sma.value : 0.0;
+    const f64 r0 = p / onePlusECosTrueAnomaly(el);
+    // r . v = r sqrt(mu/p) e sin nu, with sqrt(mu)/sqrt(p) rather than
+    // sqrt(mu/p) for the range, as orbitInfo does.
+    const f64 rdotv = r0 * e * std::sin(el.tra.value) * (sqrtMu / std::sqrt(p));
 
-    const f64 a = std::abs(el.sma.value);
-    const f64 meanMotion = std::sqrt(mu.value / (a * a * a));
+    f64 seconds = dt.value;
+    // Whole revolutions of a closed orbit are a no-op, as in propagate().
+    if (alpha > 0.0) {
+        const f64 period = kTau / (sqrtMu * alpha * std::sqrt(alpha));
+        seconds = std::fmod(seconds, period);
+    }
 
-    const std::expected<Radians, OrbitError> eccentricAtEnd =
-        meanToEccentricAnomaly(Radians{meanAtStart.value + (meanMotion * dt.value)}, el.ecc);
-    if (!eccentricAtEnd) return std::unexpected(eccentricAtEnd.error());
+    const UniversalContext ctx{
+        .mu = m,
+        .sqrtMu = sqrtMu,
+        .r0 = r0,
+        .rdotv = rdotv,
+        .alpha = alpha,
+        .slr = p,
+    };
+    const auto solved = solveUniversalAnomaly(ctx, seconds);
+    if (!solved) return std::unexpected(solved.error());
+
+    // The Lagrange coefficients again, this time on the perifocal frame, where
+    // the position at the start is (r cos v, r sin v) and the velocity is
+    // sqrt(mu/p) (-sin v, e + cos v). The new true anomaly is where that lands.
+    //
+    // Reading it off the position rather than from the solve's own radius is
+    // deliberate: p/r - 1 and (r . v) recover e cos v and e sin v, which both
+    // vanish on a circular orbit and leave atan2(0, 0). A circular orbit has no
+    // periapsis to measure an anomaly from, and this file's convention is that
+    // `tra` is then measured from the ascending node instead -- so the answer
+    // has to come from the geometry, not from the shape. Measured over the same
+    // 40,024 element sets, the two agree within 4e-12 everywhere they are both
+    // defined.
+    const f64 chi = solved->chi;
+    const f64 sigma = rdotv / sqrtMu;
+    const f64 f = 1.0 - ((chi * chi / r0) * solved->c2);
+    const f64 g =
+        ((sigma * chi * chi * solved->c2) + (r0 * chi * (1.0 - (solved->psi * solved->c3)))) /
+        sqrtMu;
+    const f64 speedScale = sqrtMu / std::sqrt(p);
+    const f64 cosNu = std::cos(el.tra.value);
+    const f64 sinNu = std::sin(el.tra.value);
+    const f64 x = (f * r0 * cosNu) - (g * speedScale * sinNu);
+    const f64 y = (f * r0 * sinNu) + (g * speedScale * eccentricityPlusCosTrueAnomaly(el));
 
     Elements out = el;
-    out.tra = eccentricToTrueAnomaly(*eccentricAtEnd, el.ecc);
+    out.tra = wrapTau(Radians{std::atan2(y, x)});
+    if (!elementsAreUsable(out)) return std::unexpected(OrbitError::NotFinite);
     return out;
 }
 

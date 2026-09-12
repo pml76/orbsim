@@ -106,10 +106,22 @@ that did not come out of the same code:
   restricted three-body problem),
 - **a second implementation** with a different formulation.
 
-`propagate()` versus `propagateElements()` is the model: universal-variable
-against classical Kepler, sharing no code and no formulation. Neither can hide a
-sign error behind the other. That design is why the heliocentric scale bug was
-findable at all.
+`propagate()` versus `propagateElements()` was the model for years: universal
+variable against classical Kepler, sharing no code and no formulation, so
+neither could hide a sign error behind the other. That design is why the
+heliocentric scale bug was findable at all.
+
+**It is no longer that, and the change is worth understanding.** On 2026-09-12
+element propagation moved onto the same universal-variable solve, because the
+classical route could not be made accurate near e = 1 -- measured, it was 1.5%
+out there and refused a band around it outright. The two now share a solver and
+differ only in what they feed it: one takes 1/a from the elements, the other
+recovers it from the state, and near a parabola those differ by everything that
+cancellation costs. Their agreement is still evidence, but weaker evidence than
+it was, and the accuracy claim no longer rests on it: it rests on true anomalies
+solved in 60-digit decimal arithmetic, held as expected values in the suite.
+**When two implementations have to be merged, say what the merge cost and
+replace the independence you lost** -- here, with an external reference.
 
 **Applied to what is coming:** an Encke integrator must be checked against
 Cowell; a J2 propagator against its own analytic secular rates

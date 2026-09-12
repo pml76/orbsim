@@ -660,6 +660,58 @@ keeps its value, the radius, the speed and a round trip through
 `stateFromElements` are up to 2e out: 1.8e-9, or 12.6 mm at 7000 km, and exact
 just above the threshold.
 
+### Element propagation, across the parabola, 2026-09-12
+
+**`propagateElements` refused a band around e = 1 and was 1.5% out just outside
+it, and neither number belonged to the reason the code gave.** The comment
+blamed the Kepler equation's conditioning near e = 1, which is real; the
+measurement found something simpler doing most of the damage. With the true
+anomaly past pi, the eccentric anomaly comes out just under tau, so the mean
+anomaly is tau minus something tiny -- and the tiny part is the whole answer.
+The same orbit, same step, was 2.2e-9 out taken outbound and 9.3e-4 out taken
+inbound.
+
+Four formulations were measured against 60-digit references over 40,024 element
+sets before the owner chose: today's; the classical route with the wrap fixed,
+e - 1 taken from p and a, and the cancelling differences written as series; and
+two universal-variable ones. The classical route, repaired, is excellent
+everywhere except inside 1e-9 of e = 1, where it is 1.8e-7 -- which is exactly
+where the refusal was. The universal-variable solve driven from the elements is
+within 7.0e-12 everywhere, so it won, and with it the refusal and the
+`ParabolicElements` enumerator both went. Worst relative position error, before
+and after:
+
+| states | before | after |
+|---|---|---|
+| 20,000 nearly parabolic | 1.5e-2 | 3.2e-12 |
+| 8,000 within 1e-9 of e = 1 | refused | 7.0e-12 |
+| 2,000 exactly parabolic | refused | 1.0e-13 |
+| 10,000 ordinary | 5.9e-13 | 2.1e-12 |
+
+**The measurement also found two defects in machinery `propagate()` shares, and
+the owner had both fixed here rather than later.** The Stumpff functions
+switched to closed forms at |psi| = 1e-6, where `(sinh s - s)` is a difference
+of two numbers agreeing to seven digits: c3 came out 4e-7 wrong in relative
+terms. Written cancellation-free -- `1 - cos s` as `2 sin^2(s/2)`, `cosh s - 1`
+as `2 sinh^2(s/2)`, and the odd differences as series to x^15/15! -- the state
+propagator improves from 1.9e-7 to 5.3e-11 on nearly parabolic trajectories and
+from 2.5e-7 to 7.0e-12 within 1e-9 of a parabola. And the Lagrange coefficient
+`g = t - chi^3 c3 / sqrt(mu)` cancels far out, where its two terms agree to
+seven digits; it is the rest of the universal Kepler equation, which is the same
+number and does not cancel.
+
+**The reference had to be fixed before it could judge anything.** Its tau was
+computed as `2 * PI` at import time, under the default 28-digit context, and the
+wrap it feeds subtracts tau from a mean anomaly next to it -- so the reference
+was 2% out on precisely the near-parabolic cases it existed to judge. Every
+self-check it had still passed, because all of them used true anomalies below
+pi, where the wrap does nothing. It now has cases past pi.
+
+Five of six mutants of the new code are killed by the tests written for it. The
+sixth -- `e + cos v` written straight rather than as `(e - 1) + (1 + cos v)` --
+survives, and the comment on it says so: measured over a wide grid it moves the
+answer by at most 9.7e-13, under the tightest budget the suite can justify.
+
 ---
 
 ## 4. The bug that justified the session
@@ -688,7 +740,9 @@ Two new `OrbitError` values came out of the same work. `NotFinite` is reported
 before any arithmetic, because a NaN used to arrive at Newton and leave as "did
 not converge" — true, and it sends the reader to the solver instead of the
 scenario file. `ParabolicElements` is what `propagateElements` says instead of
-handing an infinite semi-major axis to the Kepler solver.
+handing an infinite semi-major axis to the Kepler solver. (It said that until
+2026-09-12, when element propagation moved onto the universal-variable solver
+and stopped having a regime to refuse; the enumerator went with it.)
 
 ---
 

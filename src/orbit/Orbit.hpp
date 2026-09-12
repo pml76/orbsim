@@ -99,11 +99,13 @@ enum class OrbitError : std::uint8_t {
     NotFinite,
     DegenerateState,    // zero radius: a vessel at the exact centre of a body
     NonPositiveGravity, // mu <= 0 is not a central body
-    // Too near a parabola to propagate as elements: no finite semi-major axis,
-    // or an eccentricity within 1e-9 of 1 -- which a nearly radial ellipse or
-    // hyperbola has too -- where the Kepler equation is too ill-conditioned to
-    // trust. The state vector propagates accurately; use propagate().
-    ParabolicElements,
+    // There was a `ParabolicElements` here until 2026-09-12: propagateElements
+    // refused an element set within 1e-9 of e = 1, or one with no finite
+    // semi-major axis, because the classical Kepler equation could not be
+    // trusted there. It now runs the same universal-variable solve the state
+    // propagator does, which has no such regime, so nothing produces that error
+    // and an enumerator no code can return is a lie in a header.
+    //
     // Velocity parallel to position, so the specific angular momentum is zero:
     // the trajectory is a straight line through the centre and has no orbital
     // plane, which means no inclination and no ascending node. Reachable in
@@ -122,9 +124,6 @@ enum class OrbitError : std::uint8_t {
         return "state vector has zero radius; there is no orbit to describe";
     case OrbitError::NonPositiveGravity:
         return "gravitational parameter must be positive";
-    case OrbitError::ParabolicElements:
-        return "elements too near a parabola to propagate (no finite semi-major axis, or e "
-               "within 1e-9 of 1); propagate the state vector instead";
     case OrbitError::RectilinearOrbit:
         return "velocity is parallel to position; a radial trajectory has no orbital plane";
     case OrbitError::SolverDidNotConverge:
@@ -233,13 +232,18 @@ propagate(const StateVector& sv, GravParam mu, Seconds dt);
 
 // Advance only the anomaly of an element set, leaving the orbit shape intact.
 //
-// Needs a finite semi-major axis and an eccentricity at least 1e-9 from 1:
-// otherwise the element set is reported as `ParabolicElements` rather than fed
-// to the Kepler solver, and should be propagated as a state vector instead.
-// Near that band the classical Kepler equation loses accuracy fast: measured
-// against propagate(), up to 3.5% out at |e - 1| = 1e-9, falling as
-// 1 / |e - 1| to about 1e-6 at |e - 1| = 1e-6 (2026-09-11). propagate() is
-// accurate there.
+// Every conic, with no band around e = 1 and no shape it declines: it runs the
+// same universal-variable solve `propagate()` does, with 1/a taken from `sma`
+// (zero when that is infinite, which is what a parabola is) rather than
+// recovered from a state. Measured against 60-digit references over 40,024
+// element sets (2026-09-12), worst relative position error: 2.1e-12 on ordinary
+// orbits, 3.2e-12 on nearly parabolic ones, 7.0e-12 within 1e-9 of e = 1, and
+// 1.0e-13 on the parabola itself. The classical Kepler route it replaced was up
+// to 1.5% out near e = 1 and refused everything inside 1e-9 of it.
+//
+// Reports `NotFinite` for a non-finite mu, time step or element set, and
+// `NonPositiveGravity` for mu <= 0. `slr` must be positive and finite: it is the
+// one shape parameter every conic has, and the anomaly is read back through it.
 [[nodiscard]] std::expected<Elements, OrbitError>
 propagateElements(const Elements& el, GravParam mu, Seconds dt);
 

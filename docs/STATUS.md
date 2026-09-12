@@ -41,7 +41,7 @@ opens a window and paces frames.** Nothing is drawn yet.
 |---|---|
 | Current milestone | 1 — Earth, orbit track, Orbit MFD |
 | Last task completed | [M1-03](plan/tasks/m1-03-timepoint.md), `TimePoint` and the time scales, 2026-09-10 |
-| Before M1-04 | Four tasks, by the owner's decisions of 2026-09-11 and 2026-09-12, each starting with a regression test and options to the owner. **`propagateElements` near e = 1**: just outside its refusal band it is up to 3.5% out at \|e - 1\| = 1e-9, falling as 1 / \|e - 1\|, where `propagate()` is accurate. **Fuzzing on Windows**, which works (measured) although `CMakeLists.txt` refuses it, to be enabled beside `linux-fuzz`. **`elementsFromState` to the resolution of a double**: its eccentricity vector and its angular momentum cancel far out on a hyperbola and near the radial limit, so the true anomaly it stores loses about 2e-15 r/\|a\| rad and p up to 1.3e-5 relative; the radius read back through the elements is then 3.5e-6 out at r/\|a\| = 1e3, where exactly rounded elements would allow 1.2e-9. **The circular threshold**: below e = 1e-9 `tra` becomes the argument of latitude while `ecc` keeps its value, so the radius, the speed and a round trip through `stateFromElements` are up to 2e out -- 1.8e-9, or 12.6 mm at 7000 km -- and exact just above it |
+| Before M1-04 | Three tasks, by the owner's decisions of 2026-09-11 and 2026-09-12, each starting with a regression test and options to the owner. **Fuzzing on Windows**, which works (measured) although `CMakeLists.txt` refuses it, to be enabled beside `linux-fuzz`. **`elementsFromState` to the resolution of a double**: its eccentricity vector and its angular momentum cancel far out on a hyperbola and near the radial limit, so the true anomaly it stores loses about 2e-15 r/\|a\| rad and p up to 1.3e-5 relative; the radius read back through the elements is then 3.5e-6 out at r/\|a\| = 1e3, where exactly rounded elements would allow 1.2e-9. **The circular threshold**: below e = 1e-9 `tra` becomes the argument of latitude while `ecc` keeps its value, so the radius, the speed and a round trip through `stateFromElements` are up to 2e out -- 1.8e-9, or 12.6 mm at 7000 km -- and exact just above it |
 | Next task | [M1-04](plan/tasks/m1-04-leap-seconds.md), UTC, TAI and TT: the leap-second table |
 | Then | The rest of phase A — the Horizons fixtures (M1-06, now ahead of M1-05); TDB and UT1, where ERFA is pinned; Earth orientation with nutation, and the Sun, both computed by ERFA; then `orbsim_view`, the camera, the pipelines, and the probe mode that verifies everything drawn after it |
 | Phase order | A → B → D → C → E → F → G |
@@ -53,19 +53,19 @@ opens a window and paces frames.** Nothing is drawn yet.
 | `src/render/` | Vulkan 1.3 device, swapchain, frame pacing, RAII handles, buffer upload, shader loading. **No pipelines, no drawing.** |
 | `src/app/` | Window, event loop, argument parsing, frame loop. |
 | `shaders/` | Four GLSL shaders compile to SPIR-V at build time and are **never loaded**. They are placeholders for phase A. |
-| `tests/` | Three Catch2 suites, 454,434 assertions in 47 test cases, plus a GPU smoke test and a libFuzzer target. |
+| `tests/` | Three Catch2 suites, 464,452 assertions in 51 test cases, plus a GPU smoke test and a libFuzzer target. |
 
 ## Test suites
 
 | Suite | Assertions | What it covers |
 |---|---|---|
 | `test_orbit` | 732, in 8 cases | Earth-orbit round trips, degenerate orbits, analytic values, propagator agreement, invariants, hyperbolic, Kepler solver, reported failures |
-| `test_orbit_scales` | 32,953, in 19 cases | Heliocentric circles, parabolic trajectories, non-finite inputs, states that are finite but are not orbits, states with no orbital plane, `length()` exact at every binary scale, the fuzzer's nearly radial hyperbola at 1e-158 m, nearly radial ellipses and hyperbolas at 7000 km classified by their energy, an eccentricity that rounds to 1, `orbitInfo`'s radius and speed on four states that broke them and a fuzzer state whose semi-major axis underflows, a zero time step on every conic, near-rectilinear orbits, propagation composing, canonical scale invariance, bit-identical determinism, a seeded sweep of 200 closed + 100 hyperbolic orbits around the Moon, Earth, Jupiter and the Sun, and a second seeded sweep of 10,000 states -- ordinary, nearly radial, near-parabolic, small e, and out along a hyperbola's asymptote -- against the conditioning of the round trip through the elements |
+| `test_orbit_scales` | 42,971, in 23 cases | Heliocentric circles, parabolic trajectories, non-finite inputs, states that are finite but are not orbits, states with no orbital plane, `length()` exact at every binary scale, the fuzzer's nearly radial hyperbola at 1e-158 m, nearly radial ellipses and hyperbolas at 7000 km classified by their energy, an eccentricity that rounds to 1, `orbitInfo`'s radius and speed on four states that broke them and a fuzzer state whose semi-major axis underflows, a zero time step on every conic, near-rectilinear orbits, propagation composing, canonical scale invariance, bit-identical determinism, a seeded sweep of 200 closed + 100 hyperbolic orbits around the Moon, Earth, Jupiter and the Sun, a second seeded sweep of 10,000 states -- ordinary, nearly radial, near-parabolic, small e, and out along a hyperbola's asymptote -- against the conditioning of the round trip through the elements, element propagation on five conics within 2e-9 of a parabola against 60-digit references, and a third seeded sweep of 2,000 element sets -- ordinary, near-parabolic, parabolic and near-circular -- against the state propagator and against stepping back |
 | `test_time` | 420,749, in 20 cases | The published epochs both ways; the calendar against `std::chrono`'s on every day of 1900–2100, and which dates exist against its `ok()`; a seeded calendar round trip; 1 ns at the end of a day and across it, and a million 1 µs steps; arithmetic by the nearest picosecond across every day boundary; ordering against the difference; every refusal by name; the Julian-date conversions against exact rational arithmetic; and, at compile time, that no scale converts to another and UTC and UT1 have no duration arithmetic |
 | `fuzz_orbit` | — | libFuzzer over the core under ASan and UBSan. Not a CTest test: run deliberately with a time budget, `cmake --preset linux-fuzz`. |
 | `orbsim_smoke` | — | Runs the app under the Vulkan validation layers for 2 s; fails on any validation error. Labelled `gpu`. |
 
-Totals: **454,434 assertions in 47 test cases**, and the same 454,434 under
+Totals: **464,452 assertions in 51 test cases**, and the same 464,452 under
 both Windows trees, under ASan, and under both Linux presets. Catch2 **v3.16.0**.
 
 The seeds for the random sweeps are written into the suites: `20260905` in
@@ -79,8 +79,8 @@ run. Catch2 prints a `Randomness seeded to:` line that differs between runs; it
 seeds only `GENERATE` and `--order rand`, neither of which this project uses,
 and the sweeps' own generators are still seeded from `kSweepSeed`.
 `catch_discover_tests` makes each `TEST_CASE` its own CTest test, so `ctest -R`
-selects one and `ctest -N` lists **48**: the forty-seven Catch2 cases plus
-`orbsim_smoke`. `ctest -LE gpu` lists the forty-seven.
+selects one and `ctest -N` lists **52**: the fifty-one Catch2 cases plus
+`orbsim_smoke`. `ctest -LE gpu` lists the fifty-one.
 
 ## What this machine has
 
