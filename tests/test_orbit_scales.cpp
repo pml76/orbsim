@@ -20,6 +20,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -61,6 +62,7 @@ struct ConicReference {
     SpecificEnergy energy;
     Metres sma; // negative for a hyperbola
     Metres radius;
+    MetresPerSecond speed;
 };
 
 [[nodiscard]] ConicReference conicReference(const StateVector& sv, GravParam mu) {
@@ -71,6 +73,7 @@ struct ConicReference {
         .energy = SpecificEnergy{energy},
         .sma = Metres{-mu.value / (2.0 * energy)},
         .radius = Metres{r},
+        .speed = MetresPerSecond{v},
     };
 }
 
@@ -86,6 +89,15 @@ struct ConicReference {
 // two orders above that and eleven below the errors these cases were written
 // for.
 constexpr Tolerance kConicBudget{1e-13};
+
+// The state libFuzzer found (2026-09-10): a hyperbola 1e-158 m across, whose
+// eccentricity came back below 1 while its energy was positive. Two cases
+// below use it, so it is written once.
+constexpr StateVector kFuzzerHyperbola{
+    .pos = {6.6047118912273269e-313, 8.8544950093349595e-159, 8.8544945874389708e-159},
+    .vel = {2.3135945642312217e-157, -9.2559606829389177e+61, -9.2559631349317831e+61},
+};
+constexpr GravParam kFuzzerMu{4.3333423748712802e-35};
 
 } // namespace
 
@@ -421,11 +433,8 @@ TEST_CASE("length is exact at every binary scale", "[core][scales]") {
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("a nearly radial hyperbola at a tiny scale is not reported as closed",
           "[orbit][scales]") {
-    const StateVector state{
-        .pos = {6.6047118912273269e-313, 8.8544950093349595e-159, 8.8544945874389708e-159},
-        .vel = {2.3135945642312217e-157, -9.2559606829389177e+61, -9.2559631349317831e+61},
-    };
-    const GravParam mu{4.3333423748712802e-35};
+    const StateVector state = kFuzzerHyperbola;
+    const GravParam mu = kFuzzerMu;
 
     const auto el = elementsFromState(state, mu);
     INFO("elementsFromState -> " << errorName(el));
@@ -546,6 +555,132 @@ TEST_CASE("an eccentricity that rounds to 1 keeps the side of 1 its energy says"
     REQUIRE_FALSE(orbitInfo(*hyperbola, kMuEarth).closed);
     REQUIRE(relativeError(hyperbola->sma.value, conicReference(leaving, kMuEarth).sma.value) <=
             kConicBudget.value);
+}
+
+// orbitInfo's radius and speed come from the elements, and near the radial
+// limit they came out wrong (2026-09-11): p / (1 + e cos nu) divided by a
+// 1 + e cos nu that cancels there, and vis-viva subtracted two nearly equal
+// terms. The probe falling at 100 m/s from 7000 km was reported 1107 m from
+// the centre, moving at 848 km/s; over 30,000 nearly radial states the radius
+// came back infinite 417 times and negative 3,960 times, and the speed
+// exactly zero 4,138 times.
+//
+// Each budget is four to ten times what the code now measures against 60-digit
+// references, and what it measures is the elements' own floor: most of a nearly
+// radial orbit lies in a sliver of true anomaly near pi, which a double
+// resolves only so finely. The sweep at the end of this file states that floor
+// as a conditioning law; these four are the cases the defect was found by, and
+// hold the numbers measured on them.
+//
+// The drifting probe is the one case that law cannot cover. At an apsis the
+// speed's first-order dependence on the true anomaly vanishes and the second
+// order is what is left: the double nearest pi is 1.2e-16 short of it, which
+// beside a 1 mm/s drift is a radial 7e-6 m/s, or 2.4e-5 of the speed.
+TEST_CASE("orbitInfo's radius and speed hold near the radial limit", "[orbit][scales]") {
+    struct Case {
+        std::string_view name;
+        StateVector state;
+        GravParam mu;
+        Tolerance radius; // budget, with the measured error beside it
+        Tolerance speed;
+    };
+    // std::to_array rather than a braced std::array, which leans on brace
+    // elision -- what gcc's -Wmissing-braces reports.
+    const std::array cases = std::to_array<Case>({
+        Case{
+            .name = "drifting at 1 mm/s, at apoapsis",
+            .state = {.pos = {7000e3, 0.0, 0.0}, .vel = {0.0, 1.0e-3, 0.0}},
+            .mu = kMuEarth,
+            .radius = Tolerance{1e-15}, // measured 1.3e-16
+            .speed = Tolerance{1e-4},   // measured 2.4e-5, the floor above
+        },
+        Case{
+            .name = "leaving at 20 km/s",
+            .state = {.pos = {7000e3, 0.0, 0.0}, .vel = {20.0e3, 1.0e-3, 0.0}},
+            .mu = kMuEarth,
+            .radius = Tolerance{1e-8}, // measured 1.5e-9
+            .speed = Tolerance{1e-9},  // measured 2.2e-10
+        },
+        Case{
+            .name = "falling at 100 m/s",
+            .state = {.pos = {7000e3, 0.0, 0.0}, .vel = {-100.0, 1.0e-6, 0.0}},
+            .mu = kMuEarth,
+            .radius = Tolerance{2e-7}, // measured 3.4e-8
+            .speed = Tolerance{1e-3},  // measured 1.9e-4
+        },
+        Case{
+            .name = "the fuzzer's hyperbola at 1e-158 m",
+            .state = kFuzzerHyperbola,
+            .mu = kFuzzerMu,
+            .radius = Tolerance{1e-8}, // measured 1.2e-9
+            .speed = Tolerance{1e-9},  // measured 2.5e-10
+        },
+    });
+    for (const Case& c : cases) {
+        CAPTURE(c.name);
+        const auto el = elementsFromState(c.state, c.mu);
+        INFO("elementsFromState -> " << errorName(el));
+        REQUIRE(el.has_value());
+        const OrbitInfo info = orbitInfo(*el, c.mu);
+        const ConicReference want = conicReference(c.state, c.mu);
+        INFO(std::format("radius {:.17g} m, want {:.17g}; speed {:.17g} m/s, want {:.17g}",
+                         info.radius.value,
+                         want.radius.value,
+                         info.speed.value,
+                         want.speed.value));
+        REQUIRE(relativeError(info.radius.value, want.radius.value) <= c.radius.value);
+        REQUIRE(relativeError(info.speed.value, want.speed.value) <= c.speed.value);
+    }
+}
+
+// libFuzzer, 2026-09-12, against the fix above: a hyperbola so energetic that
+// -mu/(2E) underflows and `sma` comes back -0. Rebuilding e - 1 from p/a then
+// divides by that zero, and the factor, the radius and the speed all came back
+// infinite or NaN -- the "succeeded, and the answer is NaN" outcome this file
+// keeps finding. It cost two guards, and the second was only visible because
+// the first was in place: mu/p is 6.3e-337 here, below the smallest subnormal,
+// so sqrt(mu/p) was zero and the speed came back 0 m/s for a trajectory doing
+// 7.4e71 m/s. sqrt(mu)/sqrt(p) has the range for it, and the speed is now good
+// to 6.8e-8.
+//
+// The radius is not, and cannot be: alpha r is 8.6e249 and e is 9.3e239, so the
+// true anomaly no longer locates anything and p / (1 + e cos v) is -2.3e-157
+// where the state is at 1.04e-153. That is the elements' limit rather than a
+// formulation's -- `docs/STATUS.md` carries the task -- and what is asserted
+// here is the invariant the fuzzer checks: nothing is NaN.
+TEST_CASE("an underflowing semi-major axis is not a NaN radius", "[orbit][scales]") {
+    const StateVector state{
+        .pos = {6.013470016999446e-154, 6.01347001699909e-154, 6.013470018388293e-154},
+        .vel = {-4.252558376478985e+71, -4.252558376500915e+71, -4.252558376500915e+71},
+    };
+    const GravParam mu{6.554909140857642e-260};
+
+    const auto el = elementsFromState(state, mu);
+    INFO("elementsFromState -> " << errorName(el));
+    REQUIRE(el.has_value());
+    INFO(std::format("sma {:.17g} m, ecc {:.17g}, slr {:.17g} m, tra {:.17g}",
+                     el->sma.value,
+                     el->ecc.value,
+                     el->slr.value,
+                     el->tra.value));
+
+    const OrbitInfo info = orbitInfo(*el, mu);
+    INFO(std::format("radius {:.17g} m, speed {:.17g} m/s, energy {:.17g} J/kg",
+                     info.radius.value,
+                     info.speed.value,
+                     info.energy.value));
+    REQUIRE_FALSE(std::isnan(info.radius.value));
+    REQUIRE_FALSE(std::isnan(info.speed.value));
+    REQUIRE_FALSE(std::isnan(info.periapsis.value));
+    REQUIRE_FALSE(std::isnan(info.apoapsis.value));
+    REQUIRE_FALSE(std::isnan(info.period.value));
+    REQUIRE_FALSE(std::isnan(info.meanMotion.value));
+    REQUIRE_FALSE(std::isnan(info.energy.value));
+
+    // The speed survives where the radius does not: it needs the shape and the
+    // anomaly, not the anomaly's position along the conic.
+    INFO("the speed still means something");
+    REQUIRE(relativeError(info.speed.value, conicReference(state, mu).speed.value) <= 1e-6);
 }
 
 // The hyperbolic half of the case above.
@@ -1119,4 +1254,228 @@ TEST_CASE("randomised sweep across bodies, shapes and time steps", "[orbit][scal
     Sampler sampler;
     sweepClosedOrbits(sampler);
     sweepHyperbolicOrbits(sampler);
+}
+
+// --- what the round trip through the elements is worth -----------------------
+
+namespace {
+
+// orbitInfo reads the radius and the speed back out of p, e and the true
+// anomaly, and the true anomaly is a double. Near the radial limit r and v
+// depend on it steeply, so that is the budget: from r = p / (1 + e cos nu) and
+// v^2 = (mu/p)(1 + 2 e cos nu + e^2), with e sin nu = (r.v)|h| / (mu r),
+//
+//     |d ln r / d nu| = |r.v| / |h|                 = kappa_r
+//     |d ln v / d nu| = |r.v| mu / (r v^2 |h|)      = kappa_v
+//
+// an error of an ulp in the anomaly is kappa ulp in what comes back. Both are
+// written in terms of the state, so the budget owes nothing to the code it
+// judges, and both are dimensionless -- section 12.
+//
+// Measured against 60-digit references over 110,004 states -- ordinary, nearly
+// radial, near-parabolic, small e, and hyperbolas out to r/|a| = 1e3 -- on
+// Windows clang, WSL clang and gcc-14 (2026-09-12), the error stayed within
+// 9.3 u (1 + kappa)(1 + |alpha r|) with u = 2^-53. Four times that is the
+// budget. The formulation this replaced needed 3.5e8 on the same states, and on
+// 417 of them no factor at all would have done: the radius came back infinite.
+//
+// The second factor is not orbitInfo's. Far out on a hyperbola the eccentricity
+// vector in elementsFromState cancels, and the anomaly it stores loses about
+// 2e-15 r/|a| rad with it; `docs/STATUS.md` carries that as its own task. The
+// sweep below therefore stops at r/|a| = 1e3, where the elements still mean
+// something.
+//
+// The additive term is the parabolic band's. Where the energy puts a state
+// within 1e-12 of a parabola, elementsFromState stores an infinite sma, and
+// what comes back is the parabola through that state -- up to |alpha r| / 2
+// away from the truth, which no formulation can improve on from those
+// elements. It is bounded by the band, so it is at most 5e-13.
+constexpr f64 kUnitRoundoff = 0x1p-53;
+constexpr f64 kRoundTripFactor = 40.0;
+constexpr std::size_t kRoundTripCases = 2000; // per family below
+
+struct RoundTripBudget {
+    Tolerance radius;
+    Tolerance speed;
+};
+
+[[nodiscard]] RoundTripBudget
+roundTripBudget(const StateVector& sv, const Elements& el, GravParam mu) {
+    const f64 r = length(sv.pos);
+    const f64 v = length(sv.vel);
+    const f64 rdotv = std::abs(dot(sv.pos, sv.vel));
+    const f64 h = length(cross(sv.pos, sv.vel));
+    const f64 alphaRadius = std::abs(2.0 - (r * v * v / mu.value));
+    const f64 band = std::isinf(el.sma.value) ? 0.5 * alphaRadius : 0.0;
+    const f64 scale = kRoundTripFactor * kUnitRoundoff * (1.0 + alphaRadius);
+    return {
+        .radius = Tolerance{(scale * (1.0 + (rdotv / h))) + band},
+        .speed = Tolerance{(scale * (1.0 + (rdotv * mu.value / (r * v * v * h)))) + band},
+    };
+}
+
+// The state's own |r| and |v| are the reference: they are two hypots of the
+// input, and the elements are a round trip away from them.
+void checkRadiusAndSpeed(const StateVector& sv, GravParam mu) {
+    const auto el = elementsFromState(sv, mu);
+    INFO("elementsFromState -> " << errorName(el));
+    REQUIRE(el.has_value());
+
+    const OrbitInfo info = orbitInfo(*el, mu);
+    const ConicReference want = conicReference(sv, mu);
+    const RoundTripBudget budget = roundTripBudget(sv, *el, mu);
+    // Formatted by hand: Catch2 prints a tiny double as "-0.0", and 17
+    // significant digits round-trip, so a failure pastes back in as a case.
+    INFO(std::format("radius {:.17g} m, want {:.17g}, budget {:.3g}; "
+                     "speed {:.17g} m/s, want {:.17g}, budget {:.3g}",
+                     info.radius.value,
+                     want.radius.value,
+                     budget.radius.value,
+                     info.speed.value,
+                     want.speed.value,
+                     budget.speed.value));
+    REQUIRE(relativeError(info.radius.value, want.radius.value) <= budget.radius.value);
+    REQUIRE(relativeError(info.speed.value, want.speed.value) <= budget.speed.value);
+}
+
+// A uniform direction on the sphere: z uniform and the azimuth uniform is the
+// one pairing that does not crowd the poles.
+[[nodiscard]] Vec3 randomDirection(Sampler& sampler) {
+    const f64 z = (2.0 * sampler.fraction()) - 1.0;
+    const Radians azimuth = sampler.angle(kTau);
+    const f64 ring = std::sqrt(1.0 - (z * z));
+    return {ring * std::cos(azimuth.value), ring * std::sin(azimuth.value), z};
+}
+
+// A unit vector perpendicular to a unit `dir`, at a random azimuth about it.
+// The seed vector is chosen to be well away from `dir`, so the cross product
+// is never a ratio of two roundings -- drawing a second random direction here
+// could return one parallel to the first.
+[[nodiscard]] Vec3 perpendicularTo(const Vec3& dir, Sampler& sampler) {
+    const Vec3 seed = (std::abs(dir.x) < 0.9) ? Vec3{1, 0, 0} : Vec3{0, 1, 0};
+    return rotateAxis(normalize(cross(dir, seed)), dir, sampler.angle(kTau));
+}
+
+// Any shape at any attitude: a tenth of circular speed to twice it spans
+// e = 0 to hyperbolic, and the direction is independent of the position.
+void sweepOrdinaryOrbits(Sampler& sampler) {
+    for (std::size_t i = 0; i < kRoundTripCases; ++i) {
+        const Body& body = kBodies.at(i % kBodies.size());
+        const f64 radius =
+            sampler.logUniform({.lo = body.minPeriapsis.value, .hi = body.maxSma.value});
+        const Vec3 dir = randomDirection(sampler);
+        const f64 speed = std::sqrt(body.mu.value / radius) * (0.1 + (1.9 * sampler.fraction()));
+        CAPTURE(kSweepSeed, i, body.name, radius, speed);
+        checkRadiusAndSpeed({.pos = dir * radius, .vel = randomDirection(sampler) * speed},
+                            body.mu);
+    }
+}
+
+// Nearly radial: the velocity within 1e-11 to 1e-2 of parallel to the
+// position, rising or falling, from well below escape speed to well above it.
+// This is where 1 + e cos nu cancels, and where the old formulation returned an
+// infinite radius for 417 of 30,000 such states.
+void sweepNearlyRadialOrbits(Sampler& sampler) {
+    for (std::size_t i = 0; i < kRoundTripCases; ++i) {
+        const Body& body = kBodies.at(i % kBodies.size());
+        const f64 radius =
+            sampler.logUniform({.lo = body.minPeriapsis.value, .hi = body.maxSma.value});
+        const Vec3 dir = randomDirection(sampler);
+        const f64 speed = std::sqrt(body.mu.value / radius) * (0.05 + (2.5 * sampler.fraction()));
+        const f64 tangential = sampler.logUniform({.lo = 1e-11, .hi = 1e-2});
+        const f64 outward = (sampler.fraction() < 0.5) ? 1.0 : -1.0;
+        const Vec3 vel = ((dir * (outward * std::sqrt(1.0 - (tangential * tangential)))) +
+                          (perpendicularTo(dir, sampler) * tangential)) *
+                         speed;
+        CAPTURE(kSweepSeed, i, body.name, radius, speed, tangential, outward);
+        checkRadiusAndSpeed({.pos = dir * radius, .vel = vel}, body.mu);
+    }
+}
+
+// Within 1e-15 to 1e-6 of escape speed, either side, at every flight path
+// angle: the states whose energy decides the conic by a hair, and the ones the
+// parabolic band catches.
+void sweepNearParabolicOrbits(Sampler& sampler) {
+    for (std::size_t i = 0; i < kRoundTripCases; ++i) {
+        const Body& body = kBodies.at(i % kBodies.size());
+        const f64 radius =
+            sampler.logUniform({.lo = body.minPeriapsis.value, .hi = body.maxSma.value});
+        const Vec3 dir = randomDirection(sampler);
+        const f64 offset = sampler.logUniform({.lo = 1e-15, .hi = 1e-6});
+        const f64 speed = std::sqrt(2.0 * body.mu.value / radius) *
+                          (1.0 + ((sampler.fraction() < 0.5) ? offset : -offset));
+        const Radians flightPath{sampler.angle(kPi).value - (kPi / 2.0)};
+        const Vec3 vel = ((dir * std::sin(flightPath.value)) +
+                          (perpendicularTo(dir, sampler) * std::cos(flightPath.value))) *
+                         speed;
+        CAPTURE(kSweepSeed, i, body.name, radius, speed, offset, flightPath.value);
+        checkRadiusAndSpeed({.pos = dir * radius, .vel = vel}, body.mu);
+    }
+}
+
+// The other degenerate end. Above e = 1e-9 the periapsis direction is still
+// computable, so the true anomaly still means something; below it
+// elementsFromState switches to the argument of latitude, which costs up to
+// 2e in the radius -- its own task in `docs/STATUS.md`, not this budget.
+void sweepSmallEccentricities(Sampler& sampler) {
+    for (std::size_t i = 0; i < kRoundTripCases; ++i) {
+        const Body& body = kBodies.at(i % kBodies.size());
+        const Eccentricity ecc{sampler.logUniform({.lo = 2e-9, .hi = 1e-2})};
+        const f64 sma = sampler.logUniform(
+            {.lo = body.minPeriapsis.value / (1.0 - ecc.value), .hi = body.maxSma.value});
+        const Elements el{
+            .sma = Metres{sma},
+            .ecc = ecc,
+            .inc = sampler.angle(kPi),
+            .lan = sampler.angle(kTau),
+            .aop = sampler.angle(kTau),
+            .tra = sampler.angle(kTau),
+            .slr = Metres{sma * (1.0 - (ecc.value * ecc.value))},
+        };
+        CAPTURE(kSweepSeed, i, body.name, sma, ecc.value, el.tra.value);
+        checkRadiusAndSpeed(stateFromElements(el, body.mu), body.mu);
+    }
+}
+
+// Out along a hyperbola's asymptote, where 1 + e cos nu cancels for the other
+// reason: r / |a| from a thousandth to a thousand, e from just above 1 to 100.
+// Beyond 1e3 the elements themselves stop meaning much -- see the note on the
+// budget above.
+void sweepHyperbolicAsymptotes(Sampler& sampler) {
+    for (std::size_t i = 0; i < kRoundTripCases; ++i) {
+        const Body& body = kBodies.at(i % kBodies.size());
+        const Eccentricity ecc{1.0 + sampler.logUniform({.lo = 1e-6, .hi = 99.0})};
+        const f64 sma =
+            -sampler.logUniform({.lo = body.minPeriapsis.value, .hi = body.maxSma.value});
+        const f64 slr = -sma * ((ecc.value * ecc.value) - 1.0);
+        // Never inside periapsis, whatever r/|a| was drawn.
+        const f64 radius =
+            std::max(slr / (1.0 + ecc.value), -sma * sampler.logUniform({.lo = 1e-3, .hi = 1e3}));
+        const f64 tra = std::acos(std::clamp(((slr / radius) - 1.0) / ecc.value, -1.0, 1.0));
+        const Elements el{
+            .sma = Metres{sma},
+            .ecc = ecc,
+            .inc = sampler.angle(kPi),
+            .lan = sampler.angle(kTau),
+            .aop = sampler.angle(kTau),
+            .tra = Radians{(sampler.fraction() < 0.5) ? tra : kTau - tra},
+            .slr = Metres{slr},
+        };
+        CAPTURE(kSweepSeed, i, body.name, sma, ecc.value, radius, el.tra.value);
+        checkRadiusAndSpeed(stateFromElements(el, body.mu), body.mu);
+    }
+}
+
+} // namespace
+
+// Five families, one Sampler, drawn from in this order, as the sweep above is:
+// reordering these calls changes every case.
+TEST_CASE("orbitInfo's radius and speed stay within the elements' conditioning",
+          "[orbit][scales]") {
+    Sampler sampler;
+    sweepOrdinaryOrbits(sampler);
+    sweepNearlyRadialOrbits(sampler);
+    sweepNearParabolicOrbits(sampler);
+    sweepSmallEccentricities(sampler);
+    sweepHyperbolicAsymptotes(sampler);
 }

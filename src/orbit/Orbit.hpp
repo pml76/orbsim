@@ -147,6 +147,40 @@ enum class OrbitError : std::uint8_t {
 [[nodiscard]] std::expected<Elements, OrbitError> elementsFromState(const StateVector& sv,
                                                                     GravParam mu);
 [[nodiscard]] StateVector stateFromElements(const Elements& el, GravParam mu);
+
+// The derived quantities, and what they are worth.
+//
+// `radius` and `speed` are read back out of p, e and the true anomaly, so they
+// are worth what those are worth. The anomaly is a double, and near the radial
+// limit r and v depend on it steeply, which puts a floor under any formulation:
+// measured against 60-digit references over 110,004 states on three toolchains
+// (2026-09-12), the relative error stays within
+//
+//     40 u (1 + kappa) (1 + |alpha r|),   u = 2^-53
+//
+// with kappa = |r.v| / |h| for the radius and |r.v| mu / (r v^2 |h|) for the
+// speed -- the two log-derivatives with respect to the anomaly -- and
+// alpha r = 2 - r v^2 / mu. That second factor is `elementsFromState`'s rather
+// than this function's: far out on a hyperbola its eccentricity vector cancels,
+// and the anomaly it stores loses about 2e-15 r/|a| rad with it.
+// `tests/test_orbit_scales.cpp` asserts the law over a seeded sweep.
+//
+// Three regimes sit outside it, and no formulation reaches past them from these
+// elements:
+//   - inside the parabolic band, where the energy puts a state within 1e-12 of
+//     a parabola, `sma` is infinite and what comes back is the parabola through
+//     that state: up to |alpha r| / 2, and so at most 5e-13, away from the
+//     truth;
+//   - below e = 1e-9, where `tra` is the argument of latitude rather than the
+//     true anomaly: up to 2e, which is 1.8e-9 or 12.6 mm at 7000 km;
+//   - at an apsis of a nearly radial orbit, where the first-order term above is
+//     zero and the second order is what is left: a probe drifting at 1 mm/s has
+//     its speed 2.4e-5 out, because the double nearest pi is 1.2e-16 short of
+//     it.
+//
+// **A caller holding the state vector should read the radius and the speed off
+// it** -- |r| and |v| are exact there, and this function is for a caller that
+// has only elements.
 [[nodiscard]] OrbitInfo orbitInfo(const Elements& el, GravParam mu);
 
 // --- anomaly conversions ---------------------------------------------------

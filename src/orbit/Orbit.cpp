@@ -506,6 +506,53 @@ void assignConic(Elements& el, const StateVector& sv, GravParam mu) {
            std::isfinite(el.aop.value) && std::isfinite(el.tra.value);
 }
 
+// 1 + e cos v, which the radius and the speed both hang on: r = p / this, and
+// v = sqrt(mu/p) hypot(e sin v, this).
+//
+// Straight, while e cos v >= -1/2. Below that the sum cancels, and the rounding
+// of e cos v -- an ulp of a quantity near 1 -- comes out amplified by
+// (1 - q)/q > 1. There it is rebuilt from two terms that keep their own
+// relative precision: 2 cos^2(v/2) is 1 + cos v computed accurately at v = pi,
+// and e - 1 is taken from p and a rather than from e, which is 1 to the last
+// bit on either side of the radial limit. e^2 - 1 = -p/a, so
+// e - 1 = -(p/a)/(1 + e); on a parabola it is 0 exactly, which is what an
+// infinite sma means.
+//
+// Measured against 60-digit references over 110,004 states on three toolchains
+// (2026-09-12), worst relative error of the radius and the speed, against
+// 1 + e cos v alone:
+//
+//   30,000 nearly radial   inf / 5.4e5        ->  6.4e-5 / 4.1e-3
+//   20,000 ordinary        3.3e-11 / 1.9e-10  ->  4.7e-13 / 2.7e-12
+//   20,000 near-parabolic  1.9e-7 / 9.5e-8    ->  9.2e-12 / 4.6e-12
+//   20,000 at e <= 1e-2    9.6e-16 / 1.2e-15  ->  9.6e-16 / 8.6e-16
+//    6,614 hyperbolic      1.1e-4 / 1.1e-7    ->  5.3e-8 / 5.3e-11
+//
+// The first line is not a typo: of 30,000 nearly radial states, 1 + e cos v
+// came out zero for 417 and negative for 3,960. What is left is the elements'
+// own floor -- tests/test_orbit_scales.cpp states it as a conditioning law.
+// The switch point is not delicate: -1/4 and -3/4 were measured too, and move
+// the worst case by less than a quarter.
+[[nodiscard]] f64 onePlusECosTrueAnomaly(const Elements& el) noexcept {
+    const f64 e = el.ecc.value;
+    const f64 trueAnomaly = el.tra.value;
+    const f64 eCosNu = e * std::cos(trueAnomaly);
+    if (eCosNu >= -0.5) return 1.0 + eCosNu;
+
+    // A parabola has no finite a and takes e - 1 = 0. So does an orbit whose
+    // p/a overflows, which libFuzzer found on 2026-09-12: a hyperbola with so
+    // much energy that -mu/(2E) underflows to -0 leaves p/a infinite, and this
+    // returned an infinite factor and a NaN speed. There is nothing to rebuild
+    // in that case anyway -- e was 9.3e239, and 1 + e cos v with an e like that
+    // cannot lose a bit to cancellation -- so the straight form answers.
+    const f64 eMinusOne =
+        std::isfinite(el.sma.value) ? -(el.slr.value / el.sma.value) / (1.0 + e) : 0.0;
+    if (!std::isfinite(eMinusOne)) return 1.0 + eCosNu;
+
+    const f64 halfCos = std::cos(0.5 * trueAnomaly);
+    return (2.0 * halfCos * halfCos) + (eMinusOne * std::cos(trueAnomaly));
+}
+
 } // namespace
 
 // --- state <-> elements ----------------------------------------------------
@@ -628,27 +675,37 @@ OrbitInfo orbitInfo(const Elements& el, GravParam mu) {
     info.periapsis = Metres{el.slr.value / (1.0 + e)};
     // a(1 + e), not p / (1 - e): near e = 1 the second divides by a 1 - e
     // known only to its last bits. Measured against 60-digit references
-    // (2026-09-11), p / (1 - e) was up to 506% out on 27,242 nearly radial
-    // ellipses and 3.6e-10 on 138,754 ordinary ones; this is within 4.1e-11
-    // and 2.7e-12.
+    // (2026-09-11, re-measured exactly on 2026-09-12), p / (1 - e) was up to
+    // 506% out on 27,242 nearly radial ellipses and 3.6e-10 on 138,754
+    // ordinary ones; this is within 3.3e-11 and 3.0e-12.
     info.apoapsis = Metres{info.closed ? el.sma.value * (1.0 + e) : kInf};
-    info.radius = Metres{el.slr.value / (1.0 + (e * std::cos(el.tra.value)))};
+
+    // Both of these come from the shape and the anomaly, and neither from
+    // vis-viva: v^2 = (mu/p)((e sin v)^2 + (1 + e cos v)^2) is the same
+    // quantity as mu(2/r - 1/a) without the subtraction, which near the radial
+    // limit was taking the difference of two terms equal to their last bits.
+    // It reported a probe falling at 100 m/s as moving at 848 km/s.
+    const f64 factor = onePlusECosTrueAnomaly(el);
+    info.radius = Metres{el.slr.value / factor};
+    // sqrt(mu)/sqrt(p) rather than sqrt(mu/p), and multiplied into each term
+    // rather than applied to their hypot. The same number at any ordinary
+    // scale, and each form avoids something the other walks into: mu/p
+    // underflowed to zero for the state libFuzzer found on 2026-09-12 (6.3e-337,
+    // below the smallest subnormal) and reported 0 m/s for a trajectory doing
+    // 7.4e71 m/s, and the hypot of the unscaled terms overflows where each
+    // scaled term is finite.
+    const f64 shape = std::sqrt(m) / std::sqrt(el.slr.value);
+    info.speed = MetresPerSecond{std::hypot(shape * e * std::sin(el.tra.value), shape * factor)};
 
     if (info.closed) {
         const f64 a = el.sma.value;
         info.meanMotion = RadiansPerSecond{std::sqrt(m / (a * a * a))};
         info.period = Seconds{kTau / info.meanMotion.value};
         info.energy = SpecificEnergy{-m / (2.0 * a)};
-        // Vis-viva. Clamped at zero because rounding can push the radicand a
-        // hair negative at the apoapsis of a near-circular orbit.
-        info.speed =
-            MetresPerSecond{std::sqrt(std::max(0.0, m * ((2.0 / info.radius.value) - (1.0 / a))))};
     } else {
         info.meanMotion = RadiansPerSecond{0.0};
         info.period = Seconds{kInf};
         info.energy = SpecificEnergy{std::isinf(el.sma.value) ? 0.0 : -m / (2.0 * el.sma.value)};
-        info.speed = MetresPerSecond{
-            std::sqrt(std::max(0.0, 2.0 * (info.energy.value + (m / info.radius.value))))};
     }
     return info;
 }

@@ -19,6 +19,13 @@ here that is easy to get backwards:
 - Each frame: take the interpolated state from M1-71, convert with
   `elementsFromState`, derive the display quantities with `orbitInfo`, format
   with M1-81, and draw into the M1-80 panel.
+- **The radius and the speed come from the state, not from `orbitInfo`.** This
+  MFD holds the state vector it just interpolated, where |r| and |v| are exact;
+  the same two read back through the elements are worth only what the true
+  anomaly is worth, which near the radial limit is not much — up to 6.4e-5 in
+  the radius over a sweep of nearly radial states, measured 2026-09-12. The
+  contract is written on `orbitInfo` in [`src/orbit/Orbit.hpp`](../../../src/orbit/Orbit.hpp).
+  Every other displayed quantity comes from `orbitInfo`.
 - **No smoothing, no averaging, no hysteresis on the numbers.** If a digit
   flickers, that is the physics, and hiding it would hide the perturbation this
   milestone exists to demonstrate. Written in the header, because the instinct

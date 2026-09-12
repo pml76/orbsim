@@ -563,20 +563,31 @@ wrong side of 1 for 9,774 of them, and the energy a median 100% out. The fix
 asks one question everywhere, the one `propagate()` already asked: the conic is
 the energy's, parabolic iff |alpha r| <= 1e-12, and `sma` says which. That left
 no conic misjudged, and on the nearly radial states the semi-major axis and
-energy within 4.1e-11 and the period within 6.1e-11. The classifier alone left
+energy within 3.3e-11 and the period within 5.0e-11. The classifier alone left
 all 200,000 ordinary orbits bit-identical; `propagate()` is bit-identical too,
 though it now asks through the same small function. Near radial, e is exactly
 1.0 as a double -- a probe falling at 100 m/s with a 1 um/s drift, e = 1 -
 1.8e-20 -- so it is now kept on the side of 1 the energy says. And the
 apoapsis became a(1 + e): p / (1 - e) divided by a 1 - e known only to its last
 bits, and had been up to 506% out on nearly radial ellipses and 3.6e-10 on
-138,754 ordinary ones, where a(1 + e) is within 4.1e-11 and 2.7e-12. That one
+138,754 ordinary ones, where a(1 + e) is within 3.3e-11 and 3.0e-12. That one
 change does move the apoapsis of 90% of ordinary closed orbits by a few ulp,
 four in five of them toward the reference, and the owner chose it knowing the
 bits would move. The figures first put to the owner, 5.2e-11 and 8.8e-13, came
 from a sample of 20,000; the full run above found both formulas' worst cases
 larger and the case for the change stronger. Five mutants of the fix are each
 killed by the tests aimed at it.
+
+Those figures are the second correction this measurement needed, and the
+commit that made the change (`7276037`) carries the first version of them.
+The analysis parsed the printed 17 significant digits as decimal numbers
+instead of the exact doubles they name, which moved every floor slightly: read
+exactly, the nearly radial figures are 3.3e-11 and 5.0e-11 rather than 4.1e-11
+and 6.1e-11, and a(1 + e) on ordinary orbits is 3.0e-12 rather than 2.7e-12 --
+the one figure of the three that had been understated, and therefore the one
+that made the commit message's claim false. No count, no classification and no
+conclusion moved. Every measurement since parses a printed double as
+`Decimal(float(s))`.
 
 The measurement found two more things, each made a task of its own by the
 owner rather than folded in: `orbitInfo`'s radius and speed, computed from p,
@@ -585,6 +596,69 @@ classifier (median 0.14% out, unbounded at worst); and `propagateElements`
 keeps its refusal within 1e-9 of e = 1 -- without it the error reached
 2,500% -- but is already up to 3.5% out just outside it, falling as
 1 / |e - 1|, where `propagate()` answers accurately.
+
+### The radius and the speed, 2026-09-12
+
+**The first of those two was worse than its median suggested.** Four states
+named the symptom before anything changed: the probe drifting at 1 mm/s was
+reported 7,007,950 m from the centre and not moving, the one falling at 100 m/s
+was reported 1,107 m from the centre at 848 km/s, and over 30,000 nearly radial
+states `p / (1 + e cos v)` came back infinite 417 times and negative 3,960
+times, while vis-viva -- the difference of two terms equal to their last bits
+there -- returned exactly zero 4,138 times. Three formulations were measured
+against 60-digit references over 110,004 states, on Windows clang, WSL clang
+and gcc-14, before the owner chose: keep `1 + e cos v` while e cos v >= -1/2,
+where it cannot lose a bit, and below that rebuild it as
+2 cos^2(v/2) + (e - 1) cos v with e - 1 taken from p and a rather than from e,
+which stores 1 on both sides of the radial limit; and take the speed from
+sqrt(mu/p) hypot(e sin v, 1 + e cos v) on every conic, which is vis-viva
+without the subtraction. Worst relative error of the radius and the speed,
+before and after: nearly radial, infinite and 5.4e5, to 6.4e-5 and 4.1e-3;
+ordinary, 3.3e-11 and 1.9e-10, to 4.7e-13 and 2.7e-12; near-parabolic, 1.9e-7
+and 9.5e-8, to 9.2e-12 and 4.6e-12; hyperbolic out to r/|a| = 1e3, 1.1e-4 and
+1.1e-7, to 5.3e-8 and 5.3e-11. Below e = 1e-2, where the rewrite would have
+cost accuracy rather than bought it, the hybrid leaves both where they were,
+at 9.6e-16 -- which is why it is a hybrid. Five mutants of the new code are
+each killed by the tests written for it.
+
+**What is left belongs to the elements, and is written as a law rather than a
+number.** The anomaly is a double, and r and v move with it: |d ln r / dv| is
+|r.v|/|h| and |d ln v / dv| is |r.v| mu / (r v^2 |h|), both computable from the
+state alone. Over those 110,004 states the error stayed within
+9.3 u (1 + kappa)(1 + |alpha r|), and a seeded sweep of 10,000 states now
+asserts four times that, across five families. The second factor is
+`elementsFromState`'s, not `orbitInfo`'s. Three regimes sit outside the law and
+are written into the contract on `orbitInfo`: a state inside the parabolic band
+gets the parabola's radius and speed, up to |alpha r|/2 <= 5e-13 away; below
+e = 1e-9 the stored anomaly is the argument of latitude, which costs up to 2e;
+and at an apsis of a nearly radial orbit the first-order term vanishes and the
+second order is left -- the drifting probe's speed stays 2.4e-5 out, because
+the double nearest pi is 1.2e-16 short of it. M1-82's task document now says to
+read the radius and the speed off the state vector it holds, where both are
+exact, rather than back out of the elements.
+
+**libFuzzer found the fix's own bug in 39,270 executions**, on the first run
+after it landed -- a hyperbola so energetic that -mu/(2E) underflows and `sma`
+comes back -0. Rebuilding e - 1 from p/a then divided by that zero and the
+speed came back NaN. The guard is that a non-finite e - 1 falls back to the
+straight form, which is what an e of 9.3e239 wants anyway; and the guard made a
+second flaw visible that it had been hiding, mu/p = 6.3e-337 underflowing to
+zero and reporting 0 m/s for a trajectory doing 7.4e71 m/s. `sqrt(mu)/sqrt(p)`
+has the range for it, and multiplying it into each term of the hypot rather
+than onto their result removes an overflow as well. That state is a test now,
+and the fuzzer ran 237.8 million executions clean over the ten minutes after
+it.
+
+**The measurement found two more things, and the owner made a task of each
+rather than folding them in.** `elementsFromState` is backward stable but not
+forward accurate: its eccentricity vector and its angular momentum cancel far
+out on a hyperbola and near the radial limit, so the anomaly it stores loses
+about 2e-15 r/|a| rad and p up to 1.3e-5 relative -- the radius read back is
+3.5e-6 out at r/|a| = 1e3 where exactly rounded elements would allow 1.2e-9.
+And below e = 1e-9, where `tra` becomes the argument of latitude while `ecc`
+keeps its value, the radius, the speed and a round trip through
+`stateFromElements` are up to 2e out: 1.8e-9, or 12.6 mm at 7000 km, and exact
+just above the threshold.
 
 ---
 
