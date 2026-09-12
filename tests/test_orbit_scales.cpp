@@ -649,11 +649,20 @@ TEST_CASE("orbitInfo's radius and speed hold near the radial limit", "[orbit][sc
 // 7.4e71 m/s. sqrt(mu)/sqrt(p) has the range for it, and the speed is now good
 // to 6.8e-8.
 //
-// The radius is not, and cannot be: alpha r is 8.6e249 and e is 9.3e239, so the
-// true anomaly no longer locates anything and p / (1 + e cos v) is -2.3e-157
-// where the state is at 1.04e-153. That is the elements' limit rather than a
-// formulation's -- `docs/STATUS.md` carries the task -- and what is asserted
-// here is the invariant the fuzzer checks: nothing is NaN.
+// The radius used to be the part that could not be saved: alpha r is 8.6e249
+// and e is 9.3e239 here, and p / (1 + e cos v) came out -2.3e-157 for a state
+// at 1.04e-153 -- the wrong sign and four orders of magnitude out. That was
+// read as the elements' own limit rather than a formulation's, and left as a
+// task. It was neither. Carrying the conversion in double-double
+// (core/DoubleDouble.hpp, 2026-09-12) brings the radius here to 9.3e-9
+// relative, from elements that are now the nearest doubles to the exact ones,
+// so the assertion below is the claim the earlier comment said was
+// unreachable.
+//
+// 1e-6 rather than something tighter, for both: an ulp of the true anomaly
+// moves the radius by about |alpha r| times its own rounding, and the platforms
+// do not agree on atan2 to the last bit. The measured 9.3e-9 has two orders of
+// magnitude of room inside that.
 TEST_CASE("an underflowing semi-major axis is not a NaN radius", "[orbit][scales]") {
     const StateVector state{
         .pos = {6.013470016999446e-154, 6.01347001699909e-154, 6.013470018388293e-154},
@@ -683,10 +692,11 @@ TEST_CASE("an underflowing semi-major axis is not a NaN radius", "[orbit][scales
     REQUIRE_FALSE(std::isnan(info.meanMotion.value));
     REQUIRE_FALSE(std::isnan(info.energy.value));
 
-    // The speed survives where the radius does not: it needs the shape and the
-    // anomaly, not the anomaly's position along the conic.
+    const ConicReference want = conicReference(state, mu);
     INFO("the speed still means something");
-    REQUIRE(relativeError(info.speed.value, conicReference(state, mu).speed.value) <= 1e-6);
+    REQUIRE(relativeError(info.speed.value, want.speed.value) <= 1e-6);
+    INFO("and so does the radius, which is what changed");
+    REQUIRE(relativeError(info.radius.value, want.radius.value) <= 1e-6);
 }
 
 // Five orbits through the same periapsis, 7000 km up, differing by at most
