@@ -22,15 +22,24 @@
 // infinite for a parabolic orbit and `OrbitInfo` returns infinite apoapsis and
 // period for anything unbound. Those are answers, not failures.
 //
-// Build and run (Linux or WSL; clang's libFuzzer does not target the MSVC ABI):
+// Build and run, on Windows, where this now runs (2026-09-12):
 //
-//     cmake --preset linux-fuzz
-//     cmake --build build/linux-fuzz
-//     ./build/linux-fuzz/fuzz_orbit -max_total_time=60
+//     cmake --preset windows-fuzz
+//     cmake --build build/windows-fuzz
+//     build\windows-fuzz\fuzz_orbit.exe -max_total_time=60
+//
+// No PATH to set: the preset puts clang's ASan DLL beside the executable,
+// without which it does not reach main. It used to say here that clang's
+// libFuzzer does not target the MSVC ABI; that was false, and the recipe it
+// really needs is in CMakeLists.txt beside the option.
+//
+// The same target still builds under WSL with `--preset linux-fuzz`, and is
+// kept for one reason: LeakSanitizer does not exist on Windows. Nothing on the
+// path fuzzed here allocates, so it has nothing to find today.
 //
 // Every tree also compiles this file without libFuzzer, into
-// orbsim_fuzz_objects, so that the warnings and check's lint cover it on
-// Windows too.
+// orbsim_fuzz_objects, so that the warnings and check's lint cover it even
+// where the fuzzer itself is not built.
 //
 #include "core/Math.hpp"
 #include "core/Units.hpp"

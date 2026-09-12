@@ -712,6 +712,44 @@ sixth -- `e + cos v` written straight rather than as `(e - 1) + (1 + cos v)` --
 survives, and the comment on it says so: measured over a wide grid it moves the
 answer by at most 9.7e-13, under the tightest budget the suite can justify.
 
+### Fuzzing moved to Windows, 2026-09-12
+
+**The build refused to fuzz on Windows, on a claim that was simply untrue.**
+`CMakeLists.txt` said clang's libFuzzer does not target the MSVC ABI and
+configured a `FATAL_ERROR` on the strength of it. It builds there, it runs, and
+both sanitizers are live -- proven by planting a heap overflow and a signed
+overflow in the harness and watching each one get reported, rather than by
+observing that the link succeeded.
+
+What it actually takes is three things, each one the answer to a link or load
+error rather than a precaution, and none of them guessable:
+
+- **the static release C runtime, for the whole tree.** clang ships its Windows
+  libFuzzer built against /MT, and any object that touches the C++ standard
+  library stamps its own choice into the object file. The two cannot be linked
+  together at all. It has to be the release CRT even in a Debug build, because
+  ASan and the debug heap do not coexist -- the same reason the `asan` preset is
+  RelWithDebInfo;
+- **the MSVC STL's container annotations off**, which the `asan` preset already
+  did for its own reasons;
+- **clang's ASan DLL beside the executable**, or it does not reach main.
+
+**UndefinedBehaviorSanitizer is not doing less there**, which was the thing
+worth measuring before moving: over eight kinds of undefined behaviour --
+signed overflow, division by zero, an over-wide shift, an out-of-range float
+cast, a null dereference, a misaligned store, an invalid bool and an invalid
+enum -- Windows and Linux gave the same verdict on every one, including missing
+the invalid enum. Throughput is within a fifth, 248k executions a second
+against 315k, and a two-minute run of 30.1 million executions on the new preset
+was clean.
+
+**One thing is genuinely lost: LeakSanitizer has no Windows equivalent.** A
+planted 64-byte leak is reported under WSL and passes silently on Windows. The
+owner's decision was therefore to move fuzzing to Windows and keep `linux-fuzz`
+for that one capability, which `docs/STATUS.md` now says in those words.
+Nothing on the fuzzed path allocates, so it finds nothing today -- but it is the
+only place a leak could be found at all.
+
 ---
 
 ## 4. The bug that justified the session

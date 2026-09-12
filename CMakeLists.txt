@@ -104,13 +104,47 @@ target_compile_options(orbsim_fp INTERFACE
 # RelWithDebInfo with NDEBUG removed -- release runtime, optimiser on,
 # assertions live -- which is the combination that works.
 #
-# UBSan refuses to configure on Windows rather than quietly doing less than
-# its name promises: its support there is partial, and a build option that
-# silently under-delivers is worse than no option. The Linux CI job is where
-# it runs.
+# ORBSIM_SANITIZE_UNDEFINED refuses to configure on Windows, and the reason it
+# gives has changed. It used to say UBSan's Windows support is partial. That
+# did not survive measurement: over eight kinds of undefined behaviour --
+# signed overflow, division by zero, an over-wide shift, an out-of-range float
+# cast, a null dereference, a misaligned store, an invalid bool and an invalid
+# enum -- Windows and Linux gave the same verdict on every one (2026-09-12),
+# which is why the fuzz target below runs UBSan on Windows.
+#
+# What has *not* been measured is this whole project under it: the renderer,
+# its dependencies and the suites, rather than eight cases in a probe. The
+# option stays shut until that is measured rather than being opened on the
+# strength of a measurement of something else.
 # ---------------------------------------------------------------------------
 option(ORBSIM_SANITIZE_ADDRESS "Build with AddressSanitizer" OFF)
 option(ORBSIM_SANITIZE_UNDEFINED "Build with UndefinedBehaviorSanitizer (not on Windows)" OFF)
+
+# Fuzzing needs the same two Windows arrangements the sanitizers do, and needs
+# them before any target is defined, so the option is declared here and the
+# targets are built at the bottom of this file. See that section for the rest.
+option(ORBSIM_BUILD_FUZZERS "Build the libFuzzer targets" OFF)
+
+# clang's ASan on Windows links against a runtime DLL that lives in the
+# compiler's own tree, not on PATH. Without it every instrumented executable
+# dies at startup with STATUS_DLL_NOT_FOUND (0xc0000135) before printing
+# anything, which is a miserable way to learn this. Both callers below put it
+# where their executables are.
+function(orbsim_find_asan_runtime out_var)
+    execute_process(
+            COMMAND ${CMAKE_CXX_COMPILER} -print-runtime-dir
+            OUTPUT_VARIABLE orbsim_runtime_dir
+            OUTPUT_STRIP_TRAILING_WHITESPACE
+            RESULT_VARIABLE orbsim_runtime_dir_result
+    )
+    file(GLOB orbsim_asan_dlls "${orbsim_runtime_dir}/clang_rt.asan_dynamic-*.dll")
+    if(NOT orbsim_runtime_dir_result EQUAL 0 OR NOT orbsim_asan_dlls)
+        message(FATAL_ERROR "no clang_rt.asan_dynamic-*.dll under '${orbsim_runtime_dir}' "
+                "(from '${CMAKE_CXX_COMPILER} -print-runtime-dir').")
+    endif()
+    set(${out_var} ${orbsim_asan_dlls} PARENT_SCOPE)
+endfunction()
+
 add_library(orbsim_sanitizers INTERFACE)
 if(ORBSIM_SANITIZE_ADDRESS)
     target_compile_options(orbsim_sanitizers INTERFACE
@@ -127,22 +161,8 @@ if(ORBSIM_SANITIZE_ADDRESS)
         target_compile_definitions(orbsim_sanitizers INTERFACE
                 _DISABLE_STRING_ANNOTATION _DISABLE_VECTOR_ANNOTATION)
 
-        # clang's ASan on Windows links against a runtime DLL that lives in the
-        # compiler's own tree, not on PATH. Without it every sanitized
-        # executable dies at startup with STATUS_DLL_NOT_FOUND (0xc0000135)
-        # before printing anything, which is a miserable way to learn this.
         # The build tree is where the executables are, so the DLL goes there.
-        execute_process(
-                COMMAND ${CMAKE_CXX_COMPILER} -print-runtime-dir
-                OUTPUT_VARIABLE orbsim_runtime_dir
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-                RESULT_VARIABLE orbsim_runtime_dir_result
-        )
-        file(GLOB orbsim_asan_dlls "${orbsim_runtime_dir}/clang_rt.asan_dynamic-*.dll")
-        if(NOT orbsim_runtime_dir_result EQUAL 0 OR NOT orbsim_asan_dlls)
-            message(FATAL_ERROR "ORBSIM_SANITIZE_ADDRESS: no clang_rt.asan_dynamic-*.dll under "
-                    "'${orbsim_runtime_dir}' (from '${CMAKE_CXX_COMPILER} -print-runtime-dir').")
-        endif()
+        orbsim_find_asan_runtime(orbsim_asan_dlls)
         file(COPY ${orbsim_asan_dlls} DESTINATION ${CMAKE_BINARY_DIR})
     endif()
 endif()
@@ -156,6 +176,26 @@ if(ORBSIM_SANITIZE_UNDEFINED)
             $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-fsanitize=undefined -fno-sanitize-recover=all -fno-omit-frame-pointer>)
     target_link_options(orbsim_sanitizers INTERFACE
             $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-fsanitize=undefined>)
+endif()
+
+# What fuzzing needs on Windows, decided here because both settings have to be
+# in place before the first target is created. Measured on 2026-09-12, each one
+# the answer to a link error rather than a precaution:
+#
+#   * The *static* C runtime, for every target in the tree. clang ships its
+#     Windows libFuzzer built against /MT, and any object that touches the C++
+#     standard library stamps its own choice into the object file, so a /MD
+#     tree and that library cannot be linked together at all ("failifmismatch:
+#     RuntimeLibrary"). The release CRT, not the debug one, even in a Debug
+#     build: ASan and /MDd or /MTd do not coexist, for the reason given above.
+#   * The MSVC STL's container annotations off, for the same reason the asan
+#     preset switches them off: they are written for MSVC's own ASan runtime
+#     and will not link against clang's ("failifmismatch: annotate_string").
+#
+# Neither is needed on Linux, and neither is set there.
+if(ORBSIM_BUILD_FUZZERS AND WIN32)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
+    add_compile_definitions(_DISABLE_STRING_ANNOTATION _DISABLE_VECTOR_ANNOTATION)
 endif()
 
 # The application needs the Vulkan SDK for the loader and glslc, which a
@@ -256,15 +296,24 @@ endforeach()
 #
 # Off by default and not a CTest test: a fuzzer has no natural exit, so it is
 # run deliberately with a time or run budget rather than as part of `check`.
-# clang's libFuzzer does not target the MSVC ABI, so this is a Linux/WSL
-# target; the option refuses to configure elsewhere rather than producing a
-# build that cannot link.
+#
+# Windows is where this runs now (2026-09-12), through the `windows-fuzz`
+# preset. It used to refuse to configure here at all, on the claim that clang's
+# libFuzzer does not target the MSVC ABI -- which is simply false: it builds,
+# it runs, and both sanitizers are live. What it does take is the two
+# arrangements made near the sanitizer options above, and the ASan DLL beside
+# the executable, below.
+#
+# `linux-fuzz` stays, for one reason: LeakSanitizer does not exist on Windows.
+# Measured the same day, a planted 64-byte leak is reported under WSL and
+# passes silently here. Nothing in the fuzzed path allocates today, so it finds
+# nothing -- but it is the only place a leak could be found at all, and
+# `docs/STATUS.md` says so.
 # ---------------------------------------------------------------------------
-option(ORBSIM_BUILD_FUZZERS "Build the libFuzzer targets (Linux/WSL only)" OFF)
 
 # The fuzz targets' sources are compiled in every tree as well, into an object
 # library nothing links, without libFuzzer: so that the full warning set and
-# check's lint see them on Windows, where the fuzzer itself cannot be built.
+# check's lint see them in trees that do not build the fuzzer itself.
 # Until 2026-09-11 nothing linted tests/fuzz_orbit.cpp at all (ADR 0017).
 set(ORBSIM_FUZZ_SOURCES
         tests/fuzz_orbit.cpp
@@ -273,19 +322,32 @@ add_library(orbsim_fuzz_objects OBJECT ${ORBSIM_FUZZ_SOURCES})
 target_link_libraries(orbsim_fuzz_objects PRIVATE orbsim_core orbsim_warnings)
 
 if(ORBSIM_BUILD_FUZZERS)
-    if(WIN32)
-        message(FATAL_ERROR "ORBSIM_BUILD_FUZZERS: clang's libFuzzer does not target the MSVC ABI. "
-                "Use the linux-fuzz preset under WSL.")
-    endif()
     add_executable(fuzz_orbit tests/fuzz_orbit.cpp)
     target_link_libraries(fuzz_orbit PRIVATE orbsim_core orbsim_warnings)
     # The sanitizers come with the fuzzer here rather than through
     # orbsim_sanitizers, so that a fuzz build is always instrumented: an
     # uninstrumented fuzzer finds only the crashes that would have crashed
     # anyway, which is the smallest and least interesting class.
+    #
+    # The same flags on both platforms. UndefinedBehaviorSanitizer is in that
+    # list on Windows too, and it is not doing less there: measured on
+    # 2026-09-12 over eight kinds of undefined behaviour -- signed overflow,
+    # division by zero, an over-wide shift, an out-of-range float cast, a null
+    # dereference, a misaligned store, an invalid bool and an invalid enum --
+    # Windows and Linux gave the same verdict on every one.
     target_compile_options(fuzz_orbit PRIVATE
             -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
     target_link_options(fuzz_orbit PRIVATE -fsanitize=fuzzer,address,undefined)
+    if(WIN32)
+        # Beside the executable rather than only in the build root, so the
+        # fuzzer runs from wherever it is invoked with no PATH set up: without
+        # this DLL it does not reach main at all.
+        orbsim_find_asan_runtime(orbsim_asan_dlls)
+        add_custom_command(TARGET fuzz_orbit POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                ${orbsim_asan_dlls} $<TARGET_FILE_DIR:fuzz_orbit>
+                COMMENT "clang_rt.asan_dynamic beside fuzz_orbit")
+    endif()
 endif()
 
 if(ORBSIM_BUILD_APP)

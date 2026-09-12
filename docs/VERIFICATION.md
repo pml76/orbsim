@@ -260,14 +260,38 @@ failure you cannot fix.
 asserts the one thing a fuzzer can know without knowing the right answer: a
 reported failure is always acceptable, but a **success must not be NaN**.
 
+**Moved to Windows, 2026-09-12.** It ran under WSL only, on the claim that
+clang's libFuzzer has no MSVC-ABI target. That was false — it builds there, it
+runs, and both sanitizers are live, proven with planted bugs rather than
+assumed. It now runs on the platform the code is written on:
+
 ```
-cmake --preset linux-fuzz          # Linux/WSL: libFuzzer has no MSVC-ABI target
-cmake --build build/linux-fuzz
-./build/linux-fuzz/fuzz_orbit -max_total_time=240
+cmake --preset windows-fuzz
+cmake --build build/windows-fuzz
+build\windows-fuzz\fuzz_orbit.exe -max_total_time=240
 ```
 
-It is not a CTest test and not part of `check`: a fuzzer has no natural exit, so
-it is run deliberately with a time budget.
+Nothing to set up: the preset puts clang's ASan DLL beside the executable,
+without which it does not start at all. What it costs is written beside the
+option in `CMakeLists.txt` — the static release CRT for the whole tree, because
+clang's Windows libFuzzer is built against it, and the MSVC STL's container
+annotations switched off.
+
+**UndefinedBehaviorSanitizer is not doing less there.** Measured over eight
+kinds of undefined behaviour — signed overflow, division by zero, an over-wide
+shift, an out-of-range float cast, a null dereference, a misaligned store, an
+invalid bool and an invalid enum — Windows and Linux returned the same verdict
+on every one. Throughput is within a fifth: 248k executions a second against
+315k.
+
+**`linux-fuzz` stays, for LeakSanitizer, which does not exist on Windows.** A
+planted 64-byte leak is reported under WSL and passes silently on Windows.
+Nothing on the fuzzed path allocates, so it finds nothing today — but it is the
+only place a leak could be found at all, and that is the only reason the second
+preset is still there.
+
+Neither is a CTest test or part of `check`: a fuzzer has no natural exit, so it
+is run deliberately with a time budget.
 
 The guidelines predicted this would find the degenerate orbit nobody thought of.
 **It found five distinct defects**, none reachable by any test anyone had

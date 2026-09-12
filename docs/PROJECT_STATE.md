@@ -138,11 +138,15 @@ Then, from inside the distribution, in the repository:
 ```
 cmake --preset linux-sanitize && cmake --build build/linux-sanitize   # ASan + UBSan
 cmake --preset linux-gcc      && cmake --build build/linux-gcc        # the second compiler
-cmake --preset linux-fuzz     && cmake --build build/linux-fuzz       # libFuzzer
+cmake --preset linux-fuzz     && cmake --build build/linux-fuzz       # libFuzzer, for leaks
 ctest --test-dir build/linux-sanitize --output-on-failure
 ctest --test-dir build/linux-gcc      --output-on-failure
 ./build/linux-fuzz/fuzz_orbit -max_total_time=240
 ```
+
+Fuzzing itself moved to Windows on 2026-09-12 (`windows-fuzz`, VERIFICATION.md
+rule 13). The Linux build above is kept only for LeakSanitizer, which has no
+Windows equivalent.
 
 `llvm` is there for `llvm-cov` and `llvm-profdata`; `VERIFICATION.md` rule 18
 has the coverage invocation. The `--no-launch` matters: it skips the

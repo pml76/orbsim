@@ -68,10 +68,21 @@
       }
     },
     {
+      "name": "windows-fuzz",
+      "inherits": "debug",
+      "displayName": "Windows: clang + libFuzzer + ASan + UBSan, core only",
+      "description": "The fuzz targets, on the platform they are run on. Not part of check: a fuzzer has no natural exit, so it is run deliberately with a time budget. Builds the whole tree against the static release CRT, which clang's Windows libFuzzer requires. See VERIFICATION.md rule 13.",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "cacheVariables": {
+        "ORBSIM_BUILD_FUZZERS": "ON",
+        "ORBSIM_BUILD_APP": "OFF"
+      }
+    },
+    {
       "name": "linux-fuzz",
       "inherits": "debug",
-      "displayName": "Linux: clang + libFuzzer + ASan + UBSan, core only",
-      "description": "The fuzz targets. Not part of check: a fuzzer has no natural exit, so it is run deliberately with a time budget. See VERIFICATION.md rule 13.",
+      "displayName": "Linux: clang + libFuzzer + ASan + UBSan + LeakSanitizer, core only",
+      "description": "The same fuzz targets under WSL. Kept for LeakSanitizer, which does not exist on Windows; everything else it checks, windows-fuzz checks too. See VERIFICATION.md rule 13.",
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" },
       "cacheVariables": {
         "ORBSIM_BUILD_FUZZERS": "ON",
@@ -86,6 +97,7 @@
     { "name": "asan", "configurePreset": "asan" },
     { "name": "linux-sanitize", "configurePreset": "linux-sanitize" },
     { "name": "linux-gcc", "configurePreset": "linux-gcc" },
+    { "name": "windows-fuzz", "configurePreset": "windows-fuzz" },
     { "name": "linux-fuzz", "configurePreset": "linux-fuzz" }
   ],
   "testPresets": [
