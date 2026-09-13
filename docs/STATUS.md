@@ -53,7 +53,7 @@ opens a window and paces frames.** Nothing is drawn yet.
 | `src/render/` | Vulkan 1.3 device, swapchain, frame pacing, RAII handles, buffer upload, shader loading. **No pipelines, no drawing.** |
 | `src/app/` | Window, event loop, argument parsing, frame loop. |
 | `shaders/` | Four GLSL shaders compile to SPIR-V at build time and are **never loaded**. They are placeholders for phase A. |
-| `tests/` | Four Catch2 suites, 599,522 assertions in 59 test cases, plus a GPU smoke test and a libFuzzer target. |
+| `tests/` | Four Catch2 suites, 599,531 assertions in 62 test cases, plus a GPU smoke test and a libFuzzer target. |
 
 ## Test suites
 
@@ -61,12 +61,12 @@ opens a window and paces frames.** Nothing is drawn yet.
 |---|---|---|
 | `test_double_double` | 135,014, in 7 cases | `core/DoubleDouble.hpp`: the exact product against `std::fma`, which computes the same rounding error by a completely different route, over 20,000 operands spanning every scale; the exact sum against `std::int64_t` arithmetic; the split above its 2^996 ceiling, where it used to return a correct product with a NaN error term; a cancelling difference keeping what a double loses; the quotient and the square root reconstructing their inputs to 2^-100; and every way an overflow could become a NaN instead of staying an overflow |
 | `test_orbit` | 732, in 8 cases | Earth-orbit round trips, degenerate orbits, analytic values, propagator agreement, invariants, hyperbolic, Kepler solver, reported failures |
-| `test_orbit_scales` | 43,027, in 24 cases | Heliocentric circles, parabolic trajectories, non-finite inputs, states that are finite but are not orbits, states with no orbital plane, `length()` exact at every binary scale, the fuzzer's nearly radial hyperbola at 1e-158 m, nearly radial ellipses and hyperbolas at 7000 km classified by their energy, an eccentricity that rounds to 1, `orbitInfo`'s radius and speed on four states that broke them and a fuzzer state whose semi-major axis underflows, a zero time step on every conic, near-rectilinear orbits, propagation composing, canonical scale invariance, bit-identical determinism, a seeded sweep of 200 closed + 100 hyperbolic orbits around the Moon, Earth, Jupiter and the Sun, a second seeded sweep of 10,000 states -- ordinary, nearly radial, near-parabolic, e down to 1e-16, and out along a hyperbola's asymptote to r/|a| = 1e6 -- against the conditioning of the round trip through the elements, element propagation on five conics within 2e-9 of a parabola against 60-digit references, a third seeded sweep of 2,000 element sets -- ordinary, near-parabolic, parabolic and near-circular -- against the state propagator and against stepping back, and seven measured states, one per failure mechanism, where every one of the seven elements is checked against a 60-digit reference |
+| `test_orbit_scales` | 43,036, in 27 cases | Heliocentric circles, parabolic trajectories, non-finite inputs, states that are finite but are not orbits, states with no orbital plane, `length()` exact at every binary scale, the fuzzer's nearly radial hyperbola at 1e-158 m, nearly radial ellipses and hyperbolas at 7000 km classified by their energy, an eccentricity that rounds to 1, `orbitInfo`'s radius and speed on four states that broke them and a fuzzer state whose semi-major axis underflows, a zero time step on every conic, near-rectilinear orbits, propagation composing, canonical scale invariance, bit-identical determinism, a seeded sweep of 200 closed + 100 hyperbolic orbits around the Moon, Earth, Jupiter and the Sun, a second seeded sweep of 10,000 states -- ordinary, nearly radial, near-parabolic, e down to 1e-16, and out along a hyperbola's asymptote to r/|a| = 1e6 -- against the conditioning of the round trip through the elements, element propagation on five conics within 2e-9 of a parabola against 60-digit references, a third seeded sweep of 2,000 element sets -- ordinary, near-parabolic, parabolic and near-circular -- against the state propagator and against stepping back, seven measured states, one per failure mechanism, where every one of the seven elements is checked against a 60-digit reference, the perifocal velocity's e - 1 at 1 - e = 1e-6, a radial trajectory at the rectilinear threshold from the correct side, and a committed checksum pinning the elements that are bit-identical on every toolchain |
 | `test_time` | 420,749, in 20 cases | The published epochs both ways; the calendar against `std::chrono`'s on every day of 1900–2100, and which dates exist against its `ok()`; a seeded calendar round trip; 1 ns at the end of a day and across it, and a million 1 µs steps; arithmetic by the nearest picosecond across every day boundary; ordering against the difference; every refusal by name; the Julian-date conversions against exact rational arithmetic; and, at compile time, that no scale converts to another and UTC and UT1 have no duration arithmetic |
 | `fuzz_orbit` | — | libFuzzer over the core under ASan and UBSan. Not a CTest test: run deliberately with a time budget, `cmake --preset windows-fuzz`. The `linux-fuzz` preset builds the same target under WSL and is kept only for LeakSanitizer, which Windows has no equivalent of. |
 | `orbsim_smoke` | — | Runs the app under the Vulkan validation layers for 2 s; fails on any validation error. Labelled `gpu`. |
 
-Totals: **599,522 assertions in 59 test cases**, and the same 599,522 under
+Totals: **599,531 assertions in 62 test cases**, and the same 599,531 under
 both Windows trees, under ASan, and under both Linux presets. Catch2 **v3.16.0**.
 
 The seeds for the random sweeps are written into the suites: `20260905` in
@@ -80,8 +80,8 @@ run. Catch2 prints a `Randomness seeded to:` line that differs between runs; it
 seeds only `GENERATE` and `--order rand`, neither of which this project uses,
 and the sweeps' own generators are still seeded from `kSweepSeed`.
 `catch_discover_tests` makes each `TEST_CASE` its own CTest test, so `ctest -R`
-selects one and `ctest -N` lists **60**: the fifty-nine Catch2 cases plus
-`orbsim_smoke`. `ctest -LE gpu` lists the fifty-nine.
+selects one and `ctest -N` lists **63**: the sixty-two Catch2 cases plus
+`orbsim_smoke`. `ctest -LE gpu` lists the sixty-two.
 
 ## What this machine has
 

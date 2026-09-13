@@ -24,6 +24,7 @@
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <format>
 #include <limits>
 #include <random>
@@ -2151,5 +2152,254 @@ TEST_CASE("elementsFromState is accurate to the resolution of a double", "[orbit
                     .slr = Metres{6424298968899.643},
                 },
         });
+    }
+}
+
+// --- the perifocal velocity's second component ------------------------------
+
+// e + cos v, at the one place it decides an answer.
+//
+// `propagateElements` reads the new true anomaly off the perifocal position,
+// whose second component is f r0 sin v + g sqrt(mu/p) (e + cos v). Near v = pi
+// that last factor is e - 1, and `ecc` cannot supply it: `ecc` stores a number
+// next to 1, so it carries about 1.1e-16 of absolute error, which is the whole
+// of e - 1 once 1 - e falls below about 1e-14. Orbit.cpp takes it from p and a
+// instead, through e^2 - 1 = -p/a.
+//
+// Until 2026-09-13 nothing pinned that, and the comment there said so: written
+// straight, the difference was measured at no more than 9.7e-13 in the
+// propagated *position*, which is under any budget the suite can justify. The
+// position was the wrong thing to measure. This is an orbit at apoapsis, where
+// the radius is stationary in the anomaly, so a large error in the anomaly
+// barely moves the position at all -- and the anomaly is what
+// `propagateElements` returns.
+//
+// Measured over 504 element sets at 1 - e from 2e-16 to 1e-4 and true anomalies
+// within 1e-2 of pi (2026-09-13), worst error in the returned anomaly:
+//
+//   1 - e     straight      from p and a
+//   1e-4      5.16e-15      1.68e-16
+//   1e-6      1.05e-13      2.60e-17
+//   1e-10     7.81e-12      1.80e-16
+//   1e-15     3.70e-09      1.66e-16
+//   2e-16     6.56e-09      1.05e-16
+//
+// The case below is the 1 - e = 1e-6 row, chosen because it is the most
+// ordinary orbit that still separates the two decisively: a semi-major axis of
+// 7e12 m is about 47 AU, and the straight form misses by 24 times this budget
+// while the form in the code comes within a fifth of an ulp.
+//
+// The expected anomaly is the Kepler equation of the conic that p and a name,
+// solved in 60-digit decimal arithmetic from these same doubles
+// (`reference.py`, as the goldens above use).
+TEST_CASE("the perifocal velocity keeps e - 1 where ecc cannot", "[orbit][scales]") {
+    const Elements el{
+        .sma = Metres{7000000000000.0},
+        .ecc = Eccentricity{1.0 - 1e-6},
+        .inc = Radians{0.4},
+        .lan = Radians{0.9},
+        .aop = Radians{1.7},
+        // pi + 1e-8. Written as the sum because the literal itself would be
+        // within 1e-3 of pi, which `modernize-use-std-numbers` reports.
+        .tra = Radians{kPi + 9.99999993922529e-09},
+        .slr = Metres{13999992.999999998},
+    };
+    const GravParam mu{398600441800000.0};
+    const Seconds dt{2331406655074.406};
+    constexpr f64 kBudget = 40.0 * kUnitRoundoff;
+
+    const auto moved = propagateElements(el, mu, dt);
+    INFO("propagateElements -> " << errorName(moved));
+    REQUIRE(moved.has_value());
+
+    constexpr f64 kExpected = 3.1429299035323592;
+    INFO(std::format("tra {:.17g} rad, want {:.17g}, out by {:.3g}, budget {:.3g}",
+                     moved->tra.value,
+                     kExpected,
+                     angularError(moved->tra, Radians{kExpected}),
+                     kBudget));
+    REQUIRE(angularError(moved->tra, Radians{kExpected}) <= kBudget);
+}
+
+// --- what the conversion promises on every toolchain ------------------------
+
+namespace {
+
+// SplitMix64, written out rather than taken from <random>, because the states
+// this generates have to be the same on every toolchain and nothing in the
+// standard library guarantees that. The engines do specify their sequences, but
+// the distributions do not: std::uniform_real_distribution's algorithm is left
+// to the library, so MSVC's and libstdc++'s disagree given the same engine. exp,
+// log, sin and cos disagree by an ulp between the UCRT and glibc for the same
+// reason. Either would hand the three toolchains different states, and
+// comparing their outputs would then prove nothing -- which is what happened
+// the first time this was measured.
+//
+// Three lines of unsigned integer arithmetic have none of those problems.
+[[nodiscard]] std::uint64_t mixedBits(std::uint64_t& state) {
+    state += 0x9e3779b97f4a7c15ULL;
+    std::uint64_t z = state;
+    z = (z ^ (z >> 30U)) * 0xbf58476d1ce4e5b9ULL;
+    z = (z ^ (z >> 27U)) * 0x94d049bb133111ebULL;
+    return z ^ (z >> 31U);
+}
+
+// A double from those bits: a sign, a 52-bit mantissa and an exponent,
+// assembled with scalbn, which is exact.
+[[nodiscard]] f64 exactlyScaledDouble(std::uint64_t& state, int lowest, int highest) {
+    const std::uint64_t bits = mixedBits(state);
+    const f64 mantissa = 1.0 + (static_cast<f64>(bits >> 12U) * 0x1p-52);
+    const int exponent =
+        lowest + static_cast<int>((bits >> 1U) % static_cast<std::uint64_t>(highest - lowest));
+    const f64 withSign = ((bits & 1U) != 0U) ? -mantissa : mantissa;
+    return std::scalbn(withSign, exponent);
+}
+
+// FNV-1a over the bytes of a double, so the sum sees the exact bits rather
+// than a printed approximation of them. `bitsOf` is core/Scalar.hpp's, which
+// is a bit_cast rather than a memcpy -- the latter is what clang's
+// -Wunsafe-buffer-usage-in-libc-call reports.
+void foldBits(std::uint64_t& hash, f64 value) {
+    const std::uint64_t bits = bitsOf(value);
+    for (unsigned shift = 0; shift < 64U; shift += 8U) {
+        hash ^= (bits >> shift) & 0xffU;
+        hash *= 0x100000001b3ULL;
+    }
+}
+
+} // namespace
+
+// The semi-major axis, the eccentricity and the semi-latus rectum are identical
+// on every conforming target, and the four angles are not.
+//
+// That split is not a shortcoming of the conversion, it is where the language
+// stops making promises. Those three come out of +, -, *, / and sqrt, every one
+// of which IEEE 754 requires to be correctly rounded, so they are the same bits
+// everywhere -- and the double-double arithmetic they are built on uses nothing
+// else, deliberately, which is why Dekker's splitting is there instead of
+// std::fma. The angles additionally pass through atan2, acos and hypot, whose
+// accuracy the standard leaves to the implementation; measured, all three
+// disagree between the UCRT and glibc on identical inputs.
+//
+// So this pins the half that can be pinned. The checksum below was equal on
+// clang for Windows, clang under WSL and gcc-14 when it was taken, and if a
+// change breaks that -- an std::fma slipped into the kit, -ffp-contract left
+// on, a reassociated sum -- the number moves and this fails. A caller may rely
+// on the three magnitudes being reproducible across machines; it may not rely
+// on that for the angles, and nothing here should be extended to claim it.
+TEST_CASE("the conversion's magnitudes are identical on every toolchain", "[orbit][scales]") {
+    // Written down so the sweep can be reproduced, as every sweep here is.
+    constexpr std::uint64_t kSeed = 20260913;
+    constexpr int kCases = 4000;
+    // Committed golden. Regenerate only with a reason, and only after checking
+    // the new value on all three toolchains.
+    constexpr std::uint64_t kGolden = 0x3489b7982d902731ULL;
+
+    std::uint64_t engine = kSeed;
+    std::uint64_t hash = 0xcbf29ce484222325ULL;
+    std::size_t accepted = 0;
+    for (int i = 0; i < kCases; ++i) {
+        const StateVector sv{
+            .pos =
+                {
+                    exactlyScaledDouble(engine, -60, 60),
+                    exactlyScaledDouble(engine, -60, 60),
+                    exactlyScaledDouble(engine, -60, 60),
+                },
+            .vel =
+                {
+                    exactlyScaledDouble(engine, -40, 40),
+                    exactlyScaledDouble(engine, -40, 40),
+                    exactlyScaledDouble(engine, -40, 40),
+                },
+        };
+        const GravParam mu{std::abs(exactlyScaledDouble(engine, -20, 60))};
+        const auto el = elementsFromState(sv, mu);
+        if (!el) continue;
+        ++accepted;
+        foldBits(hash, el->sma.value);
+        foldBits(hash, el->ecc.value);
+        foldBits(hash, el->slr.value);
+    }
+
+    // A checksum over nothing would match anywhere, so the count is asserted
+    // too -- and it is itself toolchain-independent, since the accept/reject
+    // decision rests on the same exact quantities.
+    INFO(std::format("{} of {} states accepted, checksum {:#018x}", accepted, kCases, hash));
+    REQUIRE(accepted > static_cast<std::size_t>(kCases) / 4);
+    REQUIRE(hash == kGolden);
+}
+
+// The rectilinear threshold, at the boundary, from the correct side.
+//
+// The guard is |h| / (|r| |v|) > 1e-12 -- the sine of the angle between position
+// and velocity, so it carries no scale. Until 2026-09-12 it was written as
+// |h| > 1e-12 |r| |v| with |h| from a plain cross product, which is the one
+// place in the conversion where cancellation is total: on a nearly radial
+// trajectory the three components of r x v are each the difference of two
+// products agreeing to fifteen digits.
+//
+// These two states are what that cost. Their exact |h| / (|r| |v|), in 60-digit
+// arithmetic, is 9.99994e-13 and 9.99983e-13 -- both below the threshold, so
+// both are radial trajectories and refusing them is the right answer. The old
+// form accepted them, because its |h| came out large enough to clear the bar it
+// was being compared against.
+//
+// They were found by classifying 200,000 states whose sine straddles 1e-12 by
+// six decades either way under both implementations (2026-09-13). These two are
+// the only disagreements, and there were none in the other direction: no state
+// the old form refused is accepted now.
+TEST_CASE("a radial trajectory at the threshold is refused, not parameterised", "[orbit][scales]") {
+    struct Case {
+        std::string_view name;
+        StateVector state;
+    };
+    for (const Case& test : std::to_array<Case>({
+             {
+                 .name = "sine 9.99994e-13",
+                 .state =
+                     {
+                         .pos =
+                             {
+                                 617320698096.53174,
+                                 8191941311512.3789,
+                                 -6772527356399.6055,
+                             },
+                         .vel =
+                             {
+                                 0.38650210626152892,
+                                 5.1289428347254473,
+                                 -4.2402532362783445,
+                             },
+                     },
+             },
+             {
+                 .name = "sine 9.99983e-13",
+                 .state =
+                     {
+                         .pos =
+                             {
+                                 -2767898319634.1138,
+                                 1879302166115.7432,
+                                 -9420703505632.8281,
+                             },
+                         .vel =
+                             {
+                                 -1.3400261983864743,
+                                 0.90982899169791631,
+                                 -4.5608573896166167,
+                             },
+                     },
+             },
+         })) {
+        CAPTURE(test.name);
+        const auto el = elementsFromState(test.state, kMuEarth);
+        INFO("elementsFromState -> " << errorName(el));
+        // REQUIRE(!...) rather than REQUIRE_FALSE: the latter takes a path
+        // through Catch2's result flags that clang-analyzer reports as an
+        // out-of-range enum cast inside the library's own header, and the
+        // suppression for that would be ours to carry for a defect that is not.
+        REQUIRE(!el.has_value());
+        REQUIRE(el.error() == OrbitError::RectilinearOrbit);
     }
 }

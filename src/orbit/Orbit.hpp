@@ -175,6 +175,17 @@ enum class OrbitError : std::uint8_t {
 // approximated. |r| = 1e300 with |v| = 1e-300 has an eccentricity above
 // 1.8e308, and what comes back is `NotFinite`; it used to be a finite number
 // that was wrong by hundreds of orders of magnitude.
+//
+// **`sma`, `ecc` and `slr` are bit-identical on every conforming target; the
+// four angles are not.** Those three come out of +, -, *, / and sqrt, each of
+// which IEEE 754 requires to be correctly rounded, and the double-double
+// arithmetic beneath them uses nothing else -- which is why it splits rather
+// than calling `std::fma`. The angles additionally pass through `atan2`, `acos`
+// and `hypot`, whose accuracy the standard leaves to the implementation, and
+// all three were measured disagreeing between the UCRT and glibc on identical
+// inputs. A caller that needs reproducibility across machines may rely on the
+// three magnitudes and must not rely on it for the angles.
+// `tests/test_orbit_scales.cpp` pins the first half with a committed checksum.
 [[nodiscard]] std::expected<Elements, OrbitError> elementsFromState(const StateVector& sv,
                                                                     GravParam mu);
 [[nodiscard]] StateVector stateFromElements(const Elements& el, GravParam mu);

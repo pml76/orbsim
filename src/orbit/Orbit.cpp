@@ -810,14 +810,16 @@ void assignConic(Elements& el, const ExactState& state) {
 // straight form is the difference of two numbers near 1. It is the perifocal
 // velocity's second component, over sqrt(mu/p).
 //
-// Unlike its sibling, no test pins this one, and the comment says so rather
-// than implying otherwise: written straight, it moves the propagated position
-// by at most 9.7e-13 anywhere it was looked for (2026-09-12 -- |e - 1| from
-// 1e-14 to 1e-5, true anomalies from 2.8 to 3.6, steps of up to a million
-// periapsis times either way), which is under the tightest budget the suite can
-// justify. It is here because at v = pi exactly the straight form has no
-// correct digits at all, and because its sibling two lines up would be
-// inconsistent without it.
+// A test pins this one, since 2026-09-13: "the perifocal velocity keeps e - 1
+// where ecc cannot". It did not until then, and the reason is worth keeping,
+// because the first attempt measured the wrong thing. Written straight, this
+// moves the propagated *position* by at most 9.7e-13, which is under any budget
+// the suite can justify -- but these are orbits at apoapsis, where the radius
+// is stationary in the anomaly, so a large error in the anomaly barely moves
+// the position. The anomaly is what propagateElements returns, and in the
+// anomaly the straight form is 1.05e-13 rad out at 1 - e = 1e-6 and 6.6e-9 at
+// 1 - e = 2e-16, against 2.6e-17 and 1.1e-16 for this form. The test's budget
+// of 40 u separates them by a factor of twenty-four.
 [[nodiscard]] f64 eccentricityPlusCosTrueAnomaly(const Elements& el) noexcept {
     const f64 eMinusOne = eccentricityMinusOne(el);
     if (!std::isfinite(eMinusOne)) return el.ecc.value + std::cos(el.tra.value);
