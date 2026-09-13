@@ -19,7 +19,7 @@ A *dated* measurement is not a current claim and does not belong here: "the
 fuzzer ran 77.4 million executions clean on 2026-09-07" is a fact about that
 day and stays in [`HISTORY.md`](HISTORY.md).
 
-Last updated: 2026-09-12.
+Last updated: 2026-09-13.
 
 ## Contents
 
@@ -41,7 +41,7 @@ opens a window and paces frames.** Nothing is drawn yet.
 |---|---|
 | Current milestone | 1 — Earth, orbit track, Orbit MFD |
 | Last task completed | [M1-03](plan/tasks/m1-03-timepoint.md), `TimePoint` and the time scales, 2026-09-10 |
-| Before M1-04 | **Both done, 2026-09-12.** `elementsFromState` is now accurate to the resolution of a double -- every element within 40 u of the nearest double to the exact conversion, worst case 9.4 u, measured against 60-digit references over 56,532 states across nine families on three toolchains. The cancelling steps are carried in double-double ([`src/core/DoubleDouble.hpp`](../src/core/DoubleDouble.hpp)) on a state scaled by a power of two. The circular threshold moved from e = 1e-9 to 1e-15, where the 2e it costs a round trip is the resolution of a double rather than 1.8e-9 |
+| Before M1-04 | **All done, 2026-09-13.** Two tasks on 2026-09-12: `elementsFromState` is now accurate to the resolution of a double -- every element within 40 u of the nearest double to the exact conversion, worst case 9.4 u, measured against 60-digit references over 56,532 states across nine families on three toolchains. The cancelling steps are carried in double-double ([`src/core/DoubleDouble.hpp`](../src/core/DoubleDouble.hpp)) on a state scaled by a power of two. And the circular threshold moved from e = 1e-9 to 1e-15, where the 2e it costs a round trip is the resolution of a double rather than 1.8e-9. Then two more on 2026-09-13: the five findings that commit left open, and **`stateFromElements` reports** ([ADR 0018](adr/0018-state-from-elements-reports.md)) -- it returns `std::expected` and a new `UnreachableAnomaly`, after it was found returning a NaN position for 169 of 10,000 nearly radial element sets and a radius 2.2 times too small, unmarked |
 | Next task | [M1-04](plan/tasks/m1-04-leap-seconds.md), UTC, TAI and TT: the leap-second table |
 | Then | The rest of phase A — the Horizons fixtures (M1-06, now ahead of M1-05); TDB and UT1, where ERFA is pinned; Earth orientation with nutation, and the Sun, both computed by ERFA; then `orbsim_view`, the camera, the pipelines, and the probe mode that verifies everything drawn after it |
 | Phase order | A → B → D → C → E → F → G |
@@ -97,7 +97,7 @@ How to install and run any of it is
 | Ninja | 1.12.0 | `C:\Strawberry\c\bin` |
 | Vulkan SDK | 1.4.357.0 | `C:\VulkanSDK\1.4.357.0` |
 | Python (for the format hook) | 3.14.0 | `C:\Program Files\PyManager` |
-| MSVC toolchain | VS2022 14.44 | clang targets the MSVC ABI and needs its headers and libs |
+| MSVC toolchain | **VS 18 Insiders, MSVC 14.51.36231** | clang targets the MSVC ABI and needs its headers and libs. Upgraded from VS2022 Community 14.44.35207 on 2026-09-13, and the 2022 install is gone: `C:\Program Files\Microsoft Visual Studio\18\Insiders\` is the only one on disk, so clang now emits `-fms-compatibility-version=19.51`. A new standard library is a full rebuild of every tree — the same argument as the clang-upgrade gotcha in [`PROJECT_STATE.md`](PROJECT_STATE.md) section 8 |
 | WSL 2 + Ubuntu | 26.04 LTS ("resolute") | Installed 2026-09-07. clang 23.1.1, gcc-14 14.3.0, cmake 4.2.3, ninja 1.13.2. This is where UBSan and the second compiler live |
 | GPU in use | NVIDIA RTX A2000 | The renderer requires a discrete GPU where one exists |
 
@@ -114,11 +114,12 @@ but not yet pinned, and which files of `bc7enc_rdo` may be compiled, are in
 ## Decision records
 
 **The list is [`adr/README.md`](adr/README.md)**, next to the records
-themselves, so that browsing the directory finds it. **Seventeen are
+themselves, so that browsing the directory finds it. **Eighteen are
 accepted**: 0008 to 0015 written by
 [M1-02](plan/tasks/m1-02-record-the-decisions.md) from the decisions taken on
 2026-09-08, then 0016 — ERFA computes the astronomy — and 0017 — every warning
-as an error — both on 2026-09-11.
+as an error — both on 2026-09-11, and 0018 — `stateFromElements` reports — on
+2026-09-13.
 
 An accepted ADR is immutable, so the numbers inside one are not maintained
 here: they are what was true when the decision was taken.

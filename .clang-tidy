@@ -27,46 +27,56 @@
 # ---------------------------------------------------------------------------
 # The four that remain, and what each costs.
 #
-# Measured 2026-09-10 over the five linted translation units with
-# `--checks=-*,<check>`. "findings" is what a lint run prints, which counts a
-# header once per translation unit that includes it; "lines" is distinct
-# source lines, which is what a NOLINT at every site would have to touch. The
-# 2026-09-08 numbers were 408/357/277 and have already moved, which is why
-# they are dated.
+# **This is the only place the costs are quoted.** They were in two blocks in
+# this file until 2026-09-13, one dated and one not, and the two disagreed --
+# 276/116 against 277/151, 414/194 against 408/219, 365/174 against 357/172.
+# That is STATUS.md's lesson arriving inside the lint config: a number written
+# twice is one fact with two chances to rot. The second block now carries the
+# reasoning only, and points here for the numbers.
 #
-#   -cppcoreguidelines-avoid-magic-numbers    276 findings, 116 lines
-#   -readability-magic-numbers                the same 276 -- these are two
+# Measured 2026-09-13 over the **nine** linted translation units with
+# `--checks=-*,<check>` (it said five, which had also gone stale: the list grew
+# with test_double_double, OrbitTestSupport and fuzz_orbit). "findings" is what
+# a lint run prints, which counts a header once per translation unit that
+# includes it; "lines" is distinct source lines, which is what a NOLINT at every
+# site would have to touch. Both roughly doubled since 2026-09-10, almost
+# entirely because the linted set grew rather than because the code got worse.
+#
+#   -cppcoreguidelines-avoid-magic-numbers    679 findings, 287 lines
+#   -readability-magic-numbers                the same 679 -- these are two
 #                                             names for one check, so the cost
-#                                             is 276 and not 552
+#                                             is 679 and not 1,358
 #
-#       66 of the 116 lines are in tests/, where a table of expected values
+#       183 of the 287 lines are in tests/, where a table of expected values
 #       *is* the test: naming each entry would hide the thing being asserted.
-#       The other 50 are in src/, and most are a series coefficient or a
-#       conversion factor whose provenance is already in a comment beside it.
-#       This is the entry most worth removing, and the cheapest, because the
-#       two populations want opposite treatment and clang-tidy reads a
-#       .clang-tidy per directory.
+#       The other 104 are in src/ (59 core, 42 orbit, 3 app), and most are a
+#       series coefficient or a conversion factor whose provenance is already
+#       in a comment beside it. This is the entry most worth removing, and the
+#       cheapest, because the two populations want opposite treatment and
+#       clang-tidy reads a .clang-tidy per directory.
 #
-#   -readability-identifier-length             414 findings, 194 lines
+#   -readability-identifier-length             908 findings, 353 lines
 #
 #       The check wants three characters and this domain's notation does not
-#       have them: v (98), a (38), mu (28), el (28), s (25), sv (21), ok (20),
-#       dt (19), then the Stumpff coefficients c0..c3, and r0, rp, vp, nu, h,
-#       q. Renaming `a` to `semiMajorAxis` inside a Kepler solve makes the
-#       formula harder to check against the book it came from, not easier, and
-#       CODING_GUIDELINES section 15 asks for names that say what a thing is
-#       in its own domain. The narrower instrument here is this check's own
-#       IgnoredParameterNames / IgnoredVariableNames, not a NOLINT: see
-#       .claude/rules/lint-config.md.
+#       have them: v (194), a (106), el (72), mu (66), b (53), s (46), sv (43),
+#       q (36), dt (36), t (25), ok (21), then c, r, e, h, u and the Vec3 and
+#       Quat constructor parameters x_, y_, z_ (12 each). Renaming `a` to
+#       `semiMajorAxis` inside a Kepler solve makes the formula harder to check
+#       against the book it came from, not easier, and CODING_GUIDELINES
+#       section 15 asks for names that say what a thing is in its own domain.
+#       The narrower instrument here is this check's own IgnoredParameterNames /
+#       IgnoredVariableNames, not a NOLINT: see .claude/rules/lint-config.md.
+#       By directory: 165 lines in tests, 85 core, 79 orbit, 24 render.
 #
-#   -modernize-use-trailing-return-type        365 findings, 174 lines
+#   -modernize-use-trailing-return-type        725 findings, 274 lines
 #
 #       A style inversion, not a defect. The check wants `auto f() -> T`; this
-#       codebase writes `T f()`, consistently, in all 174 places. Zero of the
-#       365 is a bug. It is the same class of thing as the brace deviation in
+#       codebase writes `T f()`, consistently, in all 274 places. Zero of the
+#       725 is a bug. It is the same class of thing as the brace deviation in
 #       CODING_GUIDELINES section 15 -- choose one, apply it everywhere, write
-#       it down -- so turning it on means rewriting 174 declarations and
+#       it down -- so turning it on means rewriting 274 declarations and
 #       changing the house style. That is a decision about taste.
+#       By directory: 94 core, 72 render, 53 tests, 46 orbit, 9 app.
 ---
 Checks: >
   clang-analyzer-*,
@@ -176,21 +186,19 @@ CheckOptions:
 #                                             <tuple> that only gcc found. See
 #                                             PROJECT_STATE.md section 3.
 #
-# The four below still fire. Each says why it is off and what it would cost.
+# The four below still fire. Each says why it is off; **the counts are in the
+# block at the top of this file and nowhere else**, because until 2026-09-13
+# they were in both places and the two had drifted apart.
 #
-# The cost is quoted two ways, because they differ a lot: the raw finding count
-# (headers are re-reported once per translation unit) and the number of distinct
-# source lines, which is what a NOLINT-per-site would actually cost.
-#
-# *-magic-numbers (277 findings, 151 distinct lines)
+# *-magic-numbers
 #   In orbital mechanics, 2.0, 0.5 and 180.0 are mathematics, not magic. The
 #   constants that DO deserve names (tolerances, iteration caps) are covered by
 #   section 16, which asks for a comment saying where the number came from --
-#   a requirement no linter can check. Most of the 151 are literals in the
+#   a requirement no linter can check. Most of the findings are literals in the
 #   static_asserts and the test case tables, where naming each one moves the
 #   value away from the assertion that gives it meaning.
 #
-# readability-identifier-length (408 findings, 219 distinct lines)
+# readability-identifier-length
 #   dt, mu, e, r0, nu are the standard symbols of the domain. Renaming them to
 #   satisfy a linter would make the code harder to check against a textbook.
 #
@@ -205,7 +213,7 @@ CheckOptions:
 #   Some of those are domain notation and some (ok, to, na, nb) are just short.
 #   Writing the list means deciding which is which, one name at a time.
 #
-# modernize-use-trailing-return-type (357 findings, 172 distinct lines)
+# modernize-use-trailing-return-type
 #   Pure style, and not the style used here. Satisfying it means rewriting
 #   every function signature in the project as `auto f() -> T`.
 #
@@ -221,3 +229,21 @@ CheckOptions:
 #   propagate(sv, mu, dt) and on three test helpers, which is exactly what it is
 #   for: those were real defects, and they were fixed by introducing Radians,
 #   Seconds, GravParam and Tolerance rather than by suppressing the check.
+#
+#   **It has a blind spot, measured 2026-09-13, and it is worth knowing because
+#   this check is the only mechanical half of non-negotiable 1.** Parameter
+#   names that share a one-character prefix or suffix silence it. Reproduced on
+#   a standalone probe: `f(f64 psi, f64& c2, f64& c3)` is silent while
+#   `f(f64 psi, f64& alpha, f64& beta)` fires, and `V(f64 x_, f64 y_, f64 z_)`
+#   is silent while `V(f64 alpha, f64 beta, f64 gamma)` fires -- identical
+#   signatures, only the names differ. The lever is this check's
+#   NamePrefixSuffixSilenceDissimilarityThreshold, which defaults to 1; at 0 the
+#   whole tree reports exactly **3 lines**: Math.hpp's Vec3 and Quat
+#   constructors, and Orbit.cpp's stumpff.
+#
+#   The threshold is left at its default, deliberately. stumpff was the one
+#   real finding and it has been fixed by hand -- it returns a pair now. Vec3's
+#   (x_, y_, z_) and Quat's (w_, x_, y_, z_) are canonical orderings that every
+#   reader knows and that a call site shows plainly, so turning the option on
+#   would buy two NOLINTs or an allow-list entry and no defect. If a fourth
+#   site ever appears, the option is how to find it.
