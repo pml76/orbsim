@@ -152,14 +152,26 @@ if(ORBSIM_SANITIZE_ADDRESS)
     target_link_options(orbsim_sanitizers INTERFACE
             $<$<CXX_COMPILER_ID:Clang,AppleClang,GNU>:-fsanitize=address>)
     if(WIN32)
-        # The MSVC STL annotates std::string and std::vector for ASan and
-        # refuses (LNK2038 / lld "failifmismatch: annotate_string") to link an
-        # instrumented object against one that is not. vk-bootstrap is built
-        # without the sanitizer, so the annotations are switched off here.
-        # What is lost is overflow detection *inside* those two containers'
-        # spare capacity; heap, stack and use-after-free detection are intact.
+        # The MSVC STL annotates std::string, std::vector and (since 14.51)
+        # std::optional for ASan, and refuses (LNK2038 / lld "failifmismatch:
+        # annotate_string") to link an instrumented object against one that is
+        # not. vk-bootstrap and Catch2 are built without the sanitizer, so the
+        # annotations are switched off here. What is lost is overflow detection
+        # *inside* those containers' spare capacity; heap, stack and
+        # use-after-free detection are intact.
+        #
+        # `_DISABLE_OPTIONAL_ANNOTATION` was added on 2026-09-13, when the jump
+        # from MSVC 14.44 to 14.51 broke every link in the asan preset with
+        # "mismatch detected for 'annotate_optional'". The macro name was read
+        # out of the STL's own __msvc_sanitizer_annotate_container.hpp rather
+        # than guessed; that header knows four, the fourth being the blanket
+        # `_DISABLE_STL_ANNOTATION`. Naming the three is deliberate: it says
+        # exactly what is given up, at the price of breaking again the next time
+        # the STL annotates a new container -- which is the trade this project
+        # usually takes, and it is the reason this comment exists.
         target_compile_definitions(orbsim_sanitizers INTERFACE
-                _DISABLE_STRING_ANNOTATION _DISABLE_VECTOR_ANNOTATION)
+                _DISABLE_STRING_ANNOTATION _DISABLE_VECTOR_ANNOTATION
+                _DISABLE_OPTIONAL_ANNOTATION)
 
         # The build tree is where the executables are, so the DLL goes there.
         orbsim_find_asan_runtime(orbsim_asan_dlls)
@@ -191,16 +203,20 @@ endif()
 #   * The MSVC STL's container annotations off, for the same reason the asan
 #     preset switches them off: they are written for MSVC's own ASan runtime
 #     and will not link against clang's ("failifmismatch: annotate_string").
+#     The optional one joined the list on 2026-09-13 with MSVC 14.51 -- see the
+#     longer note beside orbsim_sanitizers above.
 #
 # Neither is needed on Linux, and neither is set there.
 if(ORBSIM_BUILD_FUZZERS AND WIN32)
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded")
-    add_compile_definitions(_DISABLE_STRING_ANNOTATION _DISABLE_VECTOR_ANNOTATION)
+    add_compile_definitions(_DISABLE_STRING_ANNOTATION _DISABLE_VECTOR_ANNOTATION
+            _DISABLE_OPTIONAL_ANNOTATION)
 endif()
 
 # The application needs the Vulkan SDK for the loader and glslc, which a
-# headless CI runner does not have. The core and its tests never did (section
-# 12), and this option is what makes that claim checkable.
+# headless machine does not have -- the WSL box the Linux presets run on, for
+# one. The core and its tests never did (section 12), and this option is what
+# makes that claim checkable.
 option(ORBSIM_BUILD_APP "Build the Vulkan renderer and application" ON)
 
 # ---------------------------------------------------------------------------
@@ -223,8 +239,10 @@ target_link_libraries(orbsim_core
 # Tests
 #
 # Catch2 replaced a hand-rolled harness on 2026-09-09. The harness was the
-# right call for one file and the wrong one for ten, which is what this
-# milestone adds (CODING_GUIDELINES.md section 17, and the Toolbox).
+# right call for one file and the wrong one for the suites this milestone adds
+# -- counted on 2026-09-13, its task documents name 51 distinct
+# tests/test_*.cpp files, so about 48 new ones, where this comment said ten
+# (CODING_GUIDELINES.md section 17, and the Toolbox).
 #
 # Fetched and pinned exactly as the graphics dependencies below are, and
 # SYSTEM for the same reason: its headers are not our code, and this project
@@ -316,6 +334,14 @@ endforeach()
 # library nothing links, without libFuzzer: so that the full warning set and
 # check's lint see them in trees that do not build the fuzzer itself.
 # Until 2026-09-11 nothing linted tests/fuzz_orbit.cpp at all (ADR 0017).
+#
+# The claim above was half true until 2026-09-13. `lint` did see the source,
+# because clang-tidy is driven from the file list rather than from the build
+# graph -- but this object library was in `all` and not in `check`, so a warning
+# in tests/fuzz_orbit.cpp failed a bare `ninja` and passed the target that
+# defines done. Measured with `ninja -t inputs check`, which listed the source
+# as a lint input and the object as nothing at all. It is a dependency of
+# `check` now, at the bottom of this file.
 set(ORBSIM_FUZZ_SOURCES
         tests/fuzz_orbit.cpp
 )
@@ -496,8 +522,9 @@ add_custom_command(TARGET orbsim POST_BUILD
 # Runs the application under the validation layers for two seconds: startup,
 # the frame loop, and teardown, which is where validation errors hide. A
 # validation error makes it exit non-zero, so on a machine with a GPU this is
-# the renderer's regression test. Labelled so that CI, which has no GPU, can
-# leave it out with --label-exclude gpu.
+# the renderer's regression test. Labelled so that a machine without a GPU can
+# leave it out with --label-exclude gpu; `ctest -LE gpu` is the spelling, and
+# docs/STATUS.md says what each list comes to.
 add_test(NAME orbsim_smoke COMMAND orbsim --validate --seconds 2)
 set_tests_properties(orbsim_smoke PROPERTIES LABELS gpu)
 
@@ -725,6 +752,10 @@ add_dependencies(check
         ${ORBSIM_TESTS}
         orbsim_header_selfcheck
         orbsim_test_header_selfcheck
+        # The fuzz sources, compiled under the full warning set. Not in this
+        # list until 2026-09-13, so a warning there failed `ninja` and passed
+        # `check` -- see the comment beside the object library above.
+        orbsim_fuzz_objects
         lint
         format-check
         doc-links
