@@ -127,9 +127,18 @@ struct Tolerance : Quantity<Tolerance> {
     return difference <= tolerance.value;
 }
 
-// Angle wrapping on bare doubles, for use inside the orbital arithmetic where
-// unwrapping to f64 once at the top of a function is clearer than wrapping
-// every intermediate. The strong-typed overloads are in core/Units.hpp.
+// Angle wrapping on bare doubles. These exist because `Radians` is defined a
+// header later, in core/Units.hpp, which is where the typed overloads live and
+// where they belong -- these are the implementation underneath them and are the
+// one place the unwrapping happens.
+//
+// The comment here used to say they were "for use inside the orbital arithmetic
+// where unwrapping to f64 once at the top of a function is clearer than
+// wrapping every intermediate". That was a rationale nothing exercised, checked
+// on 2026-09-13: every call site in `src/orbit/` and `tests/` takes the
+// `Radians` overload, and the only callers of these two are `wrapPi` itself and
+// the pair in Units.hpp. Prefer the typed overload; reach for these only if you
+// are writing the typed one.
 
 // Wrap an angle into [0, tau).
 [[nodiscard]] inline f64 wrapTau(f64 a) noexcept {

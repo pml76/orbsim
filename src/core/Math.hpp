@@ -210,10 +210,26 @@ struct Quat {
     return n > 0.0 ? Quat{q.w / n, q.x / n, q.y / n, q.z / n} : Quat{};
 }
 
-// Below this angle a rotation is indistinguishable from the identity at f64
-// resolution: the quaternion's vector part would be smaller than one ulp of
-// its scalar part, so applying it is pure rounding noise. Skipping it keeps
-// a stationary body's orientation bit-stable across idle frames.
+// Below this rotation *per step*, integrating is skipped, so that a stationary
+// body's orientation stays bit-identical across idle frames rather than
+// drifting by a rounding error per frame. That is the whole reason for the
+// threshold, and it is why the value is deliberately far above the resolution
+// of the type: a rate small enough to be skipped is one nothing can show. At
+// 60 Hz, 1e-12 rad per step is 6e-11 rad/s, which accumulates 0.045 arcsec in
+// an hour.
+//
+// **It used to claim something else, and the claim was wrong by four orders of
+// magnitude.** The comment here said the quaternion's vector part would be
+// smaller than one ulp of its scalar part. fromAxisAngle halves the angle, so
+// at 1e-12 rad the vector part is sin(5e-13) = 5e-13 while one ulp of the
+// scalar part (which is ~1) is 2.2e-16 -- about 2250 ulps, not less than one.
+// The angle where that criterion really holds is about 4.4e-16 rad, and a
+// threshold there would not buy the bit-stability above. Corrected 2026-09-13;
+// the number did not move, because the number was never what was wrong.
+//
+// Nothing exercises this yet: integrateAngularVelocity has no caller (6-DOF is
+// docs/plan/realism.md section 1.4), so the first test of it should assert the
+// bit-stability this constant exists for.
 inline constexpr Radians kNegligibleRotation{1e-12};
 
 // Integrate an orientation by an angular-velocity vector (world frame, rad/s)

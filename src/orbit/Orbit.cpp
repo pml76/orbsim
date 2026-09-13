@@ -95,6 +95,24 @@ constexpr int kMaxSolverIterations = 100;
 // last step is often a bisection, which lands *on* the tolerance rather than
 // far beyond it -- which showed up as a 350x accuracy regression at e = 0.9
 // until the tolerance became the resolution of the type instead.
+//
+// Why 4 and not 1, measured 2026-09-13 against a reference that shares no
+// failure mode with the solve below -- pure bisection run to the last
+// representable interval -- over 16 eccentricities x 801 mean anomalies
+// elliptic, and 10 eccentricities x 19 decades of mean anomaly hyperbolic:
+//
+//   ulps         0.5    1.0    2.0    4.0    8.0   16.0
+//   elliptic    0.98   1.33   2.28   4.36   8.36  16.36   ulp from the root
+//   hyperbolic  5.75   5.75   5.75   8.69   8.69  16.16   ulp from the root
+//
+// On the elliptic branch the error simply *is* the tolerance, which is what
+// makes the name honest. The hyperbolic branch cannot do better than 5.75 ulp
+// however tight the tolerance, so below 2 it is paying iterations for nothing.
+// 4 is a deliberate middle rather than an optimum: it keeps the elliptic branch
+// under that floor (4.36) and costs the hyperbolic branch about half as much
+// again as its floor (8.69), in exchange for roughly three iterations out of a
+// mean of twenty against 0.5. Both are far inside what the suite asks of an
+// anomaly, which is 1e-9 rad.
 constexpr f64 kSolverToleranceUlps = 4.0;
 
 // alpha = 1/a has units of 1/metres, so a threshold on alpha alone encodes a
@@ -124,7 +142,28 @@ static_assert(conicOf(1.0) == Conic::Ellipse && conicOf(-1.0) == Conic::Hyperbol
                   conicOf(-1e-13) == Conic::Parabola,
               "the conic is the sign of the energy, outside a band of 1e-12 around zero");
 
-constexpr f64 sign(f64 v) { return v < 0.0 ? -1.0 : 1.0; }
+// The sign of a value, as +-1, for steering a starting guess. Zero counts as
+// positive -- including -0.0, since `-0.0 < 0.0` is false -- which is a choice
+// and not an accident, so the static_assert below pins it. Neither caller can
+// reach it with a zero: `initialUniversalAnomaly` returns before this on an
+// exact-zero step, and the elliptic guess takes `wrapPi`'s output, which is
+// +0.0 at worst. It is a hint to a safeguarded solve in both places, so even
+// the wrong answer would only cost iterations.
+//
+// It carried neither [[nodiscard]] nor noexcept until 2026-09-13, alone among
+// the twenty-odd helpers in this namespace. `modernize-use-nodiscard` cannot
+// see it -- that check only fires on const member functions -- which is worth
+// knowing about the check that was removed from `.clang-tidy` as "dead".
+[[nodiscard]] constexpr f64 sign(f64 v) noexcept { return v < 0.0 ? -1.0 : 1.0; }
+
+// Exact results, so a zero tolerance, which is this file's only spelling for an
+// exact floating-point claim -- `==` does not survive -Wfloat-equal here.
+static_assert(nearlyEqual(sign(-1.0), -1.0, Tolerance{0.0}) &&
+                  nearlyEqual(sign(1.0), 1.0, Tolerance{0.0}) &&
+                  nearlyEqual(sign(0.0), 1.0, Tolerance{0.0}) &&
+                  nearlyEqual(sign(-0.0), 1.0, Tolerance{0.0}) &&
+                  nearlyEqual(sign(-1e-300), -1.0, Tolerance{0.0}),
+              "sign is +-1, and zero of either sign is positive");
 
 // x - sin x and sinh x - x: both are x^3/6 to first order, and both are written
 // as the series where the subtraction would take everything. The series runs to
@@ -171,21 +210,33 @@ constexpr f64 sign(f64 v) { return v < 0.0 ? -1.0 : 1.0; }
 // Measured against 60-digit references (2026-09-12), that cost `propagate()` up
 // to 1.9e-7 of the radius on nearly parabolic trajectories and 2.5e-7 within
 // 1e-9 of a parabola; this version is 5.3e-11 and 7.0e-12 there.
-void stumpff(f64 psi, f64& c2, f64& c3) noexcept {
+// Returned as a pair rather than written through two `f64&` out-parameters,
+// which is what this was until 2026-09-13. Two adjacent same-typed references
+// transpose in silence, and this file says so twice already -- on
+// `UniversalSolution` and on `Bracket`, both of which exist for exactly that
+// reason (I.24). It also turned out that
+// `bugprone-easily-swappable-parameters`, which is meant to catch this
+// mechanically, does *not* see `(f64 psi, f64& c2, f64& c3)`: measured on a
+// probe, renaming c2/c3 to alpha/beta makes it fire, so the check is silenced
+// by the shared one-character prefix. The rule held here by a person, not by
+// the tool that was supposed to hold it.
+struct StumpffPair {
+    f64 c2{0.5};
+    f64 c3{1.0 / 6.0};
+};
+
+[[nodiscard]] StumpffPair stumpff(f64 psi) noexcept {
     if (psi > 0.0) {
         const f64 s = std::sqrt(psi);
         const f64 halfSin = std::sin(0.5 * s);
-        c2 = 2.0 * halfSin * halfSin / psi;
-        c3 = xMinusSin(s) / (psi * s);
-    } else if (psi < 0.0) {
+        return {.c2 = 2.0 * halfSin * halfSin / psi, .c3 = xMinusSin(s) / (psi * s)};
+    }
+    if (psi < 0.0) {
         const f64 s = std::sqrt(-psi);
         const f64 halfSinh = std::sinh(0.5 * s);
-        c2 = 2.0 * halfSinh * halfSinh / (-psi);
-        c3 = sinhMinusX(s) / (s * s * s);
-    } else {
-        c2 = 0.5;
-        c3 = 1.0 / 6.0;
+        return {.c2 = 2.0 * halfSinh * halfSinh / (-psi), .c3 = sinhMinusX(s) / (s * s * s)};
     }
+    return {}; // psi == 0: the parabolic limit, C = 1/2 and S = 1/6
 }
 
 // The universal-variable iteration needs a starting guess, and the right guess
@@ -272,7 +323,9 @@ struct UniversalTerms {
 [[nodiscard]] UniversalTerms evaluateUniversal(f64 chi, const UniversalContext& ctx) {
     UniversalTerms t;
     t.psi = chi * chi * ctx.alpha;
-    stumpff(t.psi, t.c2, t.c3);
+    const StumpffPair stumpffTerms = stumpff(t.psi);
+    t.c2 = stumpffTerms.c2;
+    t.c3 = stumpffTerms.c3;
 
     const f64 sigma = ctx.rdotv / ctx.sqrtMu; // r . v / sqrt(mu), the usual grouping
     t.time = (chi * chi * chi * t.c3) + (sigma * chi * chi * t.c2) +
@@ -1047,6 +1100,40 @@ Radians eccentricToMeanAnomaly(Radians eccAnomaly, Eccentricity ecc) {
     return Radians{(e * std::sinh(eccAnomaly.value)) - eccAnomaly.value};
 }
 
+// The three starting-guess constants below, and what each is actually worth.
+// They sit here rather than beside the code they belong to because the body has
+// a line budget (`readability-function-size`) and provenance is not a reason to
+// spend it.
+//
+// None of them can change the answer. Every solve in this file is safeguarded,
+// so a bad guess costs iterations and nothing else -- which is why these are
+// measured in iterations rather than in accuracy. Measured 2026-09-13 over 16
+// eccentricities x 801 mean anomalies elliptic, and 10 eccentricities from
+// 1.0001 to 1e4 x 19 decades of |M| x both signs hyperbolic.
+//
+// **0.8**, the elliptic switch between M and +-pi as the guess. The classical
+// value; coding-guidelines-example/src/orbit/Kepler.cpp attributes it to Danby's
+// formulation, and nobody here has checked that against the book, so it is
+// repeated as hearsay rather than as a citation. Measured, the value is not
+// critical -- any switch in [0.5, 0.9] gives identical iteration counts -- and
+// the switch earns its keep at the *low* end, not the high one: starting always
+// at +-pi costs a mean of 27.7 iterations against 20.1 for e <= 0.7, while
+// starting always at M costs 23.4 against 23.0 for e >= 0.8. The near-parabolic
+// branch this exists for is worth about 1.6%.
+//
+// **6.0**, the hyperbolic switch to the asymptotic starter. Not critical
+// either: 2, 4 and 6 behave identically (at most one bracket expansion, at most
+// 54 iterations), 10 and 20 raise the worst case to 74. But the asymptotic
+// branch itself is load-bearing -- forced never to be taken, so that the guess
+// is always `mean / (e - 1)`, the solve reaches the 100-iteration cap and
+// averages 38.5 iterations against 21.0.
+//
+// **1.8**, inside that starter's logarithm. It keeps the argument above 1, so
+// the guess cannot come out on the wrong side of zero and fall through to the
+// `far = direction` fallback: with it that fallback never fires, with 0.0 it
+// fires on 8 of 380 cases. Anything >= 1 would do as much. 1.8 is kept because
+// `ln(2M/e + 1.8)` is the recognisable classical starter, which the literature
+// attributes to Danby (1992) -- again not checked here against the source.
 std::expected<Radians, OrbitError> meanToEccentricAnomaly(Radians meanAnomaly, Eccentricity ecc) {
     const f64 e = ecc.value;
     ORBSIM_EXPECTS(e >= 0.0);
@@ -1064,7 +1151,8 @@ std::expected<Radians, OrbitError> meanToEccentricAnomaly(Radians meanAnomaly, E
         // periapsis, so the mean anomaly is a poor starting guess there; pi
         // keeps Newton inside the convergent basin. It is now only a hint --
         // bisection covers the cases where it is wrong, which measurement said
-        // included four of 2001 anomalies at e = 0.9999.
+        // included four of 2001 anomalies at e = 0.9999. Where 0.8 comes from,
+        // and what it is worth, is in the block above this function.
         const f64 guess = (e < 0.8) ? mean : sign(mean) * kPi;
 
         const auto solved =
@@ -1088,11 +1176,16 @@ std::expected<Radians, OrbitError> meanToEccentricAnomaly(Radians meanAnomaly, E
     // The asymptotic inverse of M = e*sinh(H) - H far from periapsis, and a
     // linearisation near it. Both are hints; the expansion below is what makes
     // the answer safe. This guess alone failed on half the anomalies at
-    // e = 1.0001, because `mean / (e - 1)` explodes as e approaches 1.
+    // e = 1.0001, because `mean / (e - 1)` explodes as e approaches 1. Where
+    // 6.0 and 1.8 come from is in the block above this function.
     f64 far = (std::abs(mean) > 6.0) ? direction * std::log((2.0 * std::abs(mean) / e) + 1.8)
                                      : mean / (e - 1.0);
     if (!std::isfinite(far) || (far * direction) <= 0.0) far = direction;
 
+    // The same bound as solveUniversalAnomaly's, and a real one here for a
+    // different reason: H is logarithmic in M, so |H| < 711 for every finite
+    // double mean anomaly, and doubling from 1 passes that in ten steps. One
+    // expansion was the most ever needed over the grid above this function.
     constexpr int kMaxBracketExpansions = 200;
     f64 near = 0.0;
     int expansions = 0;
