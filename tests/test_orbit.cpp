@@ -91,7 +91,7 @@ TEST_CASE("elements <-> state round trip", "[orbit]") {
 
     for (const auto& c : cases) {
         CAPTURE(c.name);
-        const StateVector sv = stateFromElements(c.el, kMuEarth);
+        const StateVector sv = stateOf(c.el, kMuEarth);
         const auto back = elementsFromState(sv, kMuEarth);
 
         INFO(errorName(back));
@@ -116,7 +116,7 @@ TEST_CASE("degenerate orbits stay finite", "[orbit]") {
                                          Degrees{70.0},
                                          Degrees{40.0},
                                          Degrees{25.0});
-        const StateVector sv = stateFromElements(el, kMuEarth);
+        const StateVector sv = stateOf(el, kMuEarth);
         const auto back = elementsFromState(sv, kMuEarth);
 
         INFO(errorName(back));
@@ -128,8 +128,7 @@ TEST_CASE("degenerate orbits stay finite", "[orbit]") {
         INFO("argument of latitude");
         REQUIRE_THAT(wrapPi(back->tra - (el.aop + el.tra)).value,
                      WithinAbsOf(0.0, Tolerance{1e-10}));
-        REQUIRE_THAT(stateFromElements(*back, kMuEarth).pos,
-                     WithinRelVec(sv.pos, Tolerance{1e-12}));
+        REQUIRE_THAT(stateOf(*back, kMuEarth).pos, WithinRelVec(sv.pos, Tolerance{1e-12}));
     }
 
     SECTION("equatorial (geostationary)") {
@@ -139,7 +138,7 @@ TEST_CASE("degenerate orbits stay finite", "[orbit]") {
                                          Degrees{0.0},
                                          Degrees{60.0},
                                          Degrees{15.0});
-        const StateVector sv = stateFromElements(el, kMuEarth);
+        const StateVector sv = stateOf(el, kMuEarth);
         const auto back = elementsFromState(sv, kMuEarth);
 
         INFO(errorName(back));
@@ -150,8 +149,7 @@ TEST_CASE("degenerate orbits stay finite", "[orbit]") {
         REQUIRE_THAT(back->inc.value, WithinAbsOf(0.0, Tolerance{1e-12}));
         INFO("aop from the x-axis");
         REQUIRE_THAT(wrapPi(back->aop - el.aop).value, WithinAbsOf(0.0, Tolerance{1e-10}));
-        REQUIRE_THAT(stateFromElements(*back, kMuEarth).pos,
-                     WithinRelVec(sv.pos, Tolerance{1e-12}));
+        REQUIRE_THAT(stateOf(*back, kMuEarth).pos, WithinRelVec(sv.pos, Tolerance{1e-12}));
     }
 }
 
@@ -183,7 +181,7 @@ TEST_CASE("known analytic values", "[orbit]") {
                                      Degrees{0.0},
                                      Degrees{0.0},
                                      Degrees{0.0});
-    const StateVector p = stateFromElements(e2, kMuEarth);
+    const StateVector p = stateOf(e2, kMuEarth);
     const f64 rp = e2.sma.value * (1.0 - e2.ecc.value);
     const f64 vp = std::sqrt(kMuEarth.value * ((2.0 / rp) - (1.0 / e2.sma.value)));
     REQUIRE_THAT(length(p.pos), WithinRelTo(rp, Tolerance{1e-12}));
@@ -232,7 +230,7 @@ TEST_CASE("universal-variable vs Kepler-element propagation", "[orbit]") {
 
     for (const auto& c : cases) {
         const OrbitInfo info = orbitInfo(c.el, kMuEarth);
-        const StateVector sv0 = stateFromElements(c.el, kMuEarth);
+        const StateVector sv0 = stateOf(c.el, kMuEarth);
 
         for (const f64 frac : {0.05, 0.25, 0.5, 0.77, 0.99}) {
             CAPTURE(c.name, frac);
@@ -245,7 +243,7 @@ TEST_CASE("universal-variable vs Kepler-element propagation", "[orbit]") {
             INFO(errorName(viaElementSet));
             REQUIRE(viaElementSet.has_value());
 
-            const StateVector viaElements = stateFromElements(*viaElementSet, kMuEarth);
+            const StateVector viaElements = stateOf(*viaElementSet, kMuEarth);
             REQUIRE_THAT(viaUniversal->pos, WithinRelVec(viaElements.pos, Tolerance{1e-9}));
             REQUIRE_THAT(viaUniversal->vel, WithinRelVec(viaElements.vel, Tolerance{1e-9}));
         }
@@ -260,7 +258,7 @@ TEST_CASE("propagation invariants", "[orbit]") {
                                      Degrees{140.0},
                                      Degrees{25.0},
                                      Degrees{80.0});
-    const StateVector sv0 = stateFromElements(el, kMuEarth);
+    const StateVector sv0 = stateOf(el, kMuEarth);
     const OrbitInfo info = orbitInfo(el, kMuEarth);
 
     const Seconds dt = info.period * 0.37;
@@ -294,7 +292,7 @@ TEST_CASE("propagation invariants", "[orbit]") {
     // Half a period from periapsis lands exactly on apoapsis.
     Elements atPeri = el;
     atPeri.tra = Radians{0.0};
-    const auto apo = propagate(stateFromElements(atPeri, kMuEarth), kMuEarth, info.period * 0.5);
+    const auto apo = propagate(stateOf(atPeri, kMuEarth), kMuEarth, info.period * 0.5);
     INFO(errorName(apo));
     REQUIRE(apo.has_value());
 
@@ -339,7 +337,7 @@ TEST_CASE("hyperbolic trajectories", "[orbit]") {
     REQUIRE(info.energy.value > 0.0);
 
     // Round trip through the elements.
-    const StateVector rebuilt = stateFromElements(*el, kMuEarth);
+    const StateVector rebuilt = stateOf(*el, kMuEarth);
     INFO("the elements reproduce the state");
     REQUIRE_THAT(rebuilt.pos, WithinRelVec(sv.pos, Tolerance{1e-11}));
     REQUIRE_THAT(rebuilt.vel, WithinRelVec(sv.vel, Tolerance{1e-11}));
@@ -365,8 +363,7 @@ TEST_CASE("hyperbolic trajectories", "[orbit]") {
     REQUIRE(viaElementSet.has_value());
 
     INFO("the propagators agree on a hyperbola");
-    REQUIRE_THAT(out->pos,
-                 WithinRelVec(stateFromElements(*viaElementSet, kMuEarth).pos, Tolerance{1e-8}));
+    REQUIRE_THAT(out->pos, WithinRelVec(stateOf(*viaElementSet, kMuEarth).pos, Tolerance{1e-8}));
 }
 
 // Kepler's equation is solved by Newton iteration; it has to converge for every

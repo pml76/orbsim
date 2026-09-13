@@ -161,7 +161,7 @@ TEST_CASE("heliocentric circular orbits", "[orbit][scales]") {
 
         INFO("the propagators agree");
         REQUIRE_THAT(viaUniversal->pos,
-                     WithinRelVec(stateFromElements(*viaElements, kMuSun).pos, Tolerance{1e-9}));
+                     WithinRelVec(stateOf(*viaElements, kMuSun).pos, Tolerance{1e-9}));
     }
 }
 
@@ -229,7 +229,7 @@ TEST_CASE("parabolic trajectories", "[orbit][scales]") {
     INFO(errorName(viaState));
     REQUIRE(viaState.has_value());
     INFO("the two propagators agree on a parabola");
-    REQUIRE_THAT(stateFromElements(*viaElements, kMuEarth).pos,
+    REQUIRE_THAT(stateOf(*viaElements, kMuEarth).pos,
                  WithinRelVec(viaState->pos, Tolerance{1e-12}));
 }
 
@@ -282,6 +282,7 @@ TEST_CASE("non-finite inputs are refused by name", "[orbit][scales]") {
     REQUIRE(!describe(OrbitError::NotFinite).empty());
     REQUIRE(!describe(OrbitError::DegenerateState).empty());
     REQUIRE(!describe(OrbitError::RectilinearOrbit).empty());
+    REQUIRE(!describe(OrbitError::UnreachableAnomaly).empty());
 }
 
 // States that pass every input check and still do not describe an orbit. Both
@@ -391,7 +392,7 @@ TEST_CASE("states with no orbital plane", "[orbit][scales]") {
     // But a genuinely eccentric orbit is not rectilinear, however thin it is.
     const Elements thin =
         makeElements(Metres{2.0e7}, Eccentricity{0.9999}, 45.0_deg, 0.0_deg, 0.0_deg, 90.0_deg);
-    const auto stillAnOrbit = elementsFromState(stateFromElements(thin, kMuEarth), kMuEarth);
+    const auto stillAnOrbit = elementsFromState(stateOf(thin, kMuEarth), kMuEarth);
     INFO("e = 0.9999 is still an orbit -> " << errorName(stillAnOrbit));
     REQUIRE(stillAnOrbit.has_value());
 }
@@ -774,8 +775,8 @@ TEST_CASE("element propagation holds on both sides of a parabola", "[orbit][scal
         Elements want = el;
         want.tra = c.expected;
         INFO(std::format("true anomaly {:.17g}, want {:.17g}", moved->tra.value, c.expected.value));
-        REQUIRE_THAT(stateFromElements(*moved, kMuEarth).pos,
-                     WithinRelVec(stateFromElements(want, kMuEarth).pos, Tolerance{1e-12}));
+        REQUIRE_THAT(stateOf(*moved, kMuEarth).pos,
+                     WithinRelVec(stateOf(want, kMuEarth).pos, Tolerance{1e-12}));
     }
 }
 
@@ -799,8 +800,8 @@ TEST_CASE("element propagation holds outbound and over a long step", "[orbit][sc
     Elements want = el;
     want.tra = Radians{1.9687811287167955}; // 60-digit reference
     INFO(std::format("outbound {:.17g}, want {:.17g}", outbound->tra.value, want.tra.value));
-    REQUIRE_THAT(stateFromElements(*outbound, kMuEarth).pos,
-                 WithinRelVec(stateFromElements(want, kMuEarth).pos, Tolerance{1e-12}));
+    REQUIRE_THAT(stateOf(*outbound, kMuEarth).pos,
+                 WithinRelVec(stateOf(want, kMuEarth).pos, Tolerance{1e-12}));
 
     Elements inbound = el;
     inbound.tra = Radians{5.4000000000000004};
@@ -809,8 +810,8 @@ TEST_CASE("element propagation holds outbound and over a long step", "[orbit][sc
     REQUIRE(far.has_value());
     want.tra = Radians{2.9067816679180335}; // 60-digit reference
     INFO(std::format("long step {:.17g}, want {:.17g}", far->tra.value, want.tra.value));
-    REQUIRE_THAT(stateFromElements(*far, kMuEarth).pos,
-                 WithinRelVec(stateFromElements(want, kMuEarth).pos, Tolerance{1e-12}));
+    REQUIRE_THAT(stateOf(*far, kMuEarth).pos,
+                 WithinRelVec(stateOf(want, kMuEarth).pos, Tolerance{1e-12}));
 }
 
 // A million periapsis times from the same periapsis, on the two conics 2e-9
@@ -861,8 +862,8 @@ TEST_CASE("element propagation keeps the semi-major axis it was given", "[orbit]
         Elements want = el;
         want.tra = c.expected;
         INFO(std::format("true anomaly {:.17g}, want {:.17g}", moved->tra.value, c.expected.value));
-        REQUIRE_THAT(stateFromElements(*moved, kMuEarth).pos,
-                     WithinRelVec(stateFromElements(want, kMuEarth).pos, Tolerance{1e-12}));
+        REQUIRE_THAT(stateOf(*moved, kMuEarth).pos,
+                     WithinRelVec(stateOf(want, kMuEarth).pos, Tolerance{1e-12}));
     }
 }
 
@@ -1106,7 +1107,7 @@ void checkOneEccentricity(f64 e) {
     constexpr Metres kSemiMajor{2.0e7};
     const Elements el =
         makeElements(kSemiMajor, Eccentricity{e}, 45.0_deg, 30.0_deg, 60.0_deg, 10.0_deg);
-    const StateVector sv = stateFromElements(el, kMuEarth);
+    const StateVector sv = stateOf(el, kMuEarth);
     const OrbitInfo info = orbitInfo(el, kMuEarth);
 
     // A quarter period is enough to cross the fast part of the orbit.
@@ -1251,8 +1252,8 @@ TEST_CASE("propagation is bit-identical across runs", "[orbit][scales]") {
         elA->aop.bitIdentical(elB->aop) && elA->tra.bitIdentical(elB->tra);
     INFO("elementsFromState is bit-identical");
     REQUIRE(elementsIdentical);
-    const Vec3 backA = stateFromElements(*elA, kMuEarth).pos;
-    const Vec3 backB = stateFromElements(*elB, kMuEarth).pos;
+    const Vec3 backA = stateOf(*elA, kMuEarth).pos;
+    const Vec3 backB = stateOf(*elB, kMuEarth).pos;
     CAPTURE(backA, backB);
     INFO("stateFromElements is bit-identical");
     REQUIRE(backA.bitIdentical(backB));
@@ -1316,7 +1317,7 @@ void checkAgreesWithElementPropagation(const Elements& el,
     INFO("propagateElements -> " << errorName(viaElements));
     REQUIRE(viaElements.has_value());
 
-    const StateVector expected = stateFromElements(*viaElements, mu);
+    const StateVector expected = stateOf(*viaElements, mu);
     INFO("agrees with element propagation");
     REQUIRE_THAT(after.pos, WithinRelVec(expected.pos, Tolerance{1e-8}));
     REQUIRE_THAT(after.vel, WithinRelVec(expected.vel, Tolerance{1e-8}));
@@ -1396,7 +1397,7 @@ void sweepClosedOrbits(Sampler& sampler) {
         const Seconds dt = info.period * ((sampler.fraction() * 6.0) - 3.0);
 
         CAPTURE(kSweepSeed, i, body.name, sma.value, ecc.value, el.inc.value, dt.value);
-        checkPropagation(el, body.mu, stateFromElements(el, body.mu), dt);
+        checkPropagation(el, body.mu, stateOf(el, body.mu), dt);
     }
 }
 
@@ -1424,7 +1425,7 @@ void sweepHyperbolicOrbits(Sampler& sampler) {
         const Seconds dt = scale * (((sampler.fraction() * 2.0) - 1.0) * 50.0);
 
         CAPTURE(kSweepSeed, i, body.name, periapsis.value, ecc.value, el.inc.value, dt.value);
-        checkPropagation(el, body.mu, stateFromElements(el, body.mu), dt);
+        checkPropagation(el, body.mu, stateOf(el, body.mu), dt);
     }
 }
 
@@ -1469,9 +1470,13 @@ namespace {
 // anomaly it stored lost about 2e-15 r/|a| rad with it, so this sweep stopped
 // at r/|a| = 1e3 where the elements still meant something. That is fixed
 // (2026-09-12, core/DoubleDouble.hpp), and the sweep now runs to r/|a| = 1e6
-// and down to e = 1e-16. Over those wider ranges the worst case is still
-// between 8.5 and 9.3 u, measured by tightening this factor until it fails,
-// so the budget of 40 is about four times it.
+// and down to e = 1e-16. Over those wider ranges the worst case was between
+// 8.5 and 9.3 u, measured by tightening this factor until it fails.
+//
+// Since 2026-09-13 the sweep also asserts the whole state through
+// stateFromElements and not only the radius and the speed through orbitInfo,
+// which is the tighter of the two: the worst case is then between 14 and 16 u,
+// so the budget of 40 is about two and a half times it rather than four.
 //
 // The additive term is the parabolic band's. Where the energy puts a state
 // within 1e-12 of a parabola, elementsFromState stores an infinite sma, and
@@ -1524,6 +1529,22 @@ void checkRadiusAndSpeed(const StateVector& sv, GravParam mu) {
                      budget.speed.value));
     REQUIRE(relativeError(info.radius.value, want.radius.value) <= budget.radius.value);
     REQUIRE(relativeError(info.speed.value, want.speed.value) <= budget.speed.value);
+
+    // And the whole state, not just the radius and the speed read back through
+    // orbitInfo. This is the blind spot that let stateFromElements return a NaN
+    // position for 1.7% of nearly radial element sets through three commits that
+    // were all looking here: it computed 1 + e cos v straight, while orbitInfo
+    // called the cancellation-free helper, so the two disagreed and only one of
+    // them was being checked. Same budget -- the round trip through the elements
+    // is what both are doing.
+    const StateVector back = stateOf(*el, mu);
+    INFO(std::format("position back {:.17g} m from {:.17g}, velocity {:.17g} from {:.17g}",
+                     length(back.pos),
+                     length(sv.pos),
+                     length(back.vel),
+                     length(sv.vel)));
+    REQUIRE(length(back.pos - sv.pos) / length(sv.pos) <= budget.radius.value);
+    REQUIRE(length(back.vel - sv.vel) / length(sv.vel) <= budget.speed.value);
 }
 
 // A uniform direction on the sphere: z uniform and the azimuth uniform is the
@@ -1624,7 +1645,7 @@ void sweepSmallEccentricities(Sampler& sampler) {
             .slr = Metres{sma * (1.0 - (ecc.value * ecc.value))},
         };
         CAPTURE(kSweepSeed, i, body.name, sma, ecc.value, el.tra.value);
-        checkRadiusAndSpeed(stateFromElements(el, body.mu), body.mu);
+        checkRadiusAndSpeed(stateOf(el, body.mu), body.mu);
     }
 }
 
@@ -1653,7 +1674,7 @@ void sweepHyperbolicAsymptotes(Sampler& sampler) {
             .slr = Metres{slr},
         };
         CAPTURE(kSweepSeed, i, body.name, sma, ecc.value, radius, el.tra.value);
-        checkRadiusAndSpeed(stateFromElements(el, body.mu), body.mu);
+        checkRadiusAndSpeed(stateOf(el, body.mu), body.mu);
     }
 }
 
@@ -1748,19 +1769,18 @@ void checkElementPropagation(const Elements& el, GravParam mu, Seconds dt) {
     INFO("propagateElements -> " << errorName(moved));
     REQUIRE(moved.has_value());
 
-    const auto viaState = propagate(stateFromElements(el, mu), mu, dt);
+    const auto viaState = propagate(stateOf(el, mu), mu, dt);
     INFO("propagate -> " << errorName(viaState));
     REQUIRE(viaState.has_value());
     INFO(std::format("true anomaly {:.17g} -> {:.17g}", el.tra.value, moved->tra.value));
-    REQUIRE_THAT(stateFromElements(*moved, mu).pos, WithinRelVec(viaState->pos, kPropagatorsAgree));
+    REQUIRE_THAT(stateOf(*moved, mu).pos, WithinRelVec(viaState->pos, kPropagatorsAgree));
 
     const auto back = propagateElements(*moved, mu, -dt);
     INFO("propagateElements back -> " << errorName(back));
     REQUIRE(back.has_value());
     const Tolerance budget = reversibilityBudget(el, *moved, mu, dt);
     INFO(std::format("reversibility budget {:.3g}", budget.value));
-    REQUIRE_THAT(stateFromElements(*back, mu).pos,
-                 WithinRelVec(stateFromElements(el, mu).pos, budget));
+    REQUIRE_THAT(stateOf(*back, mu).pos, WithinRelVec(stateOf(el, mu).pos, budget));
 }
 
 // A true anomaly the conic actually reaches: a hyperbola only covers the arc
@@ -2402,4 +2422,117 @@ TEST_CASE("a radial trajectory at the threshold is refused, not parameterised", 
         REQUIRE(!el.has_value());
         REQUIRE(el.error() == OrbitError::RectilinearOrbit);
     }
+}
+
+// --- stateFromElements, where the elements cancel ---------------------------
+
+// A nearly radial hyperbola, from libFuzzer's own family: 1 + e cos v is the
+// difference of two numbers either side of 1, and computed straight from `ecc`
+// it comes out exactly zero. The radius is then infinite, the rotation turns the
+// infinities into a NaN, and the position is a NaN through a signature that used
+// to have no way of saying so. 169 of 10,000 nearly radial element sets that
+// elementsFromState itself produced did this (2026-09-13).
+//
+// The reference is the radius these elements describe, taken the way Orbit.cpp
+// takes it: e - 1 from p and a rather than from `ecc`, since e^2 - 1 = -p/a
+// keeps it to full relative precision. Evaluated in 60-digit decimal arithmetic,
+// 1 + e cos v is 4.34e-17 and the radius 1548134.2629609336 m; the state these
+// elements came from was at 1548134.2829065896 m, and the 1.3e-8 between those
+// is the conditioning of the encoding, not an error in either.
+TEST_CASE("a nearly radial hyperbola's state is not a NaN position", "[orbit][scales]") {
+    const Elements el{
+        .sma = Metres{-375379.36666112917},
+        .ecc = Eccentricity{1.0000000000000002},
+        .inc = Radians{1.7465823605526356},
+        .lan = Radians{2.711287424773329},
+        .aop = Radians{1.5649763444984528},
+        // pi - 1.63e-8, as the sum because the literal is within 1e-3 of pi.
+        .tra = Radians{kPi + -1.630431922805542e-08},
+        .slr = Metres{6.719943304116789e-11},
+    };
+    const GravParam mu{1.26686534e17};
+
+    const auto sv = stateFromElements(el, mu);
+    INFO("stateFromElements -> " << errorName(sv));
+    REQUIRE(sv.has_value());
+
+    constexpr f64 kExpectedRadius = 1548134.2629609336;
+    constexpr f64 kExpectedSpeed = 707921.4896974104;
+    INFO(std::format("radius {:.17g} m, want {:.17g}; speed {:.17g} m/s, want {:.17g}",
+                     length(sv->pos),
+                     kExpectedRadius,
+                     length(sv->vel),
+                     kExpectedSpeed));
+    REQUIRE(relativeError(length(sv->pos), kExpectedRadius) <= 1e-12);
+    REQUIRE(relativeError(length(sv->vel), kExpectedSpeed) <= 1e-12);
+}
+
+// The same cancellation without the NaN, which is the worse failure of the two
+// because nothing downstream can see it.
+//
+// `ecc` here stores the double nearest 1 - 1e-16, which is 1 - 1.11e-16, while p
+// and a say e - 1 is -5e-17: p/a is 1e-16 and e^2 - 1 = -p/a. The two disagree by
+// a factor of 2.2, and 1 + e cos v at v = pi *is* that difference, so the radius
+// came back 1.26101e23 m where the elements describe 2.8e23. A plausible number,
+// wrong by more than half, with no flag on it.
+TEST_CASE("an eccentricity that rounds to 1 does not halve the radius", "[orbit][scales]") {
+    const Elements el{
+        .sma = Metres{1.4e23},
+        .ecc = Eccentricity{1.0 - 1e-16},
+        .inc = Radians{0.4},
+        .lan = Radians{0.9},
+        .aop = Radians{1.7},
+        .tra = Radians{kPi},
+        .slr = Metres{1.4e7},
+    };
+    const GravParam mu{3.986004418e14};
+
+    const auto sv = stateFromElements(el, mu);
+    INFO("stateFromElements -> " << errorName(sv));
+    REQUIRE(sv.has_value());
+
+    // p and a are authoritative for the shape, which is the convention the
+    // function states: the semi-latus rectum is the one shape parameter that
+    // survives a parabola.
+    constexpr f64 kExpectedRadius = 2.7999999999999998e+23;
+    INFO(std::format("radius {:.17g} m, want {:.17g}, out by {:.3g}",
+                     length(sv->pos),
+                     kExpectedRadius,
+                     relativeError(length(sv->pos), kExpectedRadius)));
+    REQUIRE(relativeError(length(sv->pos), kExpectedRadius) <= 1e-12);
+}
+
+// An anomaly the conic never reaches is refused rather than answered.
+//
+// A hyperbola's asymptote is at acos(-1/e); beyond it there is no trajectory, so
+// 1 + e cos v goes negative, the radius with it, and the position comes out
+// mirrored through the focus. elementsFromState never produces such an element
+// set, but a scenario file can write one down, which is why this is reported and
+// not asserted. orbitInfo shows the same state as a negative radius, and says so
+// in its contract.
+TEST_CASE("an anomaly past a hyperbola's asymptote is refused", "[orbit][scales]") {
+    // e = 1.5 puts the asymptote at 2.3005 rad; pi is past it.
+    const Elements el{
+        .sma = Metres{-1.12e7},
+        .ecc = Eccentricity{1.5},
+        .inc = Radians{0.4},
+        .lan = Radians{0.9},
+        .aop = Radians{1.7},
+        .tra = Radians{kPi},
+        .slr = Metres{1.4e7},
+    };
+    const GravParam mu{3.986004418e14};
+
+    const auto sv = stateFromElements(el, mu);
+    INFO("stateFromElements -> " << errorName(sv));
+    REQUIRE(!sv.has_value());
+    REQUIRE(sv.error() == OrbitError::UnreachableAnomaly);
+
+    // Just inside the asymptote is an ordinary point on the trajectory, so the
+    // refusal is of the anomaly and not of the orbit.
+    Elements inside = el;
+    inside.tra = Radians{2.2};
+    const auto ok = stateFromElements(inside, mu);
+    INFO("just inside -> " << errorName(ok));
+    REQUIRE(ok.has_value());
 }

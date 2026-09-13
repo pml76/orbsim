@@ -991,6 +991,70 @@ factor is genuinely zero, which is a parabola at its asymptote and an infinite
 radius.
 
 
+### `stateFromElements` reports, and the two defects that made it, 2026-09-13
+
+The question was meant to be cheap: would the remaining conversions gain from
+the double-double arithmetic the previous commit added? They would not. What
+`stateFromElements` needed was the two cancellation-free forms already sitting
+in the same file, which `orbitInfo` and `propagateElements` both called and it
+did not. It computed `1 + e cos v` and `e + cos v` straight, and that cost two
+things.
+
+**A NaN position for 169 of 10,000 nearly radial element sets** -- sets
+`elementsFromState` itself had produced. `ecc` stores 1 on both sides of the
+radial limit, so the sum came out exactly zero, the radius infinite, and the
+quaternion rotation turned the infinities into a NaN. Returned through a
+signature with no way to say so.
+
+**A radius 2.2 times too small, unmarked.** Where `ecc` rounds to 1 - 1.11e-16
+while p and a say e - 1 is -5e-17, the two disagree by that factor, and at
+v = pi the radius *is* their difference: 1.26101e23 m for an element set that
+describes 2.8e23. This is the worse of the two. A NaN propagates; a plausible
+number does not.
+
+Measured round trip, state to elements and back, relative position error
+against the original state, and where it sits against the conditioning law
+`orbitInfo` already carries:
+
+| family | before | after |
+|---|---|---|
+| ordinary | 7.87e-12 | 3.62e-14 |
+| nearly radial | NaN, 169 of 10,000 | 4.43e-05 |
+| near-parabolic | 1.81e-10 | 1.06e-12 |
+| hyperbolic asymptote | 5.24e-05 | 1.70e-07 |
+| small e | 2.1e-15 | 2.1e-15 |
+
+**A third case the helpers cannot fix, because it is not a rounding accident.**
+A hyperbola's asymptote is at acos(-1/e); past it there is no trajectory,
+`1 + e cos v` is negative, and the function returned the position mirrored
+through the focus. `elementsFromState` never produces such an element set, but a
+scenario file can write one down, and rule 3 puts that on the `std::expected`
+side of the line. `stateFromElements` therefore returns
+`std::expected<StateVector, OrbitError>` now and reports `UnreachableAnomaly`,
+which is [ADR 0018](adr/0018-state-from-elements-reports.md). Thirty-five call
+sites moved, every one in `tests/`; there are no callers in `src/` yet, so this
+was the cheapest moment the change will ever have. `orbitInfo` shows the same
+element set as a *negative* radius and now says so in its contract rather than
+leaving it to be discovered; giving it an error channel too was considered and
+deferred, because it is a second public signature in a commit that is already a
+defect fix.
+
+**Why it survived three commits aimed at exactly this region.** The seeded sweep
+checked the round trip through `orbitInfo`'s radius and speed and never through
+the whole state, so the one of the two functions that used the helpers was the
+one being measured. The sweep now asserts both, which doubled its assertion
+count and tightened the law's measured worst case from between 8.5 and 9.3 u to
+between 14 and 16 u -- the budget of 40 u is two and a half times it rather than
+four. Three named cases sit beside it: the NaN, the halved radius, and the
+refusal, each failing first for the right reason before the fix went in.
+
+The fuzz harness never called `stateFromElements` either, although it has an
+element set in hand by the time it calls `orbitInfo`. Four lines put the reverse
+conversion under it, over exactly the element sets the forward one produces --
+the family the NaN was in. Coverage went from 71 edges to 73 and 7.68 million
+executions came back clean.
+
+
 ---
 
 ## 4. The bug that justified the session

@@ -16,6 +16,7 @@
 #include "core/Units.hpp"
 #include "orbit/Orbit.hpp"
 
+#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_tostring.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 
@@ -209,6 +210,19 @@ private:
 template <typename T, typename Error>
 [[nodiscard]] constexpr std::string_view errorName(const std::expected<T, Error>& result) noexcept {
     return result.has_value() ? std::string_view{"(succeeded)"} : describe(result.error());
+}
+
+// stateFromElements reports an element set no conic realises -- an anomaly past
+// a hyperbola's asymptote, where 1 + e cos v is not positive. Almost every call
+// in the suite hands it an element set the test built itself or got from
+// elementsFromState, where a refusal would be a bug in the test rather than the
+// thing under examination, so this asserts success and unwraps. The tests that
+// mean to check a refusal call stateFromElements directly and look at the error.
+[[nodiscard]] inline orb::StateVector stateOf(const orb::Elements& el, orb::GravParam mu) {
+    const auto sv = stateFromElements(el, mu);
+    INFO("stateFromElements -> " << errorName(sv));
+    REQUIRE(sv.has_value());
+    return *sv;
 }
 
 } // namespace orb::test

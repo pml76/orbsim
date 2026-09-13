@@ -33,6 +33,7 @@ usually enough.
 | [0015](0015-skirts-and-morphing.md) | Quadtree LOD is skirts plus vertex morphing | accepted | 2026-09-08 |
 | [0016](0016-the-astronomy-is-erfa.md) | The astronomy is ERFA's, called through typed wrappers | accepted | 2026-09-11 |
 | [0017](0017-every-warning-is-an-error.md) | Every warning the compiler has, as an error; a library's interface is answered at the site | accepted | 2026-09-11 |
+| [0018](0018-state-from-elements-reports.md) | `stateFromElements` reports, like every other conversion in `orbit/` | accepted | 2026-09-13 |
 
 **0008 to 0015 record the decisions taken on 2026-09-08**, before milestone 1
 started. All twenty-six of those decisions are in

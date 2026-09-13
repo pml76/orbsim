@@ -121,6 +121,15 @@ enum class OrbitError : std::uint8_t {
     // straight down -- and reported rather than parameterised, because unlike a
     // circular or equatorial orbit there is no canonical answer to fall back on.
     RectilinearOrbit,
+    // An element set whose true anomaly is one the conic never reaches, so
+    // 1 + e cos v is zero or negative and there is no point to return. A
+    // hyperbola with e = 1.5 has its asymptote at acos(-1/e) = 2.3005 rad, and
+    // an anomaly beyond that is off the end of the trajectory: the radius comes
+    // out negative and the position mirrored through the focus. Reachable only
+    // from elements a caller wrote down, not from elementsFromState, which never
+    // produces one -- but a scenario file can, which is why this reports rather
+    // than asserting (rule 3).
+    UnreachableAnomaly,
     SolverDidNotConverge, // Newton reached its iteration cap
 };
 
@@ -134,6 +143,8 @@ enum class OrbitError : std::uint8_t {
         return "gravitational parameter must be positive";
     case OrbitError::RectilinearOrbit:
         return "velocity is parallel to position; a radial trajectory has no orbital plane";
+    case OrbitError::UnreachableAnomaly:
+        return "the conic never reaches this true anomaly; 1 + e cos v is not positive";
     case OrbitError::SolverDidNotConverge:
         return "Kepler solver reached its iteration limit without converging";
     }
@@ -188,7 +199,24 @@ enum class OrbitError : std::uint8_t {
 // `tests/test_orbit_scales.cpp` pins the first half with a committed checksum.
 [[nodiscard]] std::expected<Elements, OrbitError> elementsFromState(const StateVector& sv,
                                                                     GravParam mu);
-[[nodiscard]] StateVector stateFromElements(const Elements& el, GravParam mu);
+// The reverse conversion, and it reports too, since 2026-09-13 --
+// [`docs/adr/0018`](../../docs/adr/0018-state-from-elements-reports.md) is why.
+//
+// `UnreachableAnomaly` for a `tra` the conic never reaches: a hyperbola's
+// asymptote is at acos(-1/e), and past it 1 + e cos v is negative, so there is
+// no point to return. `elementsFromState` never produces such an element set; a
+// caller writing one down can. `NotFinite` for an element set describing a point
+// beyond what a double holds. On success neither vector holds a NaN, which is
+// checked before returning.
+//
+// `slr` and `sma` are authoritative for the shape, not `ecc`: e - 1 comes from
+// e^2 - 1 = -p/a, which keeps it to full relative precision where `ecc` stores 1
+// on both sides of the radial limit. For an element set where the two disagree,
+// this follows p and a. That is not a nicety -- it used to follow `ecc` and
+// returned a radius 2.2 times too small for such a set, and a NaN position for
+// 169 of 10,000 nearly radial ones.
+[[nodiscard]] std::expected<StateVector, OrbitError> stateFromElements(const Elements& el,
+                                                                       GravParam mu);
 
 // The derived quantities, and what they are worth.
 //
@@ -225,6 +253,16 @@ enum class OrbitError : std::uint8_t {
 // substitution now happens below e = 1e-15 instead, where 2e is the resolution
 // of a double; the note on kCircularTol in Orbit.cpp says why that is the right
 // place for it, and why the equatorial threshold beside it does not move.
+//
+// **A negative `radius` means the anomaly is past the asymptote**, and the
+// element set therefore describes no point on the trajectory. A hyperbola
+// reaches only |v| < acos(-1/e); beyond that 1 + e cos v is negative and so is
+// p / (1 + e cos v). `elementsFromState` never produces such an element set, but
+// a caller writing one down can, and this function returns a value rather than a
+// report, so the sign is how it says so. `stateFromElements` refuses the same
+// input by name (`UnreachableAnomaly`); giving this one an error channel too was
+// considered and deferred in
+// [`docs/adr/0018`](../../docs/adr/0018-state-from-elements-reports.md).
 //
 // **A caller holding the state vector should read the radius and the speed off
 // it** -- |r| and |v| are exact there, and this function is for a caller that

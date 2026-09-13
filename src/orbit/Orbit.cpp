@@ -912,7 +912,7 @@ std::expected<Elements, OrbitError> elementsFromState(const StateVector& sv, Gra
     return el;
 }
 
-StateVector stateFromElements(const Elements& el, GravParam mu) {
+std::expected<StateVector, OrbitError> stateFromElements(const Elements& el, GravParam mu) {
     // Asserted, not reported: every caller of this obtains its elements from
     // elementsFromState or builds them literally, so a non-positive mu here is
     // a bug in the caller rather than user input.
@@ -924,21 +924,46 @@ StateVector stateFromElements(const Elements& el, GravParam mu) {
     const f64 p = (el.slr.value > 0.0) ? el.slr.value : el.sma.value * (1.0 - (e * e));
     ORBSIM_EXPECTS(p > 0.0);
 
+    // Both of these sums cancel, and both have a cancellation-free form above
+    // that this used to ignore while orbitInfo and propagateElements both used
+    // it. What that cost, measured on element sets elementsFromState itself
+    // produced (2026-09-13): a NaN position for 169 of 10,000 nearly radial
+    // ones, where 1 + e cos v came out exactly zero from an `ecc` that stores 1
+    // on both sides of the radial limit; and, worse because nothing downstream
+    // can see it, a radius of 1.26101e23 m where the elements describe 2.8e23 --
+    // `ecc` and the pair (p, a) disagreeing about e - 1 by a factor of 2.2.
+    const f64 factor = onePlusECosTrueAnomaly(el);
+
+    // The conic reaches this anomaly only where 1 + e cos v is positive. Past a
+    // hyperbola's asymptote, at acos(-1/e), it is negative and so is the radius,
+    // and what came back was the position mirrored through the focus.
+    // elementsFromState never produces such an element set; a scenario file can
+    // write one down, which is why this reports rather than asserting (rule 3).
+    if (!(factor > 0.0)) return std::unexpected(OrbitError::UnreachableAnomaly);
+
     const f64 cosNu = std::cos(el.tra.value);
     const f64 sinNu = std::sin(el.tra.value);
-    const f64 rmag = p / (1.0 + (e * cosNu));
+    const f64 rmag = p / factor;
     const f64 k = std::sqrt(mu.value / p);
 
     // Perifocal frame: x toward periapsis, z along angular momentum.
     const Vec3 rPerifocal{rmag * cosNu, rmag * sinNu, 0.0};
-    const Vec3 vPerifocal{-k * sinNu, k * (e + cosNu), 0.0};
+    const Vec3 vPerifocal{-k * sinNu, k * eccentricityPlusCosTrueAnomaly(el), 0.0};
 
     // Perifocal -> inertial: Rz(lan) * Rx(inc) * Rz(aop), applied right to left.
     const Quat rot = Quat::fromAxisAngle({0, 0, 1}, el.lan) *
                      Quat::fromAxisAngle({1, 0, 0}, el.inc) *
                      Quat::fromAxisAngle({0, 0, 1}, el.aop);
 
-    return {.pos = rot.rotate(rPerifocal), .vel = rot.rotate(vPerifocal)};
+    const StateVector out{.pos = rot.rotate(rPerifocal), .vel = rot.rotate(vPerifocal)};
+
+    // The same postcondition elementsFromState carries, and for the same
+    // reason: a finite element set can still describe a point beyond what a
+    // double holds, and "succeeded, and the answer is NaN" is the outcome this
+    // file keeps finding. It also catches a non-positive p in a release build,
+    // where the assertion above is compiled out.
+    if (!isFinite(out)) return std::unexpected(OrbitError::NotFinite);
+    return out;
 }
 
 OrbitInfo orbitInfo(const Elements& el, GravParam mu) {

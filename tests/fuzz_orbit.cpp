@@ -86,6 +86,15 @@ void checkElements(const Elements& el, GravParam mu) {
         require(!std::isnan(value));
     }
 
+    // The reverse conversion, over exactly the element sets the forward one
+    // produces. Free to add and it would have caught the defect of 2026-09-13
+    // straight away: stateFromElements returned a NaN position for 1.7% of
+    // nearly radial element sets, and nothing here was asking it anything.
+    if (const auto back = stateFromElements(el, mu)) {
+        requireNoNaN(back->pos);
+        requireNoNaN(back->vel);
+    }
+
     // mu > 0 is already established: elementsFromState reports
     // NonPositiveGravity rather than returning a value otherwise, so
     // orbitInfo's precondition holds here.
