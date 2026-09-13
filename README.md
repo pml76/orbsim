@@ -17,13 +17,17 @@ a window, creates a device and paces frames. Nothing is drawn yet. See
   trajectories through one code path, at every scale from a lunar orbit to the
   outer solar system. Escape trajectories are ordinary here, not a special
   case.
-- **Two Catch2 test suites, several thousand checks** (`docs/STATUS.md` has
-  the count), the useful ones crossing the code
-  against something it did not produce: universal-variable propagation against
-  Kepler-element propagation, state→elements against elements→state, energy
-  and angular momentum before and after, and a seeded sweep of 300 random
-  orbits around the Moon, Earth, Jupiter and the Sun. A sign error in one path
-  cannot hide behind the other.
+- **Four Catch2 test suites, several hundred thousand checks**
+  (`docs/STATUS.md` has the count), the useful ones crossing the code
+  against something it did not produce: elements and anomalies against
+  references computed in 60-digit decimal arithmetic, state→elements against
+  elements→state, energy and angular momentum before and after, the exact
+  product against `std::fma`, the calendar against `std::chrono`'s, and a
+  seeded sweep of 300 random orbits around the Moon, Earth, Jupiter and the
+  Sun. The two propagators are still diffed against each other, but they share
+  a solver since 2026-09-12 and so no longer testify independently — see
+  [`docs/VERIFICATION.md`](docs/VERIFICATION.md) rule 2, which is about exactly
+  that loss and what replaced it.
 - **Vulkan 1.3 renderer foundation** — dynamic rendering, synchronization2, VMA
   allocation, reverse-Z depth, every resource RAII and every `VkResult`
   checked. Runs clean under the validation layers through startup, frame loop
@@ -97,9 +101,12 @@ The project has an opinionated, enforced house style:
   violated, with a coverage map
 - [`docs/adr/`](docs/adr/) — the decisions that span files: units as types,
   the error strategy, reverse-Z, pinned dependencies, how correctness is
-  enforced, simulation-not-sandbox, scalable render quality, and eight more
-  taken before milestone 1 began, from how the renderer is verified to how the
-  integrator is put together. [The index](docs/adr/README.md) is the list
+  enforced, simulation-not-sandbox, scalable render quality, eight more taken
+  before milestone 1 began, from how the renderer is verified to how the
+  integrator is put together, and three since — ERFA computes the astronomy,
+  every warning is an error, and every conversion in `orbit/` reports.
+  [The index](docs/adr/README.md) is the list, and the count is in
+  [`docs/STATUS.md`](docs/STATUS.md)
 - [`docs/VERIFICATION.md`](docs/VERIFICATION.md) — how the project knows the
   code is right, as distinct from how it is written. A physics bug does not
   crash; it returns a plausible number

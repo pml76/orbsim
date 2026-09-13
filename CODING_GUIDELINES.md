@@ -168,12 +168,24 @@ finds what the Windows build cannot. See `docs/VERIFICATION.md` rule 20.
 `bugprone-*`, `performance-*`, and `readability-*`, and add
 `cppcoreguidelines-*` when you are feeling strong.
 
-**Tests.** You already have thousands of assertions on the two-body core —
-`docs/STATUS.md` has the count — and, this is the part I want to highlight,
-they check two *independent* implementations against each other. Universal-variable propagation versus Kepler-element
-propagation. Neither one can hide a sign error behind the other. That is a
-genuinely good test design and you should keep doing exactly that as the physics
-grows. A test that only checks the code against itself tells you nothing.
+**Tests.** You already have hundreds of thousands of assertions on the two-body
+core — `docs/STATUS.md` has the count — and the part worth highlighting is
+*what they are checked against*. A test that only checks the code against
+itself tells you nothing, so the valuable ones reach outside it: elements and
+anomalies against references computed in 60-digit decimal arithmetic, the exact
+product against `std::fma`, the calendar against `std::chrono`'s.
+
+For years the headline example here was two *independent* implementations —
+universal-variable propagation against Kepler-element propagation, neither able
+to hide a sign error behind the other. **That is no longer what it is**, and the
+change is instructive rather than regrettable: on 2026-09-12 element propagation
+moved onto the same universal-variable solve, because the classical route could
+not be made accurate near e = 1. The two now differ only in what they feed one
+solver, so their agreement is weaker evidence than it was, and the accuracy
+claim rests on the external references instead. `docs/VERIFICATION.md` rule 2
+tells that story properly, and its lesson is the one to keep: **when two
+implementations have to be merged, say what the merge cost and replace the
+independence you lost.**
 
 ---
 
@@ -776,9 +788,12 @@ minutes two years from now.
 - **SF.7: never `using namespace` at global scope in a header.** You do not.
   Good. The moment one appears, every file downstream inherits it and you cannot
   take it back.
-- **SF.9: avoid cyclic dependencies.** The `core` -> `orbit` -> `sim` ->
-  `render` direction is currently clean and one-way. Section 12 protects that at
-  the architectural level; this is the same rule at the file level.
+- **SF.9: avoid cyclic dependencies.** The `core` -> `orbit` -> `render` ->
+  `app` direction is currently clean and one-way, and `astro`, `sim` and `view`
+  join it during milestone 1 without changing its shape — `view` in particular
+  sits beside `render` rather than under it, which is the whole point of
+  [ADR 0012](docs/adr/0012-orbsim-view.md). Section 12 protects this at the
+  architectural level; this is the same rule at the file level.
 - **Unnamed namespaces for internal linkage.** `Orbit.cpp` and
   `VulkanContext.cpp` both wrap their helpers in an anonymous namespace. That is
   exactly right - it keeps them out of the linker's sight and lets you rename
@@ -817,12 +832,16 @@ domain concept. Nobody has ever been helped by `doubleConverter2`.
 
 *C++ Best Practices* says braces are required around every block. This codebase
 uses single-line guard clauses — `if (r0 <= 0.0) return sv;` — and `.clang-tidy`
-has `readability-braces-around-statements` disabled to match.
+**configures** `readability-braces-around-statements` to match rather than
+disabling it: `ShortStatementLines: 1` permits exactly the one-line guard and
+still demands braces on a body that runs onto its own line. The check was
+disabled outright until 2026-09-08; turning it back on with that option left
+three real findings, all two-line bodies without braces, all fixed.
 
-That is a deliberate choice, written down here, and applied consistently, which
-is the actual requirement. The thing you must never have is half the codebase
-each way and an argument in every review. If you would rather have the braces,
-change it once, flip the check on, and let the tool keep it that way.
+That is the better shape for a deviation, and it generalises: **prefer
+configuring a check to disabling it**, because the configured version still
+reports the thing you did not mean to allow. `.claude/rules/lint-config.md` has
+the rest of that argument.
 
 ---
 
@@ -888,9 +907,12 @@ into something a machine enforces:
 
 Two things worth knowing about how they are set up:
 
-- **`.clang-format` has not been run over the tree yet.** It would touch roughly
-  500 lines across seven files, almost all of it expanding multi-statement
-  one-liners. That belongs in its own commit, per the rule above.
+- **`.clang-format` has been run over the tree**, in its own commit, per the
+  rule above. `format-check` is now a dependency of `check`, so the tree cannot
+  drift out of format without the definition of done failing, and
+  `clang-format` also runs on every C++ file Claude Code edits. It touched
+  roughly 500 lines across seven files when it first ran, almost all of it
+  expanding multi-statement one-liners.
 - **`.clang-tidy` deliberately enables `bugprone-easily-swappable-parameters`.**
   That is the mechanical enforcement of I.24 from section 2, and it *will* fire
   on `propagate(sv, mu, dt)`. That is not a false positive, that is the finding.
@@ -1043,8 +1065,8 @@ is now, while it is nearly free.
   results are bit-identical. It is a cheap test and it catches a whole class of
   accidental nondeterminism: iteration over an unordered container, uninitialized
   padding, a branch on wall-clock time, an uninitialised read that happened to be
-  benign. You already cross-validate two propagators; this is the same instinct
-  applied to the simulation as a whole.
+  benign. You already diff the two propagators against each other; this is the
+  same instinct applied to the simulation as a whole.
 
 ---
 
@@ -1223,7 +1245,7 @@ Items marked ✅ are already on this machine.
 | Tool | Notes |
 |---|---|
 | **CTest** ✅ | Already wired up |
-| **Catch2** ✅ / **doctest** | The harness was hand-rolled, which was the right call for one file. At three or four files you want real failure output, test filtering and tagging — switch then, not before. **That moment arrived**: both suites moved to Catch2 in task M1-01, before the ten suites milestone 1 adds. The assertion count was the evidence the move changed nothing |
+| **Catch2** ✅ / **doctest** | The harness was hand-rolled, which was the right call for one file. At three or four files you want real failure output, test filtering and tagging — switch then, not before. **That moment arrived**: both suites moved to Catch2 in task M1-01, before the suites milestone 1 adds — counted on 2026-09-13, its task documents name 51 distinct `tests/test_*.cpp` files, so about 48 new ones, where M1-01 itself guessed at eight. The assertion count was the evidence the move changed nothing |
 | **libFuzzer** | `-fsanitize=fuzzer`. Underused by almost everybody, and **a superb fit for this project**: throw random state vectors at `elementsFromState`, round-trip them, assert the invariants hold. The fuzzer will find the degenerate orbit you did not think of. It always does |
 | **llvm-cov** / **llvm-profdata** ✅ | Ships with clang. Coverage is a map of what you have *not* tested |
 | **OpenCppCoverage** | Windows-native alternative if the llvm route annoys you |

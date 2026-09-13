@@ -23,7 +23,22 @@ namespace {
 // Below this eccentricity the mean anomaly is a good enough starting guess.
 // Above it the orbit spends nearly all of its mean anomaly close to periapsis,
 // M becomes a poor guess, and starting at +/-pi keeps Newton inside the
-// convergent basin. 0.8 is the classical threshold from Danby's formulation.
+// convergent basin.
+//
+// **Where 0.8 comes from is not known, and this comment used to claim it was.**
+// It said "the classical threshold from Danby's formulation", which did not
+// survive being checked on 2026-09-13: Danby's starter is
+// E0 = M + 0.85 e sign(sin M) (Danby 1987), where 0.85 is a *coefficient on e*
+// and not a *threshold on e*, and no source found attributes an `e < 0.8`
+// switch to him. The two numbers look alike and are unrelated, which is
+// probably the whole story. Section 16 asks where a number came from; the
+// honest answer here is "a widespread heuristic, origin unverified", and
+// saying that is worth more than a citation nobody checked.
+//
+// What *is* measured, in the parent project over 16 eccentricities x 801 mean
+// anomalies: the value cannot change the answer, because the solve below is
+// safeguarded, and any threshold in [0.5, 0.9] gives identical iteration
+// counts. It is a hint worth about 1.6% of the iterations.
 constexpr f64 kHighEccentricity = 0.8;
 
 // The solve runs to the resolution of a double rather than to a hand-picked

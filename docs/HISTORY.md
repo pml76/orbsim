@@ -218,9 +218,13 @@ split was behaviour-preserving.
 
 ### Milestone 1 begins: M1-01, the move to Catch2, 2026-09-09
 
-The hand-rolled harness was right for one file and wrong for the ten this
+The hand-rolled harness was right for one file and wrong for the number this
 milestone adds, so both suites moved to **Catch2 v3.16.0** before any of the
-new ones are written. The task changed no assertion, no tolerance and no case,
+new ones are written. *(This said "the ten this milestone adds", which was the
+figure the task carried. Counted on 2026-09-13, the 84 task documents name 51
+distinct `tests/test_*.cpp` files, three of which already existed — so about
+48. The decision was right and the number behind it was out by a factor of six,
+which is a fair summary of why this project measures things.)* The task changed no assertion, no tolerance and no case,
 and **the assertion count is the evidence**: 732 and 2900 before, 732 and 2900
 after, on Windows clang RelWithDebInfo and Debug, under ASan, and under both
 Linux presets. `catch_discover_tests` gives each `TEST_CASE` its own CTest

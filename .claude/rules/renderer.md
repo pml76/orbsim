@@ -47,8 +47,9 @@ first, is why teardown no longer races the GPU.
 
 `orbsim.exe --validate --seconds 3` runs the app under the Vulkan validation
 layers for three seconds. Exit codes: 1 failure, 2 usage, 3 validation errors
-reported. That run is a CTest test (`orbsim_smoke`, label `gpu`) and a
-validation error fails it.
+reported. The same thing with `--seconds 2` is the CTest test `orbsim_smoke`
+(label `gpu`), which `check` runs and which a validation error fails; the
+three-second form above is the one to run by hand.
 
 Reverse-Z depth with an infinite far plane is
 [`docs/adr/0003`](../../docs/adr/0003-reverse-z-depth.md); the Vulkan headers

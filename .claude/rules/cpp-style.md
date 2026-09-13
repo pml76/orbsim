@@ -44,7 +44,10 @@ cmake -S coding-guidelines-example -B coding-guidelines-example/build -G Ninja \
 - Headers are `.hpp` and must be self-contained; a `.cpp` includes its own
   header first.
 - Single-line guard clauses (`if (!path) return;`) are used deliberately;
-  `readability-braces-around-statements` is off to match.
+  `readability-braces-around-statements` is **configured** to match, not off --
+  `ShortStatementLines: 1` allows the one-liner and still demands braces on a
+  body that runs onto its own line. Prefer configuring a check to disabling it:
+  [`lint-config.md`](lint-config.md).
 - A formatting pass gets its own commit, doing nothing else.
 - Decisions that span files go in [`docs/adr/`](../../docs/adr/) as short
   records: what was decided, what was considered, why. Read the relevant one

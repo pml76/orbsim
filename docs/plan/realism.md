@@ -52,9 +52,12 @@ Three consequences worth stating before the lists:
 
 Today `src/orbit/` solves exactly one problem: a massless particle around a
 single point mass, in closed form, with no forces other than that one. It solves
-it very well — thousands of checks, two independent formulations cross-validated, correct
-from lunar to heliocentric scale. Nothing below is a criticism of that code. It
-is the foundation; it is simply not the building.
+it very well — hundreds of thousands of checks, validated against references
+computed in 60-digit decimal arithmetic, correct from lunar to heliocentric
+scale. (It *was* two independent formulations cross-validated; they were merged
+onto one solver on 2026-09-12, and [`../VERIFICATION.md`](../VERIFICATION.md)
+rule 2 records what that cost and what replaced it.) Nothing below is a
+criticism of that code. It is the foundation; it is simply not the building.
 
 ### 1.1 The force model — **[S]**
 
@@ -180,7 +183,8 @@ impossible without this, which is why it is structural.
 
 **Today:** `Quat` and `integrateAngularVelocity` exist in `core/Math.hpp` and
 are *never called* — the only `Quat` use in the whole project is the
-perifocal-to-inertial rotation at `Orbit.cpp:189`. Attitude is unmodelled.
+perifocal-to-inertial rotation inside `stateFromElements`, in
+`src/orbit/Orbit.cpp`. Attitude is unmodelled.
 
 Needed: an inertia tensor, torque accumulation, the gyroscopic term
 (`omega x (I omega)`, which is what makes a tumbling body tumble interestingly
@@ -229,7 +233,7 @@ float lit = 0.04 + 0.96 * pow(ndl, 0.85);
 
 That is a hand-tuned look, not a physical quantity, and the swapchain is
 deliberately `B8G8R8A8_UNORM` with the comment *"the shaders write display-ready
-colours directly"* (`VulkanContext.cpp:474`). **The entire pipeline is currently
+colours directly"* in `VulkanContext::createSwapchain`. **The entire pipeline is currently
 LDR and non-linear by design.** For the stated realism goal that has to invert:
 
 - Work in **linear radiance, in physical units**. The solar constant is
@@ -349,8 +353,11 @@ later — then by realism delivered per unit of effort.
 
 ## 5. What this changes about milestone 1
 
-Milestone 1 as written (A → B → D → C → E → F → G) remains sound, with three
-amendments:
+Milestone 1 as written (A → B → D → C → E → F → G) remains sound, with the five
+amendments below. (This said "three" until 2026-09-13 while listing five, which
+is what a count written beside the list it counts does eventually.
+[`../HISTORY.md`](../HISTORY.md) section 5 carries four of the five — it leaves
+out phase G's — and says so; this document is the source.)
 
 - **Phase A absorbs the HDR pipeline** (item 1), the `RenderQuality` plumbing
   (section 6.6) and the time system (item 2). It is a render foundation, and

@@ -219,8 +219,8 @@ absorbed the findings instead:
 |---|---|
 | `portability-avoid-pragma-once` | All 10 project headers and all 7 example headers converted to include guards (`ORBSIM_CORE_SCALAR_HPP`, `ORBEX_CORE_VEC3_HPP`, —) |
 | `readability-redundant-member-init` | The `{}` dropped from `Elements` and `OrbitInfo` (project) and `Elements` (example). Safe because every member is a unit type and `Quantity` supplies its own default member initializer. `bool closed{}` keeps its `{}` — that one genuinely needs it |
-| `performance-enum-size` | The example's four enums take an explicit `std::uint8_t` base, justified as interface rather than optimisation. Still suppressed in the root project, where it was suppressed with a written reason **before** this session |
-| `misc-non-private-member-variables-in-classes` | `NOLINT` on `Vec3`, `Quat` and `Quantity::value`, each with the reason on the line. Still suppressed in the example, where it was suppressed before this session |
+| `performance-enum-size` | The example's four enums take an explicit `std::uint8_t` base, justified as interface rather than optimisation. It was still suppressed in the root project at the time; **that ended on 2026-09-08**, when the whole list was emptied and five enums here were given an explicit base too |
+| `misc-non-private-member-variables-in-classes` | `NOLINT` on `Vec3`, `Quat` and `Quantity::value`, each with the reason on the line. It was still suppressed in the example at the time; **that ended on 2026-09-08** as well. Neither `.clang-tidy` suppresses either check now — both lists hold exactly the same four entries |
 | `cppcoreguidelines-macro-usage` | `NOLINTNEXTLINE` on the two assertion macro definitions in each project |
 
 The principle the owner set, worth keeping: **fix the code; suppress only when
@@ -228,9 +228,16 @@ the code cannot be fixed, and then at the site, not in the config.** A
 suppression in `.clang-tidy` silently covers whatever is written next; one on
 the line covers only that line.
 
-There are now four suppression sites in the project (two macros, the value
-types, one commutative-parameter pair, one seeded RNG) and four in the example.
-Every one carries its reason.
+There were four suppression sites in the project when this was written (two
+macros, the value types, one commutative-parameter pair, one seeded RNG) and
+four in the example. **Counted on 2026-09-13 there are thirteen `NOLINT` lines
+across five files in `src/` and twenty-one in `tests/`** — the growth is the
+2026-09-08 ruling working as intended, since emptying the config list moved
+suppressions to the sites that actually need them: three `SDL_Log` varargs, two
+`reinterpret_cast`s the C API requires, the seeded generators, and the
+Catch2-macro complexity scores on individual test cases. Every one carries its
+reason, which is the property that matters; the count is not a number to keep
+down for its own sake.
 
 ### 6.2 `EXAMPLE.md` was deleted — RULED: leave it deleted
 

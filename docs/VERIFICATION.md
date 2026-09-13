@@ -181,8 +181,20 @@ probability zero.
 ### Rule 6. Every bug gets a regression test named after the bug
 
 When something is fixed, the test that would have caught it goes in *and keeps
-the failure's name*. `test_orbit.cpp:414` already does this — the comment
-records that `propagate()` used to hand back its input for a zero-radius state.
+the failure's name*. `tests/test_orbit.cpp`'s `TEST_CASE("failures are
+reported, not approximated")` already does this — the comment above it records
+that `propagate()` used to answer a zero-radius state by handing the input
+back.
+
+**Name the symbol, not the line.** That sentence named a line of
+`tests/test_orbit.cpp` until 2026-09-13, by which time the line it named held
+an unrelated loop seventeen lines short of the test. All four line citations
+this project had were wrong on the day they were first checked, so
+`scripts/check-doc-links.py` now reports any of them: a symbol reference fails
+loudly when it rots, because the reader searches and finds nothing, while a
+line number fails silently and plausibly. Checking that the line still exists
+was tried first and caught none of the four — every one of those files had
+grown rather than shrunk.
 
 The test name says the symptom, not the mechanism: `NotFinite`, not "did not
 converge".
@@ -524,8 +536,10 @@ a good intention.
 
 Every non-obvious constant says where its value came from. Every decision that
 spans files becomes an ADR. Both are already project practice and both are
-verification tools: the comment at `Orbit.cpp:40` explaining why the tolerance is
-relative is what stops someone "simplifying" it back into a bug.
+verification tools: the comments on `kSolverToleranceUlps` and on `Bracket`'s
+`scaleFloor` in `src/orbit/Orbit.cpp`, explaining why the convergence test is
+relative and what it is relative *to*, are what stop someone "simplifying" them
+back into the 1 AU bug.
 
 ### Rule 23. Distrust agreement
 
@@ -570,15 +584,24 @@ rules a machine checks and which depend on a person remembering.
 | 11 Property tests | `check` — reversal, composition, scale invariance, conservation | **done** |
 | 12 Seeded sweeps | `check` — already live | **done** |
 | 13 Fuzzing | `tests/fuzz_orbit.cpp`, run deliberately with a time budget | **done** |
-| 14 Differential testing | `check` — already live for the two propagators | **done** |
+| 14 Differential testing | `check` — live for the two propagators, but they share a solver since 2026-09-12, so see rule 2 | **weakened** |
 | 15 Runtime monitors | `check` in the Debug tree, via assertions | **to build** |
-| 16 Determinism | `check` — `testDeterminism`, bit-identical over 100 steps | **done** |
+| 16 Determinism | `check` — `TEST_CASE("propagation is bit-identical across runs")`, over 100 steps | **done** |
 | 17 Dimensional analysis | The compiler, if adopted | undecided |
 | 18 Coverage | By hand, periodically. Orbit.cpp 99.2% lines | **done** |
 | 19 Mutation testing | By hand, periodically | exercised 2026-09-07 |
 | 20 WSL, UBSan, second compiler | By hand, before a milestone | **done** |
 | 21 `check` is the definition of done | The build, both trees | **done** |
 | 22–24 The human rules | A person | discipline |
+
+Rule 14 is *weakened* rather than done or to build, and it is the only row that
+has ever moved backwards. The differential test still runs, and still catches a
+change to one path and not the other; what it no longer does is testify
+independently, because on 2026-09-12 the two propagators were merged onto one
+solver. Rule 2 has the measurement that forced the merge and the external
+reference that replaced the independence. The row says "weakened" rather than
+"done" because a status table whose entries only ever improve is a table nobody
+should believe.
 
 Rule 4 is *partial*: one error budget is genuinely derived rather than tuned --
 the near-rectilinear round trip, whose tolerance is stated as the conditioning
