@@ -10,18 +10,41 @@ looks exactly like a step that passes.
 
 So this is wired into the `check` target rather than left as a good intention.
 
-It checks three things across every Markdown file that is ours:
+It checks four things across every Markdown file that is ours:
 
   * a relative link resolves to a file or directory that exists;
   * an `#anchor` resolves to a heading that exists, in this file or the one
     the link names;
-  * a **backticked path** that names a file in this repository resolves.
+  * a **backticked path** that names a file in this repository resolves;
+  * a **backticked `file:line` citation** names a file that exists and a line
+    it actually has.
 
 The third was added on 2026-09-09, because the first two could not see the
 thing they were written to catch. `.claude/rules/physics-tests.md` sent readers
 to `tests/TestHarness.hpp` for a day after M1-01 deleted it -- in a file the
 harness loads automatically whenever a test is touched -- and the link checker
 was blind to it because the reference was in backticks rather than in a link.
+
+The fourth was added on 2026-09-13 for the same reason, one level further out.
+Four documents cited a line number -- `test_orbit.cpp:414`, `Orbit.cpp:40`,
+`Orbit.cpp:189`, `VulkanContext.cpp:474` -- and **all four were wrong**, every
+one pointing at unrelated code the file had grown past. The path scan could not
+see them, because a span containing a colon does not match a path. A line
+number is a reference that rots on every edit above it, so it is the one kind
+this project should either check or not write.
+
+What this cannot check is whether the line still says what the prose claims;
+it checks only that the file exists and is long enough. That is the cheap half,
+and it is the half that catches a citation into a file that has since shrunk.
+The expensive half is why the four were rewritten to name the symbol instead.
+
+Note the deliberate asymmetry with the path scan: a `file:line` citation is
+resolved **by basename as well**, searching the repository for a unique match,
+because none of the four wrote a directory. A rule that only accepted
+`tests/test_orbit.cpp:414` would have caught none of them -- which would have
+made this check decoration, the exact failure the docstring above is about.
+Ambiguous basenames are skipped rather than reported, so a false positive
+cannot come out of this.
 
 Code spans and fenced code blocks are stripped before the link scan, because a
 regex such as `.*[/\\\\](src|tests)[/\\\\].*` inside backticks otherwise reads
@@ -72,6 +95,18 @@ CODE_PATH = re.compile(r"^[A-Za-z0-9_.][A-Za-z0-9_./-]*\.[A-Za-z0-9]{1,6}$")
 # exactly the rot this script exists to find.
 ADR_REF = re.compile(r"^docs/adr/(\d{4})$")
 
+# `Orbit.cpp:40`, `tests/test_orbit.cpp:414`, `main.cpp:12:3`. The extension list
+# is closed on purpose: `1.8:2` and `J2000:1` are not citations, and a bare
+# `foo.md:3` in prose is more likely a quotation than a reference.
+CODE_LINE_REF = re.compile(
+    r"^(?P<path>[A-Za-z0-9_.][A-Za-z0-9_./-]*\.(?:cpp|hpp|h|c|py|frag|vert|comp|glsl|txt|json|cmake))"
+    r":(?P<line>\d{1,7})(?::\d{1,7})?$"
+)
+# Where a bare basename may live. Deliberately not the whole repository: a
+# citation into build output or a dependency is nobody's promise, and `data/`
+# holds files a fresh clone does not have.
+CODE_LINE_SEARCH_DIRS = ("src", "tests", "shaders", "scripts", "cmake", "coding-guidelines-example")
+
 # Documents whose job is to describe work not yet done.
 FORWARD_LOOKING = ("docs/plan/tasks/",)
 
@@ -84,6 +119,12 @@ ABSENT_ON_PURPOSE = {
     # History: what M1-01 deleted, recorded as history.
     ("docs/HISTORY.md", "tests/TestHarness.hpp"),
 }
+
+# `file:line` citations a document makes on purpose, each with its reason. The
+# convention since 2026-09-13 is to name the symbol instead, so this list is
+# meant to stay empty; an entry is exempt only in the document named, and is
+# still checked for the file existing and the line being in range.
+LINE_REFS_ON_PURPOSE: set[tuple[str, str]] = set()
 
 
 def is_ours(root: str, path: str) -> bool:
@@ -189,12 +230,87 @@ def search_bases(root: str, path: str) -> list[str]:
         current = parent
 
 
+def line_count(path: str) -> int:
+    with open(path, encoding="utf-8", errors="replace") as handle:
+        return sum(1 for _ in handle)
+
+
+def resolve_code_line_ref(root: str, target: str) -> list[str]:
+    """Every file a `file:line` citation could mean.
+
+    A citation carrying a directory is resolved from the root, exactly as the
+    path scan does. A bare basename is searched for under the directories that
+    hold source, because that is how all four of the citations this check was
+    written for were spelled.
+    """
+    if "/" in target:
+        candidate = os.path.join(root, target.replace("/", os.sep))
+        return [candidate] if os.path.isfile(candidate) else []
+    found = []
+    for base in CODE_LINE_SEARCH_DIRS:
+        start = os.path.join(root, base)
+        if not os.path.isdir(start):
+            continue
+        for dirpath, dirnames, filenames in os.walk(start):
+            dirnames[:] = [
+                d
+                for d in dirnames
+                if d not in SKIP_DIRS and not d.lower().startswith(SKIP_PREFIXES)
+            ]
+            if target in filenames:
+                found.append(os.path.join(dirpath, target))
+    return found
+
+
+def check_code_line_refs(root: str, rel: str, lines: list[str]) -> list[str]:
+    """A backticked `file:line` citation is reported, because we do not write them.
+
+    Existence-and-length was the obvious check and it was measured first: of the
+    four citations in the tree on 2026-09-13, every one pointing at unrelated
+    code, it caught **none** -- all four files had grown, not shrunk, so the
+    cited line still existed. A check that cannot fail on the cases that
+    motivated it is the decoration ADR 0005 is about.
+
+    So the rule is the convention instead: name the symbol, not the line. A
+    symbol reference is wrong loudly -- the reader searches and finds nothing --
+    where a line number is wrong silently and plausibly. The file-exists and
+    line-in-range tests are kept underneath, because they give a better message
+    when an allow-listed citation does rot.
+    """
+    problems = []
+    for number, body in code_spans(lines):
+        match = CODE_LINE_REF.match(body.strip())
+        if not match:
+            continue
+        target = match.group("path")
+        cited = int(match.group("line"))
+        if (rel, body.strip()) in LINE_REFS_ON_PURPOSE:
+            candidates = resolve_code_line_ref(root, target)
+            if not candidates:
+                problems.append(f"{rel}:{number}: no such file: {target}")
+            elif len(candidates) == 1 and not 1 <= cited <= line_count(candidates[0]):
+                problems.append(
+                    f"{rel}:{number}: {target} has {line_count(candidates[0])} lines, "
+                    f"so :{cited} does not exist"
+                )
+            continue
+        problems.append(
+            f"{rel}:{number}: cites a line number ({body.strip()}); "
+            f"name the symbol instead -- a line number rots on every edit above it"
+        )
+    return problems
+
+
 def check_code_paths(root: str, path: str, lines: list[str], roots: set[str]) -> list[str]:
     """A backticked path naming a file in this repository must resolve."""
     rel = os.path.relpath(path, root).replace("\\", "/")
+    # Line citations are checked everywhere, task documents included. The
+    # FORWARD_LOOKING exemption below exists because naming a file a task will
+    # create is that document's job -- which is no reason at all to cite a line
+    # number, in a file that exists or one that does not.
+    problems = check_code_line_refs(root, rel, lines)
     if rel.startswith(FORWARD_LOOKING):
-        return []
-    problems = []
+        return problems
     for number, body in code_spans(lines):
         target = body.rstrip("/")
         if "/" not in target:
