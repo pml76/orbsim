@@ -36,7 +36,8 @@ the property, it is the property.
 
 Fixing anything these frames reveal — a defect found here becomes a task, and
 that task is inserted into the queue rather than absorbed silently into this
-one. The queue is the record of what was actually done.
+one. The queue is the record of what was *planned*; `STATUS.md` is the record
+of what is done.
 
 ## Tests
 

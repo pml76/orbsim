@@ -42,7 +42,8 @@ run, pass or fail.**
   is written **on every run, whether or not anything passes**. That is the
   requirement, not a convenience.
 - **`stb_image_write` is pinned here** (`stb`, dual MIT/Unlicense), SYSTEM, as
-  the fifth FetchContent dependency; `THIRD_PARTY.md` gains its row. M1-28 later
+  the seventh FetchContent dependency — Catch2 was the fifth (M1-01) and ERFA
+  is the sixth (M1-05); `THIRD_PARTY.md` gains its row. M1-28 later
   uses `stb_image` from the same pin for JPEG decoding, and M1-78 uses
   `stb_truetype`.
 - **The first probe: `clear`.** It draws the clear colour and a full-screen

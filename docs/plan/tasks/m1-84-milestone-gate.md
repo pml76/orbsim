@@ -1,7 +1,8 @@
 # M1-84 — Milestone gate and the record
 
 Phase: G | Status: not started
-Prerequisites: M1-01 … M1-83
+Prerequisites: M1-01 … M1-83, and M1-85, the phase F gate, which runs between
+M1-77 and M1-78 despite its number
 Decided by: [ADR 0005](../../adr/0005-correctness-is-enforced-by-tools.md)
 
 ## Purpose
@@ -41,8 +42,9 @@ This is the half that is easy to skip and expensive to have skipped.
 - **`docs/plan/realism.md`** — the items this milestone closed are marked, and
   the ordering of what remains is re-read now that the structural items are
   built rather than planned.
-- **`docs/VERIFICATION.md`** Part 4 — the enforcement table updated. Rules 3, 4
-  and 15 have moved off **to build**; rule 13 has five targets rather than one;
+- **`docs/VERIFICATION.md`** Part 4 — the enforcement table updated. Rules 3
+  and 15 have moved off **to build** and rule 4 off *partial* (that is the
+  status it carries, not *to build*); rule 13 has five targets rather than one;
   rule 14 has three pairs. The table is the honest accounting the document
   exists for, and it is only honest if it is current.
 - **`CLAUDE.md`** — the directory map gains `astro/`, `view/`, `sim/` and
@@ -50,8 +52,13 @@ This is the half that is easy to skip and expensive to have skipped.
   gains the presets added along the way.
 - **`THIRD_PARTY.md`** — final check that every pin, licence and compiled file
   list is accurate.
-- **`docs/plan/milestone-1-tasks.md`** — every task marked done, with the commit
-  that did it. The queue becomes the record.
+- **`docs/plan/milestone-1-tasks.md`** — left as the queue it is. **Which tasks
+  are done stays in [`../../STATUS.md`](../../STATUS.md), which the queue's own header
+  says in those words**; this task used to ask for the queue to be annotated
+  with each task's commit instead, which made three documents claim the record
+  and none of them own it. If a per-task commit map is wanted as a milestone
+  artefact, it belongs in the record below, not in the queue (settled
+  2026-09-13).
 
 ## What to record for the next milestone
 

@@ -7,7 +7,7 @@ Decided by: [ADR 0005](../../adr/0005-correctness-is-enforced-by-tools.md)
 ## Purpose
 
 Phase D added the project's first compute shaders, a CPU reference model that
-several budgets depend on, and six golden images. The compute work in particular
+several budgets depend on, ten probes and four golden images. The compute work in particular
 is a new class of risk: a race in a compute shader produces a table that is
 *nearly* right, and nearly right is the failure mode this project cares most
 about.
@@ -24,7 +24,7 @@ and the three fuzzers — plus what phase D introduces:
 - **Synchronization validation** for one manual run, which by now covers four
   compute dispatches feeding a graphics pass — the project's densest set of
   barriers.
-- **Determinism across all six probes**, re-run: byte-identical HDR dumps.
+- **Determinism across all ten probes**, re-run: byte-identical HDR dumps.
 - **The CPU reference model's coverage** examined specifically. It is the oracle
   behind five budgets, and an untested branch in an oracle is worse than an
   untested branch anywhere else.
@@ -45,7 +45,7 @@ and the three fuzzers — plus what phase D introduces:
 
 In `PROJECT_STATE.md`: assertion counts per toolchain; the atmosphere budgets as
 measured, per table, maximum and p99; the frame-time table from M1-47; the
-coverage table; and the six goldens with their approval dates.
+coverage table; and the four goldens with their approval dates.
 
 In `VERIFICATION.md` Part 4: rule 14, differential testing, can now cite a
 second pair — GPU tables against the CPU reference — alongside the two
@@ -56,6 +56,6 @@ propagators.
 - [ ] Every toolchain passes, counts matching.
 - [ ] Three fuzzers clean.
 - [ ] GPU-assisted and synchronization validation both run clean by hand.
-- [ ] All six probes are deterministic.
+- [ ] All ten probes are deterministic.
 - [ ] `PROJECT_STATE.md` is current, and phase C starts with a known frame-time
       headroom rather than a hope.

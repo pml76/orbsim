@@ -50,9 +50,11 @@ justification; the long-arc drift curves; the coverage table; and the
 measurements that justified the design — the step size each propagator needs for
 1 m, and Encke's precision advantage.
 
-In `VERIFICATION.md` Part 4: rules 3, 4 and 15 all move off **to build**. That
-completes the three the document names as remaining, which is worth stating
-plainly in the commit message.
+In `VERIFICATION.md` Part 4: rules 3 and 15 move off **to build**, and rule 4
+moves off *partial* — it is marked *partial*, not *to build*, because its
+internal half is already asserted and only the external half waits on rule 3.
+That completes the three gaps the document names as remaining, which is worth
+stating plainly in the commit message.
 
 ## Done when
 

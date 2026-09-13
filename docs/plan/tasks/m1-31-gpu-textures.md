@@ -7,7 +7,7 @@ Prerequisites: M1-13, M1-26
 
 The renderer has never bound a texture. This adds image upload, sampling and the
 descriptor machinery — and it makes one forward-looking choice deliberately,
-because the quadtree six tasks later will need hundreds of tiles bound at once
+because the quadtree in phase C (M1-50) will need hundreds of tiles bound at once
 and retrofitting that is a rewrite.
 
 ## What to implement

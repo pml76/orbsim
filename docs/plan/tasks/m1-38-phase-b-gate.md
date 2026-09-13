@@ -7,7 +7,7 @@ Decided by: [ADR 0005](../../adr/0005-correctness-is-enforced-by-tools.md)
 ## Purpose
 
 Phase B added two parsers of untrusted bytes, the project's first thread, two
-offline tools, and three new pinned dependencies. Every one of those is a
+offline tools, and one new pinned dependency — `bc7enc_rdo`, in M1-29. Every one of those is a
 category the day-to-day `check` does not fully cover.
 
 ## What to do
@@ -32,7 +32,9 @@ wsl … --preset linux-fuzz && for t in fuzz_orbit fuzz_ktx2 fuzz_ztree; do
   suites run under it.
 - **The licences are recorded**: `THIRD_PARTY.md` lists `stb`, `bc7enc_rdo` —
   with the compiled file list, because that repository carries three licences —
-  and Catch2, alongside the original four.
+  and Catch2 and ERFA, alongside the original four. *(ERFA was missing from this
+  list until 2026-09-13: it is pinned in M1-05, in phase A, and the 2026-09-11
+  ERFA pass updated M1-04 to M1-08 and M1-23 without reaching here.)*
 - **The tools meet the same bar**: `tilegen` and `treeconv` compile under the
   full warning set with zero clang-tidy findings, and are in the format and lint
   lists. A tool exempt from the bar is where the next defect lives.

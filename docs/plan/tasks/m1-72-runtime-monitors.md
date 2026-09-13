@@ -6,8 +6,10 @@ Decided by: [ADR 0011](../../adr/0011-the-integrator-has-three-seams.md)
 
 ## Purpose
 
-`VERIFICATION.md` rule 15, the last of the three the document marks **to
-build**, and the one that was waiting for a simulation loop to monitor.
+`VERIFICATION.md` rule 15, the last of the **two** the document marks **to
+build** — rule 3 is the other, and rule 4 is marked *partial* rather than *to
+build*, which this said until 2026-09-13 — and the one that was waiting for a
+simulation loop to monitor.
 
 The argument is short: assertions only run where tests reach, and a long flight
 visits states no test constructed. A monitor that catches a slow divergence at

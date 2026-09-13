@@ -89,7 +89,7 @@ None: this is prose. What replaces a test is a check that the record is
 navigable.
 
 - Every ADR number is unique and every internal link resolves.
-- Every one of the six ADRs is referenced from the task that first depends on
+- Every one of the eight ADRs is referenced from the task that first depends on
   it, and every one references the register.
 - `THIRD_PARTY.md` lists a licence for every `FetchContent_Declare` in
   `CMakeLists.txt`, including the four that already exist (SDL3, vk-bootstrap,
@@ -98,7 +98,7 @@ navigable.
 ## Verification
 
 `check` in both trees, which here proves only that nothing was broken by
-accident. Then read the six records back against the register and confirm each
+accident. Then read the eight records back against the register and confirm each
 decision appears once, with its alternatives.
 
 ## Done when

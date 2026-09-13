@@ -1,6 +1,10 @@
 # Milestone 1 — the task queue
 
-Status: **planned 2026-09-08.** 84 tasks, in one order.
+Status: **planned 2026-09-08.** 85 tasks, in one order. (84 until 2026-09-13,
+when an audit found phase F had no gate although the rule below says every
+phase ends with one. The new task is **M1-85**, sitting between 77 and 78:
+renumbering seven tasks to make it "78" would have broken the identifiers that
+commits and records cite -- decision 30.)
 Which of them are done is in [`../STATUS.md`](../STATUS.md), not here.
 
 This is the working document for [milestone 1](milestone-1-earth.md): Earth, an
@@ -34,7 +38,7 @@ one starts.
 
 ### The standing rules, which every task inherits
 
-These are not repeated in the 84 documents. They apply to all of them.
+These are not repeated in the 85 documents. They apply to all of them.
 
 1. **The test is written first and seen to fail**, for the right reason
    ([`../VERIFICATION.md`](../VERIFICATION.md) rule 1). The failure message goes
@@ -208,7 +212,7 @@ HISTORY already cite them.
 | [70](tasks/m1-70-determinism.md) | Determinism | 69 | Bit-identical, 1× against 10000× |
 | [71](tasks/m1-71-interpolation.md) | Render-side interpolation | 11, 69 | A slow frame costs a frame |
 | [72](tasks/m1-72-runtime-monitors.md) | Runtime invariant monitors | 70 | Rule 15, in the Debug tree |
-| [73](tasks/m1-73-fuzz-the-integrator.md) | Fuzzing the force model and the steppers | 63, 65 | The third fuzz target |
+| [73](tasks/m1-73-fuzz-the-integrator.md) | Fuzzing the force model and the steppers | 63, 65 | The fifth fuzz target |
 | [74](tasks/m1-74-phase-e-gate.md) | **Phase E gate** | 62–73 | Recorded |
 
 ## Phase F — the orbit track
@@ -218,6 +222,7 @@ HISTORY already cite them.
 | [75](tasks/m1-75-orbitpath.md) | `OrbitPath` moves into `src/orbit/` | 01 | The example's algorithm, in the project |
 | [76](tasks/m1-76-draw-the-track.md) | Drawing the track, and apsis markers | 19, 71, 75 | A track, camera-relative |
 | [77](tasks/m1-77-precession-budget.md) | The precession budget | 63, 68, 76 | Phase F's inverted criterion: it must move |
+| [85](tasks/m1-85-phase-f-gate.md) | **Phase F gate** | 75–77 | The track precesses, and drawing changed nothing |
 
 ## Phase G — the Orbit MFD
 
@@ -229,7 +234,7 @@ HISTORY already cite them.
 | [81](tasks/m1-81-readout-formatting.md) | The readout, formatted and tested | 03, 80 | Numbers, tested without a GPU |
 | [82](tasks/m1-82-live-mfd.md) | The live MFD, and the clock | 69, 71, 81 | Osculating elements that drift |
 | [83](tasks/m1-83-milestone-acceptance.md) | Milestone acceptance | 22, 60, 82 | Every stated criterion, checked |
-| [84](tasks/m1-84-milestone-gate.md) | **Milestone gate and the record** | 01–83 | `PROJECT_STATE.md` tells the truth again |
+| [84](tasks/m1-84-milestone-gate.md) | **Milestone gate and the record** | 01–83, 85 | `PROJECT_STATE.md` tells the truth again |
 
 ---
 

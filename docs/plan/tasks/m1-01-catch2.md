@@ -7,10 +7,17 @@ Decided by: [ADR 0013](../../adr/0013-catch2-is-the-test-framework.md)
 ## Purpose
 
 The hand-rolled harness was the right call for one file and is the wrong call
-for ten. `CODING_GUIDELINES.md` section 17 says to switch "at three or four
-files… then, not before", and this milestone adds roughly eight more suites.
+for what follows. `CODING_GUIDELINES.md` section 17 says to switch "at three or
+four files… then, not before", and this milestone adds far more than that.
 Moving now means every task after this one is written the same way; moving later
-means writing eight suites twice.
+means writing all of them twice.
+
+*(This said "roughly eight more suites" and "writing eight suites twice".
+Counted on 2026-09-13, the 84 task documents name **51** distinct
+`tests/test_*.cpp` files, three of which already existed — so about **48** new
+suites. The conclusion was right and the number behind it was out by a factor of
+six; the same figure appeared as "ten" in `CMakeLists.txt`,
+`CODING_GUIDELINES.md` and `HISTORY.md`, and all four were corrected together.)*
 
 This task changes **no assertion, no tolerance and no case**. It is a pure
 refactor whose evidence is that the numbers do not move.
@@ -86,8 +93,8 @@ the implementer's. Do not silence it and carry on.
 
 ## Done when
 
-- [ ] `check` is green in `build/relwithdebinfo` and `build/debug`.
-- [ ] 3,632 assertions, 0 failures, in both Windows trees and both Linux presets.
-- [ ] `tests/TestHarness.hpp` no longer exists, and nothing references it.
-- [ ] `ctest -N` shows one entry per `TEST_CASE`.
-- [ ] The commit message records the before and after assertion counts.
+- [x] `check` is green in `build/relwithdebinfo` and `build/debug`.
+- [x] 3,632 assertions, 0 failures, in both Windows trees and both Linux presets.
+- [x] `tests/TestHarness.hpp` no longer exists, and nothing references it.
+- [x] `ctest -N` shows one entry per `TEST_CASE`.
+- [x] The commit message records the before and after assertion counts.

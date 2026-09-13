@@ -8,7 +8,13 @@ Decided by: [ADR 0005](../../adr/0005-correctness-is-enforced-by-tools.md)
 
 The riskiest phase is behind, and the renderer is now feature-complete for this
 milestone: everything after this is simulation, a line, and text. This gate is
-correspondingly the most thorough of the four.
+correspondingly the most thorough of the **renderer** gates, and the sweep it
+defines is the one M1-74 and M1-85 then build on.
+
+*(It said "the most thorough of the four" until 2026-09-13. There are six phase
+gates — A, B, D, C, E, F — plus the milestone gate, and the count was wrong
+before M1-85 was added as well as after. A gate's thoroughness is not a ranking
+worth keeping a number for.)*
 
 ## What to do
 

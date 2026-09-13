@@ -120,7 +120,7 @@ The standing rules. No GPU, no frames.
 
 ## Done when
 
-- [ ] `check` green in both trees; `test_time` in the CTest list.
-- [ ] The suite was seen to fail first — the commit message quotes the failure.
-- [ ] `core/Time.hpp` is in the header self-check list.
-- [ ] Every constant in the file says where its number came from.
+- [x] `check` green in both trees; `test_time` in the CTest list.
+- [x] The suite was seen to fail first — the commit message quotes the failure.
+- [x] `core/Time.hpp` is in the header self-check list.
+- [x] Every constant in the file says where its number came from.

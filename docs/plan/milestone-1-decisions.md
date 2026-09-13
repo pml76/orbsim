@@ -1,12 +1,20 @@
-# Milestone 1 — the decisions taken before it started
+# Milestone 1 — the decision register
 
-Status: **settled 2026-09-08** by the project owner. Recorded here because the
-task queue in [`milestone-1-tasks.md`](milestone-1-tasks.md) is built on these,
-and would have to be rebuilt if any of them changed.
+Status: **decisions 1–26 settled 2026-09-08** by the project owner, and the
+queue in [`milestone-1-tasks.md`](milestone-1-tasks.md) is built on those and
+would have to be rebuilt if any of them changed. **27–31 were taken later**, on
+2026-09-11, and section 9 holds them.
 
-Eight of them span files and therefore became architecture decision records —
-that was task [M1-02](tasks/m1-02-record-the-decisions.md), the second thing
-done in this milestone. This file is the register: it holds all of them,
+*(This was titled "the decisions taken before it started" and dated
+2026-09-08 flat, until 2026-09-13 — a header that had stopped describing the
+body once section 9 existed. Numbering runs on rather than restarting, so a
+reference to "decision 30" stays unambiguous.)*
+
+Nineteen of the twenty-six span files and are carried by **eight** architecture
+decision records — that was task
+[M1-02](tasks/m1-02-record-the-decisions.md), the second thing done in this
+milestone. (This said "eight of them span files", which counted the records and
+called them decisions.) This file is the register: it holds all of them,
 including the ones too small or too local for an ADR, so that no decision lives
 only in a conversation. **Section 8 maps every decision to where it is
 recorded.**
@@ -15,6 +23,30 @@ recorded.**
 [`../../CLAUDE.md`](../../CLAUDE.md): state the finding, propose the fix, and
 wait. Every row below was put to the owner as a question with its alternatives
 and their costs, and every row is the owner's answer.
+
+**What belongs here, and what does not** — settled 2026-09-13, because the
+register had fallen two days behind and it was not clear whether that was a
+backlog or a boundary. It is a boundary:
+
+- **The register** holds a ruling that changes the **plan, the queue, or an
+  error budget** — anything the task queue is built on, which is what the
+  status line above promises. Decisions 27–31 all qualify: ERFA rewrites tasks,
+  M1-06-before-M1-05 reorders the queue, the Sun's span tightens a budget.
+- **An ADR** holds a decision that spans files, whether or not it touches the
+  plan. [`../adr/README.md`](../adr/README.md) is the list.
+- **[`../HISTORY.md`](../HISTORY.md)** holds everything else, with the
+  measurement that produced it. The nine rulings of 2026-09-11 to 09-13 — the
+  guarded `length()`, the energy-based conic classifier, `a(1 + e)` for the
+  apoapsis, the radius-and-speed hybrid, adopting double-double at 2.66x,
+  moving the circular threshold, fuzzing on Windows, `-Wabi-tag` at the site,
+  `stateFromElements` reporting — are there, and two of them earned ADRs 0017
+  and 0018. **None of them belongs here**, because none changes a task.
+
+That boundary costs something and the cost is named: "where is every ruling
+written down" now has three answers rather than one. The alternative was a
+register holding every choice of formulation, which duplicates `HISTORY.md` —
+one fact in two places, which is the failure
+[`../STATUS.md`](../STATUS.md) exists to prevent.
 
 ---
 
@@ -200,6 +232,16 @@ note that the phase gates are where the sanitizers and the second compiler run,
 since there is no CI; and [ADR 0007](../adr/0007-render-quality-is-a-struct.md)
 records that `RenderQuality` lives in `orbsim_view` rather than `src/render/`,
 which follows from decision 17.
+
+**Two records belong to no decision here at all**, and saying so is what keeps
+the claim above — that this table reads in both directions — true. Added
+2026-09-13, when both turned out to point at nothing and to be pointed at by
+nothing:
+
+| Record | Why it has no register row |
+|---|---|
+| [ADR 0017](../adr/0017-every-warning-is-an-error.md) | Every warning as an error. A standing rule about how the project is built, taken 2026-09-11 outside the queue; it changes no task, so by the boundary at the top of this file it is an ADR and not a register entry. It extends [0005](../adr/0005-correctness-is-enforced-by-tools.md) |
+| [ADR 0018](../adr/0018-state-from-elements-reports.md) | `stateFromElements` reports. A defect fix on 2026-09-13 that changed a public signature, so it spans files and earns a record; it changes no task either. [`../HISTORY.md`](../HISTORY.md) has the measurement behind it |
 
 The error budgets in section 5 appear again in the record that owns them:
 phase A's in [0009](../adr/0009-time-is-a-type-with-a-scale.md),

@@ -11,11 +11,14 @@ the task that makes the renderer able to draw anything at all.
 
 ## What to implement
 
-`src/render/Pipeline.hpp` / `.cpp`, plus two handles in
-`src/render/VulkanHandle.hpp`.
+`src/render/Pipeline.hpp` / `.cpp`. No new handles are needed.
 
-- `UniquePipeline` and `UniquePipelineLayout`, in the same move-only shape as
-  the nineteen handles already there. No hand-written destructor anywhere else.
+- `UniquePipeline` and `UniquePipelineLayout` **already exist** in
+  `src/render/VulkanHandle.hpp`, beside `UniqueShaderModule`, in the move-only
+  shape the nineteen handles there use — they were written ahead of their first
+  caller. This task uses them; it does not add them. No hand-written destructor
+  anywhere else. *(Until 2026-09-13 this said to add two handles, which would
+  have meant writing code that was already in the tree.)*
 - **A description struct, not a parameter list**: `GraphicsPipelineDesc` carrying
   the shader modules, vertex input description, topology, polygon mode, depth
   state, colour attachment formats for dynamic rendering, and push-constant

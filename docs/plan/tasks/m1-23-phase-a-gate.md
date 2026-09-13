@@ -36,7 +36,9 @@ great deal of new code to it.
 
 ## What to check, beyond "it passed"
 
-- **The assertion counts match across all four toolchains.** They did before
+- **The assertion counts match across all five configurations** — Windows
+  RelWithDebInfo and Debug, ASan, `linux-sanitize`, `linux-gcc`, the same set
+  `STATUS.md` reports and the same five M1-38 names. They did before
   phase A (3,632 everywhere); they must again, at the new total. A mismatch
   means a test is compiled out somewhere, which is worse than a failure because
   it looks like success.
@@ -67,7 +69,7 @@ now reaches both the physics and the renderer.
 
 ## Done when
 
-- [ ] All four toolchains pass, with matching assertion counts.
+- [ ] All five configurations pass, with matching assertion counts.
 - [ ] The fuzzer runs four minutes clean.
 - [ ] Coverage is measured and the uncovered lines have been read, not just
       counted.

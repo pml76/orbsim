@@ -50,7 +50,8 @@ successes: it is what the next milestone starts from.
 
 **Add a task to the queue, and say so.** Not a quiet fix inside this task: a
 milestone-acceptance commit that also changes behaviour is a commit nobody can
-review, and the queue is the record of what was actually done.
+review, and the queue is the record of what was *planned*. What is done is in
+`STATUS.md`.
 
 ## Done when
 
