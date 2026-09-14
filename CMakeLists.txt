@@ -74,6 +74,27 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/GccWarnings.cmake)
     target_compile_options(orbsim_warnings INTERFACE ${ORBSIM_GCC_WARNINGS} -Werror)
 elseif(MSVC)
+    # The third implementation, wired to the `windows-msvc` preset on
+    # 2026-09-14. It builds the whole tree, renderer included, which neither
+    # Linux preset does -- so it is the only place our Vulkan and SDL code meets
+    # a compiler other than clang.
+    #
+    # /permissive- is the important one: it turns off the Microsoft extensions
+    # that would otherwise accept code the other two reject, which is the entire
+    # point of having a third front end. /WX matches the -Werror above.
+    #
+    # **/W4 is not "every warning MSVC has"; /Wall is, and it has not been
+    # measured here.** ADR 0017's rule is as many warnings as possible, so this
+    # is a gap rather than a decision -- /Wall on MSVC is widely reported to be
+    # unusable because it reports through system headers, but this project does
+    # not repeat what is widely reported, it measures. Until somebody does, /W4
+    # is what is on, and this comment is the honest label on it.
+    #
+    # Two diagnostics were answered at their sites rather than here, because
+    # they fire on our own clang-specific annotations and not on a library's
+    # interface: C4068 (unknown pragma 'clang') is guarded with #ifdef __clang__
+    # around each region, and C5030 (unrecognised attribute) by the
+    # ORBSIM_LIFETIMEBOUND macro in render/VulkanHandle.hpp.
     target_compile_options(orbsim_warnings INTERFACE /W4 /WX /permissive-)
 endif()
 

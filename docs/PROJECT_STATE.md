@@ -369,6 +369,15 @@ asked for.
    ADR 0006 sharpens the question: with several frames in play, a `Vec3` that
    knows it holds barycentric metres would prevent a class of bug that is
    otherwise invisible.
+7. **Is `/W4` enough for MSVC, or should it be `/Wall`?** Opened 2026-09-14
+   with the `windows-msvc` preset. ADR 0017's rule is as many warnings as
+   possible, as errors; `/W4` is not that, `/Wall` is. The received wisdom is
+   that `/Wall` is unusable because it reports through system headers, and
+   `/external:W0` exists precisely for that objection -- but **this project
+   measures rather than repeating what is widely reported**, and nobody has
+   measured it here. The tree is clean at `/W4 /WX /permissive-` today, so this
+   costs nothing to leave open; it is one build to answer. The gap is labelled
+   in `CMakeLists.txt` beside the flags rather than left to look deliberate.
 
 ---
 

@@ -25,6 +25,33 @@
 
 #include <utility>
 
+// [[clang::lifetimebound]], and nothing at all on a compiler that does not know
+// it. Added 2026-09-14, when `windows-msvc` became the third implementation and
+// the first non-clang compiler ever to build the renderer. MSVC calls the
+// attribute C5030, "not recognized", and /WX makes it fatal: it reported the
+// first site -- OwnedHandle's constructor below -- in each of four translation
+// units and stopped there, so the other sixteen were never reached. gcc reports
+// the same thing as -Wattributes wherever it is written, with its default flags
+// (measured 2026-09-11), so the next compiler would have said so too.
+//
+// A macro rather than seventeen guarded sites. The alternatives were measured
+// and are worse: `#pragma warning(push/disable/pop)` around each use is 51 lines
+// of preprocessor threaded through the wrappers, and a project-wide /wd5030
+// switches the diagnostic off for code nobody has written yet -- which is the
+// thing CODING_GUIDELINES section 1 reserves for a library's interface, and this
+// attribute is ours, not a library's.
+//
+// It lives here because both users are in src/render/. If a second layer ever
+// wants it, that is the moment it moves down, not before.
+//
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage) -- an attribute cannot be a
+// function, and the whole job is to vanish on one compiler and not another.
+#ifdef __clang__
+#define ORBSIM_LIFETIMEBOUND [[clang::lifetimebound]]
+#else
+#define ORBSIM_LIFETIMEBOUND
+#endif
+
 namespace orb::gfx {
 
 // A handle destroyed by a function shaped like
@@ -36,7 +63,7 @@ namespace orb::gfx {
 //
 // Every handle is a pointer to an object the driver owns -- the
 // non-dispatchable ones too, on a 64-bit target -- so each wrapper below
-// refers to what its constructor was handed. [[clang::lifetimebound]] says
+// refers to what its constructor was handed. ORBSIM_LIFETIMEBOUND says
 // so: clang's lifetime analysis asks for it
 // (-Wlifetime-safety-intra-tu-constructor-suggestions), and uses it to report
 // a wrapper that outlives what it refers to, in the cases it can follow.
@@ -44,8 +71,7 @@ template <typename Handle, typename Owner, auto Destroy> class OwnedHandle {
 public:
     OwnedHandle() noexcept = default;
 
-    OwnedHandle(Owner owner [[clang::lifetimebound]],
-                Handle handle [[clang::lifetimebound]]) noexcept
+    OwnedHandle(Owner owner ORBSIM_LIFETIMEBOUND, Handle handle ORBSIM_LIFETIMEBOUND) noexcept
         : owner_(owner), handle_(handle) {}
 
     ~OwnedHandle() { reset(); }
@@ -97,7 +123,7 @@ using UniquePipeline = OwnedHandle<VkPipeline, VkDevice, vkDestroyPipeline>;
 class UniqueInstance {
 public:
     UniqueInstance() noexcept = default;
-    explicit UniqueInstance(VkInstance instance [[clang::lifetimebound]]) noexcept
+    explicit UniqueInstance(VkInstance instance ORBSIM_LIFETIMEBOUND) noexcept
         : instance_(instance) {}
 
     ~UniqueInstance() { reset(); }
@@ -134,7 +160,7 @@ private:
 class UniqueDevice {
 public:
     UniqueDevice() noexcept = default;
-    explicit UniqueDevice(VkDevice device [[clang::lifetimebound]]) noexcept : device_(device) {}
+    explicit UniqueDevice(VkDevice device ORBSIM_LIFETIMEBOUND) noexcept : device_(device) {}
 
     ~UniqueDevice() { reset(); }
 
@@ -173,8 +199,8 @@ private:
 class UniqueDebugMessenger {
 public:
     UniqueDebugMessenger() noexcept = default;
-    UniqueDebugMessenger(VkInstance instance [[clang::lifetimebound]],
-                         VkDebugUtilsMessengerEXT messenger [[clang::lifetimebound]]) noexcept
+    UniqueDebugMessenger(VkInstance instance ORBSIM_LIFETIMEBOUND,
+                         VkDebugUtilsMessengerEXT messenger ORBSIM_LIFETIMEBOUND) noexcept
         : instance_(instance), messenger_(messenger) {}
 
     ~UniqueDebugMessenger() { reset(); }
@@ -204,12 +230,16 @@ public:
             // extension function, not a choice this code makes. The same reason
             // answers -Wcast-function-type-strict, which reports that cast, and
             // is off for it alone (ADR 0017).
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wcast-function-type-strict"
+#endif
             // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
             const auto destroy = reinterpret_cast<PFN_vkDestroyDebugUtilsMessengerEXT>(
                 vkGetInstanceProcAddr(instance_, "vkDestroyDebugUtilsMessengerEXT"));
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
             if (destroy != nullptr) destroy(instance_, messenger_, nullptr);
         }
         messenger_ = VK_NULL_HANDLE;
@@ -235,7 +265,7 @@ private:
 class DeviceIdleGuard {
 public:
     DeviceIdleGuard() noexcept = default;
-    explicit DeviceIdleGuard(VkDevice device [[clang::lifetimebound]]) noexcept : device_(device) {}
+    explicit DeviceIdleGuard(VkDevice device ORBSIM_LIFETIMEBOUND) noexcept : device_(device) {}
 
     // The wait's result is discarded on purpose: this is a destructor, and the
     // only failure vkDeviceWaitIdle can report is a lost device, after which
@@ -267,7 +297,7 @@ private:
 class UniqueAllocator {
 public:
     UniqueAllocator() noexcept = default;
-    explicit UniqueAllocator(VmaAllocator allocator [[clang::lifetimebound]]) noexcept
+    explicit UniqueAllocator(VmaAllocator allocator ORBSIM_LIFETIMEBOUND) noexcept
         : allocator_(allocator) {}
 
     ~UniqueAllocator() { reset(); }
@@ -304,9 +334,9 @@ private:
 class UniqueImage {
 public:
     UniqueImage() noexcept = default;
-    UniqueImage(VmaAllocator allocator [[clang::lifetimebound]],
-                VkImage image [[clang::lifetimebound]],
-                VmaAllocation allocation [[clang::lifetimebound]]) noexcept
+    UniqueImage(VmaAllocator allocator ORBSIM_LIFETIMEBOUND,
+                VkImage image ORBSIM_LIFETIMEBOUND,
+                VmaAllocation allocation ORBSIM_LIFETIMEBOUND) noexcept
         : allocator_(allocator), image_(image), allocation_(allocation) {}
 
     ~UniqueImage() { reset(); }
@@ -356,10 +386,10 @@ private:
 class UniqueBuffer {
 public:
     UniqueBuffer() noexcept = default;
-    UniqueBuffer(VmaAllocator allocator [[clang::lifetimebound]],
-                 VkBuffer buffer [[clang::lifetimebound]],
-                 VmaAllocation allocation [[clang::lifetimebound]],
-                 void* mapped [[clang::lifetimebound]],
+    UniqueBuffer(VmaAllocator allocator ORBSIM_LIFETIMEBOUND,
+                 VkBuffer buffer ORBSIM_LIFETIMEBOUND,
+                 VmaAllocation allocation ORBSIM_LIFETIMEBOUND,
+                 void* mapped ORBSIM_LIFETIMEBOUND,
                  VkDeviceSize size) noexcept
         : allocator_(allocator),
           buffer_(buffer),

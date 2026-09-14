@@ -246,9 +246,11 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
 // bounds, which is the construction -Wunsafe-buffer-usage-in-container
 // reports; and std::fputs is a C library function taking an unbounded string,
 // which is what -Wunsafe-buffer-usage-in-libc-call reports.
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-container"
 #pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-libc-call"
+#endif
 int main(int argc, char** argv) {
     const std::span<char* const> args(argv, static_cast<std::size_t>(argc));
     try {
@@ -263,4 +265,6 @@ int main(int argc, char** argv) {
         return kExitFailure;
     }
 }
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif

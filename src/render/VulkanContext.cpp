@@ -33,8 +33,10 @@
 // off for this file -- the one that fills in Vulkan's structs -- and on
 // everywhere else (ADR 0017). The cost: a struct of our own initialised in
 // this file goes unchecked too.
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wmissing-designated-field-initializers"
+#endif
 
 namespace orb::gfx {
 namespace {
@@ -69,8 +71,10 @@ enum class FenceState : std::uint8_t {
 // is off for this one switch (ADR 0017): VkResult is Vulkan's enum, it grows
 // with every header release, and the default is the design here rather than
 // an omission.
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wswitch-enum"
+#endif
 [[nodiscard]] std::string resultName(VkResult result) {
     switch (result) {
     case VK_SUCCESS:
@@ -115,7 +119,9 @@ enum class FenceState : std::uint8_t {
         return "VkResult " + std::to_string(static_cast<int>(result));
     }
 }
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
 
 // Every Vulkan and VMA call that returns a VkResult goes through here, so that
 // none is dropped. This is rule 7 of the Power of Ten -- check the return
@@ -223,11 +229,15 @@ VKAPI_ATTR VkBool32 VKAPI_CALL onValidationMessage(VkDebugUtilsMessageSeverityFl
     // string, which the specification makes null-terminated but whose bounds
     // no type can carry; -Wunsafe-buffer-usage-in-format-attr-call reports
     // exactly that, and is off for this call (ADR 0017).
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-format-attr-call"
+#endif
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg) -- SDL's C logging API is variadic
     SDL_Log("[validation] %s", data != nullptr ? data->pMessage : "(no message)");
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
     // The specification requires VK_FALSE from an application callback: VK_TRUE
     // would abort the call that triggered the message.
     return VK_FALSE;
@@ -256,10 +266,14 @@ struct InstanceBundle {
         // of the two is the only way to give them bounds; the two-argument
         // constructor is what -Wunsafe-buffer-usage-in-container reports, and
         // it is off for this line (ADR 0017).
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-container"
+#endif
         const std::span extensions(sdlExts, sdlExtCount);
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
         for (const char* const extension : extensions) {
             builder.enable_extension(extension);
         }
@@ -890,20 +904,28 @@ std::expected<void, RenderError> VulkanContext::uploadBuffer(UniqueBuffer& dst,
     // reports; it is off for the two copies (ADR 0017). The bound is checked
     // above: the data is no larger than either buffer.
     if (dst.mapped() != nullptr) {
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-libc-call"
+#endif
         std::memcpy(dst.mapped(), data.data(), data.size());
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
         return {};
     }
 
     auto staging = createBuffer(data.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, Memory::HostVisible);
     if (!staging) return std::unexpected(staging.error());
     if (staging->mapped() == nullptr) return fail("Staging buffer was not mapped");
+#ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-libc-call"
+#endif
     std::memcpy(staging->mapped(), data.data(), data.size());
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif
 
     VkFence fence = uploadFence_.get();
     if (auto ok = vkCheck(vkResetFences(device_.get(), 1, &fence), "vkResetFences (upload)"); !ok) {
@@ -977,4 +999,6 @@ VulkanContext::loadShaderModule(const std::filesystem::path& path) const {
 
 } // namespace orb::gfx
 
+#ifdef __clang__
 #pragma clang diagnostic pop
+#endif

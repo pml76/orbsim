@@ -137,7 +137,7 @@ public:
     [[nodiscard]] VkExtent2D extent() const noexcept { return swapchainExtent_; }
     // A reference into this context, and marked so, which lets clang report
     // one held past the context's lifetime where it can follow the two.
-    [[nodiscard]] const std::string& deviceName() const noexcept [[clang::lifetimebound]] {
+    [[nodiscard]] const std::string& deviceName() const noexcept ORBSIM_LIFETIMEBOUND {
         return deviceName_;
     }
 

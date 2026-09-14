@@ -19,7 +19,7 @@ A *dated* measurement is not a current claim and does not belong here: "the
 fuzzer ran 77.4 million executions clean on 2026-09-07" is a fact about that
 day and stays in [`HISTORY.md`](HISTORY.md).
 
-Last updated: 2026-09-13.
+Last updated: 2026-09-14.
 
 ## Contents
 
@@ -45,6 +45,7 @@ opens a window and paces frames.** Nothing is drawn yet.
 | Next task | [M1-04](plan/tasks/m1-04-leap-seconds.md), UTC, TAI and TT: the leap-second table |
 | Then | The rest of phase A — the Horizons fixtures (M1-06, now ahead of M1-05); TDB and UT1, where ERFA is pinned; Earth orientation with nutation, and the Sun, both computed by ERFA; then `orbsim_view`, the camera, the pipelines, and the probe mode that verifies everything drawn after it |
 | Phase order | A → B → D → C → E → F → G |
+| Working branch | `consistency-fixes-2026-09-13`, pushed. Seven commits of a documentation-consistency sweep plus the MSVC target; not merged to `master` yet. Branch first on another machine: `git fetch && git switch consistency-fixes-2026-09-13` |
 
 | Component | State |
 |---|---|
@@ -67,18 +68,14 @@ opens a window and paces frames.** Nothing is drawn yet.
 | `orbsim_smoke` | — | Runs the app under the Vulkan validation layers for 2 s; fails on any validation error. Labelled `gpu`. |
 
 Totals: **642,199 assertions in 65 test cases**, and the same 642,199 under
-both Windows trees, under ASan, and under both Linux presets. Catch2
-**v3.16.0**.
+both Windows trees, under ASan, under `windows-msvc`, and under both Linux
+presets. Catch2 **v3.16.0**.
 
-**`windows-msvc` does not build yet**, and this line will say the count when it
-does. Added 2026-09-14 as the third implementation, it compiles the core and
-the tests clean -- zero warnings under `/W4 /WX /permissive-` -- and stops in
-the renderer on 25 unguarded `#pragma clang diagnostic` lines (C4068) and 17
-`[[clang::lifetimebound]]` attributes (C5030), neither of which MSVC knows.
-Both are the case [`PROJECT_STATE.md`](PROJECT_STATE.md) section 8 already
-records for gcc; the renderer never met a second compiler before, so its
-site-local exemptions were never guarded. The answer is the owner's, because
-one candidate needs a macro.
+**Three implementations now agree to the digit**, which is what `windows-msvc`
+was added on 2026-09-14 to find out. It builds the whole tree, renderer
+included — the only configuration that does, since both Linux presets are core
+only — with **zero warnings under `/W4 /WX /permissive-`**, and passes all 66
+CTest entries including the GPU smoke test.
 
 The seeds for the random sweeps are written into the suites: `20260905` in
 `tests/test_orbit_scales.cpp` and `20260910` in `tests/test_time.cpp`, each the
