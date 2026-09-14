@@ -256,7 +256,7 @@ static_assert(kFirstMjd == 1'721'426 - kJdnOfMjdZero && kLastMjd == 5'373'484 - 
 // it casts to an integer, which a NaN or an infinity would make undefined.
 [[nodiscard]] constexpr bool isWhole(f64 value) noexcept {
     constexpr f64 kEveryValueWholeFrom = 0x1p52;
-    if (!std::isfinite(value)) return false;
+    if (!isFinite(value)) return false;
     if (value <= -kEveryValueWholeFrom || value >= kEveryValueWholeFrom) return true;
     return nearlyEqual(static_cast<f64>(static_cast<std::int64_t>(value)), value, Tolerance{0.0});
 }
@@ -291,7 +291,7 @@ inline constexpr DayAndPicos kNotAnInstant{
 // wrong), then each field in turn, so a date wrong in one way reports that
 // way.
 [[nodiscard]] constexpr std::expected<void, TimeError> validate(const CalendarDate& date) noexcept {
-    if (!std::isfinite(date.second.value)) return std::unexpected(TimeError::NotFinite);
+    if (!isFinite(date.second.value)) return std::unexpected(TimeError::NotFinite);
     if (date.year < kFirstYear || date.year > kLastYear) {
         return std::unexpected(TimeError::YearOutOfRange);
     }
@@ -419,7 +419,7 @@ public:
     // is not finite, or that falls outside the supported years.
     [[nodiscard]] static std::expected<TimePoint, TimeError>
     fromJulianDate(JulianDate date) noexcept {
-        if (!std::isfinite(date.day) || !std::isfinite(date.fraction)) {
+        if (!isFinite(date.day) || !isFinite(date.fraction)) {
             return std::unexpected(TimeError::NotFinite);
         }
         const detail::DaysAndScaled first = detail::splitDays(date.day);
@@ -444,7 +444,7 @@ public:
     [[nodiscard]] constexpr std::expected<CalendarDate, TimeError> toCalendar() const noexcept {
         // Reachable only from a Release build whose arithmetic precondition was
         // violated; without it, the cast below would be undefined behaviour.
-        if (!std::isfinite(mjd_)) return std::unexpected(TimeError::NotFinite);
+        if (!isFinite(mjd_)) return std::unexpected(TimeError::NotFinite);
         if (!detail::inCalendarRange(mjd_)) return std::unexpected(TimeError::YearOutOfRange);
         const detail::CivilDay civil =
             detail::civilDay(static_cast<std::int64_t>(mjd_) + detail::kJdnOfMjdZero);
@@ -496,8 +496,8 @@ public:
     [[nodiscard]] TimePoint operator+(Seconds duration) const noexcept
         requires UniformScale<Scale>
     {
-        ORBSIM_EXPECTS(std::isfinite(duration.value));
-        if (!std::isfinite(duration.value)) return TimePoint{detail::kNotAnInstant};
+        ORBSIM_EXPECTS(isFinite(duration.value));
+        if (!isFinite(duration.value)) return TimePoint{detail::kNotAnInstant};
         const TimePoint moved{detail::advance({.mjd = mjd_, .picos = picos_}, duration)};
         ORBSIM_ENSURES(moved.isNormalised());
         return moved;

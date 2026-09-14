@@ -24,8 +24,9 @@ break — that **drawing** the physics did not **change** it.
 
 ## What to do
 
-The full sweep the earlier gates run — `asan`, `linux-sanitize`, `linux-gcc`,
-`linux-tsan`, the GPU validation layers, and the five fuzz targets — plus:
+The full sweep the earlier gates run — `asan`, `windows-msvc`,
+`linux-sanitize`, `linux-gcc`, `linux-tsan`, the GPU validation layers, and the
+five fuzz targets — plus:
 
 - **The precession budget from M1-77, re-measured**, because M1-76 and anything
   after it touch the path that produces it. The claim is

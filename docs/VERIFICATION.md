@@ -33,7 +33,7 @@ machine actually checks. Versions and counts are in
 - [Rule 17. Extend the type system to full dimensional analysis](#rule-17-extend-the-type-system-to-full-dimensional-analysis)
 - [Rule 18. Coverage is a map of what has not been tested](#rule-18-coverage-is-a-map-of-what-has-not-been-tested)
 - [Rule 19. Mutation testing, occasionally](#rule-19-mutation-testing-occasionally)
-- [Rule 20. Run the Linux presets — the second compiler and UBSan are back](#rule-20-run-the-linux-presets--the-second-compiler-and-ubsan-are-back)
+- [Rule 20. Run the other implementations — a second and third front end, and UBSan](#rule-20-run-the-other-implementations--a-second-and-third-front-end-and-ubsan)
 - [Rule 21. Keep `check` as the single definition of done, and let it grow](#rule-21-keep-check-as-the-single-definition-of-done-and-let-it-grow)
 
 **Part 3 — The rules that are about people**
@@ -444,7 +444,18 @@ Expensive to automate, cheap to do by hand on the parts that matter most. Doing
 it once on `Orbit.cpp` would put a number on how much the two-body suite is
 actually worth.
 
-### Rule 20. Run the Linux presets — the second compiler and UBSan are back
+### Rule 20. Run the other implementations — a second and third front end, and UBSan
+
+**A third implementation joined on 2026-09-14**, and its first run is the whole
+argument for this rule in one episode. `windows-msvc` builds the tree with
+`cl.exe`, renderer included, which neither Linux preset does. It immediately
+rejected eight `static_assert`s: `std::isfinite` is not `constexpr` before
+C++26, clang and libstdc++ both accept it in a constant expression as an
+extension, and MSVC does not — so `kJ2000` and `kUnixEpoch` were not constant
+expressions there. The code had been clean under two compilers and 642,199
+assertions. **Two implementations tell you about your assumptions; a third
+tells you which of them were one compiler family's habits.** The recipe is
+[`PROJECT_STATE.md`](PROJECT_STATE.md) section 2, and it needs `vcvars64.bat`.
 
 **Done on 2026-09-07.** `PROJECT_STATE.md` and ADR 0005 had recorded
 UndefinedBehaviorSanitizer and a second compiler as *out of reach*. WSL 2 was

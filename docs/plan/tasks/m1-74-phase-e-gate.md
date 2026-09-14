@@ -12,8 +12,8 @@ gate is where that is confirmed with everything the toolbox has.
 
 ## What to do
 
-The full sweep from M1-61 — ASan, Linux clang with ASan and UBSan, gcc-14, TSan,
-GPU validation layers — plus:
+The full sweep from M1-61 — ASan, MSVC, Linux clang with ASan and UBSan, gcc-14,
+TSan, GPU validation layers — plus:
 
 - **Five fuzz targets**: `fuzz_orbit`, `fuzz_ktx2`, `fuzz_ztree`,
   `fuzz_elevation` and `fuzz_integrator`. The last gets ten minutes.

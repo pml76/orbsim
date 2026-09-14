@@ -68,6 +68,17 @@
       }
     },
     {
+      "name": "windows-msvc",
+      "inherits": "debug",
+      "displayName": "Windows: MSVC 18, the third implementation",
+      "description": "cl.exe with /W4 /WX /permissive-, the whole tree including the renderer. A third opinion beside clang and gcc-14, and it earned its keep on the first run: std::isfinite is not constexpr before C++26, which clang and libstdc++ both accept as an extension and MSVC does not. Needs INCLUDE and LIB, so configure and build it from a Developer Command Prompt or after calling vcvars64.bat -- PROJECT_STATE.md section 2. Run it before a milestone lands.",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "cacheVariables": {
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_COMPILER": "cl"
+      }
+    },
+    {
       "name": "windows-fuzz",
       "inherits": "debug",
       "displayName": "Windows: clang + libFuzzer + ASan + UBSan, core only",
@@ -97,6 +108,7 @@
     { "name": "asan", "configurePreset": "asan" },
     { "name": "linux-sanitize", "configurePreset": "linux-sanitize" },
     { "name": "linux-gcc", "configurePreset": "linux-gcc" },
+    { "name": "windows-msvc", "configurePreset": "windows-msvc" },
     { "name": "windows-fuzz", "configurePreset": "windows-fuzz" },
     { "name": "linux-fuzz", "configurePreset": "linux-fuzz" }
   ],
@@ -124,6 +136,11 @@
     {
       "name": "linux-gcc",
       "configurePreset": "linux-gcc",
+      "output": { "outputOnFailure": true }
+    },
+    {
+      "name": "windows-msvc",
+      "configurePreset": "windows-msvc",
       "output": { "outputOnFailure": true }
     }
   ]

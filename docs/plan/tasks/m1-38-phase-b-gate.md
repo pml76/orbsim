@@ -53,7 +53,7 @@ committed with its approval date.
 
 ## Done when
 
-- [ ] Five toolchains pass — Windows RelWithDebInfo and Debug, ASan, Linux
+- [ ] Six toolchains pass — Windows RelWithDebInfo and Debug, ASan, MSVC, Linux
       clang+ASan+UBSan, Linux gcc-14 — plus TSan on the threaded code.
 - [ ] Three fuzzers clean.
 - [ ] `THIRD_PARTY.md` is complete and accurate, file lists included.

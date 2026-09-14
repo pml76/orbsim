@@ -15,6 +15,7 @@
 #include <compare>
 #include <concepts>
 #include <cstdint>
+#include <limits>
 #include <numbers>
 #include <type_traits>
 
@@ -126,6 +127,31 @@ struct Tolerance : Quantity<Tolerance> {
     const f64 difference = a > b ? a - b : b - a;
     return difference <= tolerance.value;
 }
+
+// Finiteness in a constant expression, which <cmath>'s isfinite is not until
+// C++26. NaN fails both comparisons and each infinity fails one of them, so
+// this is exactly std::isfinite without leaving constant evaluation.
+//
+// **Reach for this, not std::isfinite, anywhere a constant expression might
+// evaluate it.** It lived in core/DoubleDouble.hpp until 2026-09-14, which put
+// it out of reach of core/Time.hpp -- and Time.hpp used std::isfinite inside a
+// constexpr validator, which clang and libstdc++ both accept as an extension
+// and MSVC does not. That cost nothing until MSVC was built for the first time,
+// and then cost the constexpr-ness of kJ2000 and kUnixEpoch and the two
+// static_asserts that read them: eight errors, one assumption. It belongs here,
+// beside nearlyEqual, because it is a scalar predicate and not a double-double
+// one.
+[[nodiscard]] constexpr bool isFinite(f64 x) noexcept {
+    return x >= -std::numeric_limits<f64>::max() && x <= std::numeric_limits<f64>::max();
+}
+
+static_assert(isFinite(0.0) && isFinite(-1e308) && isFinite(std::numeric_limits<f64>::max()) &&
+                  isFinite(std::numeric_limits<f64>::denorm_min()),
+              "every finite double is finite, including the extremes");
+static_assert(!isFinite(std::numeric_limits<f64>::infinity()) &&
+                  !isFinite(-std::numeric_limits<f64>::infinity()) &&
+                  !isFinite(std::numeric_limits<f64>::quiet_NaN()),
+              "neither infinity nor a NaN is finite, and a NaN fails both comparisons");
 
 // Angle wrapping on bare doubles. These exist because `Radians` is defined a
 // header later, in core/Units.hpp, which is where the typed overloads live and

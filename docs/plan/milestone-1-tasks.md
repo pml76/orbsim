@@ -71,16 +71,19 @@ Every phase ends with a gate task. A gate runs what the day-to-day loop does not
 
 ```
 cmake --preset asan            && cmake --build build/asan && ctest --test-dir build/asan
+cmake --preset windows-msvc   && ...   # the third implementation; needs vcvars64
 wsl -d Ubuntu -- cmake --preset linux-sanitize && ...      # clang + ASan + UBSan
 wsl -d Ubuntu -- cmake --preset linux-gcc      && ...      # the second compiler
-wsl -d Ubuntu -- ./build/linux-fuzz/fuzz_<target> -max_total_time=240
+./build/windows-fuzz/fuzz_<target>.exe -max_total_time=240
 ```
 
 plus a coverage review and an update to `PROJECT_STATE.md`. **Nothing proceeds
 past a red gate.** Two compilers disagreeing is the signal a second toolchain
 exists to produce.
 
-The list grows as the milestone does: `linux-tsan` arrives with the first thread
+The list grows as the milestone does: `windows-msvc` joined it on 2026-09-14 --
+the third implementation, and the only one that builds the renderer against a
+second compiler -- `linux-tsan` arrives with the first thread
 in M1-33 and runs at every gate after it, and the fuzz targets go from one to
 five — `fuzz_orbit`, `fuzz_ktx2`, `fuzz_ztree`, `fuzz_elevation` and
 `fuzz_integrator`. Each gate task names exactly what it must run.

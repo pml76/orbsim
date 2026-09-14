@@ -142,7 +142,7 @@ the application under the Vulkan validation layers (`orbsim_smoke`, label
 only live in Debug. Smaller targets for the loop: `lint`, `format-check`,
 `format`, `doc-links`.
 
-Presets: `asan` before a milestone lands, and `linux-sanitize` and `linux-gcc`
+Presets: `asan` and `windows-msvc` before a milestone lands, and `linux-sanitize` and `linux-gcc`
 for UndefinedBehaviorSanitizer and the second compiler.
 [`docs/adr/0005`](docs/adr/0005-correctness-is-enforced-by-tools.md) is why it
 is set up this way, and **this project does not use CI — do not add it.**

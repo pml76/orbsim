@@ -152,6 +152,43 @@ Windows equivalent.
 has the coverage invocation. The `--no-launch` matters: it skips the
 interactive account setup, so commands run as `-u root` and nothing blocks.
 
+### The third implementation: MSVC, added 2026-09-14
+
+gcc-14 is the second *implementation* and MSVC is the third, added on the day
+the machine moved to Visual Studio 18. It builds **the whole tree, renderer
+included**, which neither Linux preset does, so it is the only place our Vulkan
+and SDL code meets a second compiler at all.
+
+**It needs the MSVC environment, and the preset deliberately does not supply
+it.** `cl.exe` reads `INCLUDE` and `LIB` rather than finding the toolchain for
+itself, so the preset would have to hard-code an install path — which is
+exactly the kind of machine specific that belongs in this file and not in a
+file every clone shares. Run it from a Developer Command Prompt, or:
+
+```
+call "C:\Program Files\Microsoft Visual Studio\18\Insiders\VC\Auxiliary\Build\vcvars64.bat"
+cmake --preset windows-msvc && cmake --build build/windows-msvc
+ctest --test-dir build/windows-msvc --output-on-failure
+```
+
+The path above is this machine's; `vswhere -latest -property installationPath`
+finds it on another. Note that clang picks the same toolchain up on its own
+through the COM setup API — which is why a Visual Studio Installer update
+mid-session on 2026-09-13 left clang unable to find any standard library at all
+while `vswhere` still answered correctly. If clang suddenly cannot find
+`<cassert>`, that is the cause, and it is not something the repository did.
+
+**It earned its keep on its first run**, which is the argument for a third
+implementation in one line: `std::isfinite` is not `constexpr` before C++26,
+clang and libstdc++ both accept it in a constant expression as an extension,
+and MSVC does not. `core/Time.hpp` used it inside a `constexpr` validator, so
+`kJ2000` and `kUnixEpoch` were not constant expressions under MSVC and the two
+`static_assert`s reading them failed — eight errors from one assumption, in
+code that had been clean under two compilers and 642,199 assertions. The
+project already had the answer: a `constexpr isFinite`, written for this exact
+reason, which lived in `core/DoubleDouble.hpp` where `Time.hpp` could not reach
+it. It is in `core/Scalar.hpp` now.
+
 **Nothing about this project lives outside the repository.** Working
 agreements are in `CLAUDE.md`, decisions in `docs/adr/`, verification practice
 in `docs/VERIFICATION.md`, and this file holds the state and the machine

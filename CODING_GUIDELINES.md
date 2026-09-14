@@ -1215,7 +1215,7 @@ Items marked ✅ are already on this machine.
 | Tool | Notes |
 |---|---|
 | **clang** ✅ | Your primary. Targets `x86_64-pc-windows-msvc`. One version across Windows and WSL, deliberately; `docs/STATUS.md` says which |
-| **MSVC** ✅ | VS2022 is installed and clang already targets its ABI. A third opinion if you want one, though gcc-14 under WSL is the second and it is already wired to a preset |
+| **MSVC** ✅ | **The third implementation, wired to `windows-msvc` on 2026-09-14.** clang already targeted its ABI; what this adds is a second *front end* over the whole tree, renderer included, which neither Linux preset builds. It paid on the first run: `std::isfinite` is not `constexpr` before C++26, clang and libstdc++ allow it in a constant expression as an extension, MSVC does not, and `core/Time.hpp` was relying on that. It needs `vcvars64.bat` — `docs/PROJECT_STATE.md` section 2 |
 | **GCC** ✅ | MinGW 13.2 lacks `<print>` and cannot build this project. **gcc-14 under WSL can, and does** — the `linux-gcc` preset passes. Not CI; run it by hand before a milestone |
 | **Compiler Explorer** | godbolt.org. When you wonder whether the optimizer did the thing, stop wondering and go look |
 | **C++ Insights** | cppinsights.io. Shows you what the compiler *actually* generated from your template or range-for. Wonderful teaching tool, wonderful debugging tool |

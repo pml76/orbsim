@@ -76,12 +76,10 @@ struct DoubleDouble {
     f64 lo{};
 };
 
-// Finiteness in a constant expression, which <cmath>'s isfinite is not until
-// C++26. NaN fails both comparisons and each infinity fails one of them, so
-// this is exactly std::isfinite without leaving constant evaluation.
-[[nodiscard]] constexpr bool isFinite(f64 x) noexcept {
-    return x >= -std::numeric_limits<f64>::max() && x <= std::numeric_limits<f64>::max();
-}
+// `isFinite`, the constexpr one this file leans on throughout, moved to
+// core/Scalar.hpp on 2026-09-14 and arrives with the include above. It was
+// defined here, which put it out of reach of core/Time.hpp; see the comment on
+// it for what that cost when MSVC was built for the first time.
 
 // An exact double, widened.
 [[nodiscard]] constexpr DoubleDouble exact(f64 a) noexcept { return {.hi = a, .lo = 0.0}; }

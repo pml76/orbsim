@@ -67,7 +67,18 @@ opens a window and paces frames.** Nothing is drawn yet.
 | `orbsim_smoke` | — | Runs the app under the Vulkan validation layers for 2 s; fails on any validation error. Labelled `gpu`. |
 
 Totals: **642,199 assertions in 65 test cases**, and the same 642,199 under
-both Windows trees, under ASan, and under both Linux presets. Catch2 **v3.16.0**.
+both Windows trees, under ASan, and under both Linux presets. Catch2
+**v3.16.0**.
+
+**`windows-msvc` does not build yet**, and this line will say the count when it
+does. Added 2026-09-14 as the third implementation, it compiles the core and
+the tests clean -- zero warnings under `/W4 /WX /permissive-` -- and stops in
+the renderer on 25 unguarded `#pragma clang diagnostic` lines (C4068) and 17
+`[[clang::lifetimebound]]` attributes (C5030), neither of which MSVC knows.
+Both are the case [`PROJECT_STATE.md`](PROJECT_STATE.md) section 8 already
+records for gcc; the renderer never met a second compiler before, so its
+site-local exemptions were never guarded. The answer is the owner's, because
+one candidate needs a macro.
 
 The seeds for the random sweeps are written into the suites: `20260905` in
 `tests/test_orbit_scales.cpp` and `20260910` in `tests/test_time.cpp`, each the
