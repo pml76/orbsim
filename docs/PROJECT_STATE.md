@@ -189,6 +189,41 @@ project already had the answer: a `constexpr isFinite`, written for this exact
 reason, which lived in `core/DoubleDouble.hpp` where `Time.hpp` could not reach
 it. It is in `core/Scalar.hpp` now.
 
+### CLion: use the presets, not its own profile
+
+**There is one build directory, `build/`, with a subdirectory per flavour**, and
+CLion shares it with the command line rather than keeping its own. Set up on
+2026-09-15; it is two ticks, and they are per-machine because `.idea/` is
+gitignored.
+
+CLion 2026.2 reads `CMakePresets.json` by itself and offers every preset whose
+`condition` matches the host -- so the six Windows ones appear and the three
+`linux-*` ones correctly do not. What it *also* does is enable a stock profile
+of its own called `Debug`, which generates into `cmake-build-debug/`. That is
+where the second set of trees came from.
+
+In **Settings -> Build, Execution, Deployment -> CMake**: untick `Debug`, tick
+`debug` and `relwithdebinfo`. Then delete `cmake-build-debug/` once -- nothing
+writes to it again.
+
+Only those two are ticked, deliberately: they are the definition of done, and
+CLion reloads *every* enabled profile whenever a `CMakeLists.txt` changes, so
+enabling all six would make each edit six configures long. `asan`,
+`windows-fuzz` and `windows-msvc` are before-a-milestone tools and are better
+run from a terminal. `windows-msvc` in particular would need a **Visual Studio**
+toolchain in CLion to supply `INCLUDE` and `LIB`, which is the only toolchain
+this project would ever need CLion to define.
+
+**No custom toolchain is required for the other five**, which was checked rather
+than assumed: CLion had already resolved clang 23.1.0 and Ninja with no
+`toolchains.xml` at all, and its `cmake-build-debug/CMakeCache.txt` named the
+same `C:/GitHub/clang+llvm-23.1.0-.../clang++.exe` our presets do. The duplicate
+directory was never a second toolchain, only a second copy.
+
+One rule now that the trees are shared: **do not build from CLion and a terminal
+into the same tree at once.** Ninja takes no lock, and two builds interleaving in
+one directory is a bad afternoon.
+
 **Nothing about this project lives outside the repository.** Working
 agreements are in `CLAUDE.md`, decisions in `docs/adr/`, verification practice
 in `docs/VERIFICATION.md`, and this file holds the state and the machine
