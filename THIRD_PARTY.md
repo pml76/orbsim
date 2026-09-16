@@ -19,6 +19,7 @@ Nothing is vendored into this repository: there is no third-party source under
 - [Pinned and compiled today](#pinned-and-compiled-today)
 - [Decided, not yet pinned](#decided-not-yet-pinned)
 - [`bc7enc_rdo`: which files are compiled](#bc7enc_rdo-which-files-are-compiled)
+- [Vulkan-Utility-Libraries: which parts are compiled](#vulkan-utility-libraries-which-parts-are-compiled)
 - [Data and reference material](#data-and-reference-material)
 - [What this file is for](#what-this-file-is-for)
 
@@ -26,10 +27,16 @@ Nothing is vendored into this repository: there is no third-party source under
 
 ## Pinned and compiled today
 
-Read from the `FetchContent_Declare` calls in `CMakeLists.txt`. All five are
+Read from the `FetchContent_Declare` calls in `CMakeLists.txt`. All six are
 declared `SYSTEM`, which is what keeps this project's warning set from firing
 on somebody else's headers — the full set produced 643 warnings once, and 639
 of them were inside two of these.
+
+**Apache-2.0 arrived with Vulkan-Utility-Libraries on 2026-09-16** and is the
+first copyleft-free-but-not-permissive-simple licence here; everything else is
+MIT, zlib, BSL-1.0, or Apache-2.0 **OR** MIT at the user's choice. It is
+compatible with this project's MIT, and its notice requirement is satisfied by
+this file plus the notice that ships with any binary distribution.
 
 | Dependency | Pinned at | Licence | What it is for |
 |---|---|---|---|
@@ -38,6 +45,7 @@ of them were inside two of these.
 | [vk-bootstrap](https://github.com/charles-lunarg/vk-bootstrap) | `v1.3.302` | MIT | Instance, physical-device selection and device creation |
 | [VulkanMemoryAllocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) | `v3.2.1` | MIT | GPU memory allocation |
 | [Catch2](https://github.com/catchorg/Catch2) | `v3.16.0` | Boost Software License 1.0 | The test framework — [`docs/adr/0013`](docs/adr/0013-catch2-is-the-test-framework.md) |
+| [Vulkan-Utility-Libraries](https://github.com/KhronosGroup/Vulkan-Utility-Libraries) | `v1.3.302` | **Apache-2.0** | Khronos' utility headers. `string_VkResult` today; `vk_format_utils.h` is wanted by the tile work in phase B. **Nothing of it is compiled** — see below. Pinned at the tag matching Vulkan-Headers, because a later utility header can name enumerators an older `vulkan_core.h` does not have |
 
 The Vulkan **SDK** is not a dependency in this sense: it supplies the loader and
 `glslc`, and its version is a property of the machine
@@ -76,6 +84,29 @@ against the repository on 2026-09-08.
 So what this project compiles from `bc7enc_rdo` is MIT/Unlicense only. Anyone
 adding a file from that repository to the build must check this table first and
 extend it.
+
+## Vulkan-Utility-Libraries: which parts are compiled
+
+**None of it.** This is the second repository here where the pin does not
+answer the question, and the answer is worth a section for the opposite reason
+to `bc7enc_rdo`'s: not because the licences differ across files, but because
+most of what it builds is never linked.
+
+| Part | What it is | Compiled? |
+|---|---|---|
+| `include/vulkan/**` via `Vulkan::UtilityHeaders` | Header-only: `vk_enum_string_helper.h`, `vk_format_utils.h`, `vk_struct_helper.hpp`, `vk_dispatch_table.h` | **Yes** — header-only, so nothing is built; this is the only part linked |
+| `VulkanSafeStruct` | Deep-copy wrappers for every Vulkan struct, generated. **76,081 lines of C++** across six files | **No.** For validation layers; this project has no use for it |
+| `VulkanLayerSettings` | Layer settings file parsing | **No.** For writing Vulkan layers, which we do not |
+| `tests/`, `scripts/` | Its own test suite, and `update_deps.py` | **No.** `BUILD_TESTS` and `UPDATE_DEPS` both default off |
+
+`EXCLUDE_FROM_ALL` on the `FetchContent_Declare` is what makes that true rather
+than merely intended: without it, those two static libraries are in `all` and
+every `cmake --build` in every tree compiles them. That flag is why
+`cmake_minimum_required` is 3.28 rather than 3.25 — the reasoning is in
+`CMakeLists.txt` beside the line.
+
+If `VulkanSafeStruct` is ever wanted, linking `Vulkan::SafeStruct` is all it
+takes; `EXCLUDE_FROM_ALL` keeps targets out of `all`, not out of reach.
 
 ## Data and reference material
 

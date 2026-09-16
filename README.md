@@ -61,9 +61,9 @@ million kilometres away.
 ## Building
 
 Needs a C++23 compiler with `<expected>`, `<print>` and `<ranges>` — clang 17+
-or MSVC 19.36+ — plus CMake 3.25, Ninja, and a Vulkan loader. Dependencies
-(SDL3, vk-bootstrap, VMA, Vulkan-Headers and Catch2) are fetched and pinned by
-CMake.
+or MSVC 19.36+ — plus CMake 3.28, Ninja, and a Vulkan loader. Dependencies
+(SDL3, vk-bootstrap, VMA, Vulkan-Headers, Vulkan-Utility-Libraries and Catch2)
+are fetched and pinned by CMake.
 
 ```
 cmake --preset relwithdebinfo
@@ -119,7 +119,7 @@ so `propagate(state, dt, mu)` does not compile.
 
 ## Licence
 
-MIT — see [LICENSE](LICENSE). Every dependency's licence, and for one of them
+MIT — see [LICENSE](LICENSE). Every dependency's licence, and for two of them
 which files are compiled and which are not, is in
 [`THIRD_PARTY.md`](THIRD_PARTY.md).
 
@@ -140,4 +140,5 @@ Dependencies: [SDL3](https://github.com/libsdl-org/SDL) (zlib),
 [Vulkan-Headers](https://github.com/KhronosGroup/Vulkan-Headers) (Apache-2.0/MIT),
 [vk-bootstrap](https://github.com/charles-lunarg/vk-bootstrap) (MIT),
 [VulkanMemoryAllocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) (MIT),
+[Vulkan-Utility-Libraries](https://github.com/KhronosGroup/Vulkan-Utility-Libraries) (Apache-2.0),
 [Catch2](https://github.com/catchorg/Catch2) (BSL-1.0).

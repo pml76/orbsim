@@ -83,7 +83,7 @@ cmake --build build/relwithdebinfo --target check
 cmake --build build/debug --target check
 ```
 
-Needs clang 17+ (23 here), CMake 3.25+, Ninja, and a Vulkan SDK for the loader
+Needs clang 17+ (23 here), CMake 3.28+, Ninja, and a Vulkan SDK for the loader
 and `glslc`. Everything else is fetched and pinned by CMake. Without a Vulkan
 SDK, `-DORBSIM_BUILD_APP=OFF` builds the core and its tests.
 

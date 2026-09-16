@@ -6,6 +6,7 @@
 #include <SDL3/SDL_video.h>
 #include <SDL3/SDL_vulkan.h>
 #include <VkBootstrap.h>
+#include <vulkan/vk_enum_string_helper.h>
 #include <vulkan/vk_platform.h>
 #include <vulkan/vulkan_core.h>
 
@@ -61,67 +62,12 @@ enum class FenceState : std::uint8_t {
     return fail(std::string(what) + " failed: " + SDL_GetError());
 }
 
-// The spec's name for a result, for messages. Vulkan-Headers no longer ships
-// vk_enum_string_helper.h (it moved to Vulkan-Utility-Libraries), and a
-// dependency for one function is not worth it. Only the results this renderer
-// can meet are named; anything else shows its number, which is still enough to
-// look up.
-//
-// -Wswitch-enum asks for every enumerator even where there is a default, and
-// is off for this one switch (ADR 0017): VkResult is Vulkan's enum, it grows
-// with every header release, and the default is the design here rather than
-// an omission.
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wswitch-enum"
-#endif
-[[nodiscard]] std::string resultName(VkResult result) {
-    switch (result) {
-    case VK_SUCCESS:
-        return "VK_SUCCESS";
-    case VK_NOT_READY:
-        return "VK_NOT_READY";
-    case VK_TIMEOUT:
-        return "VK_TIMEOUT";
-    case VK_INCOMPLETE:
-        return "VK_INCOMPLETE";
-    case VK_ERROR_OUT_OF_HOST_MEMORY:
-        return "VK_ERROR_OUT_OF_HOST_MEMORY";
-    case VK_ERROR_OUT_OF_DEVICE_MEMORY:
-        return "VK_ERROR_OUT_OF_DEVICE_MEMORY";
-    case VK_ERROR_INITIALIZATION_FAILED:
-        return "VK_ERROR_INITIALIZATION_FAILED";
-    case VK_ERROR_DEVICE_LOST:
-        return "VK_ERROR_DEVICE_LOST";
-    case VK_ERROR_MEMORY_MAP_FAILED:
-        return "VK_ERROR_MEMORY_MAP_FAILED";
-    case VK_ERROR_FEATURE_NOT_PRESENT:
-        return "VK_ERROR_FEATURE_NOT_PRESENT";
-    case VK_ERROR_TOO_MANY_OBJECTS:
-        return "VK_ERROR_TOO_MANY_OBJECTS";
-    case VK_ERROR_FORMAT_NOT_SUPPORTED:
-        return "VK_ERROR_FORMAT_NOT_SUPPORTED";
-    case VK_ERROR_OUT_OF_POOL_MEMORY:
-        return "VK_ERROR_OUT_OF_POOL_MEMORY";
-    case VK_ERROR_SURFACE_LOST_KHR:
-        return "VK_ERROR_SURFACE_LOST_KHR";
-    case VK_ERROR_NATIVE_WINDOW_IN_USE_KHR:
-        return "VK_ERROR_NATIVE_WINDOW_IN_USE_KHR";
-    case VK_SUBOPTIMAL_KHR:
-        return "VK_SUBOPTIMAL_KHR";
-    case VK_ERROR_OUT_OF_DATE_KHR:
-        return "VK_ERROR_OUT_OF_DATE_KHR";
-    case VK_ERROR_VALIDATION_FAILED_EXT:
-        return "VK_ERROR_VALIDATION_FAILED_EXT";
-    case VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT:
-        return "VK_ERROR_FULL_SCREEN_EXCLUSIVE_MODE_LOST_EXT";
-    default:
-        return "VkResult " + std::to_string(static_cast<int>(result));
-    }
-}
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
+// Vulkan-Utility-Libraries names every result, including the ones added after
+// this was written. It replaced a hand-written switch here on 2026-09-16: that
+// named nineteen and printed a bare number for anything else, which is the
+// class of thing better maintained by the people who add the enumerators than
+// by us. The switch also needed a -Wswitch-enum exemption and an #ifdef
+// __clang__ around it, and both went with it.
 
 // Every Vulkan and VMA call that returns a VkResult goes through here, so that
 // none is dropped. This is rule 7 of the Power of Ten -- check the return
@@ -131,7 +77,7 @@ enum class FenceState : std::uint8_t {
 // responses.
 [[nodiscard]] std::expected<void, RenderError> vkCheck(VkResult result, std::string_view what) {
     if (result == VK_SUCCESS) return {};
-    return fail(std::string(what) + " failed: " + resultName(result));
+    return fail(std::string(what) + " failed: " + string_VkResult(result));
 }
 
 [[nodiscard]] std::expected<UniqueSemaphore, RenderError> makeSemaphore(VkDevice device) {

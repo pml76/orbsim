@@ -1,9 +1,32 @@
-cmake_minimum_required(VERSION 3.25)
+# 3.28 for EXCLUDE_FROM_ALL on FetchContent_Declare, which Vulkan-Utility-
+# Libraries needs: its src/ unconditionally builds two static libraries this
+# project never links -- VulkanLayerSettings and VulkanSafeStruct, 76,081 lines
+# of generated C++ measured at v1.3.302 -- and without EXCLUDE_FROM_ALL every
+# `cmake --build` in every tree compiles them. Raised from 3.25 on 2026-09-16;
+# nothing here is near the floor (4.3.1 on Windows, 4.2.3 in WSL).
+cmake_minimum_required(VERSION 3.28)
 project(orbsim LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
+
+# No C++20 modules here, so do not scan for them.
+#
+# This is not housekeeping: raising cmake_minimum_required to 3.28 above
+# activated CMP0155, which turns module dependency scanning on by default for
+# C++20 and later, and that **broke `lint`**. Scanning puts an `@....modmap`
+# argument into every compile command, the compile database hands that argument
+# to clang-tidy, and the file does not exist until the object is built -- so
+# clang-tidy failed with "no such file or directory: '@...modmap'" on a tree
+# that had just been configured. Measured on 2026-09-16: 21 entries in
+# compile_commands.json carried the flag and 21 scan steps appeared in the
+# graph, where before the bump there were none.
+#
+# Switching it off restores the lint, removes 21 build steps, and costs nothing
+# this project uses. The day a module appears, this line is what to delete --
+# and `lint` will need the object built before it runs.
+set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
@@ -418,6 +441,26 @@ FetchContent_Declare(vulkan_headers
         SYSTEM
 )
 
+# The Khronos utility headers. Pinned at the tag matching Vulkan-Headers above,
+# which is what makes them safe to use together: a v1.4.x utility header can name
+# enumerators a v1.3.302 header does not have.
+#
+# Licence Apache-2.0 -- the first in this project, and THIRD_PARTY.md records
+# which parts are compiled, because the answer is "none of them". EXCLUDE_FROM_ALL
+# keeps its two static libraries out of `all`; we link only the INTERFACE target
+# Vulkan::UtilityHeaders, which is headers and nothing else.
+#
+# It replaced a hand-written VkResult-to-string switch that named nineteen
+# results and printed a number for the rest. string_VkResult() names all of them
+# and is maintained by the people who add them.
+FetchContent_Declare(vulkan_utility_libraries
+        GIT_REPOSITORY https://github.com/KhronosGroup/Vulkan-Utility-Libraries.git
+        GIT_TAG        v1.3.302
+        GIT_SHALLOW    TRUE
+        SYSTEM
+        EXCLUDE_FROM_ALL
+)
+
 FetchContent_Declare(vk_bootstrap
         GIT_REPOSITORY https://github.com/charles-lunarg/vk-bootstrap.git
         GIT_TAG        v1.3.302
@@ -449,6 +492,7 @@ FetchContent_Declare(sdl3
 # actually true rather than merely intended -- without it, an SDK upgrade on the
 # build machine silently changes which headers this project compiles against.
 FetchContent_MakeAvailable(vulkan_headers)
+FetchContent_MakeAvailable(vulkan_utility_libraries)
 FetchContent_MakeAvailable(vk_bootstrap vma sdl3)
 
 # The SDK supplies only the loader import library and the shader compiler.
@@ -510,6 +554,7 @@ target_link_libraries(orbsim_render_deps INTERFACE
         vma_impl
         vk-bootstrap::vk-bootstrap
         Vulkan::Headers
+        Vulkan::UtilityHeaders
         SDL3::SDL3
 )
 

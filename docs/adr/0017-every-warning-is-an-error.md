@@ -194,3 +194,32 @@ before it is defined, which satisfies clang's `-Wmissing-prototypes` and gcc's
 `-Wmissing-declarations` both, so the clang pragma listed in the table above
 for it is gone; the `memcpy` of libFuzzer's input keeps its exemption, now
 inside `#ifdef __clang__`, because gcc compiles the file too.
+
+## Update, 2026-09-16: a third front end, and one exemption retired
+
+Two things happened to the site list above, and the record should say so rather
+than let it drift.
+
+**MSVC joined as the third implementation on 2026-09-14**, and it was the first
+non-clang compiler ever to build `src/render/`. It rejected the very mechanism
+this record established: `#pragma clang diagnostic` is C4068 "unknown pragma"
+to MSVC, sixteen regions of it, and `[[clang::lifetimebound]]` is C5030
+"unrecognised attribute". Both are our own annotations rather than a library's
+interface, so both were answered where they are written -- every pragma region
+now sits inside `#ifdef __clang__`, and the attribute became
+`ORBSIM_LIFETIMEBOUND` in `render/VulkanHandle.hpp`, which expands to nothing on
+a compiler that does not know it. gcc reports the same attribute as
+`-Wattributes`, so the next compiler would have said so too.
+
+MSVC builds at `/W4 /WX /permissive-`. **`/W4` is not every warning MSVC has --
+`/Wall` is** -- so that is a gap in this record's own rule rather than a
+decision, and it is labelled as one in `CMakeLists.txt` and opened as question 7
+of [`../PROJECT_STATE.md`](../PROJECT_STATE.md) section 7.
+
+**The `-Wswitch-enum` row is gone, on 2026-09-16.** `resultName` was a
+hand-written switch naming nineteen `VkResult` values and printing a number for
+anything else; it is `string_VkResult` from Vulkan-Utility-Libraries now, which
+names all of them and is maintained by the people who add them. The exemption
+existed only for that switch and went with it. That is the better ending for an
+entry in this table: not a suppression re-argued, but the code that needed it
+replaced by something that does not.
