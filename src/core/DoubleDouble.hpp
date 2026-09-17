@@ -60,6 +60,7 @@
 // None of it is copied: this is our own implementation of published
 // algorithms, which is why there is no entry in THIRD_PARTY.md.
 //
+#include "core/Contract.hpp"
 #include "core/Scalar.hpp"
 
 #include <cmath>
@@ -88,9 +89,37 @@ struct DoubleDouble {
 [[nodiscard]] constexpr f64 toDouble(DoubleDouble a) noexcept { return a.hi + a.lo; }
 
 // The exact sum of two doubles, on the precondition that |a| >= |b|. Three
-// operations rather than six; `twoSum` is the one to reach for when the
-// ordering is not known.
+// operations rather than six.
+//
+// **Nothing in this header calls it any more**, since 2026-09-17, and how that
+// came about is the useful part. The three renormalisations below used it, on
+// the belief -- written down in its own test -- that the operators "satisfy the
+// precondition by construction". They do not. Asserting it produced, from the
+// compiler, during constant evaluation:
+//
+//     quickTwoSum(0.0, 8.673617e-19)   from (1 + 2^-60) - 1
+//
+// |a| = 0 is smaller than |b| = 2^-60. It happens whenever the high parts
+// cancel: `sum.hi` is then tiny, or exactly zero, while the low terms being
+// folded into it are not. quickTwoSum is exact only inside its precondition;
+// outside it the error term can be wrong. Where a is exactly zero the answer
+// happens to still be right, which is why nothing had caught it.
+//
+// The renormalisations use `twoSum` now -- six operations rather than three,
+// and correct for any pair. Measured over the two heaviest suites: no change
+// beyond noise, and every assertion including the cross-toolchain checksum is
+// unmoved. Working agreement 3, accuracy over speed, with the speed turning out
+// not to be at stake.
+//
+// It is kept, asserted, and exercised by its own test, because it is a correct
+// published algorithm and the next caller should get the check rather than the
+// belief.
 [[nodiscard]] constexpr DoubleDouble quickTwoSum(f64 a, f64 b) noexcept {
+    // Negated, because this header handles non-finite values deliberately and
+    // `absOf(a) >= absOf(b)` is false for a NaN -- the direct form would abort a
+    // Debug build on input the code is designed to accept, which is the defect
+    // fuzzing found in propagate() on 2026-09-07 (ADR 0002).
+    ORBSIM_EXPECTS(!(absOf(b) > absOf(a)));
     const f64 sum = a + b;
     if (!isFinite(sum)) return {.hi = sum, .lo = 0.0};
     return {.hi = sum, .lo = b - (sum - a)};
@@ -146,7 +175,7 @@ struct DoubleDouble {
 [[nodiscard]] constexpr DoubleDouble operator+(DoubleDouble a, DoubleDouble b) noexcept {
     const DoubleDouble sum = twoSum(a.hi, b.hi);
     if (!isFinite(sum.hi)) return {.hi = sum.hi, .lo = 0.0};
-    return quickTwoSum(sum.hi, sum.lo + (a.lo + b.lo));
+    return twoSum(sum.hi, sum.lo + (a.lo + b.lo));
 }
 
 [[nodiscard]] constexpr DoubleDouble operator-(DoubleDouble a, DoubleDouble b) noexcept {
@@ -156,7 +185,7 @@ struct DoubleDouble {
 [[nodiscard]] constexpr DoubleDouble operator*(DoubleDouble a, DoubleDouble b) noexcept {
     const DoubleDouble product = twoProduct(a.hi, b.hi);
     if (!isFinite(product.hi)) return {.hi = product.hi, .lo = 0.0};
-    return quickTwoSum(product.hi, product.lo + ((a.hi * b.lo) + (a.lo * b.hi)));
+    return twoSum(product.hi, product.lo + ((a.hi * b.lo) + (a.lo * b.hi)));
 }
 
 // One Newton correction on the leading quotient, which doubles the correct
@@ -172,7 +201,7 @@ struct DoubleDouble {
         return {.hi = quotient, .lo = 0.0};
     }
     const DoubleDouble residual = a - (b * exact(quotient));
-    return quickTwoSum(quotient, residual.hi / b.hi);
+    return twoSum(quotient, residual.hi / b.hi);
 }
 
 // Multiply by a power of two: exact until it over- or underflows. scalbn

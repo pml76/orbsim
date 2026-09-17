@@ -295,9 +295,14 @@ TEST_CASE("an overflow stays an overflow rather than becoming a NaN", "[core][dd
     }
 }
 
-// quickTwoSum carries a precondition -- |a| >= |b| -- and the tests above use
-// it only through the operators, which satisfy it by construction. This pins
-// the contract itself so a future rewrite cannot quietly weaken it.
+// quickTwoSum carries a precondition -- |a| >= |b| -- and this pins the contract
+// itself so a future rewrite cannot quietly weaken it.
+//
+// This comment used to add "the tests above use it only through the operators,
+// which satisfy it by construction". **They did not**, and saying so here is the
+// point: asserting the precondition on 2026-09-17 caught operator+ calling it
+// with (0.0, 2^-60) whenever the high parts cancel. The operators use twoSum
+// now; see the note on quickTwoSum in core/DoubleDouble.hpp.
 TEST_CASE("quickTwoSum is exact when its precondition holds", "[core][dd]") {
     Sampler sampler;
     for (int i = 0; i < kQuickSumCases; ++i) {

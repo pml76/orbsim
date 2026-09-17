@@ -434,30 +434,25 @@ asked for.
      with explicit terms. The obvious candidate, ERFA, is **circular** -- it is
      what computes our Sun -- so this option needs a source that does not exist
      yet, and would weaken `VERIFICATION.md` rule 3 rather than serve it.
-9. **`quickTwoSum`'s documented precondition is violated by
-    `DoubleDouble::operator+`.** Found 2026-09-17 by asserting it, which is what
-    an assertion is for. The compiler named the case exactly:
-    `quickTwoSum(0.0, 8.673617e-19)`, reached from `(1 + 2^-60) - 1`, where
-    `|a| = 0` is smaller than `|b| = 2^-60`. It happens whenever the high parts
-    cancel: `operator+` renormalises with `quickTwoSum(sum.hi, ...)`, and after
-    cancellation `sum.hi` can be smaller than the low terms it is being combined
-    with. `quickTwoSum` is exact only when `|a| >= |b|`; outside that its error
-    term can be wrong.
-    - **It is not known to be producing a wrong answer today.** Measured: using
-      the safe `twoSum` at all three renormalisation sites leaves every test
-      passing with identical counts, the cross-toolchain checksum included, so
-      nothing currently exercised changes. Where `a` is exactly zero the result
-      is provably still exact; the risk is the case where `sum.hi` is tiny but
-      nonzero.
-    - **The fix costs three extra floating-point operations per double-double
-      add, multiply and divide**, on the hottest path in the conversion --
-      `twoSum` is six operations where `quickTwoSum` is three.
-    - Options: use `twoSum` at the three sites (accuracy over speed, which is
-      working agreement 3); or order the arguments before calling; or narrow the
-      documented precondition to what the callers actually guarantee and prove
-      the cancellation case separately. **The assertion is not in the tree** --
-      it cannot be, while the code violates it -- so this is currently recorded
-      here and nowhere else in code.
+9. **`quickTwoSum`'s precondition: settled 2026-09-17, the operators use
+   `twoSum`.** Found by asserting it, which is what an assertion is for. The
+   compiler named the case during constant evaluation:
+   `quickTwoSum(0.0, 8.673617e-19)`, reached from `(1 + 2^-60) - 1`, where
+   `|a| = 0` is smaller than `|b| = 2^-60`. It happened whenever the high parts
+   cancelled -- `operator+` renormalised with `quickTwoSum(sum.hi, ...)` and
+   after cancellation `sum.hi` can be tiny or zero while the low terms are not.
+   `quickTwoSum` is exact only inside its precondition.
+
+   The three renormalisations use `twoSum` now: six operations rather than
+   three, correct for any pair. **The speed turned out not to be at stake** --
+   measured over the two heaviest suites, three runs each, the difference is
+   inside the noise, and every assertion including the cross-toolchain checksum
+   is unmoved. `quickTwoSum` is kept, its precondition now asserted, and
+   exercised by its own test, so the next caller gets the check rather than the
+   belief. Its test's comment used to claim the operators satisfied the
+   precondition by construction; that claim is what this disproved, and the
+   comment says so now.
+
 10. **The two `assign*` out-parameters in `elementsFromState`: settled, they
     stay.** `assignInPlaneAngles` and `assignConic` take an in/out `Elements&`.
     Converting them to return their results was tried on 2026-09-17 and reverted:
