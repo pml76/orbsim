@@ -87,3 +87,19 @@ quadtree does.
 This closes the question [`0007`](0007-render-quality-is-a-struct.md) left
 open. Decision 19 of [the register](../plan/milestone-1-decisions.md); built by
 [M1-12](../plan/tasks/m1-12-render-quality.md).
+
+## Update, 2026-09-17: the Vec3 paragraph is under review
+
+The paragraph above -- *"Vectors stay `Vec3` of `f64`. A vector's unit is a
+property of what it represents, and that is carried by the struct holding it"* --
+is the one part of this record the owner has asked to revisit.
+[ADR 0019](0019-vectors-carry-their-unit.md) is the proposal, and it is
+*proposed* rather than accepted: nothing has changed yet.
+
+The argument that reopened it is not that the paragraph was wrong when written.
+It is that [ADR 0006](0006-simulation-not-sandbox.md) changed what a vector
+means here. With a real epoch and real reference frames, the same three doubles
+can be barycentric, geocentric or perifocal, and the holder carries the unit but
+not the frame. 0019 also records why the change cannot be small: `cross` of
+metres and metres-per-second is m^2/s, so a vector that knows its unit forces a
+dimension system, which is `VERIFICATION.md` rule 17.

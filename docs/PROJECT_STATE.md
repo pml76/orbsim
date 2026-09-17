@@ -398,12 +398,21 @@ asked for.
    **Still open: DE440 or VSOP87 for the ephemeris, and how far up the
    spherical-harmonic field to go.** Milestone 1 needs neither: it uses the
    analytic Sun and stops at J2.
-6. **Is `Vec3` staying unit-free?** Today a vector's unit is carried by the
-   struct holding it (`StateVector::pos` is metres). A `Vec3<Metres>` is
-   possible and much more invasive. ADR 0001 records the current answer, and
-   ADR 0006 sharpens the question: with several frames in play, a `Vec3` that
-   knows it holds barycentric metres would prevent a class of bug that is
-   otherwise invisible.
+6. **Is `Vec3` staying unit-free? The owner has said no; the shape is drafted
+   and awaiting a ruling.** [ADR 0019](adr/0019-vectors-carry-their-unit.md),
+   written 2026-09-17, status **proposed**. It supersedes a paragraph of
+   [ADR 0001](adr/0001-units-in-the-type-system.md) and forces the rule 17
+   question with it, because `cross` of metres and metres-per-second is m^2/s
+   and no named type can be the answer for long.
+
+   Four options are costed there; the recommendation is a full compile-time
+   dimension system, in two steps, **after M1-04**. Measured while writing it:
+   `Vec3` appears 104 times in `src/` and `tests/` and **zero times in
+   `src/render/` or `src/app/`**, so this is the cheapest it will ever be --
+   phase A adds a camera, phase C a quadtree, phase F the first narrowing of a
+   position to `f32`. Read the record before agreeing or disagreeing; it also
+   says what it deliberately does not decide, which is frames.
+
 7. **MSVC warnings: settled 2026-09-17, `/Wall`.** ADR 0017's rule applied to
    the third compiler as to the other two. The folklore that `/Wall` is
    unusable was measured rather than repeated: over our own translation units

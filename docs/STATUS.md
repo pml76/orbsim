@@ -130,5 +130,9 @@ accepted**: 0008 to 0015 written by
 as an error — both on 2026-09-11, and 0018 — `stateFromElements` reports — on
 2026-09-13.
 
+**0019 is drafted but not accepted** — vectors carrying their unit, which forces
+compile-time dimensional analysis. It is the first record in this project with
+status *proposed*, and it decides nothing until the owner rules on it.
+
 An accepted ADR is immutable, so the numbers inside one are not maintained
 here: they are what was true when the decision was taken.

@@ -34,6 +34,7 @@ usually enough.
 | [0016](0016-the-astronomy-is-erfa.md) | The astronomy is ERFA's, called through typed wrappers | accepted | 2026-09-11 |
 | [0017](0017-every-warning-is-an-error.md) | Every warning the compiler has, as an error; a library's interface is answered at the site | accepted | 2026-09-11 |
 | [0018](0018-state-from-elements-reports.md) | `stateFromElements` reports, like every other conversion in `orbit/` | accepted | 2026-09-13 |
+| [0019](0019-vectors-carry-their-unit.md) | Vectors carry their unit, which forces compile-time dimensional analysis | **proposed** | 2026-09-17 |
 
 **0008 to 0015 record the decisions taken on 2026-09-08**, before milestone 1
 started. All twenty-six of those decisions are in
@@ -62,6 +63,13 @@ down with its reason; a warning raised by a library's interface is switched
 off at that site alone. It also refines one phrase of 0011: determinism is
 asserted with `bitIdentical()`, because the value types no longer have a
 floating-point `==`.
+
+**0019 is the first record with status *proposed* rather than *accepted*.** It
+was drafted on 2026-09-17 at the owner's request and decides nothing yet: it
+exists so the decision can be read before it is taken, because it supersedes a
+paragraph of 0001 and forces `VERIFICATION.md` rule 17, currently *undecided*,
+to be answered either way. An accepted record is immutable; a proposed one is a
+draft and may be rewritten until it is accepted or rejected.
 
 The worked example keeps its own two records under
 [`../../coding-guidelines-example/docs/adr/`](../../coding-guidelines-example/docs/adr/).
