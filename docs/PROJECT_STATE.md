@@ -398,20 +398,22 @@ asked for.
    **Still open: DE440 or VSOP87 for the ephemeris, and how far up the
    spherical-harmonic field to go.** Milestone 1 needs neither: it uses the
    analytic Sun and stops at J2.
-6. **Is `Vec3` staying unit-free? Half-settled 2026-09-17: the scalars moved,
-   `Vec3` did not, and the reason it did not is a measurement.**
-   [ADR 0019](adr/0019-vectors-carry-their-unit.md) is now **accepted in part**.
-   Step 1 is done -- mp-units `v2.5.0` is pinned and `core/Units.hpp`'s nine
-   types are built on it, so `Metres / Seconds` is a `MetresPerSecond` and
-   `Eccentricity` is a *kind* no other ratio converts into. Step 2, `Vec3<Q>`,
-   **went back to undecided**: the spike that was a precondition of accepting
-   the record found that mp-units provides no `vector_product` on quantities at
-   all -- not in `v2.5.0`, not on master 102 commits later -- so the
-   unit-carrying cross product, which was most of what step 2 was to buy, would
-   still be ours to write. The record supersedes
-   [ADR 0001](adr/0001-units-in-the-type-system.md) on the mechanism and forces
-   the rule 17 question with it, because `cross` of metres and
-   metres-per-second is m^2/s and no named type can be the answer for long.
+6. **Is `Vec3` staying unit-free? Settled 2026-09-17: no.**
+   [ADR 0019](adr/0019-vectors-carry-their-unit.md) is **accepted**, both steps
+   done, in two commits. `core/Units.hpp`'s nine types are built on mp-units
+   `v2.5.0` and `Vec3<R>` is templated on an mp-units reference, so
+   `Metres / Seconds` is a `MetresPerSecond`, `cross(r, v)` is m^2/s with no
+   named type needed, `Eccentricity` is a *kind* no other ratio converts into,
+   and `Position + Velocity` does not compile.
+
+   The thing that nearly stopped step 2 is worth remembering: **mp-units has no
+   `vector_product` on quantities**, in `v2.5.0` or on master 102 commits later
+   -- the overload its own blog post shows is a commented-out TODO. Templating
+   `Vec3` on the *reference* rather than on a quantity sidesteps it entirely,
+   because the reference algebra (`R1 * R2`) is supported and it is only the
+   vector operations that are ours. The record supersedes
+   [ADR 0001](adr/0001-units-in-the-type-system.md) on the mechanism and closes
+   rule 17 of [`VERIFICATION.md`](VERIFICATION.md) with it.
 
    Four options are costed there; the recommendation is a full compile-time
    dimension system, in two steps, **after M1-04**. Measured while writing it:

@@ -31,16 +31,16 @@ constexpr f64 kInf = std::numeric_limits<f64>::infinity();
 using orb::isFinite;
 using orb::isNaN;
 
-[[nodiscard]] constexpr bool isFinite(const Vec3& v) noexcept {
-    return isFinite(v.x) && isFinite(v.y) && isFinite(v.z);
+template <auto R> [[nodiscard]] constexpr bool isFinite(const Vec3<R>& v) noexcept {
+    return isFinite(v.x.value()) && isFinite(v.y.value()) && isFinite(v.z.value());
 }
 
 [[nodiscard]] constexpr bool isFinite(const StateVector& sv) noexcept {
     return isFinite(sv.pos) && isFinite(sv.vel);
 }
 
-static_assert(isFinite(Vec3{0.0, 1.0, -1e308}) && !isFinite(Vec3{0.0, 1.0, kInf}) &&
-                  !isFinite(Vec3{std::numeric_limits<f64>::quiet_NaN(), 0.0, 0.0}),
+static_assert(isFinite(Position{0.0, 1.0, -1e308}) && !isFinite(Position{0.0, 1.0, kInf}) &&
+                  !isFinite(Position{std::numeric_limits<f64>::quiet_NaN(), 0.0, 0.0}),
               "a vector is finite when every component is");
 static_assert(isFinite(StateVector{.pos = {7e6, 0, 0}, .vel = {0, 7546.0, 0}}) &&
                   !isFinite(StateVector{.pos = {7e6, 0, 0}, .vel = {0, kInf, 0}}),
@@ -552,22 +552,35 @@ solveUniversalAnomaly(const UniversalContext& ctx, f64 seconds) {
 // position falls into the subnormals, where it keeps fewer bits the smaller it
 // gets. That second one cost a 1e-112 m orbit 98% of its semi-latus rectum.
 struct ScaledVec {
-    Vec3 unit;      // scaled so the largest component lands in [0.5, 1)
+    Direction unit; // scaled so the largest component lands in [0.5, 1)
     int exponent{}; // the vector is unit * 2^exponent, exactly
 };
 
-[[nodiscard]] ScaledVec factorOutScale(const Vec3& v) noexcept {
-    const f64 largest = std::max({std::abs(v.x), std::abs(v.y), std::abs(v.z)});
+// **This is where the unit is dropped, and the only place it is.** Everything
+// below runs on double-doubles, and a DoubleDouble cannot carry a unit:
+// mp-units' representation concept requires `std::totally_ordered`, which
+// requires `operator==` on a floating-point type, which CODING_GUIDELINES
+// section 11 forbids and core/Units.hpp goes to some trouble to delete
+// (measured 2026-09-17). So the exact path is dimensionless by construction,
+// the caller keeps track of what the numbers mean, and the unit goes back on
+// at `elementsFromState`'s return. The shape is the one non-negotiable 8 uses
+// for f32 at the GPU boundary: one named function, and the conversion is
+// visible in its signature.
+template <auto R> [[nodiscard]] ScaledVec factorOutScale(const Vec3<R>& v) noexcept {
+    const f64 x = v.x.value();
+    const f64 y = v.y.value();
+    const f64 z = v.z.value();
+    const f64 largest = std::max({std::abs(x), std::abs(y), std::abs(z)});
     // Zero, an infinity or a NaN: nothing to scale, and every quantity built
     // from it comes out the same whether it is scaled or not.
-    if (!(largest > 0.0) || !isFinite(largest)) return {.unit = v, .exponent = 0};
+    if (!(largest > 0.0) || !isFinite(largest)) return {.unit = Direction{x, y, z}, .exponent = 0};
     const int exponent = std::ilogb(largest) + 1;
     // Per component, as core/Math.hpp's length() does, because scalbn(1.0, -k)
     // would itself overflow when the largest component is subnormal.
     return {
-        .unit = Vec3{std::scalbn(v.x, -exponent),
-                     std::scalbn(v.y, -exponent),
-                     std::scalbn(v.z, -exponent)},
+        .unit = Direction{std::scalbn(x, -exponent),
+                          std::scalbn(y, -exponent),
+                          std::scalbn(z, -exponent)},
         .exponent = exponent,
     };
 }
@@ -581,15 +594,16 @@ struct Vec3Exact {
 // where the whole benefit comes from: r x v cancels to nothing when the
 // velocity is nearly parallel to the position, and a plain cross product has
 // already thrown the answer away by the time anything else sees it.
-[[nodiscard]] constexpr DoubleDouble dotExact(const Vec3& a, const Vec3& b) noexcept {
-    return (twoProduct(a.x, b.x) + twoProduct(a.y, b.y)) + twoProduct(a.z, b.z);
+[[nodiscard]] constexpr DoubleDouble dotExact(const Direction& a, const Direction& b) noexcept {
+    return (twoProduct(a.x.value(), b.x.value()) + twoProduct(a.y.value(), b.y.value())) +
+           twoProduct(a.z.value(), b.z.value());
 }
 
-[[nodiscard]] constexpr Vec3Exact crossExact(const Vec3& a, const Vec3& b) noexcept {
+[[nodiscard]] constexpr Vec3Exact crossExact(const Direction& a, const Direction& b) noexcept {
     return {
-        .x = twoProduct(a.y, b.z) - twoProduct(a.z, b.y),
-        .y = twoProduct(a.z, b.x) - twoProduct(a.x, b.z),
-        .z = twoProduct(a.x, b.y) - twoProduct(a.y, b.x),
+        .x = twoProduct(a.y.value(), b.z.value()) - twoProduct(a.z.value(), b.y.value()),
+        .y = twoProduct(a.z.value(), b.x.value()) - twoProduct(a.x.value(), b.z.value()),
+        .z = twoProduct(a.x.value(), b.y.value()) - twoProduct(a.y.value(), b.x.value()),
     };
 }
 
@@ -597,7 +611,7 @@ struct Vec3Exact {
     return ((v.x * v.x) + (v.y * v.y)) + (v.z * v.z);
 }
 
-[[nodiscard]] constexpr Vec3 roundedToDouble(const Vec3Exact& v) noexcept {
+[[nodiscard]] constexpr Direction roundedToDouble(const Vec3Exact& v) noexcept {
     return {toDouble(v.x), toDouble(v.y), toDouble(v.z)};
 }
 
@@ -609,22 +623,27 @@ struct Vec3Exact {
 //
 // Zero tolerances throughout: the claim is exactness, and `==` on a double does
 // not survive -Wfloat-equal (ADR 0017).
-static_assert(nearlyEqual(toDouble(dotExact(Vec3{1e16, 1.0, 0.0}, Vec3{1.0, 1.0, 0.0})),
+static_assert(nearlyEqual(toDouble(dotExact(Direction{1e16, 1.0, 0.0}, Direction{1.0, 1.0, 0.0})),
                           1e16,
                           Tolerance{0.0}),
               "rounded back to a double, the exact dot product is what a double would have given");
-static_assert(nearlyEqual(dotExact(Vec3{1e16, 1.0, 0.0}, Vec3{1.0, 1.0, 0.0}).lo,
+static_assert(nearlyEqual(dotExact(Direction{1e16, 1.0, 0.0}, Direction{1.0, 1.0, 0.0}).lo,
                           1.0,
                           Tolerance{0.0}),
               "and the digit the double lost is still there, in the low word");
-static_assert(nearlyEqual(toDouble(dotExact(Vec3{1, 2, 3}, Vec3{4, 5, 6})), 32.0, Tolerance{0.0}),
+static_assert(nearlyEqual(toDouble(dotExact(Direction{1, 2, 3}, Direction{4, 5, 6})),
+                          32.0,
+                          Tolerance{0.0}),
               "an ordinary dot product is unchanged");
-static_assert(nearlyEqual(toDouble(normSquaredExact(crossExact(Vec3{1, 0, 0}, Vec3{0, 1, 0}))),
+static_assert(nearlyEqual(toDouble(normSquaredExact(crossExact(Direction{1, 0, 0},
+                                                               Direction{0, 1, 0}))),
                           1.0,
                           Tolerance{0.0}),
               "x cross y is a unit vector, and its exact norm squared is one");
-static_assert(nearlyEqual(lengthSq(roundedToDouble(crossExact(Vec3{1, 0, 0}, Vec3{0, 1, 0})) -
-                                   Vec3{0, 0, 1}),
+static_assert(nearlyEqual(lengthSq(roundedToDouble(crossExact(Direction{1, 0, 0},
+                                                              Direction{0, 1, 0})) -
+                                   Direction{0, 0, 1})
+                              .value(),
                           0.0,
                           Tolerance{0.0}),
               "x cross y is z, through the exact path and back");
@@ -672,9 +691,9 @@ struct ExactState {
     DoubleDouble ecc;         // |evec|
     DoubleDouble eCosNu;
     DoubleDouble eSinNu;
-    Vec3 h;        // r x v, on the scaled vectors: a direction, not a magnitude
-    Vec3 evec;     // toward periapsis, likewise a direction; `ecc` is its length
-    f64 hOverRv{}; // |h| / (|r| |v|), the sine of the angle between r and v
+    Direction h;    // r x v, on the scaled vectors: a direction, not a magnitude
+    Direction evec; // toward periapsis, likewise a direction; `ecc` is its length
+    f64 hOverRv{};  // |h| / (|r| |v|), the sine of the angle between r and v
 };
 
 [[nodiscard]] ExactState exactStateOf(const StateVector& sv, GravParam mu) noexcept {
@@ -712,9 +731,9 @@ struct ExactState {
         return radial - along;
     };
     const ScaledVec3Exact evec = factorOutScale({
-        .x = component(r.unit.x, v.unit.x),
-        .y = component(r.unit.y, v.unit.y),
-        .z = component(r.unit.z, v.unit.z),
+        .x = component(r.unit.x.value(), v.unit.x.value()),
+        .y = component(r.unit.y.value(), v.unit.y.value()),
+        .z = component(r.unit.z.value(), v.unit.z.value()),
     });
 
     return {
@@ -736,11 +755,16 @@ struct ExactState {
 // from. Grouped into a struct rather than passed as adjacent Vec3 parameters,
 // which would transpose in silence (I.24, and
 // `bugprone-easily-swappable-parameters` would say so).
+// Only `r` carries a unit. The other three arrive from the exact path, which
+// works on mantissa vectors with the powers of two factored out, so they are
+// directions and their magnitudes mean nothing on their own -- which is why
+// the equatorial test below compares `nmag` against `hmag` rather than against
+// anything absolute.
 struct OrbitFrame {
-    Vec3 r;    // position, for the argument of latitude of a circular orbit
-    Vec3 h;    // specific angular momentum
-    Vec3 node; // toward the ascending node; zero for an equatorial orbit
-    Vec3 evec; // toward periapsis; zero for a circular orbit
+    Position r;     // position, for the argument of latitude of a circular orbit
+    Direction h;    // specific angular momentum, as a direction
+    Direction node; // toward the ascending node; zero for an equatorial orbit
+    Direction evec; // toward periapsis; zero for a circular orbit
     f64 eCosNu{};
     f64 eSinNu{};
 };
@@ -754,23 +778,25 @@ struct OrbitFrame {
 // `bugprone-easily-swappable-parameters` exists to catch. Recomputing two
 // lengths once per conversion is not a cost anything can measure.
 void assignInPlaneAngles(Elements& el, const OrbitFrame& frame) {
-    const f64 nmag = length(frame.node);
-    const f64 hmag = length(frame.h);
+    const f64 nmag = length(frame.node).value();
+    const f64 hmag = length(frame.h).value();
 
     const bool circular = el.ecc.value() < kCircularTol;
     const bool equatorial = nmag < kEquatorialTol * hmag;
 
     // Reference direction for angles measured in the orbital plane: the
     // ascending node where it exists, otherwise the x-axis.
-    el.lan = equatorial ? Radians{0.0} : wrapTau(Radians{std::atan2(frame.node.y, frame.node.x)});
-    const Vec3 ref = equatorial ? Vec3{1, 0, 0} : frame.node;
+    el.lan = equatorial ? Radians{0.0}
+                        : wrapTau(Radians{std::atan2(frame.node.y.value(), frame.node.x.value())});
+    const Direction ref = equatorial ? Direction{1, 0, 0} : frame.node;
 
     if (circular) {
         // No periapsis to point at, so angles run from the reference direction
         // straight to the spacecraft: argument of latitude, or true longitude.
         el.aop = Radians{0.0};
         f64 u = angleBetween(ref, frame.r).value();
-        if (dot(cross(ref, frame.r), frame.h) < 0.0) u = kTau - u; // resolve the half-turn
+        // resolve the half-turn
+        if (dot(cross(ref, frame.r), frame.h).value() < 0.0) u = kTau - u;
         el.tra = wrapTau(Radians{u});
         return;
     }
@@ -780,8 +806,8 @@ void assignInPlaneAngles(Elements& el, const OrbitFrame& frame) {
     // |ref| and |evec| are common factors that atan2 does not care about --
     // which is what makes this work when the eccentricity vector is short. The
     // half-turn falls out of the pair instead of needing a second test.
-    const f64 aopSine = dot(cross(ref, frame.evec), frame.h) / hmag;
-    const f64 aopCosine = dot(ref, frame.evec);
+    const f64 aopSine = dot(cross(ref, frame.evec), frame.h).value() / hmag;
+    const f64 aopCosine = dot(ref, frame.evec).value();
     el.aop = wrapTau(Radians{std::atan2(aopSine, aopCosine)});
 
     // The true anomaly from e sin nu and e cos nu, which the conversion has
@@ -987,9 +1013,10 @@ std::expected<Elements, OrbitError> elementsFromState(const StateVector& sv, Gra
     // orbit approaching the equator from either side: the error goes as the
     // square root of the rounding, so 1.6e-13 at an inclination of pi - 1e-4
     // became 3.3e-16 when this changed.
-    el.inc = Radians{std::atan2(std::hypot(state.h.x, state.h.y), state.h.z)};
+    el.inc =
+        Radians{std::atan2(std::hypot(state.h.x.value(), state.h.y.value()), state.h.z.value())};
 
-    const Vec3 node = cross(Vec3{0, 0, 1}, state.h); // points at the ascending node
+    const Direction node = cross(Direction{0, 0, 1}, state.h); // points at the ascending node
 
     assignConic(el, state);
     assignInPlaneAngles(el,
@@ -1041,13 +1068,14 @@ std::expected<StateVector, OrbitError> stateFromElements(const Elements& el, Gra
     const f64 k = std::sqrt(mu.value() / p);
 
     // Perifocal frame: x toward periapsis, z along angular momentum.
-    const Vec3 rPerifocal{rmag * cosNu, rmag * sinNu, 0.0};
-    const Vec3 vPerifocal{-k * sinNu, k * eccentricityPlusCosTrueAnomaly(el), 0.0};
+    const Position rPerifocal{rmag * cosNu, rmag * sinNu, 0.0};
+    const Velocity vPerifocal{-k * sinNu, k * eccentricityPlusCosTrueAnomaly(el), 0.0};
 
     // Perifocal -> inertial: Rz(lan) * Rx(inc) * Rz(aop), applied right to left.
-    const Quat rot = Quat::fromAxisAngle({0, 0, 1}, el.lan) *
-                     Quat::fromAxisAngle({1, 0, 0}, el.inc) *
-                     Quat::fromAxisAngle({0, 0, 1}, el.aop);
+    // The axes are Directions: they say which way, and nothing about how far.
+    const Quat rot = Quat::fromAxisAngle(Direction{0, 0, 1}, el.lan) *
+                     Quat::fromAxisAngle(Direction{1, 0, 0}, el.inc) *
+                     Quat::fromAxisAngle(Direction{0, 0, 1}, el.aop);
 
     const StateVector out{.pos = rot.rotate(rPerifocal), .vel = rot.rotate(vPerifocal)};
 
@@ -1274,10 +1302,15 @@ lagrangeStep(const StateVector& sv, const UniversalContext& ctx, const Universal
     const f64 c3 = solved.c3;
     const f64 sigma = ctx.rdotv / ctx.sqrtMu;
 
+    // f and gdot are dimensionless, g is a time and fdot a reciprocal time.
+    // Typed, because this is the combination that gets written wrong: `pos * f
+    // + vel * g` only balances if g is in seconds, and until 2026-09-17 nothing
+    // said so. Now `vel * Seconds` is a position and the compiler checks the
+    // four of them against each other.
     const f64 f = 1.0 - ((chi * chi / ctx.r0) * c2);
-    const f64 g = ((sigma * chi * chi * c2) + (ctx.r0 * chi * (1.0 - (psi * c3)))) / ctx.sqrtMu;
-    const Vec3 rNew = (sv.pos * f) + (sv.vel * g);
-    const f64 rMag = length(rNew);
+    const Seconds g{((sigma * chi * chi * c2) + (ctx.r0 * chi * (1.0 - (psi * c3)))) / ctx.sqrtMu};
+    const Position rNew = (sv.pos * f) + (sv.vel * g);
+    const f64 rMag = length(rNew).value();
 
     // This was ORBSIM_ENSURES(rMag > 0.0), and that was the wrong half of the
     // ADR 0002 split. A caller can reach it: with an enormous speed and a
@@ -1290,7 +1323,7 @@ lagrangeStep(const StateVector& sv, const UniversalContext& ctx, const Universal
     if (!(rMag > 0.0)) return std::unexpected(OrbitError::DegenerateState);
 
     const f64 gdot = 1.0 - ((chi * chi / rMag) * c2);
-    const f64 fdot = (ctx.sqrtMu / (rMag * ctx.r0)) * chi * ((psi * c3) - 1.0);
+    const PerSecond fdot{(ctx.sqrtMu / (rMag * ctx.r0)) * chi * ((psi * c3) - 1.0)};
     const StateVector out{.pos = rNew, .vel = (sv.pos * fdot) + (sv.vel * gdot)};
 
     // The same postcondition elementsFromState carries: a success must be a
@@ -1311,7 +1344,7 @@ std::expected<StateVector, OrbitError> propagate(const StateVector& sv, GravPara
     }
     if (!(mu.value() > 0.0)) return std::unexpected(OrbitError::NonPositiveGravity);
 
-    const f64 r0 = length(sv.pos);
+    const f64 r0 = length(sv.pos).value();
     // This used to silently return the input, which turned a loud, findable
     // error into a spacecraft that mysteriously stops moving three hours into a
     // flight. A zero radius is a bug in whatever produced the state -- but the
@@ -1319,7 +1352,7 @@ std::expected<StateVector, OrbitError> propagate(const StateVector& sv, GravPara
     if (!(r0 > 0.0)) return std::unexpected(OrbitError::DegenerateState);
 
     const f64 m = mu.value();
-    const f64 v0 = length(sv.vel);
+    const f64 v0 = length(sv.vel).value();
 
     // Same as in elementsFromState: a magnitude beyond the largest double is
     // infinite, and infinity passes the `r0 > 0.0` test above. Without this the
@@ -1329,7 +1362,7 @@ std::expected<StateVector, OrbitError> propagate(const StateVector& sv, GravPara
         return std::unexpected(OrbitError::NotFinite);
     }
 
-    const f64 rdotv = dot(sv.pos, sv.vel);
+    const f64 rdotv = dot(sv.pos, sv.vel).value();
     const f64 sqrtMu = std::sqrt(m);
     const f64 alpha = (2.0 / r0) - (v0 * v0 / m); // reciprocal of the semi-major axis
 
@@ -1344,7 +1377,7 @@ std::expected<StateVector, OrbitError> propagate(const StateVector& sv, GravPara
     }
 
     // The semi-latus rectum, which only the parabolic starting guess uses.
-    const f64 hmag = length(cross(sv.pos, sv.vel));
+    const f64 hmag = length(cross(sv.pos, sv.vel)).value();
     const UniversalContext ctx{
         .mu = m,
         .sqrtMu = sqrtMu,

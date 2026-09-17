@@ -63,13 +63,23 @@ inline constexpr auto kDegree = mp_units::angular::degree;
 inline constexpr struct EccentricityKind final : mp_units::quantity_spec<mp_units::dimensionless> {
 } kEccentricityKind;
 
-// The base for every physical scalar: an mp-units quantity, with this project's
-// house rules put back on top of it.
+// The type of every physical scalar: an mp-units quantity, with this
+// project's house rules put back on top of it.
+//
+// **One template, not nine structs** (changed 2026-09-17 while doing ADR 0019
+// step 2). The nine names below are aliases of it. That matters because vector
+// arithmetic produces quantities with no name at all -- `cross(r, v)` is m2/s
+// and its own dot product is m4/s2 -- and those results have to obey the same
+// rules as `Metres` does. With nine hand-written structs they could not: an
+// unnamed result would have been a bare mp-units quantity, on which `==`
+// compiles. Aliasing one template gives `Scalar<m2/s>` exactly what
+// `Scalar<metre>` has.
 //
 // mp-units' own `quantity` provides `==` and silences -Wfloat-equal inside it,
-// and it lets a quantity of one unit convert implicitly to another of the same
-// dimension. Both are reasonable for a general-purpose library and neither is
-// allowed here, so this template derives rather than aliases, and restores:
+// lets a quantity of one unit convert implicitly to another of the same
+// dimension, and will add a `Degrees` to a `Radians` because both are angles.
+// All three are reasonable for a general-purpose library and none is allowed
+// here, so this template derives rather than aliases, and restores:
 //
 //   * **no `==`.** On a double it is the comparison CODING_GUIDELINES section
 //     11 forbids and -Wfloat-equal reports (ADR 0017). Exact equality is
@@ -79,153 +89,147 @@ inline constexpr struct EccentricityKind final : mp_units::quantity_spec<mp_unit
 //     own; toRadians() says so by name. The facade inherits no constructors
 //     from the base, so the conversion would need two user-defined steps and
 //     the language refuses it.
+//   * **no arithmetic across two units of one dimension.** `Degrees + Radians`
+//     is deleted below rather than merely unwritten, because leaving it
+//     unwritten is not enough -- mp-units declares its own `operator+` as a
+//     hidden friend and it is found by ADL. That hole shipped in the first
+//     version of this header and is the reason the deleted overloads exist.
 //
-// Same-unit arithmetic returns the named type, as it did before mp-units, so
-// `Metres + Metres` is a `Metres` and not a bare quantity. The operators are
-// hidden friends rather than members because a member would shadow the base's
-// own and the linter reports that (bugprone-derived-method-shadowing-base-
-// method). Arithmetic that *changes* the unit is deliberately not declared
-// here: it falls through to mp-units, which is the entire point.
-template <typename Derived, auto kReference> struct Unit : mp_units::quantity<kReference, f64> {
+// Arithmetic is closed over this template: same unit in, same unit out for
+// `+` and `-`; the product or quotient reference for `*` and `/`. So every
+// intermediate in a chain is a `Scalar<R>` and none of them accepts `==`.
+template <auto kReference> struct Scalar : mp_units::quantity<kReference, f64> {
     using base = mp_units::quantity<kReference, f64>;
+
+    // **Zero, not indeterminate.** mp-units' quantity declares its storage
+    // without an initialiser and defaults its default constructor, so
+    // `= default` here would leave `Metres m;` holding whatever was on the
+    // stack. The hand-rolled base this replaced had `f64 value{}` and
+    // zero-initialised; keeping that is not a preference but the difference
+    // between a deterministic simulation and one that is not.
+    // cppcoreguidelines-pro-type-member-init found it, on the seven
+    // uninitialised members of Elements (CLAUDE.md rule 5).
+    constexpr Scalar() noexcept : Scalar(f64{}) {}
+
+    // "this many of my unit". Explicit, or the type converts from a bare f64 on
+    // its own and rebuilds the exact problem it was introduced to solve.
+    explicit constexpr Scalar(f64 v) noexcept : base(v * kReference) {}
+
+    // From an mp-units quantity of the same reference -- the result of an
+    // expression that went through the dimension system and came back.
+    explicit constexpr Scalar(base q) noexcept : base(q) {}
 
     [[nodiscard]] constexpr f64 value() const noexcept {
         return this->numerical_value_in(base::unit);
     }
 
-    // Hidden friends taking Derived on both sides, not members. As members the
-    // implicit object parameter is `const Unit&`, so mp-units' own comparison
-    // friend -- which takes the derived type exactly -- wins on the left-hand
-    // argument while ours wins on the right, and every `a < b` is ambiguous.
-    // Taking Derived twice makes both arguments exact and settles it.
-    [[nodiscard]] friend constexpr auto operator<=>(Derived l, Derived r) noexcept {
+    // Hidden friends taking Scalar on both sides, not members. As a member the
+    // implicit object parameter is `const Scalar&` while mp-units' own
+    // comparison friend takes the derived type exactly, so ours wins on the
+    // right-hand argument and theirs on the left and every `a < b` is
+    // ambiguous. Taking Scalar twice makes both arguments exact and settles it.
+    [[nodiscard]] friend constexpr auto operator<=>(Scalar l, Scalar r) noexcept {
         return l.value() <=> r.value();
     }
-    friend bool operator==(Derived, Derived) = delete;
+    friend bool operator==(Scalar, Scalar) = delete;
 
-    [[nodiscard]] constexpr bool bitIdentical(Derived other) const noexcept {
+    [[nodiscard]] constexpr bool bitIdentical(Scalar other) const noexcept {
         return bitsOf(value()) == bitsOf(other.value());
     }
 
-    [[nodiscard]] friend constexpr Derived operator-(Derived q) noexcept {
-        return Derived{-static_cast<const base&>(q)};
+    [[nodiscard]] friend constexpr Scalar operator-(Scalar q) noexcept {
+        return Scalar{-static_cast<const base&>(q)};
     }
-    [[nodiscard]] friend constexpr Derived operator+(Derived l, Derived r) noexcept {
-        return Derived{static_cast<const base&>(l) + static_cast<const base&>(r)};
+    [[nodiscard]] friend constexpr Scalar operator*(Scalar q, f64 s) noexcept {
+        return Scalar{static_cast<const base&>(q) * s};
     }
-    [[nodiscard]] friend constexpr Derived operator-(Derived l, Derived r) noexcept {
-        return Derived{static_cast<const base&>(l) - static_cast<const base&>(r)};
+    [[nodiscard]] friend constexpr Scalar operator*(f64 s, Scalar q) noexcept {
+        return Scalar{static_cast<const base&>(q) * s};
     }
-    [[nodiscard]] friend constexpr Derived operator*(Derived q, f64 scale) noexcept {
-        return Derived{static_cast<const base&>(q) * scale};
-    }
-    [[nodiscard]] friend constexpr Derived operator*(f64 scale, Derived q) noexcept {
-        return Derived{static_cast<const base&>(q) * scale};
-    }
-    [[nodiscard]] friend constexpr Derived operator/(Derived q, f64 scale) noexcept {
-        return Derived{static_cast<const base&>(q) / scale};
+    [[nodiscard]] friend constexpr Scalar operator/(Scalar q, f64 s) noexcept {
+        return Scalar{static_cast<const base&>(q) / s};
     }
 
-    constexpr Derived& operator+=(Derived other) noexcept {
+    constexpr Scalar& operator+=(Scalar other) noexcept {
         static_cast<base&>(*this) += static_cast<const base&>(other);
-        return static_cast<Derived&>(*this);
+        return *this;
     }
-    constexpr Derived& operator-=(Derived other) noexcept {
+    constexpr Scalar& operator-=(Scalar other) noexcept {
         static_cast<base&>(*this) -= static_cast<const base&>(other);
-        return static_cast<Derived&>(*this);
+        return *this;
     }
-
-private:
-    // Only the named derived type may construct its base, which is what stops
-    // `struct Other : Unit<Radians, units::kRadian>` from compiling by accident
-    // -- and is what bugprone-crtp-constructor-accessibility asks for.
-    //
-    // Each type below therefore spells its three constructors out rather than
-    // writing `using Unit::Unit;`: an inherited constructor keeps the access it
-    // had in the base, so a using-declaration would republish these as private
-    // and `Radians{1.0}` would not compile.
-    friend Derived;
-
-    // **Zero, not indeterminate.** mp-units' quantity declares its storage
-    // without an initialiser and defaults its default constructor, so `= default`
-    // here would leave `Metres m;` holding whatever was on the stack. The old
-    // hand-rolled base had `f64 value{}` and zero-initialised; keeping that is
-    // not a preference but the difference between a deterministic simulation and
-    // one that is not. cppcoreguidelines-pro-type-member-init found this, on the
-    // seven uninitialised members of Elements, which is the tooling earning its
-    // place (CLAUDE.md rule 5).
-    constexpr Unit() noexcept : Unit(f64{}) {}
-
-    // "this many of my unit". Explicit, or the type converts from a bare f64 on
-    // its own and rebuilds the exact problem it was introduced to solve.
-    explicit constexpr Unit(f64 v) noexcept : base(v * kReference) {}
-
-    // From an mp-units quantity of the same reference -- the result of an
-    // expression that went through the dimension system and came back.
-    explicit constexpr Unit(base q) noexcept : base(q) {}
 };
 
-struct Radians : Unit<Radians, units::kRadian> {
-    constexpr Radians() noexcept = default;
-    explicit constexpr Radians(f64 v) noexcept : Unit{v} {}
-    explicit constexpr Radians(base q) noexcept : Unit{q} {}
-};
+// Sum and difference: the same unit only.
+template <auto R1, auto R2>
+    requires(std::is_same_v<Scalar<R1>, Scalar<R2>>)
+[[nodiscard]] constexpr Scalar<R1> operator+(Scalar<R1> l, Scalar<R2> r) noexcept {
+    using base = Scalar<R1>::base;
+    return Scalar<R1>{static_cast<const base&>(l) + static_cast<const base&>(r)};
+}
+template <auto R1, auto R2>
+    requires(std::is_same_v<Scalar<R1>, Scalar<R2>>)
+[[nodiscard]] constexpr Scalar<R1> operator-(Scalar<R1> l, Scalar<R2> r) noexcept {
+    using base = Scalar<R1>::base;
+    return Scalar<R1>{static_cast<const base&>(l) - static_cast<const base&>(r)};
+}
 
-struct Degrees : Unit<Degrees, units::kDegree> {
-    constexpr Degrees() noexcept = default;
-    explicit constexpr Degrees(f64 v) noexcept : Unit{v} {}
-    explicit constexpr Degrees(base q) noexcept : Unit{q} {}
-};
+// And explicitly *not* across two units of one dimension. Deleted rather than
+// absent: mp-units' `operator+` is a hidden friend and ADL finds it, so an
+// overload that merely does not exist loses to one that does. These are an
+// exact match on both arguments and therefore win, and being deleted they make
+// the expression ill-formed -- which is what `addable` below measures.
+template <auto R1, auto R2>
+    requires(!std::is_same_v<Scalar<R1>, Scalar<R2>>)
+constexpr void operator+(Scalar<R1>, Scalar<R2>) = delete;
+template <auto R1, auto R2>
+    requires(!std::is_same_v<Scalar<R1>, Scalar<R2>>)
+constexpr void operator-(Scalar<R1>, Scalar<R2>) = delete;
 
-struct Metres : Unit<Metres, units::kMetre> {
-    constexpr Metres() noexcept = default;
-    explicit constexpr Metres(f64 v) noexcept : Unit{v} {}
-    explicit constexpr Metres(base q) noexcept : Unit{q} {}
-};
+// Product and quotient: the unit algebra, which is the whole reason mp-units
+// is here. The result is a Scalar again, so it carries the house rules however
+// long the chain gets.
+template <auto R1, auto R2>
+[[nodiscard]] constexpr auto operator*(Scalar<R1> l, Scalar<R2> r) noexcept {
+    return Scalar<R1 * R2>{l.value() * r.value()};
+}
+template <auto R1, auto R2>
+[[nodiscard]] constexpr auto operator/(Scalar<R1> l, Scalar<R2> r) noexcept {
+    return Scalar<R1 / R2>{l.value() / r.value()};
+}
 
-struct Seconds : Unit<Seconds, units::kSecond> {
-    constexpr Seconds() noexcept = default;
-    explicit constexpr Seconds(f64 v) noexcept : Unit{v} {}
-    explicit constexpr Seconds(base q) noexcept : Unit{q} {}
-};
-
-struct MetresPerSecond : Unit<MetresPerSecond, units::kMetre / units::kSecond> {
-    constexpr MetresPerSecond() noexcept = default;
-    explicit constexpr MetresPerSecond(f64 v) noexcept : Unit{v} {}
-    explicit constexpr MetresPerSecond(base q) noexcept : Unit{q} {}
-};
+// The nine names. Each is one line because everything they do lives in
+// Scalar<> above and in mp-units beneath it; adding a unit is adding a line.
+//
+// They are aliases rather than distinct types, so two of them over the same
+// reference would be the same type. That is fine here -- no two of these share
+// one -- and where a distinction is wanted without a distinct unit, the way to
+// get it is a *kind*, as Eccentricity does below.
+using Radians = Scalar<units::kRadian>;
+using Degrees = Scalar<units::kDegree>;
+using Metres = Scalar<units::kMetre>;
+using Seconds = Scalar<units::kSecond>;
+using MetresPerSecond = Scalar<units::kMetre / units::kSecond>;
 
 // Angular rate. Mean motion is the one the orbital code hands out.
-struct RadiansPerSecond : Unit<RadiansPerSecond, units::kRadian / units::kSecond> {
-    constexpr RadiansPerSecond() noexcept = default;
-    explicit constexpr RadiansPerSecond(f64 v) noexcept : Unit{v} {}
-    explicit constexpr RadiansPerSecond(base q) noexcept : Unit{q} {}
-};
+using RadiansPerSecond = Scalar<units::kRadian / units::kSecond>;
 
 // Specific orbital energy, J/kg (m^2/s^2). Negative for a bound orbit, zero
 // for a parabola, positive for an escape trajectory.
-struct SpecificEnergy : Unit<SpecificEnergy, mp_units::si::joule / mp_units::si::kilogram> {
-    constexpr SpecificEnergy() noexcept = default;
-    explicit constexpr SpecificEnergy(f64 v) noexcept : Unit{v} {}
-    explicit constexpr SpecificEnergy(base q) noexcept : Unit{q} {}
-};
+using SpecificEnergy = Scalar<mp_units::si::joule / mp_units::si::kilogram>;
 
-// Dimensionless, but not interchangeable with any other dimensionless quantity.
-struct Eccentricity : Unit<Eccentricity, kEccentricityKind[mp_units::one]> {
-    constexpr Eccentricity() noexcept = default;
-    explicit constexpr Eccentricity(f64 v) noexcept : Unit{v} {}
-    explicit constexpr Eccentricity(base q) noexcept : Unit{q} {}
-};
+// Dimensionless, but not interchangeable with any other dimensionless
+// quantity -- that is what the kind above buys.
+using Eccentricity = Scalar<kEccentricityKind[mp_units::one]>;
+
+// A reciprocal time. The Lagrange coefficient fdot is one, and naming it is
+// what lets `position * fdot` be checked as a velocity.
+using PerSecond = Scalar<mp_units::one / units::kSecond>;
 
 // Standard gravitational parameter GM of a central body, m^3/s^2.
-struct GravParam
-    : Unit<GravParam, mp_units::pow<3>(units::kMetre) / mp_units::pow<2>(units::kSecond)> {
-    constexpr GravParam() noexcept = default;
-    explicit constexpr GravParam(f64 v) noexcept : Unit{v} {}
-    explicit constexpr GravParam(base q) noexcept : Unit{q} {}
-};
+using GravParam = Scalar<mp_units::pow<3>(units::kMetre) / mp_units::pow<2>(units::kSecond)>;
 
-// Named, not implicit -- see the note on Unit above. The factor is mp-units',
+// Named, not implicit -- see the note on Scalar above. The factor is mp-units',
 // not ours: `.in()` applies the library's own degree-to-radian magnitude, which
 // is the sort of thing this project stopped hand-writing on 2026-09-17.
 [[nodiscard]] constexpr Radians toRadians(Degrees d) noexcept {
@@ -304,14 +308,46 @@ static_assert(
 static_assert(!std::is_convertible_v<Eccentricity, f64>,
               "a dimensionless quantity must not decay to a bare double");
 
-// The dimensional errors, refused. A concept rather than a bare requires-
-// expression because a requires-expression on non-dependent operands is
+// The dimensional errors, refused. Concepts rather than bare requires-
+// expressions because a requires-expression on non-dependent operands is
 // diagnosed rather than evaluated.
 template <typename A, typename B>
 concept addable = requires(const A& x, const B& y) { x + y; };
+template <typename A, typename B>
+concept equatable = requires(const A& x, const B& y) { x == y; };
+
 static_assert(addable<Metres, Metres>);
 static_assert(!addable<Metres, Seconds>, "a length plus a time must not compile");
 static_assert(!addable<Radians, Eccentricity>, "an angle plus a ratio must not compile");
+
+// **Two units of one dimension must not add either.** Both of these are
+// angles, so mp-units' own operator+ is perfectly willing; the deleted
+// overloads above are what stops it. This assertion is here because the first
+// version of this header did not have them and `Degrees + Radians` compiled --
+// a regression against what the hand-rolled types did, found by asking the
+// question rather than by anything failing.
+static_assert(!addable<Degrees, Radians>, "two angles in different units must not add");
+static_assert(!addable<Radians, Degrees>, "nor the other way round");
+
+// `==` is gone from every Scalar, including the ones with no name. An
+// intermediate such as r x v is m2/s and has no entry in the list of nine;
+// before Scalar<> was one template it came back as a bare mp-units quantity,
+// which accepts `==` and silences -Wfloat-equal while doing it.
+static_assert(!equatable<Metres, Metres>, "exact equality of a double is spelled out");
+static_assert(!equatable<Degrees, Radians>, "and not across units either");
+static_assert(
+    !equatable<decltype(Metres{1.0} / Seconds{1.0}), decltype(Metres{1.0} / Seconds{1.0})>,
+    "an unnamed quotient obeys the same rule as a named quantity");
+static_assert(!equatable<decltype(Metres{1.0} * Metres{1.0}), decltype(Metres{1.0} * Metres{1.0})>,
+              "and so does an unnamed product");
+
+// The unit algebra itself: a quotient is the quotient unit, and it is a
+// Scalar, not a bare quantity.
+static_assert(std::is_same_v<decltype(Metres{1.0} / Seconds{1.0}), MetresPerSecond>,
+              "a length over a time is exactly the named velocity type");
+static_assert(nearlyEqual((Metres{100.0} / Seconds{2.0}).value(), 50.0, Tolerance{0.0}));
+static_assert(nearlyEqual((MetresPerSecond{3.0} * Seconds{2.0}).value(), 6.0, Tolerance{0.0}),
+              "and a speed times a time is the length it travelled");
 
 } // namespace orb
 

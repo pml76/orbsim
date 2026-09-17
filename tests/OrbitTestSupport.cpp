@@ -29,12 +29,12 @@ std::string WithinRelTo::describe() const {
     return std::format("is within {:g} relative of {:.17g}", relTol_.value(), want_);
 }
 
-std::string WithinRelVec::describe() const {
+std::string WithinRelVecBase::describe() const {
     return std::format("is within {:g} relative of ({:.17g}, {:.17g}, {:.17g})",
                        relTol_.value(),
-                       want_.x,
-                       want_.y,
-                       want_.z);
+                       wantX_,
+                       wantY_,
+                       wantZ_);
 }
 
 #if defined(__GNUC__) && !defined(__clang__)

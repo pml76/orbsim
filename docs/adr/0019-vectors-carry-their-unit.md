@@ -1,10 +1,18 @@
 # ADR 0019: Vectors carry their unit
 
-Status: **accepted in part** (2026-09-17). **Step 1 is done** — mp-units is
-pinned and `core/Units.hpp`'s nine types are built on it. **Step 2, `Vec3<Q>`,
-is re-opened** rather than accepted: the spike that was a precondition of
-accepting this record found that mp-units does not provide `vector_product` on
-quantities at all, which is most of what step 2 was going to buy. See
+Status: **accepted** (2026-09-17), both steps done, in two commits on the same
+day. `core/Units.hpp`'s nine types are built on mp-units `v2.5.0`, and `Vec3<R>`
+is templated on an mp-units **reference** so that `cross(r, v)` is m²/s with no
+named type needed.
+
+Step 2 was briefly re-opened between the two commits, and the reason is the most
+useful thing in this record: the precondition spike found that **mp-units does
+not provide `vector_product` on quantities at all** — not in `v2.5.0`, not on
+master 102 commits later — which appeared to remove most of what step 2 was to
+buy. It does not, because templating `Vec3` on the *reference* rather than on a
+quantity leaves the unit algebra (`R1 * R2`) to the library and keeps only the
+vector operations here. That was worth finding out by building it rather than by
+reasoning about it. See
 [What the precondition spike measured](#what-the-precondition-spike-measured),
 which is the decisive section and was written after the rest.
 
@@ -232,6 +240,30 @@ Two steps, because the second is where the risk is:
    `test_orbit_scales.cpp` is the instrument: it pins the bits of an
    `elementsFromState` conversion, so if step 2 changes any number it will say
    so rather than leaving it to be noticed.
+
+   **Done 2026-09-17.** `Vec3<kReference>` carries `Scalar<kReference>`
+   components, so `pos.x` is a `Metres` and not a bare double. The instrument
+   held: **642,205 assertions in 66 test cases, unchanged**, the checksum
+   included, and the same count under clang 23.1.0, MSVC 14.51 and gcc-14.
+
+   Four things the change bought that were not on the list:
+
+   - **`Degrees + Radians` compiled** after step 1 and does not now. mp-units'
+     own `operator+` reached across the two types because both are the angle
+     dimension; the deleted overloads in `core/Units.hpp` are what stops it.
+     That hole shipped, and was found by asking the question rather than by
+     anything failing.
+   - **`==` on an unnamed result.** `length()` used to return an `f64` where
+     `-Wfloat-equal` caught `==`; a raw mp-units quantity accepts it and
+     silences the warning internally. Making the nine names aliases of one
+     `Scalar<R>` template gives m²/s the same house rules `Metres` has.
+   - **The Lagrange coefficients are typed.** `pos * f + vel * g` only balances
+     if `g` is in seconds, and nothing said so; `g` is a `Seconds` and `fdot` a
+     `PerSecond` now, and the compiler checks the four against each other.
+   - **`specificEnergy` in the test support dropped `mu`'s unit** through a
+     `.value()`, leaving the expression subtracting a reciprocal length from an
+     energy. Numerically right, because the unit was restored by hand at the
+     call site, and unprovable until the compiler could see it.
 
 **Not before M1-04** because M1-04 and M1-06 are `core/Time.hpp` and a fixture
 reader, neither of which touches `Vec3`, and because sequencing a large

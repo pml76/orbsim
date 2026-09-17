@@ -67,8 +67,8 @@ struct ConicReference {
 };
 
 [[nodiscard]] ConicReference conicReference(const StateVector& sv, GravParam mu) {
-    const f64 r = std::hypot(sv.pos.x, sv.pos.y, sv.pos.z);
-    const f64 v = std::hypot(sv.vel.x, sv.vel.y, sv.vel.z);
+    const f64 r = std::hypot(sv.pos.x.value(), sv.pos.y.value(), sv.pos.z.value());
+    const f64 v = std::hypot(sv.vel.x.value(), sv.vel.y.value(), sv.vel.z.value());
     const f64 energy = (0.5 * v * v) - (mu.value() / r);
     return {
         .energy = SpecificEnergy{energy},
@@ -121,7 +121,7 @@ TEST_CASE("heliocentric circular orbits", "[orbit][scales]") {
     for (const auto& c : kCases) {
         CAPTURE(c.name);
         const StateVector sv0 = circularState(kMuSun, c.radius);
-        const Seconds period{kTau * c.radius.value() / length(sv0.vel)};
+        const Seconds period = kTau * (c.radius / length(sv0.vel));
 
         const auto quarter = propagate(sv0, kMuSun, period * 0.25);
         INFO(errorName(quarter));
@@ -130,7 +130,7 @@ TEST_CASE("heliocentric circular orbits", "[orbit][scales]") {
         INFO("a quarter period is a quarter turn");
         REQUIRE_THAT(wrapPi(angleBetween(sv0.pos, quarter->pos) - Radians{kPi / 2}).value(),
                      WithinAbsOf(0.0, Tolerance{1e-9}));
-        REQUIRE_THAT(length(quarter->pos), WithinRelTo(c.radius.value(), Tolerance{1e-12}));
+        REQUIRE_THAT(length(quarter->pos).value(), WithinRelTo(c.radius.value(), Tolerance{1e-12}));
 
         const auto whole = propagate(sv0, kMuSun, period);
         INFO(errorName(whole));
@@ -202,7 +202,7 @@ TEST_CASE("parabolic trajectories", "[orbit][scales]") {
         REQUIRE(fwd.has_value());
 
         INFO("the position stays finite");
-        REQUIRE(std::isfinite(length(fwd->pos)));
+        REQUIRE(std::isfinite(length(fwd->pos).value()));
         INFO("the energy stays zero");
         REQUIRE_THAT(specificEnergy(*fwd, kMuEarth).value(),
                      WithinAbsOf(0.0, Tolerance{1e-9 * kMuEarth.value() / r0}));
@@ -412,9 +412,11 @@ TEST_CASE("length is exact at every binary scale", "[core][scales]") {
     int inexact = 0;
     int firstInexact = 0;
     for (int k = -1074; k <= 1020; ++k) {
-        const Vec3 v{std::scalbn(3.0, k), std::scalbn(4.0, k), std::scalbn(12.0, k)};
+        const Position v{std::scalbn(3.0, k), std::scalbn(4.0, k), std::scalbn(12.0, k)};
         const f64 want = std::scalbn(13.0, k);
-        if (!nearlyEqual(length(v), want, Tolerance{0.0}) && inexact++ == 0) firstInexact = k;
+        if (!nearlyEqual(length(v).value(), want, Tolerance{0.0}) && inexact++ == 0) {
+            firstInexact = k;
+        }
     }
     INFO(std::format("{} scales inexact, the first at 2^{}", inexact, firstInexact));
     REQUIRE(inexact == 0);
@@ -448,10 +450,10 @@ TEST_CASE("a nearly radial hyperbola at a tiny scale is not reported as closed",
     INFO("elementsFromState -> " << errorName(el));
     REQUIRE(el.has_value());
 
-    const f64 r = std::hypot(state.pos.x, state.pos.y, state.pos.z);
-    const f64 v = std::hypot(state.vel.x, state.vel.y, state.vel.z);
-    const Vec3 h = cross(state.pos, state.vel);
-    const f64 hOverMu = std::hypot(h.x, h.y, h.z) / mu.value();
+    const f64 r = std::hypot(state.pos.x.value(), state.pos.y.value(), state.pos.z.value());
+    const f64 v = std::hypot(state.vel.x.value(), state.vel.y.value(), state.vel.z.value());
+    const SpecificAngularMomentum h = cross(state.pos, state.vel);
+    const f64 hOverMu = std::hypot(h.x.value(), h.y.value(), h.z.value()) / mu.value();
     const f64 energy = (0.5 * v * v) - (mu.value() / r);
     const f64 eSquaredMinusOne = 2.0 * energy * hOverMu * hOverMu;
     const f64 eReference = 1.0 + (eSquaredMinusOne / (1.0 + std::sqrt(1.0 + eSquaredMinusOne)));
@@ -1255,8 +1257,8 @@ TEST_CASE("propagation is bit-identical across runs", "[orbit][scales]") {
         elA->aop.bitIdentical(elB->aop) && elA->tra.bitIdentical(elB->tra);
     INFO("elementsFromState is bit-identical");
     REQUIRE(elementsIdentical);
-    const Vec3 backA = stateOf(*elA, kMuEarth).pos;
-    const Vec3 backB = stateOf(*elB, kMuEarth).pos;
+    const Position backA = stateOf(*elA, kMuEarth).pos;
+    const Position backB = stateOf(*elB, kMuEarth).pos;
     CAPTURE(backA, backB);
     INFO("stateFromElements is bit-identical");
     REQUIRE(backA.bitIdentical(backB));
@@ -1498,10 +1500,10 @@ struct RoundTripBudget {
 
 [[nodiscard]] RoundTripBudget
 roundTripBudget(const StateVector& sv, const Elements& el, GravParam mu) {
-    const f64 r = length(sv.pos);
-    const f64 v = length(sv.vel);
-    const f64 rdotv = std::abs(dot(sv.pos, sv.vel));
-    const f64 h = length(cross(sv.pos, sv.vel));
+    const f64 r = length(sv.pos).value();
+    const f64 v = length(sv.vel).value();
+    const f64 rdotv = std::abs(dot(sv.pos, sv.vel).value());
+    const f64 h = length(cross(sv.pos, sv.vel)).value();
     const f64 alphaRadius = std::abs(2.0 - (r * v * v / mu.value()));
     const f64 band = std::isinf(el.sma.value()) ? 0.5 * alphaRadius : 0.0;
     const f64 scale = kRoundTripFactor * kUnitRoundoff * (1.0 + alphaRadius);
@@ -1543,17 +1545,17 @@ void checkRadiusAndSpeed(const StateVector& sv, GravParam mu) {
     // is what both are doing.
     const StateVector back = stateOf(*el, mu);
     INFO(std::format("position back {:.17g} m from {:.17g}, velocity {:.17g} from {:.17g}",
-                     length(back.pos),
-                     length(sv.pos),
-                     length(back.vel),
-                     length(sv.vel)));
-    REQUIRE(length(back.pos - sv.pos) / length(sv.pos) <= budget.radius.value());
-    REQUIRE(length(back.vel - sv.vel) / length(sv.vel) <= budget.speed.value());
+                     length(back.pos).value(),
+                     length(sv.pos).value(),
+                     length(back.vel).value(),
+                     length(sv.vel).value()));
+    REQUIRE((length(back.pos - sv.pos) / length(sv.pos)).value() <= budget.radius.value());
+    REQUIRE((length(back.vel - sv.vel) / length(sv.vel)).value() <= budget.speed.value());
 }
 
 // A uniform direction on the sphere: z uniform and the azimuth uniform is the
 // one pairing that does not crowd the poles.
-[[nodiscard]] Vec3 randomDirection(Sampler& sampler) {
+[[nodiscard]] Direction randomDirection(Sampler& sampler) {
     const f64 z = (2.0 * sampler.fraction()) - 1.0;
     const Radians azimuth = sampler.angle(kTau);
     const f64 ring = std::sqrt(1.0 - (z * z));
@@ -1564,8 +1566,9 @@ void checkRadiusAndSpeed(const StateVector& sv, GravParam mu) {
 // The seed vector is chosen to be well away from `dir`, so the cross product
 // is never a ratio of two roundings -- drawing a second random direction here
 // could return one parallel to the first.
-[[nodiscard]] Vec3 perpendicularTo(const Vec3& dir, Sampler& sampler) {
-    const Vec3 seed = (std::abs(dir.x) < 0.9) ? Vec3{1, 0, 0} : Vec3{0, 1, 0};
+[[nodiscard]] Direction perpendicularTo(const Direction& dir, Sampler& sampler) {
+    const Direction seed =
+        (std::abs(dir.x.value()) < 0.9) ? Direction{1, 0, 0} : Direction{0, 1, 0};
     return rotateAxis(normalize(cross(dir, seed)), dir, sampler.angle(kTau));
 }
 
@@ -1576,11 +1579,12 @@ void sweepOrdinaryOrbits(Sampler& sampler) {
         const Body& body = kBodies.at(i % kBodies.size());
         const f64 radius =
             sampler.logUniform({.lo = body.minPeriapsis.value(), .hi = body.maxSma.value()});
-        const Vec3 dir = randomDirection(sampler);
+        const Direction dir = randomDirection(sampler);
         const f64 speed = std::sqrt(body.mu.value() / radius) * (0.1 + (1.9 * sampler.fraction()));
         CAPTURE(kSweepSeed, i, body.name, radius, speed);
-        checkRadiusAndSpeed({.pos = dir * radius, .vel = randomDirection(sampler) * speed},
-                            body.mu);
+        checkRadiusAndSpeed(
+            {.pos = dir * Metres{radius}, .vel = randomDirection(sampler) * MetresPerSecond{speed}},
+            body.mu);
     }
 }
 
@@ -1593,15 +1597,15 @@ void sweepNearlyRadialOrbits(Sampler& sampler) {
         const Body& body = kBodies.at(i % kBodies.size());
         const f64 radius =
             sampler.logUniform({.lo = body.minPeriapsis.value(), .hi = body.maxSma.value()});
-        const Vec3 dir = randomDirection(sampler);
+        const Direction dir = randomDirection(sampler);
         const f64 speed = std::sqrt(body.mu.value() / radius) * (0.05 + (2.5 * sampler.fraction()));
         const f64 tangential = sampler.logUniform({.lo = 1e-11, .hi = 1e-2});
         const f64 outward = (sampler.fraction() < 0.5) ? 1.0 : -1.0;
-        const Vec3 vel = ((dir * (outward * std::sqrt(1.0 - (tangential * tangential)))) +
-                          (perpendicularTo(dir, sampler) * tangential)) *
-                         speed;
+        const Velocity vel = ((dir * (outward * std::sqrt(1.0 - (tangential * tangential)))) +
+                              (perpendicularTo(dir, sampler) * tangential)) *
+                             MetresPerSecond{speed};
         CAPTURE(kSweepSeed, i, body.name, radius, speed, tangential, outward);
-        checkRadiusAndSpeed({.pos = dir * radius, .vel = vel}, body.mu);
+        checkRadiusAndSpeed({.pos = dir * Metres{radius}, .vel = vel}, body.mu);
     }
 }
 
@@ -1613,16 +1617,16 @@ void sweepNearParabolicOrbits(Sampler& sampler) {
         const Body& body = kBodies.at(i % kBodies.size());
         const f64 radius =
             sampler.logUniform({.lo = body.minPeriapsis.value(), .hi = body.maxSma.value()});
-        const Vec3 dir = randomDirection(sampler);
+        const Direction dir = randomDirection(sampler);
         const f64 offset = sampler.logUniform({.lo = 1e-15, .hi = 1e-6});
         const f64 speed = std::sqrt(2.0 * body.mu.value() / radius) *
                           (1.0 + ((sampler.fraction() < 0.5) ? offset : -offset));
         const Radians flightPath{sampler.angle(kPi).value() - (kPi / 2.0)};
-        const Vec3 vel = ((dir * std::sin(flightPath.value())) +
-                          (perpendicularTo(dir, sampler) * std::cos(flightPath.value()))) *
-                         speed;
+        const Velocity vel = ((dir * std::sin(flightPath.value())) +
+                              (perpendicularTo(dir, sampler) * std::cos(flightPath.value()))) *
+                             MetresPerSecond{speed};
         CAPTURE(kSweepSeed, i, body.name, radius, speed, offset, flightPath.value());
-        checkRadiusAndSpeed({.pos = dir * radius, .vel = vel}, body.mu);
+        checkRadiusAndSpeed({.pos = dir * Metres{radius}, .vel = vel}, body.mu);
     }
 }
 
@@ -2463,12 +2467,12 @@ TEST_CASE("a nearly radial hyperbola's state is not a NaN position", "[orbit][sc
     constexpr f64 kExpectedRadius = 1548134.2629609336;
     constexpr f64 kExpectedSpeed = 707921.4896974104;
     INFO(std::format("radius {:.17g} m, want {:.17g}; speed {:.17g} m/s, want {:.17g}",
-                     length(sv->pos),
+                     length(sv->pos).value(),
                      kExpectedRadius,
-                     length(sv->vel),
+                     length(sv->vel).value(),
                      kExpectedSpeed));
-    REQUIRE(relativeError(length(sv->pos), kExpectedRadius) <= 1e-12);
-    REQUIRE(relativeError(length(sv->vel), kExpectedSpeed) <= 1e-12);
+    REQUIRE(relativeError(length(sv->pos).value(), kExpectedRadius) <= 1e-12);
+    REQUIRE(relativeError(length(sv->vel).value(), kExpectedSpeed) <= 1e-12);
 }
 
 // The same cancellation without the NaN, which is the worse failure of the two
@@ -2500,10 +2504,10 @@ TEST_CASE("an eccentricity that rounds to 1 does not halve the radius", "[orbit]
     // survives a parabola.
     constexpr f64 kExpectedRadius = 2.7999999999999998e+23;
     INFO(std::format("radius {:.17g} m, want {:.17g}, out by {:.3g}",
-                     length(sv->pos),
+                     length(sv->pos).value(),
                      kExpectedRadius,
-                     relativeError(length(sv->pos), kExpectedRadius)));
-    REQUIRE(relativeError(length(sv->pos), kExpectedRadius) <= 1e-12);
+                     relativeError(length(sv->pos).value(), kExpectedRadius)));
+    REQUIRE(relativeError(length(sv->pos).value(), kExpectedRadius) <= 1e-12);
 }
 
 // An anomaly the conic never reaches is refused rather than answered.

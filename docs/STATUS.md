@@ -50,7 +50,7 @@ opens a window and paces frames.** Nothing is drawn yet.
 
 | Component | State |
 |---|---|
-| `src/core/` | Scalars, strong unit types, Vec3, Quat, and `TimePoint` on five time scales — the representation; converting between scales is M1-04 and M1-05. Complete for what exists. |
+| `src/core/` | Scalars and vectors that carry their unit over mp-units, Quat, and `TimePoint` on five time scales — the representation; converting between scales is M1-04 and M1-05. Complete for what exists. |
 | `src/orbit/` | Two-body: state↔elements, universal-variable and element propagation, anomaly conversions. Correct at every scale from lunar to outer-solar-system. |
 | `src/render/` | Vulkan 1.3 device, swapchain, frame pacing, RAII handles, buffer upload, shader loading. **No pipelines, no drawing.** |
 | `src/app/` | Window, event loop, argument parsing, frame loop. |
@@ -133,15 +133,20 @@ accepted**: 0008 to 0015 written by
 as an error — both on 2026-09-11, and 0018 — `stateFromElements` reports — on
 2026-09-13.
 
-**0019 is accepted in part** (2026-09-17) — vectors carrying their unit, which
-forces compile-time dimensional analysis. Its **step 1 is done**: mp-units
-`v2.5.0` is pinned and `core/Units.hpp`'s nine types are built on it, so
-`Metres / Seconds` is a `MetresPerSecond` and `Eccentricity` is a *kind* no
-other ratio converts into. Its **step 2, `Vec3<Q>`, went back to undecided**:
-the precondition spike found mp-units has no `vector_product` on quantities at
-all, in `v2.5.0` or on master, which was most of what step 2 was to buy.
-0019's own "What the precondition spike measured" section carries the numbers,
-and it supersedes 0001 on the mechanism.
+**Nineteen are accepted.** 0019 — vectors carry their unit — landed in two
+commits on 2026-09-17, and both of its steps are done. `core/Units.hpp`'s nine
+types are built on mp-units `v2.5.0`, so `Metres / Seconds` is a
+`MetresPerSecond` and `Eccentricity` is a *kind* no other ratio converts into;
+and `Vec3<R>` is templated on an mp-units **reference**, so `cross(r, v)` is
+m²/s — a unit with no name in this codebase and none needed — and
+`Position + Velocity` does not compile. It supersedes 0001 on the mechanism and
+closes rule 17 of [`VERIFICATION.md`](VERIFICATION.md).
+
+The record's own "What the precondition spike measured" section carries the
+numbers, including the one that nearly stopped step 2: mp-units has no
+`vector_product` on quantities, in `v2.5.0` or on master. Templating `Vec3` on
+the reference rather than on a quantity sidesteps it — the unit algebra is the
+library's and the vector operations are ours.
 
 An accepted ADR is immutable, so the numbers inside one are not maintained
 here: they are what was true when the decision was taken.

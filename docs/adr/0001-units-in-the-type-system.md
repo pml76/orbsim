@@ -14,8 +14,9 @@ against them:
 
 - *"nothing produces a different unit from two others"* — `Metres / Seconds`
   now produces a `MetresPerSecond`, and that is the point of the change.
-- *"Vectors stay `Vec3` of `f64`"* — reopened rather than reversed; `0019`
-  explains why its step 2 went back to undecided.
+- *"Vectors stay `Vec3` of `f64`"* — reversed. `Vec3<R>` carries its unit in
+  its type, and `cross(r, v)` is m²/s without anything having to name that
+  unit.
 
 `Tolerance` is the one type still built on `Quantity<Derived>`, because it is a
 parameter of a comparison rather than a measurement of anything.

@@ -392,13 +392,14 @@ Every function you write, ask: *could this run at compile time?* Not "will it",
 *could it*. If the answer is yes, mark it `constexpr` and let the caller decide.
 
 ```cpp
-constexpr Vec3 cross(const Vec3& a, const Vec3& b) { ... }   // yes, good
+constexpr auto cross(const Vec3<R1>& a, const Vec3<R2>& b) { ... }   // yes, good
 ```
 
 And then — this is the part people forget — **prove it**:
 
 ```cpp
-static_assert(nearlyEqual(lengthSq(cross(Vec3{1, 0, 0}, Vec3{0, 1, 0}) - Vec3{0, 0, 1}),
+static_assert(nearlyEqual(lengthSq(cross(Direction{1, 0, 0}, Direction{0, 1, 0}) -
+                                   Direction{0, 0, 1}).value(),
                           0.0,
                           Tolerance{0.0}));
 ```
@@ -519,8 +520,10 @@ Three more from the same instinct:
   member gets initialized from another member that does not have a value yet.
   `-Wreorder` catches it, and it is already in `-Wall`.
 - **Default member initializers cover every constructor at once** — including
-  the one you add next year and forget to update. `Vec3`'s `f64 x{}, y{}, z{};`
-  is doing this, which is why `Vec3` cannot be constructed uninitialized.
+  the one you add next year and forget to update. `Vec3`'s `Component x{};`
+  is doing this, which is why `Vec3` cannot be constructed uninitialized — and
+  why `Scalar`'s default constructor zeroes explicitly rather than defaulting,
+  since the mp-units quantity underneath it does not.
 
 ---
 
@@ -695,7 +698,7 @@ Most projects can be sloppy here. Yours cannot.
 - **Never compare floats with `==`.** You know this. I am saying it anyway,
   because someone will do it in a debug check at 1am.
   *(Since 2026-09-11 it does not compile on the value types: `Quantity`,
-  `Vec3` and `Quat` have no `==`, and `-Wfloat-equal` reports one on a bare
+  `Vec3`, `Quat` and every `Scalar` have no `==`, and `-Wfloat-equal` reports one on a bare
   double -- gcc always, clang unless one side is a literal it holds exactly;
   see `docs/PROJECT_STATE.md` section 8. The two spellings left are
   `nearlyEqual(a, b, tolerance)`, with a zero tolerance for an exact result,

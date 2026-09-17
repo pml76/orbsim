@@ -184,9 +184,9 @@ TEST_CASE("known analytic values", "[orbit]") {
     const StateVector p = stateOf(e2, kMuEarth);
     const f64 rp = e2.sma.value() * (1.0 - e2.ecc.value());
     const f64 vp = std::sqrt(kMuEarth.value() * ((2.0 / rp) - (1.0 / e2.sma.value())));
-    REQUIRE_THAT(length(p.pos), WithinRelTo(rp, Tolerance{1e-12}));
+    REQUIRE_THAT(length(p.pos).value(), WithinRelTo(rp, Tolerance{1e-12}));
     INFO("periapsis speed (vis-viva)");
-    REQUIRE_THAT(length(p.vel), WithinRelTo(vp, Tolerance{1e-12}));
+    REQUIRE_THAT(length(p.vel).value(), WithinRelTo(vp, Tolerance{1e-12}));
 }
 
 // The two propagators share no code. Agreeing to 1e-9 over a range of orbits
@@ -297,7 +297,7 @@ TEST_CASE("propagation invariants", "[orbit]") {
     REQUIRE(apo.has_value());
 
     INFO("half a period from periapsis reaches apoapsis");
-    REQUIRE_THAT(length(apo->pos), WithinRelTo(info.apoapsis.value(), Tolerance{1e-9}));
+    REQUIRE_THAT(length(apo->pos).value(), WithinRelTo(info.apoapsis.value(), Tolerance{1e-9}));
 
     // A quarter period on a circular orbit is a quarter turn.
     const f64 rc = 7500e3;
@@ -314,7 +314,7 @@ TEST_CASE("propagation invariants", "[orbit]") {
     INFO("a quarter period is a quarter turn");
     REQUIRE_THAT(wrapPi(angleBetween(c0.pos, c1->pos) - Radians{kPi / 2}).value(),
                  WithinAbsOf(0.0, Tolerance{1e-9}));
-    REQUIRE_THAT(length(c1->pos), WithinRelTo(rc, Tolerance{1e-12}));
+    REQUIRE_THAT(length(c1->pos).value(), WithinRelTo(rc, Tolerance{1e-12}));
 }
 
 // Escape trajectories are not a special case in this code, so they need the

@@ -26,9 +26,13 @@
 namespace orb {
 
 // Position and velocity relative to the central body's inertial frame.
+//
+// The units used to be in those trailing comments. Since 2026-09-17 they are
+// in the types (ADR 0019 step 2), which is the difference between a convention
+// and a check: `sv.pos + sv.vel` no longer compiles.
 struct StateVector {
-    Vec3 pos; // m
-    Vec3 vel; // m/s
+    Position pos;
+    Velocity vel;
 };
 
 // Classical (Keplerian) orbital elements.

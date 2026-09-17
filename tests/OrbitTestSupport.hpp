@@ -19,6 +19,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_tostring.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
+#include <catch2/matchers/catch_matchers_templated.hpp>
 
 #include <algorithm>
 #include <cmath>
@@ -72,11 +73,15 @@ makeElements(Metres sma, Eccentricity ecc, Degrees inc, Degrees lan, Degrees aop
 // Specific orbital energy and angular momentum from a state: the two constants
 // of two-body motion, computed independently of anything in Orbit.cpp so that
 // a propagator can be checked against physics rather than against itself.
+// `mu / length(sv.pos)`, not `mu.value() / length(sv.pos)`. The old spelling
+// dropped mu's m^3/s^2 and left the expression subtracting a reciprocal length
+// from an energy -- numerically right, because the dropped unit was restored by
+// hand at the call site, and unprovable. The compiler checks it now.
 [[nodiscard]] inline SpecificEnergy specificEnergy(const StateVector& sv, GravParam mu) {
-    return SpecificEnergy{(0.5 * lengthSq(sv.vel)) - (mu.value() / length(sv.pos))};
+    return SpecificEnergy{(0.5 * lengthSq(sv.vel)) - (mu / length(sv.pos))};
 }
 
-[[nodiscard]] inline Vec3 specificAngularMomentum(const StateVector& sv) {
+[[nodiscard]] inline SpecificAngularMomentum specificAngularMomentum(const StateVector& sv) {
     return cross(sv.pos, sv.vel);
 }
 
@@ -171,18 +176,37 @@ private:
 // Relative comparison of a vector by the length of its error, which is the
 // only formulation that treats the three components as one quantity: a
 // position is wrong by a distance, not by three independent numbers.
-class WithinRelVec : public Catch::Matchers::MatcherBase<Vec3> {
+// A template since 2026-09-17, because Vec3 is one: `WithinRelVec(expected,
+// tol)` deduces the unit from the vector it was handed, so comparing a
+// position against a velocity stops compiling rather than failing at runtime.
+//
+// **The virtual lives in a non-template base, and that is not arbitrary.** A
+// class template with a virtual member is reported by
+// portability-template-virtual-member-function, because whether that virtual
+// is instantiated in a given translation unit is not something the standard
+// pins down -- and the header's own self-check translation unit, which
+// instantiates nothing, is where it fired. Keeping describe() on a base that
+// is not a template leaves the template with no virtuals of its own, and still
+// lets the definition sit in OrbitTestSupport.cpp where it pins the vtable
+// (-Wweak-vtables, ADR 0017). match() is not virtual at all:
+// MatcherGenericBase is Catch2's hook for exactly this, and finds match() by
+// name rather than through a vtable.
+class WithinRelVecBase : public Catch::Matchers::MatcherGenericBase {
 public:
-    WithinRelVec(const Vec3& want, Tolerance relTol) noexcept : want_{want}, relTol_{relTol} {}
-
-    [[nodiscard]] bool match(const Vec3& got) const override {
-        const f64 scale = std::max(length(want_), kRelativeScaleFloor);
-        return length(got - want_) / scale <= relTol_.value();
-    }
+    WithinRelVecBase(f64 wantX, f64 wantY, f64 wantZ, Tolerance relTol) noexcept
+        : wantX_{wantX}, wantY_{wantY}, wantZ_{wantZ}, relTol_{relTol} {}
 
 protected:
-    // Protected, out of line, and exempt from gcc's -Wabi-tag, for the
-    // reasons given on WithinAbsOf.
+    // An accessor rather than a protected member: the tolerance is the one
+    // thing the derived match() needs from here, and a protected *variable* is
+    // what cppcoreguidelines-non-private-member-variables-in-classes reports.
+    [[nodiscard]] Tolerance relativeTolerance() const noexcept { return relTol_; }
+
+private:
+    // Private, matching MatcherGenericBase, which declares describe() private
+    // -- widening it is what misc-override-with-different-visibility reports.
+    // Out of line and exempt from gcc's -Wabi-tag, for the reasons given on
+    // WithinAbsOf.
 #if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wabi-tag"
@@ -192,10 +216,31 @@ protected:
 #pragma GCC diagnostic pop
 #endif
 
-private:
-    Vec3 want_;
+    f64 wantX_{};
+    f64 wantY_{};
+    f64 wantZ_{};
     Tolerance relTol_;
 };
+
+template <auto kReference> class WithinRelVec : public WithinRelVecBase {
+public:
+    WithinRelVec(const Vec3<kReference>& want, Tolerance relTol) noexcept
+        : WithinRelVecBase{want.x.value(), want.y.value(), want.z.value(), relTol}, want_{want} {}
+
+    [[nodiscard]] bool match(const Vec3<kReference>& got) const {
+        const f64 scale = std::max(length(want_).value(), kRelativeScaleFloor);
+        return length(got - want_).value() / scale <= relativeTolerance().value();
+    }
+
+private:
+    Vec3<kReference> want_;
+};
+
+// Spelled out rather than left implicit: -Wctad-maybe-unsupported reports a
+// class template used with CTAD that declares no guide, on the argument that
+// the author may not have meant to support it. Here it is meant.
+template <auto kReference>
+WithinRelVec(const Vec3<kReference>&, Tolerance) -> WithinRelVec<kReference>;
 
 // The named error behind a failed call, for an INFO line that says which
 // failure happened rather than that one did. `describe` is found by
@@ -233,13 +278,14 @@ template <typename T, typename Error>
 // gcc's -Wabi-tag, for the reason given on WithinAbsOf::describe().
 namespace Catch {
 
-template <> struct StringMaker<orb::Vec3> {
+template <auto kReference> struct StringMaker<orb::Vec3<kReference>> {
 #if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wabi-tag"
 #endif
-    [[nodiscard]] static std::string convert(const orb::Vec3& value) {
-        return std::format("({:.17g}, {:.17g}, {:.17g})", value.x, value.y, value.z);
+    [[nodiscard]] static std::string convert(const orb::Vec3<kReference>& value) {
+        return std::format(
+            "({:.17g}, {:.17g}, {:.17g})", value.x.value(), value.y.value(), value.z.value());
     }
 #if defined(__GNUC__) && !defined(__clang__)
 #pragma GCC diagnostic pop

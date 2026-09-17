@@ -388,18 +388,33 @@ otherwise invisible until a replay diverges.
 
 ### Rule 17. Extend the type system to full dimensional analysis
 
-The unit types stop a `Radians` reaching a `Seconds` parameter. They do not stop
-`Metres / Seconds` being assigned to a `Metres`, because `Quantity` deliberately
-has no dimension-changing arithmetic — the unit-changing operations are named
-functions instead, which is the current, defensible answer (ADR 0001).
+**Done, 2026-09-17** ([ADR 0019](adr/0019-vectors-carry-their-unit.md)), and
+this entry is kept as written plus this note, because what it predicted is
+what happened.
 
-**Worth revisiting as the force model grows.** With accelerations, specific
-angular momenta, gravitational parameters and moments of inertia all in play, a
-compile-time dimension system (exponents of M, L, T as template parameters) makes
-`mu / (r * r)` produce an acceleration *type* and makes adding it to a velocity a
-compile error. That is rule 9 enforced by the compiler instead of by a reviewer.
+It used to say: the unit types stop a `Radians` reaching a `Seconds` parameter,
+but they do not stop `Metres / Seconds` being assigned to a `Metres`, because
+`Quantity` deliberately had no dimension-changing arithmetic — the unit-changing
+operations were named functions instead, which was the defensible answer of the
+time (ADR 0001). It called a compile-time dimension system *worth revisiting as
+the force model grows*, on the argument that `mu / (r * r)` should produce an
+acceleration **type** and adding it to a velocity should be a compile error —
+rule 9 enforced by the compiler instead of by a reviewer. And it said the
+decision belonged in an ADR rather than a commit.
 
-This is a real cost and a real benefit; it belongs in an ADR, not in a commit.
+All of that now holds. The dimensions are mp-units', `Metres / Seconds` **is** a
+`MetresPerSecond`, `cross(r, v)` is m²/s with no named type needed, and
+`Position + Velocity` does not compile. The ADR carries the costs, which were
+real: compile time roughly doubled per translation unit, and two invariants had
+to be rebuilt on top of the library rather than inherited from it.
+
+What this rule asked for and did **not** get is the exact arithmetic.
+`elementsFromState` runs on double-doubles, and a `DoubleDouble` cannot carry a
+unit: mp-units' representation concept requires `std::totally_ordered`, which
+requires `operator==` on a floating-point type, which section 11 forbids. That
+path is dimensionless by construction, entered through one named function
+(`factorOutScale`) that says so in its signature — the shape non-negotiable 8
+uses for `f32` at the GPU boundary.
 
 ### Rule 18. Coverage is a map of what has not been tested
 

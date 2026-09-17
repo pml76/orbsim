@@ -67,8 +67,8 @@ void require(bool held) {
     if (!held) std::abort();
 }
 
-void requireNoNaN(const Vec3& v) {
-    require(!std::isnan(v.x) && !std::isnan(v.y) && !std::isnan(v.z));
+template <auto R> void requireNoNaN(const Vec3<R>& v) {
+    require(!std::isnan(v.x.value()) && !std::isnan(v.y.value()) && !std::isnan(v.z.value()));
 }
 
 void checkElements(const Elements& el, GravParam mu) {
