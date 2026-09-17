@@ -22,16 +22,16 @@ namespace orb::test {
 #endif
 
 std::string WithinAbsOf::describe() const {
-    return std::format("is within {:g} of {:.17g}", tol_.value, want_);
+    return std::format("is within {:g} of {:.17g}", tol_.value(), want_);
 }
 
 std::string WithinRelTo::describe() const {
-    return std::format("is within {:g} relative of {:.17g}", relTol_.value, want_);
+    return std::format("is within {:g} relative of {:.17g}", relTol_.value(), want_);
 }
 
 std::string WithinRelVec::describe() const {
     return std::format("is within {:g} relative of ({:.17g}, {:.17g}, {:.17g})",
-                       relTol_.value,
+                       relTol_.value(),
                        want_.x,
                        want_.y,
                        want_.z);

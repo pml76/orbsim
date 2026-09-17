@@ -69,10 +69,10 @@ struct ConicReference {
 [[nodiscard]] ConicReference conicReference(const StateVector& sv, GravParam mu) {
     const f64 r = std::hypot(sv.pos.x, sv.pos.y, sv.pos.z);
     const f64 v = std::hypot(sv.vel.x, sv.vel.y, sv.vel.z);
-    const f64 energy = (0.5 * v * v) - (mu.value / r);
+    const f64 energy = (0.5 * v * v) - (mu.value() / r);
     return {
         .energy = SpecificEnergy{energy},
-        .sma = Metres{-mu.value / (2.0 * energy)},
+        .sma = Metres{-mu.value() / (2.0 * energy)},
         .radius = Metres{r},
         .speed = MetresPerSecond{v},
     };
@@ -121,16 +121,16 @@ TEST_CASE("heliocentric circular orbits", "[orbit][scales]") {
     for (const auto& c : kCases) {
         CAPTURE(c.name);
         const StateVector sv0 = circularState(kMuSun, c.radius);
-        const Seconds period{kTau * c.radius.value / length(sv0.vel)};
+        const Seconds period{kTau * c.radius.value() / length(sv0.vel)};
 
         const auto quarter = propagate(sv0, kMuSun, period * 0.25);
         INFO(errorName(quarter));
         REQUIRE(quarter.has_value());
 
         INFO("a quarter period is a quarter turn");
-        REQUIRE_THAT(wrapPi(angleBetween(sv0.pos, quarter->pos) - Radians{kPi / 2}).value,
+        REQUIRE_THAT(wrapPi(angleBetween(sv0.pos, quarter->pos) - Radians{kPi / 2}).value(),
                      WithinAbsOf(0.0, Tolerance{1e-9}));
-        REQUIRE_THAT(length(quarter->pos), WithinRelTo(c.radius.value, Tolerance{1e-12}));
+        REQUIRE_THAT(length(quarter->pos), WithinRelTo(c.radius.value(), Tolerance{1e-12}));
 
         const auto whole = propagate(sv0, kMuSun, period);
         INFO(errorName(whole));
@@ -143,7 +143,7 @@ TEST_CASE("heliocentric circular orbits", "[orbit][scales]") {
         INFO(errorName(many));
         REQUIRE(many.has_value());
         INFO("500.5 periods is a half turn");
-        REQUIRE_THAT(wrapPi(angleBetween(sv0.pos, many->pos) - Radians{kPi}).value,
+        REQUIRE_THAT(wrapPi(angleBetween(sv0.pos, many->pos) - Radians{kPi}).value(),
                      WithinAbsOf(0.0, Tolerance{1e-8}));
 
         // The element propagator shares no code with the universal-variable
@@ -173,25 +173,25 @@ TEST_CASE("parabolic trajectories", "[orbit][scales]") {
     const f64 r0 = 7.0e6;
     const StateVector para{
         .pos = {r0, 0.0, 0.0},
-        .vel = {0.0, std::sqrt(2.0 * kMuEarth.value / r0), 0.0},
+        .vel = {0.0, std::sqrt(2.0 * kMuEarth.value() / r0), 0.0},
     };
 
     const auto el = elementsFromState(para, kMuEarth);
     INFO(errorName(el));
     REQUIRE(el.has_value());
 
-    REQUIRE_THAT(el->ecc.value, WithinAbsOf(1.0, Tolerance{1e-12}));
+    REQUIRE_THAT(el->ecc.value(), WithinAbsOf(1.0, Tolerance{1e-12}));
     INFO("the semi-major axis is infinite");
-    REQUIRE(std::isinf(el->sma.value));
+    REQUIRE(std::isinf(el->sma.value()));
     INFO("the semi-latus rectum is 2 r0");
-    REQUIRE_THAT(el->slr.value, WithinRelTo(2.0 * r0, Tolerance{1e-12}));
+    REQUIRE_THAT(el->slr.value(), WithinRelTo(2.0 * r0, Tolerance{1e-12}));
 
     const OrbitInfo info = orbitInfo(*el, kMuEarth);
     REQUIRE(!info.closed);
     INFO("the period is infinite");
-    REQUIRE(std::isinf(info.period.value));
+    REQUIRE(std::isinf(info.period.value()));
     INFO("the energy is zero");
-    REQUIRE_THAT(info.energy.value, WithinAbsOf(0.0, Tolerance{1e-6 * kMuEarth.value / r0}));
+    REQUIRE_THAT(info.energy.value(), WithinAbsOf(0.0, Tolerance{1e-6 * kMuEarth.value() / r0}));
 
     // The trajectory is time-reversible and conserves energy at every dt,
     // including zero, where the Barker starting guess divides by the time.
@@ -204,8 +204,8 @@ TEST_CASE("parabolic trajectories", "[orbit][scales]") {
         INFO("the position stays finite");
         REQUIRE(std::isfinite(length(fwd->pos)));
         INFO("the energy stays zero");
-        REQUIRE_THAT(specificEnergy(*fwd, kMuEarth).value,
-                     WithinAbsOf(0.0, Tolerance{1e-9 * kMuEarth.value / r0}));
+        REQUIRE_THAT(specificEnergy(*fwd, kMuEarth).value(),
+                     WithinAbsOf(0.0, Tolerance{1e-9 * kMuEarth.value() / r0}));
 
         const auto back = propagate(*fwd, kMuEarth, Seconds{-dt});
         INFO(errorName(back));
@@ -451,43 +451,43 @@ TEST_CASE("a nearly radial hyperbola at a tiny scale is not reported as closed",
     const f64 r = std::hypot(state.pos.x, state.pos.y, state.pos.z);
     const f64 v = std::hypot(state.vel.x, state.vel.y, state.vel.z);
     const Vec3 h = cross(state.pos, state.vel);
-    const f64 hOverMu = std::hypot(h.x, h.y, h.z) / mu.value;
-    const f64 energy = (0.5 * v * v) - (mu.value / r);
+    const f64 hOverMu = std::hypot(h.x, h.y, h.z) / mu.value();
+    const f64 energy = (0.5 * v * v) - (mu.value() / r);
     const f64 eSquaredMinusOne = 2.0 * energy * hOverMu * hOverMu;
     const f64 eReference = 1.0 + (eSquaredMinusOne / (1.0 + std::sqrt(1.0 + eSquaredMinusOne)));
-    INFO(std::format("ecc {:.17g}, reference {:.17g}", el->ecc.value, eReference));
+    INFO(std::format("ecc {:.17g}, reference {:.17g}", el->ecc.value(), eReference));
     INFO("the energy is positive, so the eccentricity exceeds 1");
-    REQUIRE(el->ecc.value > 1.0);
+    REQUIRE(el->ecc.value() > 1.0);
     constexpr Tolerance kEccentricityBudget{8.0 * std::numeric_limits<f64>::epsilon()};
-    REQUIRE_THAT(el->ecc.value, WithinAbsOf(eReference, kEccentricityBudget));
+    REQUIRE_THAT(el->ecc.value(), WithinAbsOf(eReference, kEccentricityBudget));
 
     const OrbitInfo info = orbitInfo(*el, mu);
     // Formatted by hand: Catch2 prints -4.2e-159 as "-0.0", and 17 significant
     // digits round-trip, so a failure can be pasted back in as a case.
     INFO(std::format("sma {:.17g} m, ecc {:.17g}, period {:.17g} s, mean motion {:.17g} rad/s",
-                     el->sma.value,
-                     el->ecc.value,
-                     info.period.value,
-                     info.meanMotion.value));
+                     el->sma.value(),
+                     el->ecc.value(),
+                     info.period.value(),
+                     info.meanMotion.value()));
     INFO("the energy is positive, so the orbit is open");
     REQUIRE_FALSE(info.closed);
     INFO("an open orbit's period and mean motion are infinite and zero, not NaN");
-    REQUIRE_FALSE(std::isnan(info.period.value));
-    REQUIRE_FALSE(std::isnan(info.meanMotion.value));
+    REQUIRE_FALSE(std::isnan(info.period.value()));
+    REQUIRE_FALSE(std::isnan(info.meanMotion.value()));
     INFO("a negative semi-major axis belongs to a hyperbola, so e > 1");
-    const bool agreeOnTheConic = !(el->sma.value < 0.0) || el->ecc.value > 1.0;
+    const bool agreeOnTheConic = !(el->sma.value() < 0.0) || el->ecc.value() > 1.0;
     REQUIRE(agreeOnTheConic);
 
     // And the hyperbola's size and energy, which the band |e - 1| <= 1e-9 hid:
     // see the nearly radial cases below.
     const ConicReference want = conicReference(state, mu);
     INFO(std::format("sma {:.17g} m, want {:.17g}; energy {:.17g} J/kg, want {:.17g}",
-                     el->sma.value,
-                     want.sma.value,
-                     info.energy.value,
-                     want.energy.value));
-    REQUIRE(relativeError(el->sma.value, want.sma.value) <= kConicBudget.value);
-    REQUIRE(relativeError(info.energy.value, want.energy.value) <= kConicBudget.value);
+                     el->sma.value(),
+                     want.sma.value(),
+                     info.energy.value(),
+                     want.energy.value()));
+    REQUIRE(relativeError(el->sma.value(), want.sma.value()) <= kConicBudget.value());
+    REQUIRE(relativeError(info.energy.value(), want.energy.value()) <= kConicBudget.value());
 }
 
 // Nearly radial orbits at an ordinary scale: the conic is the energy's to
@@ -508,31 +508,32 @@ TEST_CASE("a nearly radial ellipse is closed, with its period", "[orbit][scales]
     REQUIRE(el.has_value());
 
     const ConicReference want = conicReference(state, kMuEarth);
-    const f64 a = want.sma.value;
-    const f64 period = kTau * std::sqrt(a * a * a / kMuEarth.value);
+    const f64 a = want.sma.value();
+    const f64 period = kTau * std::sqrt(a * a * a / kMuEarth.value());
     const OrbitInfo info = orbitInfo(*el, kMuEarth);
     INFO(std::format("sma {:.17g} m, want {:.17g}; ecc {:.17g}; energy {:.17g} J/kg, want "
                      "{:.17g}; period {:.17g} s, want {:.17g}",
-                     el->sma.value,
+                     el->sma.value(),
                      a,
-                     el->ecc.value,
-                     info.energy.value,
-                     want.energy.value,
-                     info.period.value,
+                     el->ecc.value(),
+                     info.energy.value(),
+                     want.energy.value(),
+                     info.period.value(),
                      period));
     INFO("the energy is negative: an ellipse, so e < 1 and the orbit is closed");
-    REQUIRE(el->ecc.value < 1.0);
+    REQUIRE(el->ecc.value() < 1.0);
     REQUIRE(info.closed);
-    REQUIRE(relativeError(el->sma.value, a) <= kConicBudget.value);
-    REQUIRE(relativeError(info.energy.value, want.energy.value) <= kConicBudget.value);
-    REQUIRE(relativeError(info.period.value, period) <= kConicBudget.value);
-    REQUIRE(relativeError(info.meanMotion.value, kTau / period) <= kConicBudget.value);
+    REQUIRE(relativeError(el->sma.value(), a) <= kConicBudget.value());
+    REQUIRE(relativeError(info.energy.value(), want.energy.value()) <= kConicBudget.value());
+    REQUIRE(relativeError(info.period.value(), period) <= kConicBudget.value());
+    REQUIRE(relativeError(info.meanMotion.value(), kTau / period) <= kConicBudget.value());
 
     // The velocity is square to the position and slower than circular, so the
     // probe is at apoapsis: the apoapsis is where it is. p / (1 - e) divided by
     // a 1 - e known only to its last bits; a(1 + e) does not.
-    INFO(std::format("apoapsis {:.17g} m, want {:.17g}", info.apoapsis.value, want.radius.value));
-    REQUIRE(relativeError(info.apoapsis.value, want.radius.value) <= kConicBudget.value);
+    INFO(std::format(
+        "apoapsis {:.17g} m, want {:.17g}", info.apoapsis.value(), want.radius.value()));
+    REQUIRE(relativeError(info.apoapsis.value(), want.radius.value()) <= kConicBudget.value());
 }
 
 // Closer still to radial, the eccentricity is 1 as a double. A probe falling at
@@ -548,21 +549,21 @@ TEST_CASE("an eccentricity that rounds to 1 keeps the side of 1 its energy says"
     const auto ellipse = elementsFromState(falling, kMuEarth);
     INFO("the falling probe -> " << errorName(ellipse));
     REQUIRE(ellipse.has_value());
-    INFO(std::format("its eccentricity {:.17g}", ellipse->ecc.value));
-    REQUIRE(ellipse->ecc.value < 1.0);
+    INFO(std::format("its eccentricity {:.17g}", ellipse->ecc.value()));
+    REQUIRE(ellipse->ecc.value() < 1.0);
     REQUIRE(orbitInfo(*ellipse, kMuEarth).closed);
-    REQUIRE(relativeError(ellipse->sma.value, conicReference(falling, kMuEarth).sma.value) <=
-            kConicBudget.value);
+    REQUIRE(relativeError(ellipse->sma.value(), conicReference(falling, kMuEarth).sma.value()) <=
+            kConicBudget.value());
 
     const StateVector leaving{.pos = {7000e3, 0.0, 0.0}, .vel = {20.0e3, 1.0e-6, 0.0}};
     const auto hyperbola = elementsFromState(leaving, kMuEarth);
     INFO("the leaving probe -> " << errorName(hyperbola));
     REQUIRE(hyperbola.has_value());
-    INFO(std::format("its eccentricity {:.17g}", hyperbola->ecc.value));
-    REQUIRE(hyperbola->ecc.value > 1.0);
+    INFO(std::format("its eccentricity {:.17g}", hyperbola->ecc.value()));
+    REQUIRE(hyperbola->ecc.value() > 1.0);
     REQUIRE_FALSE(orbitInfo(*hyperbola, kMuEarth).closed);
-    REQUIRE(relativeError(hyperbola->sma.value, conicReference(leaving, kMuEarth).sma.value) <=
-            kConicBudget.value);
+    REQUIRE(relativeError(hyperbola->sma.value(), conicReference(leaving, kMuEarth).sma.value()) <=
+            kConicBudget.value());
 }
 
 // orbitInfo's radius and speed come from the elements, and near the radial
@@ -632,12 +633,12 @@ TEST_CASE("orbitInfo's radius and speed hold near the radial limit", "[orbit][sc
         const OrbitInfo info = orbitInfo(*el, c.mu);
         const ConicReference want = conicReference(c.state, c.mu);
         INFO(std::format("radius {:.17g} m, want {:.17g}; speed {:.17g} m/s, want {:.17g}",
-                         info.radius.value,
-                         want.radius.value,
-                         info.speed.value,
-                         want.speed.value));
-        REQUIRE(relativeError(info.radius.value, want.radius.value) <= c.radius.value);
-        REQUIRE(relativeError(info.speed.value, want.speed.value) <= c.speed.value);
+                         info.radius.value(),
+                         want.radius.value(),
+                         info.speed.value(),
+                         want.speed.value()));
+        REQUIRE(relativeError(info.radius.value(), want.radius.value()) <= c.radius.value());
+        REQUIRE(relativeError(info.speed.value(), want.speed.value()) <= c.speed.value());
     }
 }
 
@@ -676,29 +677,29 @@ TEST_CASE("an underflowing semi-major axis is not a NaN radius", "[orbit][scales
     INFO("elementsFromState -> " << errorName(el));
     REQUIRE(el.has_value());
     INFO(std::format("sma {:.17g} m, ecc {:.17g}, slr {:.17g} m, tra {:.17g}",
-                     el->sma.value,
-                     el->ecc.value,
-                     el->slr.value,
-                     el->tra.value));
+                     el->sma.value(),
+                     el->ecc.value(),
+                     el->slr.value(),
+                     el->tra.value()));
 
     const OrbitInfo info = orbitInfo(*el, mu);
     INFO(std::format("radius {:.17g} m, speed {:.17g} m/s, energy {:.17g} J/kg",
-                     info.radius.value,
-                     info.speed.value,
-                     info.energy.value));
-    REQUIRE_FALSE(std::isnan(info.radius.value));
-    REQUIRE_FALSE(std::isnan(info.speed.value));
-    REQUIRE_FALSE(std::isnan(info.periapsis.value));
-    REQUIRE_FALSE(std::isnan(info.apoapsis.value));
-    REQUIRE_FALSE(std::isnan(info.period.value));
-    REQUIRE_FALSE(std::isnan(info.meanMotion.value));
-    REQUIRE_FALSE(std::isnan(info.energy.value));
+                     info.radius.value(),
+                     info.speed.value(),
+                     info.energy.value()));
+    REQUIRE_FALSE(std::isnan(info.radius.value()));
+    REQUIRE_FALSE(std::isnan(info.speed.value()));
+    REQUIRE_FALSE(std::isnan(info.periapsis.value()));
+    REQUIRE_FALSE(std::isnan(info.apoapsis.value()));
+    REQUIRE_FALSE(std::isnan(info.period.value()));
+    REQUIRE_FALSE(std::isnan(info.meanMotion.value()));
+    REQUIRE_FALSE(std::isnan(info.energy.value()));
 
     const ConicReference want = conicReference(state, mu);
     INFO("the speed still means something");
-    REQUIRE(relativeError(info.speed.value, want.speed.value) <= 1e-6);
+    REQUIRE(relativeError(info.speed.value(), want.speed.value()) <= 1e-6);
     INFO("and so does the radius, which is what changed");
-    REQUIRE(relativeError(info.radius.value, want.radius.value) <= 1e-6);
+    REQUIRE(relativeError(info.radius.value(), want.radius.value()) <= 1e-6);
 }
 
 // Five orbits through the same periapsis, 7000 km up, differing by at most
@@ -774,7 +775,8 @@ TEST_CASE("element propagation holds on both sides of a parabola", "[orbit][scal
 
         Elements want = el;
         want.tra = c.expected;
-        INFO(std::format("true anomaly {:.17g}, want {:.17g}", moved->tra.value, c.expected.value));
+        INFO(std::format(
+            "true anomaly {:.17g}, want {:.17g}", moved->tra.value(), c.expected.value()));
         REQUIRE_THAT(stateOf(*moved, kMuEarth).pos,
                      WithinRelVec(stateOf(want, kMuEarth).pos, Tolerance{1e-12}));
     }
@@ -799,7 +801,7 @@ TEST_CASE("element propagation holds outbound and over a long step", "[orbit][sc
     REQUIRE(outbound.has_value());
     Elements want = el;
     want.tra = Radians{1.9687811287167955}; // 60-digit reference
-    INFO(std::format("outbound {:.17g}, want {:.17g}", outbound->tra.value, want.tra.value));
+    INFO(std::format("outbound {:.17g}, want {:.17g}", outbound->tra.value(), want.tra.value()));
     REQUIRE_THAT(stateOf(*outbound, kMuEarth).pos,
                  WithinRelVec(stateOf(want, kMuEarth).pos, Tolerance{1e-12}));
 
@@ -809,7 +811,7 @@ TEST_CASE("element propagation holds outbound and over a long step", "[orbit][sc
     INFO("propagateElements over 300 periapsis times -> " << errorName(far));
     REQUIRE(far.has_value());
     want.tra = Radians{2.9067816679180335}; // 60-digit reference
-    INFO(std::format("long step {:.17g}, want {:.17g}", far->tra.value, want.tra.value));
+    INFO(std::format("long step {:.17g}, want {:.17g}", far->tra.value(), want.tra.value()));
     REQUIRE_THAT(stateOf(*far, kMuEarth).pos,
                  WithinRelVec(stateOf(want, kMuEarth).pos, Tolerance{1e-12}));
 }
@@ -861,7 +863,8 @@ TEST_CASE("element propagation keeps the semi-major axis it was given", "[orbit]
 
         Elements want = el;
         want.tra = c.expected;
-        INFO(std::format("true anomaly {:.17g}, want {:.17g}", moved->tra.value, c.expected.value));
+        INFO(std::format(
+            "true anomaly {:.17g}, want {:.17g}", moved->tra.value(), c.expected.value()));
         REQUIRE_THAT(stateOf(*moved, kMuEarth).pos,
                      WithinRelVec(stateOf(want, kMuEarth).pos, Tolerance{1e-12}));
     }
@@ -877,17 +880,17 @@ TEST_CASE("a nearly radial hyperbola is open, with its energy", "[orbit][scales]
     const ConicReference want = conicReference(state, kMuEarth);
     const OrbitInfo info = orbitInfo(*el, kMuEarth);
     INFO(std::format("sma {:.17g} m, want {:.17g}; ecc {:.17g}; energy {:.17g} J/kg, want {:.17g}",
-                     el->sma.value,
-                     want.sma.value,
-                     el->ecc.value,
-                     info.energy.value,
-                     want.energy.value));
+                     el->sma.value(),
+                     want.sma.value(),
+                     el->ecc.value(),
+                     info.energy.value(),
+                     want.energy.value()));
     INFO("the energy is positive: a hyperbola, so e > 1 and the orbit is open");
-    REQUIRE(el->ecc.value > 1.0);
+    REQUIRE(el->ecc.value() > 1.0);
     REQUIRE_FALSE(info.closed);
-    REQUIRE(std::isinf(info.period.value));
-    REQUIRE(relativeError(el->sma.value, want.sma.value) <= kConicBudget.value);
-    REQUIRE(relativeError(info.energy.value, want.energy.value) <= kConicBudget.value);
+    REQUIRE(std::isinf(info.period.value()));
+    REQUIRE(relativeError(el->sma.value(), want.sma.value()) <= kConicBudget.value());
+    REQUIRE(relativeError(info.energy.value(), want.energy.value()) <= kConicBudget.value());
 }
 
 // A zero time step is the identity, on every conic and not just on the one the
@@ -908,13 +911,13 @@ TEST_CASE("a zero time step is the identity on every conic", "[orbit][scales]") 
     };
 
     constexpr f64 kLeoRadius = 7000e3;
-    const f64 escapeSpeed = std::sqrt(2.0 * kMuEarth.value / kLeoRadius);
+    const f64 escapeSpeed = std::sqrt(2.0 * kMuEarth.value() / kLeoRadius);
 
     // 1 AU, so the hyperbolic branch is exercised at two scales: a conic
     // threshold and a starting guess can each be right at one and wrong at the
     // other, which is the lesson this whole file exists to record.
     constexpr f64 kAuRadius = 1.496e11;
-    const f64 solarEscape = std::sqrt(2.0 * kMuSun.value / kAuRadius);
+    const f64 solarEscape = std::sqrt(2.0 * kMuSun.value() / kAuRadius);
 
     const std::array kCases = std::to_array<Case>({
         {
@@ -1055,7 +1058,7 @@ TEST_CASE("two-body motion is invariant under canonical rescaling", "[orbit][sca
         const StateVector scaled{.pos = base.pos * lambda, .vel = base.vel * speedScale};
 
         const auto plain = propagate(base, kMuEarth, kStep);
-        const auto rescaled = propagate(scaled, kMuEarth, Seconds{kStep.value * timeScale});
+        const auto rescaled = propagate(scaled, kMuEarth, Seconds{kStep.value() * timeScale});
         INFO("unscaled propagation -> " << errorName(plain));
         REQUIRE(plain.has_value());
         INFO("rescaled propagation -> " << errorName(rescaled));
@@ -1095,8 +1098,8 @@ void checkConserved(const StateVector& before, const StateVector& after, f64 e) 
     const Tolerance momentumBudget{5e-14 / (1.0 - e)};
 
     INFO("energy conserved");
-    REQUIRE_THAT(specificEnergy(after, kMuEarth).value,
-                 WithinRelTo(specificEnergy(before, kMuEarth).value, energyBudget));
+    REQUIRE_THAT(specificEnergy(after, kMuEarth).value(),
+                 WithinRelTo(specificEnergy(before, kMuEarth).value(), energyBudget));
     INFO("angular momentum conserved");
     REQUIRE_THAT(specificAngularMomentum(after),
                  WithinRelVec(specificAngularMomentum(before), momentumBudget));
@@ -1111,7 +1114,7 @@ void checkOneEccentricity(f64 e) {
     const OrbitInfo info = orbitInfo(el, kMuEarth);
 
     // A quarter period is enough to cross the fast part of the orbit.
-    const Seconds step{info.period.value * 0.25};
+    const Seconds step{info.period.value() * 0.25};
 
     const auto moved = propagate(sv, kMuEarth, step);
     INFO("propagate near-rectilinear -> " << errorName(moved));
@@ -1159,7 +1162,7 @@ void checkOneEccentricity(f64 e) {
     INFO("Kepler solver converges -> " << errorName(solved));
     REQUIRE(solved.has_value());
     INFO("solver round trip");
-    REQUIRE_THAT(wrapPi(*solved - ecc).value, WithinAbsOf(0.0, Tolerance{1e-9}));
+    REQUIRE_THAT(wrapPi(*solved - ecc).value(), WithinAbsOf(0.0, Tolerance{1e-9}));
 }
 
 } // namespace
@@ -1289,8 +1292,8 @@ struct Step {
 // computed here rather than by the code under test, so agreement is evidence.
 void checkConstantsOfMotion(const Step& step, GravParam mu) {
     INFO("energy conserved");
-    REQUIRE_THAT(specificEnergy(step.after, mu).value,
-                 WithinRelTo(specificEnergy(step.before, mu).value, Tolerance{1e-9}));
+    REQUIRE_THAT(specificEnergy(step.after, mu).value(),
+                 WithinRelTo(specificEnergy(step.before, mu).value(), Tolerance{1e-9}));
     INFO("angular momentum conserved");
     REQUIRE_THAT(specificAngularMomentum(step.after),
                  WithinRelVec(specificAngularMomentum(step.before), Tolerance{1e-9}));
@@ -1383,7 +1386,7 @@ void sweepClosedOrbits(Sampler& sampler) {
 
         const Eccentricity ecc{sampler.fraction() * 0.95};
         const Metres sma{sampler.logUniform(
-            {.lo = body.minPeriapsis.value / (1.0 - ecc.value), .hi = body.maxSma.value})};
+            {.lo = body.minPeriapsis.value() / (1.0 - ecc.value()), .hi = body.maxSma.value()})};
         const Elements el{
             .sma = sma,
             .ecc = ecc,
@@ -1391,12 +1394,12 @@ void sweepClosedOrbits(Sampler& sampler) {
             .lan = sampler.angle(kTau),
             .aop = sampler.angle(kTau),
             .tra = sampler.angle(kTau),
-            .slr = Metres{sma.value * (1.0 - (ecc.value * ecc.value))},
+            .slr = Metres{sma.value() * (1.0 - (ecc.value() * ecc.value()))},
         };
         const OrbitInfo info = orbitInfo(el, body.mu);
         const Seconds dt = info.period * ((sampler.fraction() * 6.0) - 3.0);
 
-        CAPTURE(kSweepSeed, i, body.name, sma.value, ecc.value, el.inc.value, dt.value);
+        CAPTURE(kSweepSeed, i, body.name, sma.value(), ecc.value(), el.inc.value(), dt.value());
         checkPropagation(el, body.mu, stateOf(el, body.mu), dt);
     }
 }
@@ -1406,9 +1409,9 @@ void sweepHyperbolicOrbits(Sampler& sampler) {
         const Body& body = kBodies.at(i % kBodies.size());
 
         const Eccentricity ecc{1.05 + (sampler.fraction() * 4.0)};
-        const Metres periapsis{
-            sampler.logUniform({.lo = body.minPeriapsis.value, .hi = body.maxSma.value / 10.0})};
-        const Metres sma{-periapsis.value / (ecc.value - 1.0)}; // negative, by convention
+        const Metres periapsis{sampler.logUniform(
+            {.lo = body.minPeriapsis.value(), .hi = body.maxSma.value() / 10.0})};
+        const Metres sma{-periapsis.value() / (ecc.value() - 1.0)}; // negative, by convention
         const Elements el{
             .sma = sma,
             .ecc = ecc,
@@ -1416,15 +1419,16 @@ void sweepHyperbolicOrbits(Sampler& sampler) {
             .lan = sampler.angle(kTau),
             .aop = sampler.angle(kTau),
             .tra = Radians{0.0}, // start at periapsis, where the state is tame
-            .slr = Metres{periapsis.value * (1.0 + ecc.value)},
+            .slr = Metres{periapsis.value() * (1.0 + ecc.value())},
         };
         // The natural time scale at periapsis; fifty of them is well out on the
         // asymptote in either direction.
         const Seconds scale{
-            std::sqrt(periapsis.value * periapsis.value * periapsis.value / body.mu.value)};
+            std::sqrt(periapsis.value() * periapsis.value() * periapsis.value() / body.mu.value())};
         const Seconds dt = scale * (((sampler.fraction() * 2.0) - 1.0) * 50.0);
 
-        CAPTURE(kSweepSeed, i, body.name, periapsis.value, ecc.value, el.inc.value, dt.value);
+        CAPTURE(
+            kSweepSeed, i, body.name, periapsis.value(), ecc.value(), el.inc.value(), dt.value());
         checkPropagation(el, body.mu, stateOf(el, body.mu), dt);
     }
 }
@@ -1498,12 +1502,12 @@ roundTripBudget(const StateVector& sv, const Elements& el, GravParam mu) {
     const f64 v = length(sv.vel);
     const f64 rdotv = std::abs(dot(sv.pos, sv.vel));
     const f64 h = length(cross(sv.pos, sv.vel));
-    const f64 alphaRadius = std::abs(2.0 - (r * v * v / mu.value));
-    const f64 band = std::isinf(el.sma.value) ? 0.5 * alphaRadius : 0.0;
+    const f64 alphaRadius = std::abs(2.0 - (r * v * v / mu.value()));
+    const f64 band = std::isinf(el.sma.value()) ? 0.5 * alphaRadius : 0.0;
     const f64 scale = kRoundTripFactor * kUnitRoundoff * (1.0 + alphaRadius);
     return {
         .radius = Tolerance{(scale * (1.0 + (rdotv / h))) + band},
-        .speed = Tolerance{(scale * (1.0 + (rdotv * mu.value / (r * v * v * h)))) + band},
+        .speed = Tolerance{(scale * (1.0 + (rdotv * mu.value() / (r * v * v * h)))) + band},
     };
 }
 
@@ -1521,14 +1525,14 @@ void checkRadiusAndSpeed(const StateVector& sv, GravParam mu) {
     // significant digits round-trip, so a failure pastes back in as a case.
     INFO(std::format("radius {:.17g} m, want {:.17g}, budget {:.3g}; "
                      "speed {:.17g} m/s, want {:.17g}, budget {:.3g}",
-                     info.radius.value,
-                     want.radius.value,
-                     budget.radius.value,
-                     info.speed.value,
-                     want.speed.value,
-                     budget.speed.value));
-    REQUIRE(relativeError(info.radius.value, want.radius.value) <= budget.radius.value);
-    REQUIRE(relativeError(info.speed.value, want.speed.value) <= budget.speed.value);
+                     info.radius.value(),
+                     want.radius.value(),
+                     budget.radius.value(),
+                     info.speed.value(),
+                     want.speed.value(),
+                     budget.speed.value()));
+    REQUIRE(relativeError(info.radius.value(), want.radius.value()) <= budget.radius.value());
+    REQUIRE(relativeError(info.speed.value(), want.speed.value()) <= budget.speed.value());
 
     // And the whole state, not just the radius and the speed read back through
     // orbitInfo. This is the blind spot that let stateFromElements return a NaN
@@ -1543,8 +1547,8 @@ void checkRadiusAndSpeed(const StateVector& sv, GravParam mu) {
                      length(sv.pos),
                      length(back.vel),
                      length(sv.vel)));
-    REQUIRE(length(back.pos - sv.pos) / length(sv.pos) <= budget.radius.value);
-    REQUIRE(length(back.vel - sv.vel) / length(sv.vel) <= budget.speed.value);
+    REQUIRE(length(back.pos - sv.pos) / length(sv.pos) <= budget.radius.value());
+    REQUIRE(length(back.vel - sv.vel) / length(sv.vel) <= budget.speed.value());
 }
 
 // A uniform direction on the sphere: z uniform and the azimuth uniform is the
@@ -1553,7 +1557,7 @@ void checkRadiusAndSpeed(const StateVector& sv, GravParam mu) {
     const f64 z = (2.0 * sampler.fraction()) - 1.0;
     const Radians azimuth = sampler.angle(kTau);
     const f64 ring = std::sqrt(1.0 - (z * z));
-    return {ring * std::cos(azimuth.value), ring * std::sin(azimuth.value), z};
+    return {ring * std::cos(azimuth.value()), ring * std::sin(azimuth.value()), z};
 }
 
 // A unit vector perpendicular to a unit `dir`, at a random azimuth about it.
@@ -1571,9 +1575,9 @@ void sweepOrdinaryOrbits(Sampler& sampler) {
     for (std::size_t i = 0; i < kRoundTripCases; ++i) {
         const Body& body = kBodies.at(i % kBodies.size());
         const f64 radius =
-            sampler.logUniform({.lo = body.minPeriapsis.value, .hi = body.maxSma.value});
+            sampler.logUniform({.lo = body.minPeriapsis.value(), .hi = body.maxSma.value()});
         const Vec3 dir = randomDirection(sampler);
-        const f64 speed = std::sqrt(body.mu.value / radius) * (0.1 + (1.9 * sampler.fraction()));
+        const f64 speed = std::sqrt(body.mu.value() / radius) * (0.1 + (1.9 * sampler.fraction()));
         CAPTURE(kSweepSeed, i, body.name, radius, speed);
         checkRadiusAndSpeed({.pos = dir * radius, .vel = randomDirection(sampler) * speed},
                             body.mu);
@@ -1588,9 +1592,9 @@ void sweepNearlyRadialOrbits(Sampler& sampler) {
     for (std::size_t i = 0; i < kRoundTripCases; ++i) {
         const Body& body = kBodies.at(i % kBodies.size());
         const f64 radius =
-            sampler.logUniform({.lo = body.minPeriapsis.value, .hi = body.maxSma.value});
+            sampler.logUniform({.lo = body.minPeriapsis.value(), .hi = body.maxSma.value()});
         const Vec3 dir = randomDirection(sampler);
-        const f64 speed = std::sqrt(body.mu.value / radius) * (0.05 + (2.5 * sampler.fraction()));
+        const f64 speed = std::sqrt(body.mu.value() / radius) * (0.05 + (2.5 * sampler.fraction()));
         const f64 tangential = sampler.logUniform({.lo = 1e-11, .hi = 1e-2});
         const f64 outward = (sampler.fraction() < 0.5) ? 1.0 : -1.0;
         const Vec3 vel = ((dir * (outward * std::sqrt(1.0 - (tangential * tangential)))) +
@@ -1608,16 +1612,16 @@ void sweepNearParabolicOrbits(Sampler& sampler) {
     for (std::size_t i = 0; i < kRoundTripCases; ++i) {
         const Body& body = kBodies.at(i % kBodies.size());
         const f64 radius =
-            sampler.logUniform({.lo = body.minPeriapsis.value, .hi = body.maxSma.value});
+            sampler.logUniform({.lo = body.minPeriapsis.value(), .hi = body.maxSma.value()});
         const Vec3 dir = randomDirection(sampler);
         const f64 offset = sampler.logUniform({.lo = 1e-15, .hi = 1e-6});
-        const f64 speed = std::sqrt(2.0 * body.mu.value / radius) *
+        const f64 speed = std::sqrt(2.0 * body.mu.value() / radius) *
                           (1.0 + ((sampler.fraction() < 0.5) ? offset : -offset));
-        const Radians flightPath{sampler.angle(kPi).value - (kPi / 2.0)};
-        const Vec3 vel = ((dir * std::sin(flightPath.value)) +
-                          (perpendicularTo(dir, sampler) * std::cos(flightPath.value))) *
+        const Radians flightPath{sampler.angle(kPi).value() - (kPi / 2.0)};
+        const Vec3 vel = ((dir * std::sin(flightPath.value())) +
+                          (perpendicularTo(dir, sampler) * std::cos(flightPath.value()))) *
                          speed;
-        CAPTURE(kSweepSeed, i, body.name, radius, speed, offset, flightPath.value);
+        CAPTURE(kSweepSeed, i, body.name, radius, speed, offset, flightPath.value());
         checkRadiusAndSpeed({.pos = dir * radius, .vel = vel}, body.mu);
     }
 }
@@ -1634,7 +1638,7 @@ void sweepSmallEccentricities(Sampler& sampler) {
         const Body& body = kBodies.at(i % kBodies.size());
         const Eccentricity ecc{sampler.logUniform({.lo = 1e-16, .hi = 1e-2})};
         const f64 sma = sampler.logUniform(
-            {.lo = body.minPeriapsis.value / (1.0 - ecc.value), .hi = body.maxSma.value});
+            {.lo = body.minPeriapsis.value() / (1.0 - ecc.value()), .hi = body.maxSma.value()});
         const Elements el{
             .sma = Metres{sma},
             .ecc = ecc,
@@ -1642,9 +1646,9 @@ void sweepSmallEccentricities(Sampler& sampler) {
             .lan = sampler.angle(kTau),
             .aop = sampler.angle(kTau),
             .tra = sampler.angle(kTau),
-            .slr = Metres{sma * (1.0 - (ecc.value * ecc.value))},
+            .slr = Metres{sma * (1.0 - (ecc.value() * ecc.value()))},
         };
-        CAPTURE(kSweepSeed, i, body.name, sma, ecc.value, el.tra.value);
+        CAPTURE(kSweepSeed, i, body.name, sma, ecc.value(), el.tra.value());
         checkRadiusAndSpeed(stateOf(el, body.mu), body.mu);
     }
 }
@@ -1658,12 +1662,12 @@ void sweepHyperbolicAsymptotes(Sampler& sampler) {
         const Body& body = kBodies.at(i % kBodies.size());
         const Eccentricity ecc{1.0 + sampler.logUniform({.lo = 1e-6, .hi = 99.0})};
         const f64 sma =
-            -sampler.logUniform({.lo = body.minPeriapsis.value, .hi = body.maxSma.value});
-        const f64 slr = -sma * ((ecc.value * ecc.value) - 1.0);
+            -sampler.logUniform({.lo = body.minPeriapsis.value(), .hi = body.maxSma.value()});
+        const f64 slr = -sma * ((ecc.value() * ecc.value()) - 1.0);
         // Never inside periapsis, whatever r/|a| was drawn.
         const f64 radius =
-            std::max(slr / (1.0 + ecc.value), -sma * sampler.logUniform({.lo = 1e-3, .hi = 1e6}));
-        const f64 tra = std::acos(std::clamp(((slr / radius) - 1.0) / ecc.value, -1.0, 1.0));
+            std::max(slr / (1.0 + ecc.value()), -sma * sampler.logUniform({.lo = 1e-3, .hi = 1e6}));
+        const f64 tra = std::acos(std::clamp(((slr / radius) - 1.0) / ecc.value(), -1.0, 1.0));
         const Elements el{
             .sma = Metres{sma},
             .ecc = ecc,
@@ -1673,7 +1677,7 @@ void sweepHyperbolicAsymptotes(Sampler& sampler) {
             .tra = Radians{(sampler.fraction() < 0.5) ? tra : kTau - tra},
             .slr = Metres{slr},
         };
-        CAPTURE(kSweepSeed, i, body.name, sma, ecc.value, radius, el.tra.value);
+        CAPTURE(kSweepSeed, i, body.name, sma, ecc.value(), radius, el.tra.value());
         checkRadiusAndSpeed(stateOf(el, body.mu), body.mu);
     }
 }
@@ -1731,11 +1735,11 @@ constexpr f64 kReversibilityFactor = 2000.0;
 reversibilityBudget(const Elements& start, const Elements& end, GravParam mu, Seconds dt) {
     const OrbitInfo far = orbitInfo(end, mu);
     const OrbitInfo home = orbitInfo(start, mu);
-    const f64 kappa =
-        std::abs(end.ecc.value * std::sin(end.tra.value)) * far.radius.value / end.slr.value;
-    const f64 swept = std::abs(dt.value) * home.speed.value / home.radius.value;
+    const f64 kappa = std::abs(end.ecc.value() * std::sin(end.tra.value())) * far.radius.value() /
+                      end.slr.value();
+    const f64 swept = std::abs(dt.value()) * home.speed.value() / home.radius.value();
     const f64 leverage =
-        (home.speed.value * far.radius.value) / (far.speed.value * home.radius.value);
+        (home.speed.value() * far.radius.value()) / (far.speed.value() * home.radius.value());
     return Tolerance{kReversibilityFactor * kUnitRoundoff * (1.0 + kappa + swept) *
                      (1.0 + leverage)};
 }
@@ -1750,10 +1754,10 @@ reversibilityBudget(const Elements& start, const Elements& end, GravParam mu, Se
     // agree on every input, and this one says which question it asks.
     const f64 sma = (std::fpclassify(offset) == FP_ZERO)
                         ? kInf
-                        : slr.value / (1.0 - (eccentricity * eccentricity));
+                        : slr.value() / (1.0 - (eccentricity * eccentricity));
     return {
         .sma = Metres{sma},
-        .ecc = Eccentricity{std::isfinite(sma) ? std::sqrt(1.0 - (slr.value / sma)) : 1.0},
+        .ecc = Eccentricity{std::isfinite(sma) ? std::sqrt(1.0 - (slr.value() / sma)) : 1.0},
         .inc = sampler.angle(kPi),
         .lan = sampler.angle(kTau),
         .aop = sampler.angle(kTau),
@@ -1772,14 +1776,14 @@ void checkElementPropagation(const Elements& el, GravParam mu, Seconds dt) {
     const auto viaState = propagate(stateOf(el, mu), mu, dt);
     INFO("propagate -> " << errorName(viaState));
     REQUIRE(viaState.has_value());
-    INFO(std::format("true anomaly {:.17g} -> {:.17g}", el.tra.value, moved->tra.value));
+    INFO(std::format("true anomaly {:.17g} -> {:.17g}", el.tra.value(), moved->tra.value()));
     REQUIRE_THAT(stateOf(*moved, mu).pos, WithinRelVec(viaState->pos, kPropagatorsAgree));
 
     const auto back = propagateElements(*moved, mu, -dt);
     INFO("propagateElements back -> " << errorName(back));
     REQUIRE(back.has_value());
     const Tolerance budget = reversibilityBudget(el, *moved, mu, dt);
-    INFO(std::format("reversibility budget {:.3g}", budget.value));
+    INFO(std::format("reversibility budget {:.3g}", budget.value()));
     REQUIRE_THAT(stateOf(*back, mu).pos, WithinRelVec(stateOf(el, mu).pos, budget));
 }
 
@@ -1787,8 +1791,8 @@ void checkElementPropagation(const Elements& el, GravParam mu, Seconds dt) {
 // inside its asymptotes, and the ends of that arc are where p / (1 + e cos nu)
 // runs away.
 [[nodiscard]] Radians anomalyOn(const Elements& el, Sampler& sampler) {
-    if (el.ecc.value <= 1.0) return sampler.angle(kTau);
-    const f64 limit = std::acos(-1.0 / el.ecc.value);
+    if (el.ecc.value() <= 1.0) return sampler.angle(kTau);
+    const f64 limit = std::acos(-1.0 / el.ecc.value());
     const f64 inside = 1.0 - sampler.logUniform({.lo = 1e-9, .hi = 0.5});
     return Radians{((2.0 * sampler.fraction()) - 1.0) * limit * inside};
 }
@@ -1798,17 +1802,17 @@ void sweepOrdinaryPropagation(Sampler& sampler) {
     for (std::size_t i = 0; i < kPropagationCases; ++i) {
         const Body& body = kBodies.at(i % kBodies.size());
         const Metres slr{
-            sampler.logUniform({.lo = body.minPeriapsis.value, .hi = body.maxSma.value})};
+            sampler.logUniform({.lo = body.minPeriapsis.value(), .hi = body.maxSma.value()})};
         const bool closed = sampler.fraction() < 0.5;
         const f64 offset =
             closed ? -(0.05 + (sampler.fraction() * 0.9)) : 0.05 + (sampler.fraction() * 4.0);
         Elements el = conicNear(slr, offset, Radians{0.0}, sampler);
         el.tra = anomalyOn(el, sampler);
-        const f64 scale = std::abs(el.sma.value);
+        const f64 scale = std::abs(el.sma.value());
         const Seconds dt{sampler.logUniform({.lo = 1e-3, .hi = 1e2}) *
-                         std::sqrt(scale * scale * scale / body.mu.value) *
+                         std::sqrt(scale * scale * scale / body.mu.value()) *
                          ((sampler.fraction() < 0.5) ? 1.0 : -1.0)};
-        CAPTURE(kSweepSeed, i, body.name, slr.value, el.ecc.value, el.tra.value, dt.value);
+        CAPTURE(kSweepSeed, i, body.name, slr.value(), el.ecc.value(), el.tra.value(), dt.value());
         checkElementPropagation(el, body.mu, dt);
     }
 }
@@ -1820,18 +1824,18 @@ void sweepNearParabolicPropagation(Sampler& sampler) {
     for (std::size_t i = 0; i < kPropagationCases; ++i) {
         const Body& body = kBodies.at(i % kBodies.size());
         const Metres slr{
-            sampler.logUniform({.lo = body.minPeriapsis.value, .hi = body.maxSma.value})};
+            sampler.logUniform({.lo = body.minPeriapsis.value(), .hi = body.maxSma.value()})};
         const f64 offset = sampler.logUniform({.lo = 1e-16, .hi = 1e-1}) *
                            ((sampler.fraction() < 0.5) ? 1.0 : -1.0);
         Elements el = conicNear(slr, offset, Radians{0.0}, sampler);
         el.tra = anomalyOn(el, sampler);
         // The time scale of a parabola has no semi-major axis in it: sqrt of
         // the periapsis distance cubed over mu is the one every conic shares.
-        const f64 periapsis = 0.5 * slr.value;
+        const f64 periapsis = 0.5 * slr.value();
         const Seconds dt{sampler.logUniform({.lo = 1e-2, .hi = 1e4}) *
-                         std::sqrt(periapsis * periapsis * periapsis / body.mu.value) *
+                         std::sqrt(periapsis * periapsis * periapsis / body.mu.value()) *
                          ((sampler.fraction() < 0.5) ? 1.0 : -1.0)};
-        CAPTURE(kSweepSeed, i, body.name, slr.value, offset, el.tra.value, dt.value);
+        CAPTURE(kSweepSeed, i, body.name, slr.value(), offset, el.tra.value(), dt.value());
         checkElementPropagation(el, body.mu, dt);
     }
 }
@@ -1841,14 +1845,14 @@ void sweepParabolicPropagation(Sampler& sampler) {
     for (std::size_t i = 0; i < kPropagationCases; ++i) {
         const Body& body = kBodies.at(i % kBodies.size());
         const Metres slr{
-            sampler.logUniform({.lo = body.minPeriapsis.value, .hi = body.maxSma.value})};
+            sampler.logUniform({.lo = body.minPeriapsis.value(), .hi = body.maxSma.value()})};
         Elements el = conicNear(slr, 0.0, Radians{0.0}, sampler);
         el.tra = anomalyOn(el, sampler);
-        const f64 periapsis = 0.5 * slr.value;
+        const f64 periapsis = 0.5 * slr.value();
         const Seconds dt{sampler.logUniform({.lo = 1e-2, .hi = 1e4}) *
-                         std::sqrt(periapsis * periapsis * periapsis / body.mu.value) *
+                         std::sqrt(periapsis * periapsis * periapsis / body.mu.value()) *
                          ((sampler.fraction() < 0.5) ? 1.0 : -1.0)};
-        CAPTURE(kSweepSeed, i, body.name, slr.value, el.tra.value, dt.value);
+        CAPTURE(kSweepSeed, i, body.name, slr.value(), el.tra.value(), dt.value());
         checkElementPropagation(el, body.mu, dt);
     }
 }
@@ -1861,7 +1865,7 @@ void sweepNearCircularPropagation(Sampler& sampler) {
         const Body& body = kBodies.at(i % kBodies.size());
         const Eccentricity ecc{sampler.logUniform({.lo = 1e-13, .hi = 1e-2})};
         const f64 sma = sampler.logUniform(
-            {.lo = body.minPeriapsis.value / (1.0 - ecc.value), .hi = body.maxSma.value});
+            {.lo = body.minPeriapsis.value() / (1.0 - ecc.value()), .hi = body.maxSma.value()});
         const Elements el{
             .sma = Metres{sma},
             .ecc = ecc,
@@ -1869,12 +1873,12 @@ void sweepNearCircularPropagation(Sampler& sampler) {
             .lan = sampler.angle(kTau),
             .aop = sampler.angle(kTau),
             .tra = sampler.angle(kTau),
-            .slr = Metres{sma * (1.0 - (ecc.value * ecc.value))},
+            .slr = Metres{sma * (1.0 - (ecc.value() * ecc.value()))},
         };
         const Seconds dt{sampler.logUniform({.lo = 1e-3, .hi = 1e2}) *
-                         std::sqrt(sma * sma * sma / body.mu.value) *
+                         std::sqrt(sma * sma * sma / body.mu.value()) *
                          ((sampler.fraction() < 0.5) ? 1.0 : -1.0)};
-        CAPTURE(kSweepSeed, i, body.name, sma, ecc.value, el.tra.value, dt.value);
+        CAPTURE(kSweepSeed, i, body.name, sma, ecc.value(), el.tra.value(), dt.value());
         checkElementPropagation(el, body.mu, dt);
     }
 }
@@ -1925,7 +1929,7 @@ constexpr f64 kElementBudget = kElementFactor * kUnitRoundoff;
 
 // Shortest way round the circle, so 0 and tau are the same angle.
 [[nodiscard]] f64 angularError(Radians got, Radians want) {
-    const f64 wrapped = std::fmod(std::abs(got.value - want.value), kTau);
+    const f64 wrapped = std::fmod(std::abs(got.value() - want.value()), kTau);
     return std::min(wrapped, kTau - wrapped);
 }
 
@@ -1943,9 +1947,9 @@ void checkEveryElement(const ElementCase& test) {
         f64 want;
     };
     for (const Magnitude& m : std::to_array<Magnitude>({
-             {.name = "sma", .got = el->sma.value, .want = test.want.sma.value},
-             {.name = "ecc", .got = el->ecc.value, .want = test.want.ecc.value},
-             {.name = "slr", .got = el->slr.value, .want = test.want.slr.value},
+             {.name = "sma", .got = el->sma.value(), .want = test.want.sma.value()},
+             {.name = "ecc", .got = el->ecc.value(), .want = test.want.ecc.value()},
+             {.name = "slr", .got = el->slr.value(), .want = test.want.slr.value()},
          })) {
         INFO(std::format("{} {:.17g}, want {:.17g}, out by {:.3g}",
                          m.name,
@@ -1968,8 +1972,8 @@ void checkEveryElement(const ElementCase& test) {
          })) {
         INFO(std::format("{} {:.17g} rad, want {:.17g}, out by {:.3g}",
                          a.name,
-                         a.got.value,
-                         a.want.value,
+                         a.got.value(),
+                         a.want.value(),
                          angularError(a.got, a.want)));
         REQUIRE(angularError(a.got, a.want) <= kElementBudget);
     }
@@ -2234,7 +2238,7 @@ TEST_CASE("the perifocal velocity keeps e - 1 where ecc cannot", "[orbit][scales
 
     constexpr f64 kExpected = 3.1429299035323592;
     INFO(std::format("tra {:.17g} rad, want {:.17g}, out by {:.3g}, budget {:.3g}",
-                     moved->tra.value,
+                     moved->tra.value(),
                      kExpected,
                      angularError(moved->tra, Radians{kExpected}),
                      kBudget));
@@ -2337,9 +2341,9 @@ TEST_CASE("the conversion's magnitudes are identical on every toolchain", "[orbi
         const auto el = elementsFromState(sv, mu);
         if (!el) continue;
         ++accepted;
-        foldBits(hash, el->sma.value);
-        foldBits(hash, el->ecc.value);
-        foldBits(hash, el->slr.value);
+        foldBits(hash, el->sma.value());
+        foldBits(hash, el->ecc.value());
+        foldBits(hash, el->slr.value());
     }
 
     // A checksum over nothing would match anywhere, so the count is asserted

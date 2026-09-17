@@ -398,12 +398,20 @@ asked for.
    **Still open: DE440 or VSOP87 for the ephemeris, and how far up the
    spherical-harmonic field to go.** Milestone 1 needs neither: it uses the
    analytic Sun and stops at J2.
-6. **Is `Vec3` staying unit-free? The owner has said no; the shape is drafted
-   and awaiting a ruling.** [ADR 0019](adr/0019-vectors-carry-their-unit.md),
-   written 2026-09-17, status **proposed**. It supersedes a paragraph of
-   [ADR 0001](adr/0001-units-in-the-type-system.md) and forces the rule 17
-   question with it, because `cross` of metres and metres-per-second is m^2/s
-   and no named type can be the answer for long.
+6. **Is `Vec3` staying unit-free? Half-settled 2026-09-17: the scalars moved,
+   `Vec3` did not, and the reason it did not is a measurement.**
+   [ADR 0019](adr/0019-vectors-carry-their-unit.md) is now **accepted in part**.
+   Step 1 is done -- mp-units `v2.5.0` is pinned and `core/Units.hpp`'s nine
+   types are built on it, so `Metres / Seconds` is a `MetresPerSecond` and
+   `Eccentricity` is a *kind* no other ratio converts into. Step 2, `Vec3<Q>`,
+   **went back to undecided**: the spike that was a precondition of accepting
+   the record found that mp-units provides no `vector_product` on quantities at
+   all -- not in `v2.5.0`, not on master 102 commits later -- so the
+   unit-carrying cross product, which was most of what step 2 was to buy, would
+   still be ours to write. The record supersedes
+   [ADR 0001](adr/0001-units-in-the-type-system.md) on the mechanism and forces
+   the rule 17 question with it, because `cross` of metres and
+   metres-per-second is m^2/s and no named type can be the answer for long.
 
    Four options are costed there; the recommendation is a full compile-time
    dimension system, in two steps, **after M1-04**. Measured while writing it:
@@ -476,6 +484,41 @@ asked for.
 
 ## 8. Gotchas worth not rediscovering
 
+**mp-units leaves a default-constructed quantity indeterminate.** Its storage is
+declared without an initialiser and its default constructor is `= default`, so
+`Metres m;` holds whatever was on the stack -- where the old hand-rolled
+`Quantity<Derived>` had `f64 value{}` and zero-initialised. In a simulation that
+claims bit-identical determinism this is not a style point.
+`core/Units.hpp`'s `Unit` zeroes explicitly in its default constructor. Found by
+`cppcoreguidelines-pro-type-member-init` firing on the seven uninitialised
+members of `Elements`, 2026-09-17, which is the tooling doing the job review
+would not have.
+
+**MSVC needs `/utf-8` once a dependency's headers contain any.** mp-units names
+units with the micro sign, ohm and euro; without the flag MSVC reads a UTF-8
+source as the machine's ANSI code page and fails with C3872, *"this character is
+not allowed in an identifier"*, pointing into headers that are perfectly
+well-formed -- 47 instances of it. clang and gcc assume UTF-8 already, so the
+flag makes the three agree rather than adding a behaviour. It is in the MSVC
+block of `CMakeLists.txt` with that reason.
+
+**A CRTP base that derives from a third-party type must take `Derived` in its
+comparison operators, not itself.** `operator<=>(const Unit&)` as a member makes
+every `a < b` ambiguous: mp-units declares its own comparison as a hidden friend
+templated on `std::derived_from<quantity>`, which matches `Metres` exactly on
+the left, while ours matches exactly on the right, and neither wins. Declaring
+ours as hidden friends taking `Derived` on both sides settles it. The same
+applies to `operator-`: as a *member* it shadows the base's and
+`bugprone-derived-method-shadowing-base-method` reports it, so the arithmetic in
+`Unit` is hidden friends throughout.
+
+**An inherited constructor keeps the access it had in the base.**
+`using Unit::Unit;` in a derived type does not republish private constructors as
+public, so `bugprone-crtp-constructor-accessibility` (which wants the base's
+constructors private with `friend Derived`) and a `using`-declaration cannot be
+satisfied together. Each of the nine unit types spells its three constructors
+out, which is what the pre-mp-units code did anyway.
+
 **MSVC's constant evaluator disagrees with its own runtime about NaN.**
 Measured 2026-09-17 on a three-line probe: during constant evaluation MSVC says
 `NaN <= max` is **true**; at run time the same expression is false. clang says
@@ -525,6 +568,13 @@ catch this class of thing. Run all six before pushing a change to `core/`.
   `GIT_TAG` in `CMakeLists.txt`**. Changing a pin therefore does nothing at
   all until the cached clone is checked out at the new tag by hand. Both
   caches hold Catch2 at `v3.16.0`, matching the pin.
+
+  **mp-units is not in either cache yet** (added 2026-09-17). No
+  `FETCHCONTENT_SOURCE_DIR_MP_UNITS` is set, so each of the six trees clones it
+  separately -- which costs six clones and, unlike the others, means its
+  `GIT_TAG v2.5.0` is the thing that actually decides the version. Point the
+  caches at it when the re-cloning becomes annoying; until then the pin being
+  live is worth more than the disk.
 
   The setting lives in each `CMakeCache.txt`, not in the repository, so
   deleting a build tree loses it and the next configure downloads afresh --

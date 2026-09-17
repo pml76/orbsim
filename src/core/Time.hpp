@@ -291,7 +291,7 @@ inline constexpr DayAndPicos kNotAnInstant{
 // wrong), then each field in turn, so a date wrong in one way reports that
 // way.
 [[nodiscard]] constexpr std::expected<void, TimeError> validate(const CalendarDate& date) noexcept {
-    if (!isFinite(date.second.value)) return std::unexpected(TimeError::NotFinite);
+    if (!isFinite(date.second.value())) return std::unexpected(TimeError::NotFinite);
     if (date.year < kFirstYear || date.year > kLastYear) {
         return std::unexpected(TimeError::YearOutOfRange);
     }
@@ -301,8 +301,8 @@ inline constexpr DayAndPicos kNotAnInstant{
         return std::unexpected(TimeError::InvalidDay);
     }
     const bool withinTheDay = date.hour >= 0 && date.hour < 24 && date.minute >= 0 &&
-                              date.minute < 60 && date.second.value >= 0.0 &&
-                              date.second.value < 60.0;
+                              date.minute < 60 && date.second.value() >= 0.0 &&
+                              date.second.value() < 60.0;
     if (!withinTheDay) return std::unexpected(TimeError::InvalidTimeOfDay);
     return {};
 }
@@ -313,8 +313,8 @@ inline constexpr DayAndPicos kNotAnInstant{
 // 1.2e-4 ps. The result can be a whole day -- 23:59:59.9999999999996 is the
 // next midnight to the nearest picosecond -- and carry() takes it from there.
 [[nodiscard]] constexpr std::int64_t picosecondsIntoDay(const CalendarDate& date) noexcept {
-    const auto wholeSecond = static_cast<std::int64_t>(date.second.value);   // [0, 59]
-    const f64 subSecond = date.second.value - static_cast<f64>(wholeSecond); // exact
+    const auto wholeSecond = static_cast<std::int64_t>(date.second.value());   // [0, 59]
+    const f64 subSecond = date.second.value() - static_cast<f64>(wholeSecond); // exact
     const std::int64_t secondOfDay =
         (((static_cast<std::int64_t>(date.hour) * 60) + date.minute) * 60) + wholeSecond;
     return (secondOfDay * kPicosecondsPerSecond) +
@@ -371,8 +371,8 @@ struct DaysAndScaled {
 // whole number of days, which stays exact to about 3e20 s and then errs by
 // about a day, where the duration's own resolution is already most of one.
 [[nodiscard]] inline DayAndPicos advance(DayAndPicos start, Seconds duration) noexcept {
-    const f64 remainder = std::fmod(duration.value, kSecondsPerDayF);
-    const f64 days = std::round((duration.value - remainder) / kSecondsPerDayF);
+    const f64 remainder = std::fmod(duration.value(), kSecondsPerDayF);
+    const f64 days = std::round((duration.value() - remainder) / kSecondsPerDayF);
     const f64 wholeSeconds = std::trunc(remainder);
     const f64 subSecond = remainder - wholeSeconds;
     const std::int64_t picos = (static_cast<std::int64_t>(wholeSeconds) * kPicosecondsPerSecond) +
@@ -496,8 +496,8 @@ public:
     [[nodiscard]] TimePoint operator+(Seconds duration) const noexcept
         requires UniformScale<Scale>
     {
-        ORBSIM_EXPECTS(isFinite(duration.value));
-        if (!isFinite(duration.value)) return TimePoint{detail::kNotAnInstant};
+        ORBSIM_EXPECTS(isFinite(duration.value()));
+        if (!isFinite(duration.value())) return TimePoint{detail::kNotAnInstant};
         const TimePoint moved{detail::advance({.mjd = mjd_, .picos = picos_}, duration)};
         ORBSIM_ENSURES(moved.isNormalised());
         return moved;

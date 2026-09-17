@@ -681,7 +681,7 @@ struct ExactState {
     const ScaledVec r = factorOutScale(sv.pos);
     const ScaledVec v = factorOutScale(sv.vel);
     int muExponent = 0;
-    const DoubleDouble muMantissa = exact(std::frexp(mu.value, &muExponent));
+    const DoubleDouble muMantissa = exact(std::frexp(mu.value(), &muExponent));
 
     const DoubleDouble rmagScaled = sqrtOf(dotExact(r.unit, r.unit));
     const DoubleDouble vSquared = dotExact(v.unit, v.unit);
@@ -757,7 +757,7 @@ void assignInPlaneAngles(Elements& el, const OrbitFrame& frame) {
     const f64 nmag = length(frame.node);
     const f64 hmag = length(frame.h);
 
-    const bool circular = el.ecc.value < kCircularTol;
+    const bool circular = el.ecc.value() < kCircularTol;
     const bool equatorial = nmag < kEquatorialTol * hmag;
 
     // Reference direction for angles measured in the orbital plane: the
@@ -769,7 +769,7 @@ void assignInPlaneAngles(Elements& el, const OrbitFrame& frame) {
         // No periapsis to point at, so angles run from the reference direction
         // straight to the spacecraft: argument of latitude, or true longitude.
         el.aop = Radians{0.0};
-        f64 u = angleBetween(ref, frame.r).value;
+        f64 u = angleBetween(ref, frame.r).value();
         if (dot(cross(ref, frame.r), frame.h) < 0.0) u = kTau - u; // resolve the half-turn
         el.tra = wrapTau(Radians{u});
         return;
@@ -815,10 +815,10 @@ void assignInPlaneAngles(Elements& el, const OrbitFrame& frame) {
 void assignConic(Elements& el, const ExactState& state) {
     const Conic conic = conicOf(toDouble(state.alphaRadius));
     el.sma = Metres{conic == Conic::Parabola ? kInf : toDouble(state.rmag / state.alphaRadius)};
-    if (conic == Conic::Ellipse && !(el.ecc.value < 1.0)) {
+    if (conic == Conic::Ellipse && !(el.ecc.value() < 1.0)) {
         el.ecc = Eccentricity{std::nextafter(1.0, 0.0)};
     }
-    if (conic == Conic::Hyperbola && !(el.ecc.value > 1.0)) {
+    if (conic == Conic::Hyperbola && !(el.ecc.value() > 1.0)) {
         el.ecc = Eccentricity{std::nextafter(1.0, 2.0)};
     }
 }
@@ -841,9 +841,9 @@ void assignConic(Elements& el, const ExactState& state) {
 [[nodiscard]] constexpr bool elementsAreUsable(const Elements& el) noexcept {
     // sma is legitimately infinite on a parabola, so a NaN is what disqualifies
     // it -- which is why core/Scalar.hpp grew a constexpr isNaN beside isFinite.
-    if (isNaN(el.sma.value)) return false;
-    return isFinite(el.ecc.value) && isFinite(el.slr.value) && isFinite(el.inc.value) &&
-           isFinite(el.lan.value) && isFinite(el.aop.value) && isFinite(el.tra.value);
+    if (isNaN(el.sma.value())) return false;
+    return isFinite(el.ecc.value()) && isFinite(el.slr.value()) && isFinite(el.inc.value()) &&
+           isFinite(el.lan.value()) && isFinite(el.aop.value()) && isFinite(el.tra.value());
 }
 
 // 1 + e cos v, which the radius and the speed both hang on: r = p / this, and
@@ -882,13 +882,13 @@ void assignConic(Elements& el, const ExactState& state) {
 // -mu/(2E) underflows to -0, which libFuzzer found on 2026-09-12. Callers fall
 // back to the stored e there; with e = 9.3e239 nothing cancels anyway.
 [[nodiscard]] f64 eccentricityMinusOne(const Elements& el) noexcept {
-    if (!std::isfinite(el.sma.value)) return 0.0;
-    return -(el.slr.value / el.sma.value) / (1.0 + el.ecc.value);
+    if (!std::isfinite(el.sma.value())) return 0.0;
+    return -(el.slr.value() / el.sma.value()) / (1.0 + el.ecc.value());
 }
 
 [[nodiscard]] f64 onePlusECosTrueAnomaly(const Elements& el) noexcept {
-    const f64 e = el.ecc.value;
-    const f64 trueAnomaly = el.tra.value;
+    const f64 e = el.ecc.value();
+    const f64 trueAnomaly = el.tra.value();
     const f64 eCosNu = e * std::cos(trueAnomaly);
     if (eCosNu >= -0.5) return 1.0 + eCosNu;
 
@@ -916,8 +916,8 @@ void assignConic(Elements& el, const ExactState& state) {
 // of 40 u separates them by a factor of twenty-four.
 [[nodiscard]] f64 eccentricityPlusCosTrueAnomaly(const Elements& el) noexcept {
     const f64 eMinusOne = eccentricityMinusOne(el);
-    if (!std::isfinite(eMinusOne)) return el.ecc.value + std::cos(el.tra.value);
-    const f64 halfCos = std::cos(0.5 * el.tra.value);
+    if (!std::isfinite(eMinusOne)) return el.ecc.value() + std::cos(el.tra.value());
+    const f64 halfCos = std::cos(0.5 * el.tra.value());
     return eMinusOne + (2.0 * halfCos * halfCos);
 }
 
@@ -926,8 +926,8 @@ void assignConic(Elements& el, const ExactState& state) {
 // --- state <-> elements ----------------------------------------------------
 
 std::expected<Elements, OrbitError> elementsFromState(const StateVector& sv, GravParam mu) {
-    if (!isFinite(sv) || !std::isfinite(mu.value)) return std::unexpected(OrbitError::NotFinite);
-    if (!(mu.value > 0.0)) return std::unexpected(OrbitError::NonPositiveGravity);
+    if (!isFinite(sv) || !std::isfinite(mu.value())) return std::unexpected(OrbitError::NotFinite);
+    if (!(mu.value() > 0.0)) return std::unexpected(OrbitError::NonPositiveGravity);
 
     // Everything the elements are built from, computed once, with every
     // cancelling step carried in double-double. See exactStateOf above.
@@ -980,7 +980,7 @@ std::expected<Elements, OrbitError> elementsFromState(const StateVector& sv, Gra
     // asymptote of the parabola this then looks like. Same conclusion as the
     // ratio test, reached by a different route, so it is reported as the same
     // thing: too little angular momentum to be an orbit.
-    if (!(el.slr.value > 0.0)) return std::unexpected(OrbitError::RectilinearOrbit);
+    if (!(el.slr.value() > 0.0)) return std::unexpected(OrbitError::RectilinearOrbit);
 
     // atan2 against the in-plane magnitude rather than acos(h.z / |h|). acos
     // loses half its digits where its argument approaches +-1, which is an
@@ -1010,12 +1010,12 @@ std::expected<StateVector, OrbitError> stateFromElements(const Elements& el, Gra
     // Asserted, not reported: every caller of this obtains its elements from
     // elementsFromState or builds them literally, so a non-positive mu here is
     // a bug in the caller rather than user input.
-    ORBSIM_EXPECTS(mu.value > 0.0);
+    ORBSIM_EXPECTS(mu.value() > 0.0);
 
     // Prefer the stored semi-latus rectum: it is the one shape parameter that
     // stays finite on a parabolic orbit.
-    const f64 e = el.ecc.value;
-    const f64 p = (el.slr.value > 0.0) ? el.slr.value : el.sma.value * (1.0 - (e * e));
+    const f64 e = el.ecc.value();
+    const f64 p = (el.slr.value() > 0.0) ? el.slr.value() : el.sma.value() * (1.0 - (e * e));
     ORBSIM_EXPECTS(p > 0.0);
 
     // Both of these sums cancel, and both have a cancellation-free form above
@@ -1035,10 +1035,10 @@ std::expected<StateVector, OrbitError> stateFromElements(const Elements& el, Gra
     // write one down, which is why this reports rather than asserting (rule 3).
     if (!(factor > 0.0)) return std::unexpected(OrbitError::UnreachableAnomaly);
 
-    const f64 cosNu = std::cos(el.tra.value);
-    const f64 sinNu = std::sin(el.tra.value);
+    const f64 cosNu = std::cos(el.tra.value());
+    const f64 sinNu = std::sin(el.tra.value());
     const f64 rmag = p / factor;
-    const f64 k = std::sqrt(mu.value / p);
+    const f64 k = std::sqrt(mu.value() / p);
 
     // Perifocal frame: x toward periapsis, z along angular momentum.
     const Vec3 rPerifocal{rmag * cosNu, rmag * sinNu, 0.0};
@@ -1061,23 +1061,23 @@ std::expected<StateVector, OrbitError> stateFromElements(const Elements& el, Gra
 }
 
 OrbitInfo orbitInfo(const Elements& el, GravParam mu) {
-    ORBSIM_EXPECTS(mu.value > 0.0);
+    ORBSIM_EXPECTS(mu.value() > 0.0);
 
-    const f64 e = el.ecc.value;
-    const f64 m = mu.value;
+    const f64 e = el.ecc.value();
+    const f64 m = mu.value();
 
     OrbitInfo info;
     // Closed is the energy's to say, through sma as elementsFromState set it,
     // and not e < 1, which near radial is 1 whatever the energy.
-    info.closed = std::isfinite(el.sma.value) && el.sma.value > 0.0;
+    info.closed = std::isfinite(el.sma.value()) && el.sma.value() > 0.0;
 
-    info.periapsis = Metres{el.slr.value / (1.0 + e)};
+    info.periapsis = Metres{el.slr.value() / (1.0 + e)};
     // a(1 + e), not p / (1 - e): near e = 1 the second divides by a 1 - e
     // known only to its last bits. Measured against 60-digit references
     // (2026-09-11, re-measured exactly on 2026-09-12), p / (1 - e) was up to
     // 506% out on 27,242 nearly radial ellipses and 3.6e-10 on 138,754
     // ordinary ones; this is within 3.3e-11 and 3.0e-12.
-    info.apoapsis = Metres{info.closed ? el.sma.value * (1.0 + e) : kInf};
+    info.apoapsis = Metres{info.closed ? el.sma.value() * (1.0 + e) : kInf};
 
     // Both of these come from the shape and the anomaly, and neither from
     // vis-viva: v^2 = (mu/p)((e sin v)^2 + (1 + e cos v)^2) is the same
@@ -1085,7 +1085,7 @@ OrbitInfo orbitInfo(const Elements& el, GravParam mu) {
     // limit was taking the difference of two terms equal to their last bits.
     // It reported a probe falling at 100 m/s as moving at 848 km/s.
     const f64 factor = onePlusECosTrueAnomaly(el);
-    info.radius = Metres{el.slr.value / factor};
+    info.radius = Metres{el.slr.value() / factor};
     // sqrt(mu)/sqrt(p) rather than sqrt(mu/p), and multiplied into each term
     // rather than applied to their hypot. The same number at any ordinary
     // scale, and each form avoids something the other walks into: mu/p
@@ -1093,18 +1093,19 @@ OrbitInfo orbitInfo(const Elements& el, GravParam mu) {
     // below the smallest subnormal) and reported 0 m/s for a trajectory doing
     // 7.4e71 m/s, and the hypot of the unscaled terms overflows where each
     // scaled term is finite.
-    const f64 shape = std::sqrt(m) / std::sqrt(el.slr.value);
-    info.speed = MetresPerSecond{std::hypot(shape * e * std::sin(el.tra.value), shape * factor)};
+    const f64 shape = std::sqrt(m) / std::sqrt(el.slr.value());
+    info.speed = MetresPerSecond{std::hypot(shape * e * std::sin(el.tra.value()), shape * factor)};
 
     if (info.closed) {
-        const f64 a = el.sma.value;
+        const f64 a = el.sma.value();
         info.meanMotion = RadiansPerSecond{std::sqrt(m / (a * a * a))};
-        info.period = Seconds{kTau / info.meanMotion.value};
+        info.period = Seconds{kTau / info.meanMotion.value()};
         info.energy = SpecificEnergy{-m / (2.0 * a)};
     } else {
         info.meanMotion = RadiansPerSecond{0.0};
         info.period = Seconds{kInf};
-        info.energy = SpecificEnergy{std::isinf(el.sma.value) ? 0.0 : -m / (2.0 * el.sma.value)};
+        info.energy =
+            SpecificEnergy{std::isinf(el.sma.value()) ? 0.0 : -m / (2.0 * el.sma.value())};
     }
     return info;
 }
@@ -1112,33 +1113,33 @@ OrbitInfo orbitInfo(const Elements& el, GravParam mu) {
 // --- anomaly conversions ---------------------------------------------------
 
 Radians trueToEccentricAnomaly(Radians trueAnomaly, Eccentricity ecc) {
-    const f64 e = ecc.value;
+    const f64 e = ecc.value();
     if (e < 1.0) {
-        return Radians{2.0 * std::atan2(std::sqrt(1.0 - e) * std::sin(trueAnomaly.value * 0.5),
-                                        std::sqrt(1.0 + e) * std::cos(trueAnomaly.value * 0.5))};
+        return Radians{2.0 * std::atan2(std::sqrt(1.0 - e) * std::sin(trueAnomaly.value() * 0.5),
+                                        std::sqrt(1.0 + e) * std::cos(trueAnomaly.value() * 0.5))};
     }
     // Hyperbolic: build sinh(H) directly instead of going through tan(nu/2),
     // which is unbounded as the true anomaly approaches the asymptote.
-    const f64 nu = wrapPi(trueAnomaly).value;
+    const f64 nu = wrapPi(trueAnomaly).value();
     const f64 sinhH = std::sqrt((e * e) - 1.0) * std::sin(nu) / (1.0 + (e * std::cos(nu)));
     return Radians{std::asinh(sinhH)};
 }
 
 Radians eccentricToTrueAnomaly(Radians eccAnomaly, Eccentricity ecc) {
-    const f64 e = ecc.value;
+    const f64 e = ecc.value();
     if (e < 1.0) {
         return wrapTau(
-            Radians{2.0 * std::atan2(std::sqrt(1.0 + e) * std::sin(eccAnomaly.value * 0.5),
-                                     std::sqrt(1.0 - e) * std::cos(eccAnomaly.value * 0.5))});
+            Radians{2.0 * std::atan2(std::sqrt(1.0 + e) * std::sin(eccAnomaly.value() * 0.5),
+                                     std::sqrt(1.0 - e) * std::cos(eccAnomaly.value() * 0.5))});
     }
-    return Radians{2.0 * std::atan2(std::sqrt(e + 1.0) * std::sinh(eccAnomaly.value * 0.5),
-                                    std::sqrt(e - 1.0) * std::cosh(eccAnomaly.value * 0.5))};
+    return Radians{2.0 * std::atan2(std::sqrt(e + 1.0) * std::sinh(eccAnomaly.value() * 0.5),
+                                    std::sqrt(e - 1.0) * std::cosh(eccAnomaly.value() * 0.5))};
 }
 
 Radians eccentricToMeanAnomaly(Radians eccAnomaly, Eccentricity ecc) {
-    const f64 e = ecc.value;
-    if (e < 1.0) return Radians{eccAnomaly.value - (e * std::sin(eccAnomaly.value))};
-    return Radians{(e * std::sinh(eccAnomaly.value)) - eccAnomaly.value};
+    const f64 e = ecc.value();
+    if (e < 1.0) return Radians{eccAnomaly.value() - (e * std::sin(eccAnomaly.value()))};
+    return Radians{(e * std::sinh(eccAnomaly.value())) - eccAnomaly.value()};
 }
 
 // The three starting-guess constants below, and what each is actually worth.
@@ -1176,7 +1177,7 @@ Radians eccentricToMeanAnomaly(Radians eccAnomaly, Eccentricity ecc) {
 // `ln(2M/e + 1.8)` is the recognisable classical starter, which the literature
 // attributes to Danby (1992) -- again not checked here against the source.
 std::expected<Radians, OrbitError> meanToEccentricAnomaly(Radians meanAnomaly, Eccentricity ecc) {
-    const f64 e = ecc.value;
+    const f64 e = ecc.value();
     ORBSIM_EXPECTS(e >= 0.0);
 
     if (e < 1.0) {
@@ -1186,7 +1187,7 @@ std::expected<Radians, OrbitError> meanToEccentricAnomaly(Radians meanAnomaly, E
         // The bracket costs nothing: with M wrapped into (-pi, pi], E lies in
         // the same interval, because M(-pi) = -pi and M(pi) = pi for every
         // eccentricity. So the safeguarded solve starts already bracketed.
-        const f64 mean = wrapPi(meanAnomaly).value;
+        const f64 mean = wrapPi(meanAnomaly).value();
 
         // A near-parabolic orbit spends nearly all of its mean anomaly close to
         // periapsis, so the mean anomaly is a poor starting guess there; pi
@@ -1207,7 +1208,7 @@ std::expected<Radians, OrbitError> meanToEccentricAnomaly(Radians meanAnomaly, E
     // Hyperbolic: M = e*sinh(H) - H, with dM/dH = e*cosh(H) - 1 >= e - 1 > 0.
     // Strictly increasing again, and unbounded, so the bracket has to be found
     // rather than assumed.
-    const f64 mean = meanAnomaly.value;
+    const f64 mean = meanAnomaly.value();
     // M(0) = 0 exactly, on every conic. An exact-zero test, as in
     // initialUniversalAnomaly.
     if (std::fpclassify(mean) == FP_ZERO) return Radians{0.0};
@@ -1305,10 +1306,10 @@ std::expected<StateVector, OrbitError> propagate(const StateVector& sv, GravPara
     // Checked first and by name. NaN passes every comparison below unnoticed
     // and then comes out of Newton as "did not converge", which is true but
     // sends whoever reads the log looking at the solver instead of the file.
-    if (!isFinite(sv) || !std::isfinite(mu.value) || !std::isfinite(dt.value)) {
+    if (!isFinite(sv) || !std::isfinite(mu.value()) || !std::isfinite(dt.value())) {
         return std::unexpected(OrbitError::NotFinite);
     }
-    if (!(mu.value > 0.0)) return std::unexpected(OrbitError::NonPositiveGravity);
+    if (!(mu.value() > 0.0)) return std::unexpected(OrbitError::NonPositiveGravity);
 
     const f64 r0 = length(sv.pos);
     // This used to silently return the input, which turned a loud, findable
@@ -1317,7 +1318,7 @@ std::expected<StateVector, OrbitError> propagate(const StateVector& sv, GravPara
     // caller is the one holding the context to say so.
     if (!(r0 > 0.0)) return std::unexpected(OrbitError::DegenerateState);
 
-    const f64 m = mu.value;
+    const f64 m = mu.value();
     const f64 v0 = length(sv.vel);
 
     // Same as in elementsFromState: a magnitude beyond the largest double is
@@ -1332,7 +1333,7 @@ std::expected<StateVector, OrbitError> propagate(const StateVector& sv, GravPara
     const f64 sqrtMu = std::sqrt(m);
     const f64 alpha = (2.0 / r0) - (v0 * v0 / m); // reciprocal of the semi-major axis
 
-    f64 seconds = dt.value;
+    f64 seconds = dt.value();
 
     // Whole revolutions of a closed orbit are a no-op. Folding them away keeps
     // the universal anomaly small, which is what keeps Newton convergent when
@@ -1388,30 +1389,30 @@ std::expected<StateVector, OrbitError> propagate(const StateVector& sv, GravPara
 // `ParabolicElements` error with it, are gone.
 std::expected<Elements, OrbitError>
 propagateElements(const Elements& el, GravParam mu, Seconds dt) {
-    if (!std::isfinite(mu.value) || !std::isfinite(dt.value)) {
+    if (!std::isfinite(mu.value()) || !std::isfinite(dt.value())) {
         return std::unexpected(OrbitError::NotFinite);
     }
-    if (!(mu.value > 0.0)) return std::unexpected(OrbitError::NonPositiveGravity);
+    if (!(mu.value() > 0.0)) return std::unexpected(OrbitError::NonPositiveGravity);
     // The shape has to be usable: a positive, finite semi-latus rectum -- the
     // one parameter every conic has -- and a semi-major axis that is not zero
     // and not NaN. An infinite one is a parabola and is welcome.
-    if (!std::isfinite(el.slr.value) || !(el.slr.value > 0.0) || !(std::abs(el.sma.value) > 0.0) ||
-        !elementsAreUsable(el)) {
+    if (!std::isfinite(el.slr.value()) || !(el.slr.value() > 0.0) ||
+        !(std::abs(el.sma.value()) > 0.0) || !elementsAreUsable(el)) {
         return std::unexpected(OrbitError::NotFinite);
     }
 
-    const f64 m = mu.value;
+    const f64 m = mu.value();
     const f64 sqrtMu = std::sqrt(m);
-    const f64 p = el.slr.value;
-    const f64 e = el.ecc.value;
+    const f64 p = el.slr.value();
+    const f64 e = el.ecc.value();
     // 1/a: zero on a parabola, which is exactly what an infinite sma means.
-    const f64 alpha = std::isfinite(el.sma.value) ? 1.0 / el.sma.value : 0.0;
+    const f64 alpha = std::isfinite(el.sma.value()) ? 1.0 / el.sma.value() : 0.0;
     const f64 r0 = p / onePlusECosTrueAnomaly(el);
     // r . v = r sqrt(mu/p) e sin nu, with sqrt(mu)/sqrt(p) rather than
     // sqrt(mu/p) for the range, as orbitInfo does.
-    const f64 rdotv = r0 * e * std::sin(el.tra.value) * (sqrtMu / std::sqrt(p));
+    const f64 rdotv = r0 * e * std::sin(el.tra.value()) * (sqrtMu / std::sqrt(p));
 
-    f64 seconds = dt.value;
+    f64 seconds = dt.value();
     // Whole revolutions of a closed orbit are a no-op, as in propagate().
     if (alpha > 0.0) {
         const f64 period = kTau / (sqrtMu * alpha * std::sqrt(alpha));
@@ -1448,8 +1449,8 @@ propagateElements(const Elements& el, GravParam mu, Seconds dt) {
         ((sigma * chi * chi * solved->c2) + (r0 * chi * (1.0 - (solved->psi * solved->c3)))) /
         sqrtMu;
     const f64 speedScale = sqrtMu / std::sqrt(p);
-    const f64 cosNu = std::cos(el.tra.value);
-    const f64 sinNu = std::sin(el.tra.value);
+    const f64 cosNu = std::cos(el.tra.value());
+    const f64 sinNu = std::sin(el.tra.value());
     const f64 x = (f * r0 * cosNu) - (g * speedScale * sinNu);
     const f64 y = (f * r0 * sinNu) + (g * speedScale * eccentricityPlusCosTrueAnomaly(el));
 

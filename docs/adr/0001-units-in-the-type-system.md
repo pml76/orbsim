@@ -1,6 +1,24 @@
 # ADR 0001: Physical quantities are types, not doubles
 
-Status: accepted (2026-09-05; supersedes the example's ADR of the same name)
+Status: accepted (2026-09-05; supersedes the example's ADR of the same name),
+**mechanism superseded by [`0019`](0019-vectors-carry-their-unit.md) on
+2026-09-17**
+
+The decision below — that every physical quantity crossing an interface is a
+distinct type — stands, and is if anything stronger now. What changed is how.
+The nine types no longer derive from a hand-rolled `Quantity<Derived>` holding
+one `f64`; they derive from an mp-units quantity, so a dimension the code can
+compute with sits underneath them. Two claims in this record are now false and
+are left in place because the reasoning that replaced them is worth reading
+against them:
+
+- *"nothing produces a different unit from two others"* — `Metres / Seconds`
+  now produces a `MetresPerSecond`, and that is the point of the change.
+- *"Vectors stay `Vec3` of `f64`"* — reopened rather than reversed; `0019`
+  explains why its step 2 went back to undecided.
+
+`Tolerance` is the one type still built on `Quantity<Derived>`, because it is a
+parameter of a comparison rather than a measurement of anything.
 
 ## Decision
 

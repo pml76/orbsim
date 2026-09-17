@@ -34,29 +34,35 @@ inline constexpr f64 kTau = 2.0 * kPi;
     return std::bit_cast<std::uint64_t>(v);
 }
 
-// The base for every strong scalar type: one f64, no implicit conversion in
-// either direction, ordering, and unit-preserving arithmetic.
+// The base for a strong scalar that is *not* a physical quantity: one f64, no
+// implicit conversion in either direction, ordering, and arithmetic that keeps
+// the type.
 //
-// Each concrete type is a struct deriving from this (CRTP), so that Radians
-// and Degrees are distinct types the compiler can tell apart, while the code
-// that makes them behave like numbers is written once. At -O2 the whole thing
-// disappears: `Radians{a} + Radians{b}` is one addsd.
+// Until 2026-09-17 this was the base for everything, the nine units included.
+// Those moved to mp-units and are built on Unit<> in core/Units.hpp (ADR 0019),
+// which gives them something this template structurally cannot: a dimension.
+// `Metres / Seconds` now yields a velocity rather than failing to compile,
+// because mp-units knows what the division of a length by a time *is*, and a
+// per-type CRTP base cannot.
 //
-// Arithmetic that keeps the unit lives here: sum and difference of the same
-// type, scaling by a plain number, negation. Arithmetic that *changes* the
-// unit -- Metres divided by Seconds -- is deliberately absent. Writing that as
-// a named function with a typed result is the whole point of the exercise;
-// a generic `operator/` returning f64 would quietly reopen the hole.
+// What is left here is for scalars that take no part in dimensional analysis.
+// Tolerance is the only one, and belongs here rather than in a dimensionless
+// mp-units kind because it is a parameter of a comparison between two bare
+// doubles, not a measurement of anything.
+//
+// Both bases present the same surface -- value(), ordering, no `==`,
+// bitIdentical, arithmetic that keeps the type -- so code reading a scalar does
+// not have to know which one it came from.
 template <typename Derived> struct Quantity {
-    // Public by design, and the suppression is here rather than in .clang-tidy
-    // so it is visible where it applies. `value` IS the interface of a unit
-    // type: there is no invariant to protect (every f64 is a valid number of
-    // metres, including NaN, which the orbital code checks for by name), and a
-    // getter would be the trivial accessor C.131 tells you not to write. The
-    // check earns its keep on a class that has an invariant and leaks it; this
-    // is not one.
-    // NOLINTNEXTLINE(misc-non-private-member-variables-in-classes)
-    f64 value{};
+    // An accessor rather than a public member since 2026-09-17. It was a public
+    // member, on the argument that `value` IS the interface of a unit type and
+    // a getter would be the trivial accessor C.131 tells you not to write. That
+    // argument was sound while the f64 lived here; it stopped being sound when
+    // the physical types moved to mp-units, where the number lives in the base
+    // class and is reached through a function. One spelling across both bases
+    // is worth more than the argument was, and it takes a suppression of
+    // misc-non-private-member-variables-in-classes with it.
+    [[nodiscard]] constexpr f64 value() const noexcept { return value_; }
 
     // Ordering, and no `==`. The defaulted <=> gives <, >, <= and >=; `==` is
     // deleted, because on a double it is the comparison CODING_GUIDELINES
@@ -67,41 +73,43 @@ template <typename Derived> struct Quantity {
     bool operator==(const Quantity&) const = delete;
 
     [[nodiscard]] constexpr bool bitIdentical(Derived other) const noexcept {
-        return bitsOf(value) == bitsOf(other.value);
+        return bitsOf(value_) == bitsOf(other.value_);
     }
 
-    [[nodiscard]] constexpr Derived operator-() const noexcept { return Derived{-value}; }
+    [[nodiscard]] constexpr Derived operator-() const noexcept { return Derived{-value_}; }
     [[nodiscard]] constexpr Derived operator+(Derived other) const noexcept {
-        return Derived{value + other.value};
+        return Derived{value_ + other.value_};
     }
     [[nodiscard]] constexpr Derived operator-(Derived other) const noexcept {
-        return Derived{value - other.value};
+        return Derived{value_ - other.value_};
     }
     [[nodiscard]] constexpr Derived operator*(f64 scale) const noexcept {
-        return Derived{value * scale};
+        return Derived{value_ * scale};
     }
     [[nodiscard]] constexpr Derived operator/(f64 scale) const noexcept {
-        return Derived{value / scale};
+        return Derived{value_ / scale};
     }
     [[nodiscard]] friend constexpr Derived operator*(f64 scale, Derived quantity) noexcept {
-        return Derived{quantity.value * scale};
+        return Derived{quantity.value_ * scale};
     }
 
     constexpr Derived& operator+=(Derived other) noexcept {
-        value += other.value;
+        value_ += other.value_;
         return derived();
     }
     constexpr Derived& operator-=(Derived other) noexcept {
-        value -= other.value;
+        value_ -= other.value_;
         return derived();
     }
 
 private:
+    f64 value_{};
+
     // Only the named derived type may construct its base, which is what stops
     // `struct Other : Quantity<Radians>` from compiling by accident.
     friend Derived;
     constexpr Quantity() noexcept = default;
-    explicit constexpr Quantity(f64 v) noexcept : value(v) {}
+    explicit constexpr Quantity(f64 v) noexcept : value_(v) {}
 
     [[nodiscard]] constexpr Derived& derived() noexcept { return static_cast<Derived&>(*this); }
 };
@@ -125,7 +133,7 @@ struct Tolerance : Quantity<Tolerance> {
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 [[nodiscard]] constexpr bool nearlyEqual(f64 a, f64 b, Tolerance tolerance) noexcept {
     const f64 difference = a > b ? a - b : b - a;
-    return difference <= tolerance.value;
+    return difference <= tolerance.value();
 }
 
 // Finiteness in a constant expression, which <cmath>'s isfinite is not until
@@ -230,12 +238,12 @@ static_assert(!std::is_convertible_v<f64, Tolerance>, "construction must be expl
 static_assert(!std::is_convertible_v<Tolerance, f64>, "no silent way back to a bare double");
 // Exact results, compared the one way this codebase compares doubles: through
 // nearlyEqual, here with a zero tolerance.
-static_assert(nearlyEqual((Tolerance{1.0} + Tolerance{2.0}).value, 3.0, Tolerance{0.0}));
-static_assert(nearlyEqual((Tolerance{3.0} - Tolerance{2.0}).value, 1.0, Tolerance{0.0}));
-static_assert(nearlyEqual((-Tolerance{1.0}).value, -1.0, Tolerance{0.0}));
-static_assert(nearlyEqual((Tolerance{2.0} * 3.0).value, 6.0, Tolerance{0.0}));
-static_assert(nearlyEqual((3.0 * Tolerance{2.0}).value, 6.0, Tolerance{0.0}));
-static_assert(nearlyEqual((Tolerance{6.0} / 3.0).value, 2.0, Tolerance{0.0}));
+static_assert(nearlyEqual((Tolerance{1.0} + Tolerance{2.0}).value(), 3.0, Tolerance{0.0}));
+static_assert(nearlyEqual((Tolerance{3.0} - Tolerance{2.0}).value(), 1.0, Tolerance{0.0}));
+static_assert(nearlyEqual((-Tolerance{1.0}).value(), -1.0, Tolerance{0.0}));
+static_assert(nearlyEqual((Tolerance{2.0} * 3.0).value(), 6.0, Tolerance{0.0}));
+static_assert(nearlyEqual((3.0 * Tolerance{2.0}).value(), 6.0, Tolerance{0.0}));
+static_assert(nearlyEqual((Tolerance{6.0} / 3.0).value(), 2.0, Tolerance{0.0}));
 static_assert(Tolerance{1.0} < Tolerance{2.0});
 static_assert(nearlyEqual(1.0, 1.0 + 1e-16, Tolerance{1e-15}));
 static_assert(!nearlyEqual(1.0, 1.1, Tolerance{1e-15}));

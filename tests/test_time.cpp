@@ -139,7 +139,7 @@ struct Span {
 // REQUIRE, with the error's name, rather than read as a value.
 template <TimeScale Scale> [[nodiscard]] TimePoint<Scale> instant(const CalendarDate& date) {
     const auto t = TimePoint<Scale>::fromCalendar(date);
-    CAPTURE(date.year, date.month, date.day, date.hour, date.minute, date.second.value);
+    CAPTURE(date.year, date.month, date.day, date.hour, date.minute, date.second.value());
     INFO(errorName(t));
     REQUIRE(t.has_value());
     return *t;
@@ -320,7 +320,7 @@ TEST_CASE("the published epochs, both ways", "[time][epochs]") {
         REQUIRE(civil->day == c.date.day);
         REQUIRE(civil->hour == c.date.hour);
         REQUIRE(civil->minute == 0);
-        REQUIRE_THAT(civil->second.value, WithinAbsOf(0.0, Tolerance{0.0}));
+        REQUIRE_THAT(civil->second.value(), WithinAbsOf(0.0, Tolerance{0.0}));
     }
 }
 
@@ -445,9 +445,11 @@ void checkDateSurvives(const DateTrip& trip) {
     INFO("year, month, day, hour and minute come back unchanged");
     REQUIRE(sameFields);
     INFO("the budget");
-    REQUIRE_THAT(trip.returned.second.value, WithinAbsOf(trip.sent.second.value, kRoundTripBudget));
+    REQUIRE_THAT(trip.returned.second.value(),
+                 WithinAbsOf(trip.sent.second.value(), kRoundTripBudget));
     INFO("the design: the nearest picosecond, then the nearest double");
-    REQUIRE_THAT(trip.returned.second.value, WithinAbsOf(trip.sent.second.value, kRoundTripDesign));
+    REQUIRE_THAT(trip.returned.second.value(),
+                 WithinAbsOf(trip.sent.second.value(), kRoundTripDesign));
 }
 
 // One case of the calendar sweep: the date survives the instant, and the
@@ -579,9 +581,9 @@ void checkOneNanosecond(const TaiTime& t) {
 
     const Seconds recovered = later - t;
     INFO("the budget");
-    REQUIRE_THAT(recovered.value, WithinAbsOf(kNanosecond.value, kResolutionBudget));
+    REQUIRE_THAT(recovered.value(), WithinAbsOf(kNanosecond.value(), kResolutionBudget));
     INFO("the design: the difference is the double nearest 1 ns, exactly");
-    REQUIRE_THAT(recovered.value, WithinAbsOf(kNanosecond.value, Tolerance{0.0}));
+    REQUIRE_THAT(recovered.value(), WithinAbsOf(kNanosecond.value(), Tolerance{0.0}));
 }
 
 } // namespace
@@ -589,13 +591,13 @@ void checkOneNanosecond(const TaiTime& t) {
 // The claim the representation exists to make.
 TEST_CASE("t + 1 ns - t recovers 1 ns, at the end of a day and across it", "[time][resolution]") {
     for (const CalendarDate& date : kAwkwardInstants) {
-        CAPTURE(date.hour, date.minute, date.second.value);
+        CAPTURE(date.hour, date.minute, date.second.value());
         checkOneNanosecond(instant<TimeScale::Tai>(date));
     }
     Sampler sampler;
     for (std::size_t i = 0; i < 1000; ++i) {
         const CalendarDate date = drawDate(sampler);
-        CAPTURE(kSweepSeed, i, date.year, date.month, date.day, date.second.value);
+        CAPTURE(kSweepSeed, i, date.year, date.month, date.day, date.second.value());
         checkOneNanosecond(instant<TimeScale::Tai>(date));
     }
 }
@@ -618,10 +620,10 @@ TEST_CASE("a million additions of 1 us drift by nothing", "[time][resolution]") 
 
     const Seconds elapsed = t - start;
     INFO("the budget");
-    REQUIRE_THAT(elapsed.value, WithinAbsOf(1.0, kDriftBudget));
+    REQUIRE_THAT(elapsed.value(), WithinAbsOf(1.0, kDriftBudget));
     INFO("the design: exactly one second, to the picosecond");
     REQUIRE(picosecondsIn({.from = start, .to = t}) == 1'000'000'000'000);
-    REQUIRE_THAT(elapsed.value, WithinAbsOf(1.0, Tolerance{0.0}));
+    REQUIRE_THAT(elapsed.value(), WithinAbsOf(1.0, Tolerance{0.0}));
     REQUIRE(t == start + Seconds{1.0});
 }
 
@@ -690,7 +692,7 @@ TEST_CASE("arithmetic moves by the nearest picosecond and stays normalised", "[t
         const TaiTime start = instant<TimeScale::Tai>(*civil);
         REQUIRE(start.picosecondOfDay() == startPicos);
         for (const Step& step : kExactSteps) {
-            CAPTURE(startPicos, step.name, step.duration.value);
+            CAPTURE(startPicos, step.name, step.duration.value());
             const TaiTime moved = start + step.duration;
             INFO("normalised");
             REQUIRE(isNormalised(moved));
@@ -714,7 +716,7 @@ TEST_CASE("enormous durations keep the instant normalised", "[time][arithmetic]"
         INFO("normalised");
         REQUIRE(isNormalised(moved));
         INFO("the difference is the duration, to the duration's own resolution");
-        REQUIRE_THAT((moved - start).value, WithinRelTo(seconds, Tolerance{0x1p-52}));
+        REQUIRE_THAT((moved - start).value(), WithinRelTo(seconds, Tolerance{0x1p-52}));
     }
 }
 
@@ -731,11 +733,11 @@ TEST_CASE("ordering agrees with the sign of the difference", "[time][arithmetic]
         const TaiTime b = (i % 2 == 0) ? instant<TimeScale::Tai>(drawDate(sampler))
                                        : a + Seconds{(sampler.unit() - 0.5) * 1e-6};
         CAPTURE(kSweepSeed, i, a, b);
-        const f64 difference = (b - a).value;
+        const f64 difference = (b - a).value();
         REQUIRE((a < b) == (difference > 0.0));
         REQUIRE((a > b) == (difference < 0.0));
         REQUIRE((a == b) == nearlyEqual(difference, 0.0, Tolerance{0.0}));
-        REQUIRE_THAT((a - b).value, WithinAbsOf(-difference, Tolerance{0.0}));
+        REQUIRE_THAT((a - b).value(), WithinAbsOf(-difference, Tolerance{0.0}));
     }
 }
 

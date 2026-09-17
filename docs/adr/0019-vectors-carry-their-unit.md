@@ -1,8 +1,16 @@
 # ADR 0019: Vectors carry their unit
 
-Status: **proposed** (2026-09-17) — the owner has asked for units on `Vec3`;
-this record is the shape of that change and the decision it forces, and nothing
-moves until it is accepted.
+Status: **accepted in part** (2026-09-17). **Step 1 is done** — mp-units is
+pinned and `core/Units.hpp`'s nine types are built on it. **Step 2, `Vec3<Q>`,
+is re-opened** rather than accepted: the spike that was a precondition of
+accepting this record found that mp-units does not provide `vector_product` on
+quantities at all, which is most of what step 2 was going to buy. See
+[What the precondition spike measured](#what-the-precondition-spike-measured),
+which is the decisive section and was written after the rest.
+
+Supersedes the whole of [`0001`](0001-units-in-the-type-system.md) on the
+mechanism, not only the one paragraph noted below: the nine types no longer
+derive from a hand-rolled `Quantity<Derived>`.
 
 Supersedes one paragraph of [`0001`](0001-units-in-the-type-system.md), which
 ruled the other way: *"Vectors stay `Vec3` of `f64`. A vector's unit is a
@@ -202,6 +210,23 @@ Two steps, because the second is where the risk is:
    unchanged; the assertion count must not move. Under E this is also where the
    compile-time measurement lands, and where the dependency gets its
    `THIRD_PARTY.md` row.
+
+   **Done 2026-09-17, and it was not aliases.** Aliases would have dropped two
+   invariants the old types asserted, so each type derives from an mp-units
+   quantity instead and puts the house rules back on top — the section above
+   says which and why. The count of edits was **446 `.value` sites**, every one
+   of them becoming `.value()` because the number now lives in the base class:
+   97 in `src/`, 349 in `tests/`. That is four times what this record implied
+   step 1 would touch, and more than the 104 sites it estimated for step 2.
+   The gate held: **642,205 assertions in 66 test cases, unchanged to the
+   assertion**, and `check` green in all six configurations.
+
+   `coding-guidelines-example/` was deliberately left alone. It is a separate
+   CMake project with **its own** `core/Units.hpp` and no external dependency at
+   all, and migrating it would give the worked example a `FetchContent` call it
+   has never had. Whether the reference implementation should still demonstrate
+   hand-rolled units once `src/` has stopped using them is an open question, not
+   an oversight.
 2. **`Vec3<Dim>`**, then the 104 sites, `orbit/` last because it is the file
    with the measured error budgets. The cross-toolchain checksum in
    `test_orbit_scales.cpp` is the instrument: it pins the bits of an
@@ -211,6 +236,82 @@ Two steps, because the second is where the risk is:
 **Not before M1-04** because M1-04 and M1-06 are `core/Time.hpp` and a fixture
 reader, neither of which touches `Vec3`, and because sequencing a large
 refactor behind two small tasks costs nothing and de-risks both.
+
+**Reversed for step 1 on 2026-09-17, on the owner's decision.** That reasoning
+holds for step 2 and not for step 1: the argument is that M1-04 does not touch
+`Vec3`, which is true, but M1-04 is the leap-second table and `Seconds` is one
+of the nine types. Sequencing step 1 behind it would have meant writing
+`core/Time.hpp` against the old `Quantity` and migrating it weeks later. Step 1
+went first so M1-04 is written once, in the system it will live in. Step 2, if
+it happens at all, still comes after.
+
+## What the precondition spike measured
+
+Run 2026-09-17, because this record made accepting it conditional on one
+measurement. It found more than it went looking for, and two of the findings
+changed the plan.
+
+**The central claim holds.** Specific angular momentum and kinematic viscosity
+are both m²/s, and mp-units keeps them apart: distinct types, neither
+convertible to the other, proven by `static_assert` under all three compilers.
+`au` has no equivalent — its `quantity.hh` contains no notion of kind at all.
+This was the argument for mp-units over `au` and it survived contact.
+
+**Zero overhead holds, read rather than believed.** vis-viva through mp-units
+and through bare `f64` emit the same five instructions; only the `divsd`
+schedules differently.
+
+**But `vector_product` on quantities does not exist.** Not in `v2.5.0`, not on
+`master` 102 commits later. The blog post that made the case for mp-units shows
+`vector_product(position_vector, force)` on quantities; in the shipped code that
+overload is a commented-out `TODO` in the `Vector` concept, and the operation
+exists only on the bare `cartesian_vector`. A unit-carrying cross product is
+therefore still ours to write. It is twelve lines and it is `constexpr`, but it
+is the hand-rolling this record proposed to stop, so **step 2 goes back to
+undecided.** `cartesian_vector` is also new in `v2.5.0` and has already moved
+from `src/core` to `src/utility` on master and grown a second template
+parameter — the type step 2 would build on is still churning.
+
+**Compile time, the number this section was demanded for.** clang 23.1.0,
+Windows, warm, best of three:
+
+| Translation unit | |
+|---|---|
+| empty (the floor) | 0.20 s |
+| `src/orbit/Orbit.cpp` before this change, 1,462 lines | 1.20 s |
+| `au`, the five unit headers it would need | 1.68 s |
+| mp-units `core.h` alone | 1.99 s |
+| **mp-units `si.h` + `isq.h` + `cartesian_vector.h`** | **5.61 s** |
+
+clang-tidy roughly doubles per translation unit, 4.03 s to 8.11 s. All ten of
+this project's translation units reach `core/Units.hpp`, so all ten pay. In
+practice `check` in `build/relwithdebinfo` went from **124 s for `lint` alone**
+to **188 s for the whole target**, which is the honest figure to quote against
+"build time is a feature". `au` costs about a third of mp-units here, because
+it ships one header per unit; it was not chosen because it cannot express kinds.
+
+**What it cost in suppressions: one compiler flag and nothing else.** `/utf-8`
+is genuinely required — MSVC reads mp-units' UTF-8 unit symbols as the ANSI code
+page and dies with 47 instances of C3872. Two other suppressions were approved
+in advance and turned out to have no cause: `/wd4686` fires only on
+`quantity_spec` arithmetic the nine types do not use, and the NOLINT for
+`cppcoreguidelines-pro-bounds-avoid-unchecked-container-access` has no site
+until `cartesian_vector` arrives with step 2. Neither was written.
+
+**What the linter caught that review would not have.** mp-units declares its
+storage without an initialiser and defaults its default constructor, so
+`Metres m;` holds whatever was on the stack where the old hand-rolled base
+zero-initialised. `cppcoreguidelines-pro-type-member-init` reported it against
+the seven uninitialised members of `Elements`. `Unit`'s default constructor
+zeroes explicitly, and the comment there says why.
+
+**Two invariants had to be rebuilt rather than inherited.** mp-units provides
+`==` on floating-point quantities — and silences `-Wfloat-equal` inside it —
+and converts implicitly between units of one dimension. Both are reasonable in
+a general-purpose library; neither is allowed here. `core/Units.hpp` derives
+rather than aliases in order to delete `==` and to make `Degrees`-to-`Radians`
+need two user-defined conversions, which the language refuses. This is why
+step 1 is a facade and not the alias swap the plan below describes.
 
 ## What it would cost, honestly
 

@@ -55,7 +55,7 @@ makeElements(Metres sma, Eccentricity ecc, Degrees inc, Degrees lan, Degrees aop
         .lan = toRadians(lan),
         .aop = toRadians(aop),
         .tra = toRadians(tra),
-        .slr = Metres{sma.value * (1.0 - (ecc.value * ecc.value))},
+        .slr = Metres{sma.value() * (1.0 - (ecc.value() * ecc.value()))},
     };
 }
 
@@ -64,8 +64,8 @@ makeElements(Metres sma, Eccentricity ecc, Degrees inc, Degrees lan, Degrees aop
 // a propagator at an unfamiliar scale.
 [[nodiscard]] inline StateVector circularState(GravParam mu, Metres r) {
     return StateVector{
-        .pos = {r.value, 0.0, 0.0},
-        .vel = {0.0, std::sqrt(mu.value / r.value), 0.0},
+        .pos = {r.value(), 0.0, 0.0},
+        .vel = {0.0, std::sqrt(mu.value() / r.value()), 0.0},
     };
 }
 
@@ -73,7 +73,7 @@ makeElements(Metres sma, Eccentricity ecc, Degrees inc, Degrees lan, Degrees aop
 // of two-body motion, computed independently of anything in Orbit.cpp so that
 // a propagator can be checked against physics rather than against itself.
 [[nodiscard]] inline SpecificEnergy specificEnergy(const StateVector& sv, GravParam mu) {
-    return SpecificEnergy{(0.5 * lengthSq(sv.vel)) - (mu.value / length(sv.pos))};
+    return SpecificEnergy{(0.5 * lengthSq(sv.vel)) - (mu.value() / length(sv.pos))};
 }
 
 [[nodiscard]] inline Vec3 specificAngularMomentum(const StateVector& sv) {
@@ -177,7 +177,7 @@ public:
 
     [[nodiscard]] bool match(const Vec3& got) const override {
         const f64 scale = std::max(length(want_), kRelativeScaleFloor);
-        return length(got - want_) / scale <= relTol_.value;
+        return length(got - want_) / scale <= relTol_.value();
     }
 
 protected:

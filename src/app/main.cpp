@@ -158,7 +158,7 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
 
     while (handleEvents(gfx)) {
         const Seconds elapsed{static_cast<double>(SDL_GetTicks() - startTicks) / 1000.0};
-        if (options.runFor.value > 0.0 && elapsed >= options.runFor) break;
+        if (options.runFor.value() > 0.0 && elapsed >= options.runFor) break;
 
         const auto frame = gfx.beginFrame();
         if (!frame) {

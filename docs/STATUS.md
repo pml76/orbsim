@@ -115,8 +115,11 @@ How to install and run any of it is
 rather than the exact tag. `gcc-14` is the second *implementation* and is not
 tied to that number.
 
-Pinned dependencies: SDL3, vk-bootstrap, VMA, Vulkan-Headers and Catch2, all
-fetched at a pinned tag by `CMakeLists.txt`. Their licences, the ones decided
+Pinned dependencies: SDL3, vk-bootstrap, VMA, Vulkan-Headers,
+Vulkan-Utility-Libraries, Catch2 and mp-units — seven, all fetched at a pinned
+tag by `CMakeLists.txt`. **mp-units is the first one `orbsim_core` links**, so
+the headless core now has a source dependency where it had none; it still needs
+no library at link time. Their licences, the ones decided
 but not yet pinned, and which files of `bc7enc_rdo` may be compiled, are in
 [`THIRD_PARTY.md`](../THIRD_PARTY.md).
 
@@ -130,9 +133,15 @@ accepted**: 0008 to 0015 written by
 as an error — both on 2026-09-11, and 0018 — `stateFromElements` reports — on
 2026-09-13.
 
-**0019 is drafted but not accepted** — vectors carrying their unit, which forces
-compile-time dimensional analysis. It is the first record in this project with
-status *proposed*, and it decides nothing until the owner rules on it.
+**0019 is accepted in part** (2026-09-17) — vectors carrying their unit, which
+forces compile-time dimensional analysis. Its **step 1 is done**: mp-units
+`v2.5.0` is pinned and `core/Units.hpp`'s nine types are built on it, so
+`Metres / Seconds` is a `MetresPerSecond` and `Eccentricity` is a *kind* no
+other ratio converts into. Its **step 2, `Vec3<Q>`, went back to undecided**:
+the precondition spike found mp-units has no `vector_product` on quantities at
+all, in `v2.5.0` or on master, which was most of what step 2 was to buy.
+0019's own "What the precondition spike measured" section carries the numbers,
+and it supersedes 0001 on the mechanism.
 
 An accepted ADR is immutable, so the numbers inside one are not maintained
 here: they are what was true when the decision was taken.

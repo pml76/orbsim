@@ -53,7 +53,7 @@ TEST_CASE("elements <-> state round trip", "[orbit]") {
     const std::array cases = std::to_array<Case>({
         {
             .name = "LEO, inclined, slightly eccentric",
-            .el = makeElements(Metres{kEarthRadius.value + 500e3},
+            .el = makeElements(Metres{kEarthRadius.value() + 500e3},
                                Eccentricity{0.01},
                                Degrees{51.6},
                                Degrees{120.0},
@@ -97,12 +97,12 @@ TEST_CASE("elements <-> state round trip", "[orbit]") {
         INFO(errorName(back));
         REQUIRE(back.has_value());
 
-        REQUIRE_THAT(back->sma.value, WithinRelTo(c.el.sma.value, Tolerance{1e-12}));
-        REQUIRE_THAT(back->ecc.value, WithinAbsOf(c.el.ecc.value, Tolerance{1e-12}));
-        REQUIRE_THAT(wrapPi(back->inc - c.el.inc).value, WithinAbsOf(0.0, Tolerance{1e-12}));
-        REQUIRE_THAT(wrapPi(back->lan - c.el.lan).value, WithinAbsOf(0.0, Tolerance{1e-12}));
-        REQUIRE_THAT(wrapPi(back->aop - c.el.aop).value, WithinAbsOf(0.0, Tolerance{1e-11}));
-        REQUIRE_THAT(wrapPi(back->tra - c.el.tra).value, WithinAbsOf(0.0, Tolerance{1e-11}));
+        REQUIRE_THAT(back->sma.value(), WithinRelTo(c.el.sma.value(), Tolerance{1e-12}));
+        REQUIRE_THAT(back->ecc.value(), WithinAbsOf(c.el.ecc.value(), Tolerance{1e-12}));
+        REQUIRE_THAT(wrapPi(back->inc - c.el.inc).value(), WithinAbsOf(0.0, Tolerance{1e-12}));
+        REQUIRE_THAT(wrapPi(back->lan - c.el.lan).value(), WithinAbsOf(0.0, Tolerance{1e-12}));
+        REQUIRE_THAT(wrapPi(back->aop - c.el.aop).value(), WithinAbsOf(0.0, Tolerance{1e-11}));
+        REQUIRE_THAT(wrapPi(back->tra - c.el.tra).value(), WithinAbsOf(0.0, Tolerance{1e-11}));
     }
 }
 
@@ -123,10 +123,10 @@ TEST_CASE("degenerate orbits stay finite", "[orbit]") {
         REQUIRE(back.has_value());
 
         INFO("aop folded to zero");
-        REQUIRE_THAT(back->aop.value, WithinAbsOf(0.0, Tolerance{1e-12}));
+        REQUIRE_THAT(back->aop.value(), WithinAbsOf(0.0, Tolerance{1e-12}));
         // aop + tra is the argument of latitude, and that is preserved.
         INFO("argument of latitude");
-        REQUIRE_THAT(wrapPi(back->tra - (el.aop + el.tra)).value,
+        REQUIRE_THAT(wrapPi(back->tra - (el.aop + el.tra)).value(),
                      WithinAbsOf(0.0, Tolerance{1e-10}));
         REQUIRE_THAT(stateOf(*back, kMuEarth).pos, WithinRelVec(sv.pos, Tolerance{1e-12}));
     }
@@ -145,10 +145,10 @@ TEST_CASE("degenerate orbits stay finite", "[orbit]") {
         REQUIRE(back.has_value());
 
         INFO("lan folded to zero");
-        REQUIRE_THAT(back->lan.value, WithinAbsOf(0.0, Tolerance{1e-12}));
-        REQUIRE_THAT(back->inc.value, WithinAbsOf(0.0, Tolerance{1e-12}));
+        REQUIRE_THAT(back->lan.value(), WithinAbsOf(0.0, Tolerance{1e-12}));
+        REQUIRE_THAT(back->inc.value(), WithinAbsOf(0.0, Tolerance{1e-12}));
         INFO("aop from the x-axis");
-        REQUIRE_THAT(wrapPi(back->aop - el.aop).value, WithinAbsOf(0.0, Tolerance{1e-10}));
+        REQUIRE_THAT(wrapPi(back->aop - el.aop).value(), WithinAbsOf(0.0, Tolerance{1e-10}));
         REQUIRE_THAT(stateOf(*back, kMuEarth).pos, WithinRelVec(sv.pos, Tolerance{1e-12}));
     }
 }
@@ -156,8 +156,8 @@ TEST_CASE("degenerate orbits stay finite", "[orbit]") {
 // Known closed-form values, independent of any of the code under test.
 TEST_CASE("known analytic values", "[orbit]") {
     // 400 km circular orbit: period from the elements must match 2*pi*r/v.
-    const f64 r = kEarthRadius.value + 400e3;
-    const f64 v = std::sqrt(kMuEarth.value / r);
+    const f64 r = kEarthRadius.value() + 400e3;
+    const f64 v = std::sqrt(kMuEarth.value() / r);
     const StateVector sv{.pos = {r, 0, 0}, .vel = {0, v, 0}};
     const auto el = elementsFromState(sv, kMuEarth);
 
@@ -166,13 +166,13 @@ TEST_CASE("known analytic values", "[orbit]") {
 
     const OrbitInfo info = orbitInfo(*el, kMuEarth);
 
-    REQUIRE_THAT(el->sma.value, WithinRelTo(r, Tolerance{1e-12}));
-    REQUIRE_THAT(el->ecc.value, WithinAbsOf(0.0, Tolerance{1e-12}));
-    REQUIRE_THAT(info.period.value, WithinRelTo(kTau * r / v, Tolerance{1e-10}));
-    REQUIRE_THAT(info.periapsis.value, WithinRelTo(r, Tolerance{1e-12}));
-    REQUIRE_THAT(info.apoapsis.value, WithinRelTo(r, Tolerance{1e-12}));
+    REQUIRE_THAT(el->sma.value(), WithinRelTo(r, Tolerance{1e-12}));
+    REQUIRE_THAT(el->ecc.value(), WithinAbsOf(0.0, Tolerance{1e-12}));
+    REQUIRE_THAT(info.period.value(), WithinRelTo(kTau * r / v, Tolerance{1e-10}));
+    REQUIRE_THAT(info.periapsis.value(), WithinRelTo(r, Tolerance{1e-12}));
+    REQUIRE_THAT(info.apoapsis.value(), WithinRelTo(r, Tolerance{1e-12}));
     // Sanity anchor: a 400 km orbit takes a bit over 92 minutes.
-    REQUIRE_THAT(info.period.value, WithinAbsOf(5554.0, Tolerance{5.0}));
+    REQUIRE_THAT(info.period.value(), WithinAbsOf(5554.0, Tolerance{5.0}));
 
     // Vis-viva on an eccentric orbit, checked at periapsis.
     const Elements e2 = makeElements(Metres{10000e3},
@@ -182,8 +182,8 @@ TEST_CASE("known analytic values", "[orbit]") {
                                      Degrees{0.0},
                                      Degrees{0.0});
     const StateVector p = stateOf(e2, kMuEarth);
-    const f64 rp = e2.sma.value * (1.0 - e2.ecc.value);
-    const f64 vp = std::sqrt(kMuEarth.value * ((2.0 / rp) - (1.0 / e2.sma.value)));
+    const f64 rp = e2.sma.value() * (1.0 - e2.ecc.value());
+    const f64 vp = std::sqrt(kMuEarth.value() * ((2.0 / rp) - (1.0 / e2.sma.value())));
     REQUIRE_THAT(length(p.pos), WithinRelTo(rp, Tolerance{1e-12}));
     INFO("periapsis speed (vis-viva)");
     REQUIRE_THAT(length(p.vel), WithinRelTo(vp, Tolerance{1e-12}));
@@ -285,9 +285,9 @@ TEST_CASE("propagation invariants", "[orbit]") {
     REQUIRE(far.has_value());
 
     INFO("conserved over 500 revolutions");
-    REQUIRE_THAT(far->sma.value, WithinRelTo(el.sma.value, Tolerance{1e-9}));
-    REQUIRE_THAT(far->ecc.value, WithinRelTo(el.ecc.value, Tolerance{1e-9}));
-    REQUIRE_THAT(wrapPi(far->inc - el.inc).value, WithinAbsOf(0.0, Tolerance{1e-9}));
+    REQUIRE_THAT(far->sma.value(), WithinRelTo(el.sma.value(), Tolerance{1e-9}));
+    REQUIRE_THAT(far->ecc.value(), WithinRelTo(el.ecc.value(), Tolerance{1e-9}));
+    REQUIRE_THAT(wrapPi(far->inc - el.inc).value(), WithinAbsOf(0.0, Tolerance{1e-9}));
 
     // Half a period from periapsis lands exactly on apoapsis.
     Elements atPeri = el;
@@ -297,11 +297,11 @@ TEST_CASE("propagation invariants", "[orbit]") {
     REQUIRE(apo.has_value());
 
     INFO("half a period from periapsis reaches apoapsis");
-    REQUIRE_THAT(length(apo->pos), WithinRelTo(info.apoapsis.value, Tolerance{1e-9}));
+    REQUIRE_THAT(length(apo->pos), WithinRelTo(info.apoapsis.value(), Tolerance{1e-9}));
 
     // A quarter period on a circular orbit is a quarter turn.
     const f64 rc = 7500e3;
-    const StateVector c0{.pos = {rc, 0, 0}, .vel = {0, std::sqrt(kMuEarth.value / rc), 0}};
+    const StateVector c0{.pos = {rc, 0, 0}, .vel = {0, std::sqrt(kMuEarth.value() / rc), 0}};
     const auto circular = elementsFromState(c0, kMuEarth);
     INFO(errorName(circular));
     REQUIRE(circular.has_value());
@@ -312,7 +312,7 @@ TEST_CASE("propagation invariants", "[orbit]") {
     REQUIRE(c1.has_value());
 
     INFO("a quarter period is a quarter turn");
-    REQUIRE_THAT(wrapPi(angleBetween(c0.pos, c1->pos) - Radians{kPi / 2}).value,
+    REQUIRE_THAT(wrapPi(angleBetween(c0.pos, c1->pos) - Radians{kPi / 2}).value(),
                  WithinAbsOf(0.0, Tolerance{1e-9}));
     REQUIRE_THAT(length(c1->pos), WithinRelTo(rc, Tolerance{1e-12}));
 }
@@ -321,8 +321,8 @@ TEST_CASE("propagation invariants", "[orbit]") {
 // same coverage as closed orbits.
 TEST_CASE("hyperbolic trajectories", "[orbit]") {
     // Departing Earth well above escape speed.
-    const f64 r0 = kEarthRadius.value + 300e3;
-    const f64 vEsc = std::sqrt(2.0 * kMuEarth.value / r0);
+    const f64 r0 = kEarthRadius.value() + 300e3;
+    const f64 vEsc = std::sqrt(2.0 * kMuEarth.value() / r0);
     const StateVector sv{.pos = {r0, 0, 0}, .vel = {1200.0, vEsc * 1.15, 0}};
 
     const auto el = elementsFromState(sv, kMuEarth);
@@ -331,10 +331,10 @@ TEST_CASE("hyperbolic trajectories", "[orbit]") {
 
     const OrbitInfo info = orbitInfo(*el, kMuEarth);
 
-    REQUIRE(el->ecc.value > 1.0);
-    REQUIRE(el->sma.value < 0.0);
-    REQUIRE(std::isinf(info.apoapsis.value));
-    REQUIRE(info.energy.value > 0.0);
+    REQUIRE(el->ecc.value() > 1.0);
+    REQUIRE(el->sma.value() < 0.0);
+    REQUIRE(std::isinf(info.apoapsis.value()));
+    REQUIRE(info.energy.value() > 0.0);
 
     // Round trip through the elements.
     const StateVector rebuilt = stateOf(*el, kMuEarth);
@@ -384,7 +384,7 @@ TEST_CASE("Kepler equation solver", "[orbit]") {
                 break;
             }
             const Radians backAgain = eccentricToMeanAnomaly(*solved, Eccentricity{ecc});
-            worst = std::max(worst, std::abs(wrapPi(backAgain - meanAnomaly).value));
+            worst = std::max(worst, std::abs(wrapPi(backAgain - meanAnomaly).value()));
         }
 
         INFO("every mean anomaly solved");
@@ -400,7 +400,7 @@ TEST_CASE("Kepler equation solver", "[orbit]") {
             const Radians nu = toRadians(Degrees{static_cast<f64>(i)});
             const Radians eccAnomaly = trueToEccentricAnomaly(nu, Eccentricity{ecc});
             INFO("true <-> eccentric (elliptic)");
-            REQUIRE_THAT(wrapPi(eccentricToTrueAnomaly(eccAnomaly, Eccentricity{ecc}) - nu).value,
+            REQUIRE_THAT(wrapPi(eccentricToTrueAnomaly(eccAnomaly, Eccentricity{ecc}) - nu).value(),
                          WithinAbsOf(0.0, Tolerance{1e-10}));
         }
     }
@@ -413,7 +413,7 @@ TEST_CASE("Kepler equation solver", "[orbit]") {
             const Radians nu{nuMax * static_cast<f64>(i) / 20.0};
             const Radians hyperbolic = trueToEccentricAnomaly(nu, Eccentricity{ecc});
             INFO("true <-> eccentric (hyperbolic)");
-            REQUIRE_THAT(wrapPi(eccentricToTrueAnomaly(hyperbolic, Eccentricity{ecc}) - nu).value,
+            REQUIRE_THAT(wrapPi(eccentricToTrueAnomaly(hyperbolic, Eccentricity{ecc}) - nu).value(),
                          WithinAbsOf(0.0, Tolerance{1e-9}));
 
             const Radians meanAnomaly = eccentricToMeanAnomaly(hyperbolic, Eccentricity{ecc});
@@ -421,7 +421,7 @@ TEST_CASE("Kepler equation solver", "[orbit]") {
             INFO(errorName(solved));
             REQUIRE(solved.has_value());
             INFO("hyperbolic Kepler round trip");
-            REQUIRE_THAT(solved->value, WithinAbsOf(hyperbolic.value, Tolerance{1e-9}));
+            REQUIRE_THAT(solved->value(), WithinAbsOf(hyperbolic.value(), Tolerance{1e-9}));
         }
     }
 }

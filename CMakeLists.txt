@@ -154,6 +154,14 @@ elseif(MSVC)
             # remark about a flag we do not pass, on every indexed load.
             /wd5045
             /WX /permissive-
+            # Not a warning switch. MSVC otherwise reads a UTF-8 source file as
+            # the machine's ANSI code page, and mp-units' unit symbols are UTF-8
+            # -- micro, ohm, euro. Without this the build dies with 47 instances
+            # of C3872 ("this character is not allowed in an identifier")
+            # pointing into headers that are perfectly well-formed. clang and
+            # gcc assume UTF-8 already, so this makes the three agree rather
+            # than adding a behaviour.
+            /utf-8
     )
 endif()
 
@@ -300,6 +308,43 @@ endif()
 option(ORBSIM_BUILD_APP "Build the Vulkan renderer and application" ON)
 
 # ---------------------------------------------------------------------------
+# mp-units -- the dimension system behind core/Units.hpp (ADR 0019).
+#
+# Header-only, licence MIT, no dependency of its own in this configuration.
+# PUBLIC on orbsim_core because core/Units.hpp names mp_units types in its
+# interface, so every consumer needs the headers; SYSTEM so -Weverything and
+# /Wall judge our code and not theirs.
+#
+# MP_UNITS_API_CONTRACTS=NONE, deliberately. The default is GSL-LITE, which
+# fetches gsl-lite to check the library's own preconditions. This project
+# already has a contract facility (core/Contract.hpp, ADR 0002) and a second
+# one would be both a new dependency and a second answer to the same question.
+# The cost is that mp-units' internal preconditions go unchecked; switching
+# this to GSL-LITE or MS-GSL is a one-line change if that trade stops looking
+# right.
+#
+# MP_UNITS_BUILD_INSTALL=OFF because nothing installs this project, and an
+# install rule on a FetchContent dependency leaks into ours.
+#
+# Pinned at v2.5.0 (24 December 2025), the current release. Upstream tests
+# clang 16-21; this project runs 23.1.0, which is newer than anything in their
+# matrix -- clang 23 was added to it only on master. Measured rather than
+# assumed on 2026-09-17: v2.5.0 builds clean here under clang 23.1.0, gcc-14
+# and MSVC 14.51, with zero clang-tidy findings escaping its headers.
+# ---------------------------------------------------------------------------
+set(MP_UNITS_API_CONTRACTS NONE CACHE STRING "" FORCE)
+set(MP_UNITS_BUILD_INSTALL OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(mp_units
+        GIT_REPOSITORY https://github.com/mpusz/mp-units.git
+        GIT_TAG        v2.5.0
+        GIT_SHALLOW    TRUE
+        SOURCE_SUBDIR  src
+        SYSTEM
+        EXCLUDE_FROM_ALL
+)
+FetchContent_MakeAvailable(mp_units)
+
+# ---------------------------------------------------------------------------
 # Simulation core
 #
 # Deliberately free of any dependency on the renderer or on SDL: the physics
@@ -311,7 +356,7 @@ set(ORBSIM_CORE_SOURCES
 add_library(orbsim_core STATIC ${ORBSIM_CORE_SOURCES})
 target_include_directories(orbsim_core PUBLIC src)
 target_link_libraries(orbsim_core
-        PUBLIC orbsim_fp
+        PUBLIC orbsim_fp mp-units::mp-units
         PRIVATE orbsim_warnings orbsim_sanitizers
 )
 

@@ -27,7 +27,7 @@ Nothing is vendored into this repository: there is no third-party source under
 
 ## Pinned and compiled today
 
-Read from the `FetchContent_Declare` calls in `CMakeLists.txt`. All six are
+Read from the `FetchContent_Declare` calls in `CMakeLists.txt`. All seven are
 declared `SYSTEM`, which is what keeps this project's warning set from firing
 on somebody else's headers — the full set produced 643 warnings once, and 639
 of them were inside two of these.
@@ -46,6 +46,7 @@ this file plus the notice that ships with any binary distribution.
 | [VulkanMemoryAllocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) | `v3.2.1` | MIT | GPU memory allocation |
 | [Catch2](https://github.com/catchorg/Catch2) | `v3.16.0` | Boost Software License 1.0 | The test framework — [`docs/adr/0013`](docs/adr/0013-catch2-is-the-test-framework.md) |
 | [Vulkan-Utility-Libraries](https://github.com/KhronosGroup/Vulkan-Utility-Libraries) | `v1.3.302` | **Apache-2.0** | Khronos' utility headers. `string_VkResult` today; `vk_format_utils.h` is wanted by the tile work in phase B. **Nothing of it is compiled** — see below. Pinned at the tag matching Vulkan-Headers, because a later utility header can name enumerators an older `vulkan_core.h` does not have |
+| [mp-units](https://github.com/mpusz/mp-units) | `v2.5.0` | MIT | The dimension system under `core/Units.hpp` — [`docs/adr/0019`](docs/adr/0019-vectors-carry-their-unit.md). Header-only, and **no dependency of its own in our configuration**: `MP_UNITS_API_CONTRACTS` is set to `NONE`, where its default of `GSL-LITE` would fetch gsl-lite. The first dependency `orbsim_core` links, so the headless core is no longer dependency-free at the source level even though it still needs no library at link time |
 
 The Vulkan **SDK** is not a dependency in this sense: it supplies the loader and
 `glslc`, and its version is a property of the machine

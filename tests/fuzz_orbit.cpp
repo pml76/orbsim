@@ -75,13 +75,13 @@ void checkElements(const Elements& el, GravParam mu) {
     // std::to_array rather than a braced std::array, which leans on brace
     // elision -- what gcc's -Wmissing-braces reports.
     for (const double value : std::to_array<double>({
-             el.sma.value,
-             el.ecc.value,
-             el.inc.value,
-             el.lan.value,
-             el.aop.value,
-             el.tra.value,
-             el.slr.value,
+             el.sma.value(),
+             el.ecc.value(),
+             el.inc.value(),
+             el.lan.value(),
+             el.aop.value(),
+             el.tra.value(),
+             el.slr.value(),
          })) {
         require(!std::isnan(value));
     }
@@ -100,13 +100,13 @@ void checkElements(const Elements& el, GravParam mu) {
     // orbitInfo's precondition holds here.
     const OrbitInfo info = orbitInfo(el, mu);
     for (const double value : std::to_array<double>({
-             info.periapsis.value,
-             info.apoapsis.value,
-             info.period.value,
-             info.meanMotion.value,
-             info.energy.value,
-             info.radius.value,
-             info.speed.value,
+             info.periapsis.value(),
+             info.apoapsis.value(),
+             info.period.value(),
+             info.meanMotion.value(),
+             info.energy.value(),
+             info.radius.value(),
+             info.speed.value(),
          })) {
         require(!std::isnan(value));
     }

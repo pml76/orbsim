@@ -149,8 +149,8 @@ struct Vec3 {
 
 // Rotate v about a unit axis (Rodrigues' formula).
 [[nodiscard]] inline Vec3 rotateAxis(const Vec3& v, const Vec3& axis, Radians angle) noexcept {
-    const f64 c = std::cos(angle.value);
-    const f64 s = std::sin(angle.value);
+    const f64 c = std::cos(angle.value());
+    const f64 s = std::sin(angle.value());
     return (v * c) + (cross(axis, v) * s) + (axis * (dot(axis, v) * (1.0 - c)));
 }
 
@@ -175,7 +175,7 @@ struct Quat {
 
     [[nodiscard]] static Quat fromAxisAngle(const Vec3& axis, Radians angle) noexcept {
         const Vec3 a = normalize(axis);
-        const f64 h = angle.value * 0.5;
+        const f64 h = angle.value() * 0.5;
         const f64 s = std::sin(h);
         return {std::cos(h), a.x * s, a.y * s, a.z * s};
     }
@@ -237,7 +237,7 @@ inline constexpr Radians kNegligibleRotation{1e-12};
 // q += 0.5*w*q*dt, so it stays a unit quaternion under large time steps.
 [[nodiscard]] inline Quat
 integrateAngularVelocity(const Quat& q, const Vec3& omega, Seconds dt) noexcept {
-    const Radians theta{length(omega) * dt.value};
+    const Radians theta{length(omega) * dt.value()};
     if (theta < kNegligibleRotation) return q;
     return normalize(Quat::fromAxisAngle(omega, theta) * q);
 }
