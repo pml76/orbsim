@@ -37,10 +37,12 @@
 
 namespace {
 
+using orb::absOf;
 using orb::DoubleDouble;
 using orb::exact;
 using orb::f64;
 using orb::isFinite;
+using orb::isNaN;
 using orb::nearlyEqual;
 using orb::quickTwoSum;
 using orb::split;
@@ -293,6 +295,29 @@ TEST_CASE("an overflow stays an overflow rather than becoming a NaN", "[core][dd
         // answer there, not a NaN.
         REQUIRE(identical(toDouble(sqrtOf(exact(-0x1p-1070))), 0.0));
     }
+}
+
+// The NaN half of core/Scalar.hpp's predicates, at run time, because it cannot
+// be asserted at compile time: MSVC's constant evaluator says `NaN <= max` is
+// true while its own runtime says false (measured 2026-09-17, PROJECT_STATE
+// section 8). Clang and gcc agree with the runtime. So the static_asserts beside
+// those functions cover everything except a NaN, and this covers the NaN.
+//
+// It lives in this suite rather than a test_scalar because there is no
+// test_scalar yet; move it when there is.
+TEST_CASE("the scalar predicates agree about NaN", "[core][scalar]") {
+    // volatile so the compiler cannot fold these into the constant evaluation
+    // this test exists to avoid.
+    volatile f64 quiet = std::numeric_limits<f64>::quiet_NaN();
+    volatile f64 signalling = std::numeric_limits<f64>::signaling_NaN();
+    volatile f64 infinity = std::numeric_limits<f64>::infinity();
+
+    REQUIRE(isNaN(quiet));
+    REQUIRE(isNaN(signalling));
+    REQUIRE(!isNaN(infinity));
+    REQUIRE(!isFinite(quiet));
+    REQUIRE(isNaN(absOf(quiet)));
+    REQUIRE(!isFinite(absOf(infinity)));
 }
 
 // quickTwoSum carries a precondition -- |a| >= |b| -- and this pins the contract

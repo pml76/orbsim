@@ -106,19 +106,55 @@ elseif(MSVC)
     # that would otherwise accept code the other two reject, which is the entire
     # point of having a third front end. /WX matches the -Werror above.
     #
-    # **/W4 is not "every warning MSVC has"; /Wall is, and it has not been
-    # measured here.** ADR 0017's rule is as many warnings as possible, so this
-    # is a gap rather than a decision -- /Wall on MSVC is widely reported to be
-    # unusable because it reports through system headers, but this project does
-    # not repeat what is widely reported, it measures. Until somebody does, /W4
-    # is what is on, and this comment is the honest label on it.
+    # **/Wall, not /W4**, since 2026-09-17, which is ADR 0017's rule applied to
+    # the third compiler as it is to the other two.
     #
-    # Two diagnostics were answered at their sites rather than here, because
-    # they fire on our own clang-specific annotations and not on a library's
+    # The folklore is that /Wall is unusable because it reports through system
+    # headers. Measured here rather than repeated: over our own translation
+    # units -- dependencies are SYSTEM and unjudged -- /Wall produced warnings
+    # in eight codes, and every one of them falls into the four groups below:
+    # 73 distinct lines across six codes on the first pass, then two more codes
+    # that only appear once the first six stop halting the build. Nothing like the thousands the folklore
+    # promises, because the folklore is about projects that compile their
+    # dependencies' headers as their own.
+    #
+    # Two diagnostics are answered at their sites rather than here, because they
+    # fire on our own clang-specific annotations and not on a library's
     # interface: C4068 (unknown pragma 'clang') is guarded with #ifdef __clang__
     # around each region, and C5030 (unrecognised attribute) by the
     # ORBSIM_LIFETIMEBOUND macro in render/VulkanHandle.hpp.
-    target_compile_options(orbsim_warnings INTERFACE /W4 /WX /permissive-)
+    target_compile_options(orbsim_warnings INTERFACE
+            /Wall
+            # 52 lines. "Unreferenced inline function has been removed": fires
+            # for every inline a translation unit includes and does not call,
+            # which in a header-heavy codebase is most of them. It reports the
+            # linker doing its job, not a property of the code.
+            /wd4514
+            # 12 lines. Struct padding -- the same diagnostic as clang's
+            # -Wpadded, which this project switched off on 2026-09-11 with its
+            # reason written above. Consistency, not a second decision.
+            /wd4820
+            # 9 lines between them. "Copy constructor / assignment operator /
+            # move constructor / move assignment / default constructor was
+            # implicitly defined as deleted." That is Rule of Zero working: a
+            # class holding a move-only handle has no copy, and CODING_GUIDELINES
+            # section 4 is why it declares nothing. Writing `= delete` at each
+            # site would silence these and is the alternative -- 9 sites, and it
+            # trades the rule for the boilerplate the rule exists to avoid.
+            /wd4623 /wd4625 /wd4626 /wd5026 /wd5027
+            # 66 lines. "Compiler may not enforce left-to-right evaluation order
+            # in a brace enclosed initializer list." Since C++17 the standard
+            # *does* guarantee that order, and /permissive- above is what asks
+            # MSVC to be conformant; the warning is MSVC declining to promise
+            # what the language already requires. It fires on designated
+            # initializers, which this codebase uses everywhere on purpose.
+            /wd4868
+            # 32 lines. "Compiler will insert Spectre mitigation for memory load
+            # **if /Qspectre switch specified**" -- and it is not specified. A
+            # remark about a flag we do not pass, on every indexed load.
+            /wd5045
+            /WX /permissive-
+    )
 endif()
 
 # ---------------------------------------------------------------------------

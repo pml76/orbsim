@@ -20,9 +20,18 @@ early, and deliberately plainly.
 
 ## What to implement
 
-- **`tests/fixtures/`**, holding committed reference data as plain text. One
-  file per dataset. Each begins with a header block of `key = value` lines that
-  makes the data reproducible and self-describing:
+**Amended 2026-09-17: the Horizons output is not committed.** The terms were
+read that day and state no licence anywhere, while the SSD FAQ asks to be told
+what you intend to use and how ([`../../../THIRD_PARTY.md`](../../../THIRD_PARTY.md)).
+The owner ruled: query Horizons, do not redistribute it. So the data is
+generated into `data/horizons/`, which is gitignored, and **the recipe is
+committed instead** -- [`../../../data/horizons/README.md`](../../../data/horizons/README.md)
+already holds it, with every API parameter and why it has the value it does.
+What that changes for this task is below, marked.
+
+- **`data/horizons/`** (not `tests/fixtures/`), holding generated reference data
+  as plain text. One file per dataset. Each begins with a header block of
+  `key = value` lines that makes the data reproducible and self-describing:
 
   ```
   source     = JPL Horizons
@@ -40,6 +49,20 @@ early, and deliberately plainly.
 
   Then whitespace-separated rows, `#` for comments. Text rather than binary so
   a diff is readable and a wrong number is visible in review.
+
+  **The header is no longer a convenience, it is the provenance**, because the
+  file itself is not in the repository. Keep Horizons' own header too: it states
+  the frame, the corrections and the ephemeris version.
+- **`data/horizons/checksums.sha256`, committed.** A hash of a file is not that
+  file, so this redistributes nothing -- and it turns "I generated a fixture"
+  into "I generated *the same* fixture the error budgets were measured against".
+  Without it, two machines can disagree and neither can tell.
+- **What `check` does when the data is absent**, which is the real cost of not
+  committing it: the suites that need a fixture must **report themselves skipped,
+  loudly**, and must not pass quietly. A fresh clone has to be able to run
+  `check`, so a hard failure is wrong; a silent pass is worse, because that is
+  ADR 0005's "a step that has silently been doing nothing". Catch2's `SKIP` with
+  a message naming `data/horizons/README.md` is the shape.
 - **`tests/FixtureFile.hpp`**, a reader used by the suites: opens the file,
   parses the header into a small map, parses rows into a `std::vector` of
   records, and **reports by name** — `MissingHeaderKey`, `MalformedRow`,
@@ -49,10 +72,12 @@ early, and deliberately plainly.
   epochs spread over 2000–2050, including two near perihelion and two near
   aphelion, so the distance test in M1-08 has something to bite on.
   *(Corrected 2026-09-11: this said M1-07, which has no distance test.)*
-- **`tests/fixtures/README.md`**: the exact Horizons query for each fixture,
-  written so anybody can regenerate it, plus a line on why the data is committed
-  rather than fetched — a test that needs the network is a test that fails for
-  reasons unrelated to the code.
+- **`data/horizons/README.md`**: already written, 2026-09-17. Extend it with
+  the query for each new fixture. It also carries why the output is not
+  committed. The old reason for committing it -- a test that needs the network
+  is a test that fails for reasons unrelated to the code -- still holds, and is
+  exactly why the data is generated **once** into a gitignored directory rather
+  than fetched by the suite.
 
 ## Out of scope
 

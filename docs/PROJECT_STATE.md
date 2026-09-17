@@ -404,36 +404,36 @@ asked for.
    ADR 0006 sharpens the question: with several frames in play, a `Vec3` that
    knows it holds barycentric metres would prevent a class of bug that is
    otherwise invisible.
-7. **Is `/W4` enough for MSVC, or should it be `/Wall`?** Opened 2026-09-14
-   with the `windows-msvc` preset. ADR 0017's rule is as many warnings as
-   possible, as errors; `/W4` is not that, `/Wall` is. The received wisdom is
-   that `/Wall` is unusable because it reports through system headers, and
-   `/external:W0` exists precisely for that objection -- but **this project
-   measures rather than repeating what is widely reported**, and nobody has
-   measured it here. The tree is clean at `/W4 /WX /permissive-` today, so this
-   costs nothing to leave open; it is one build to answer. The gap is labelled
-   in `CMakeLists.txt` beside the flags rather than left to look deliberate.
-8. **May Horizons output be committed to this public repository?** Opened
-   2026-09-17, when the terms were finally read, and **it is the one open
-   question with a date attached**: M1-06 is the task that commits the first
-   fixture, and it runs immediately after M1-04. The sources and what each says
-   are in [`../THIRD_PARTY.md`](../THIRD_PARTY.md); the short version is that
-   no licence is stated anywhere and the SSD FAQ asks to be told what you intend
-   to use and how. Three ways forward:
-   - **Ask.** The FAQ invites exactly that, and the use is easy to describe: a
-     few dozen numeric values at stated epochs, committed as test fixtures to an
-     MIT-licensed public repository, credited *Courtesy NASA/JPL-Caltech*, each
-     with the query that produced it. Costs a reply's delay, and there is about
-     one task of slack. **Recommended** -- a written answer turns the row from
-     an argument into a fact, which is what this file is for.
-   - **Proceed on the facts argument.** Numbers at stated epochs are facts, and
-     facts are not copyrightable. Defensible, widely relied on by other
-     open-source astronomy projects, and still an argument rather than a
-     permission.
-   - **Avoid it.** Do not commit Horizons output; find an external reference
-     with explicit terms. The obvious candidate, ERFA, is **circular** -- it is
-     what computes our Sun -- so this option needs a source that does not exist
-     yet, and would weaken `VERIFICATION.md` rule 3 rather than serve it.
+7. **MSVC warnings: settled 2026-09-17, `/Wall`.** ADR 0017's rule applied to
+   the third compiler as to the other two. The folklore that `/Wall` is
+   unusable was measured rather than repeated: over our own translation units
+   -- dependencies are SYSTEM and unjudged -- it produced warnings in **eight
+   codes**, all noise or already-decided policy, and every one is switched off
+   in `CMakeLists.txt` with its count and its reason beside it. `/W4` is gone.
+   The eight: C4514 (unreferenced inline removed), C4820 (padding -- the same
+   diagnostic as clang's `-Wpadded`, switched off on 2026-09-11 for reasons that
+   did not change), C4623/4625/4626/5026/5027 (implicitly deleted special
+   members, which is Rule of Zero working), C4868 (MSVC declining to promise the
+   left-to-right initializer order C++17 already requires) and C5045 (a remark
+   about `/Qspectre`, which is not passed). Nine sites could drop the
+   deleted-special-member group by writing `= delete` explicitly; that trades the
+   rule for the boilerplate the rule exists to avoid, and was not done.
+
+8. **Horizons output: settled 2026-09-17, do not commit it.** The terms were
+   read that day and closed nothing — no licence is stated anywhere, and the SSD
+   FAQ asks to be told what you intend to use and how
+   ([`../THIRD_PARTY.md`](../THIRD_PARTY.md) has the four sources). The owner
+   ruled: **query Horizons, do not redistribute its output.** Fixtures are
+   generated into gitignored `data/horizons/`; the recipe is committed, with
+   every API parameter and its reason, and so are the fixtures' SHA-256 sums, so
+   a regenerated file can be verified as the one the budgets were measured
+   against. M1-06 is amended.
+
+   The cost is recorded rather than glossed: the external-truth suites cannot
+   run on a fresh clone until somebody runs the recipe, so they must report
+   themselves **skipped and say so loudly** — a silent pass would be exactly
+   ADR 0005's "a step that has silently been doing nothing".
+
 9. **`quickTwoSum`'s precondition: settled 2026-09-17, the operators use
    `twoSum`.** Found by asserting it, which is what an assertion is for. The
    compiler named the case during constant evaluation:
@@ -466,6 +466,23 @@ asked for.
 ---
 
 ## 8. Gotchas worth not rediscovering
+
+**MSVC's constant evaluator disagrees with its own runtime about NaN.**
+Measured 2026-09-17 on a three-line probe: during constant evaluation MSVC says
+`NaN <= max` is **true**; at run time the same expression is false. clang says
+false in both, as the standard requires. The consequence is narrow and sharp:
+**a `static_assert` about NaN is a claim about the evaluator, not about the
+value.** `core/Scalar.hpp`'s `isNaN` is written as
+`!(x >= -max) && !(x <= max)`, which is correct everywhere at run time and comes
+out false for a NaN under MSVC at compile time -- so the NaN cases are tested in
+`tests/test_double_double.cpp` instead, and the header says why. `isFinite`'s
+NaN case used to be asserted at compile time and passed under MSVC **by
+accident**, because the two wrong answers cancelled; it is at run time now too.
+
+This is also how the assertion arrived: commit 696d767 added those
+static_asserts having been verified only in the two clang trees, and broke
+`windows-msvc` -- the gate that had been added three days earlier precisely to
+catch this class of thing. Run all six before pushing a change to `core/`.
 
 - **clang-tidy header filters need both separators on Windows.** The regex is
   `.*[/\\](src|tests)[/\\].*\.(hpp|h)$`. To check it still matches, run

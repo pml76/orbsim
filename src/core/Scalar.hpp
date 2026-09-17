@@ -149,9 +149,17 @@ static_assert(isFinite(0.0) && isFinite(-1e308) && isFinite(std::numeric_limits<
                   isFinite(std::numeric_limits<f64>::denorm_min()),
               "every finite double is finite, including the extremes");
 static_assert(!isFinite(std::numeric_limits<f64>::infinity()) &&
-                  !isFinite(-std::numeric_limits<f64>::infinity()) &&
-                  !isFinite(std::numeric_limits<f64>::quiet_NaN()),
-              "neither infinity nor a NaN is finite, and a NaN fails both comparisons");
+                  !isFinite(-std::numeric_limits<f64>::infinity()),
+              "an infinity is not finite");
+
+// **Nothing about a NaN is asserted at compile time here, deliberately.** MSVC's
+// constant evaluator disagrees with its own runtime about NaN comparisons:
+// measured 2026-09-17, `NaN <= max` is *true* during constant evaluation and
+// false at run time, where clang and gcc say false in both. So a NaN claim in a
+// static_assert is a claim about the evaluator rather than about the value. The
+// NaN behaviour of isFinite, isNaN and absOf is tested at run time instead --
+// tests/test_double_double.cpp, "the scalar predicates agree about NaN" -- and
+// PROJECT_STATE section 8 carries the measurement.
 
 // NaN in a constant expression, and without `==`. The usual spelling is
 // `x != x`, which -Wfloat-equal reports and this codebase does not allow; a NaN
@@ -163,13 +171,10 @@ static_assert(!isFinite(std::numeric_limits<f64>::infinity()) &&
     return !(x >= -std::numeric_limits<f64>::max()) && !(x <= std::numeric_limits<f64>::max());
 }
 
-static_assert(isNaN(std::numeric_limits<f64>::quiet_NaN()) &&
-                  isNaN(std::numeric_limits<f64>::signaling_NaN()),
-              "a NaN is a NaN");
 static_assert(!isNaN(0.0) && !isNaN(-1e308) && !isNaN(std::numeric_limits<f64>::max()) &&
                   !isNaN(std::numeric_limits<f64>::infinity()) &&
                   !isNaN(-std::numeric_limits<f64>::infinity()),
-              "nothing else is, and an infinity in particular is not");
+              "nothing that is not a NaN is one, an infinity included");
 
 // Magnitude in a constant expression; <cmath>'s fabs is not one before C++26
 // either.
@@ -190,9 +195,8 @@ static_assert(nearlyEqual(absOf(-3.5), 3.5, Tolerance{0.0}) &&
                   nearlyEqual(absOf(-0.0), 0.0, Tolerance{0.0}) &&
                   bitsOf(absOf(-0.0)) == bitsOf(0.0),
               "magnitude, and -0.0 comes back as +0.0");
-static_assert(isNaN(absOf(std::numeric_limits<f64>::quiet_NaN())) &&
-                  !isFinite(absOf(-std::numeric_limits<f64>::infinity())),
-              "a NaN stays a NaN and an infinity stays infinite");
+static_assert(!isFinite(absOf(-std::numeric_limits<f64>::infinity())),
+              "an infinity stays infinite");
 
 // Angle wrapping on bare doubles. These exist because `Radians` is defined a
 // header later, in core/Units.hpp, which is where the typed overloads live and

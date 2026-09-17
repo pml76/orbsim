@@ -118,7 +118,7 @@ carries terms worth recording.
 | [Blue Marble Next Generation](https://visibleearth.nasa.gov/collection/1484/blue-marble) (NASA) | Public domain | Surface imagery and night lights. Downloaded, not committed — [`data/textures/README.md`](data/textures/README.md) has the URLs |
 | ETOPO 2022, 60 arc-second, ice surface (NOAA NCEI) | Public domain, a US Government work | Elevation, from [M1-54](docs/plan/tasks/m1-54-etopo-ingest.md). One 444 MB GeoTIFF; the URL is in `data/textures/README.md` |
 | [NASA GMAT](https://gmat.gsfc.nasa.gov/) R2026a | Apache-2.0 | Produces the J2 reference trajectory that [M1-68](docs/plan/tasks/m1-68-gmat-fixture.md) asserts against. A tool that generates a committed fixture; no GMAT code enters this project |
-| JPL Horizons (NASA/JPL-Caltech) | **No licence is stated anywhere, and the FAQ asks for permission** — read 2026-09-17, see the note below. Not a blocker for *querying*; the open question is *committing* the output | Sun, Moon and Earth positions and the time scales, as committed fixtures ([M1-06](docs/plan/tasks/m1-06-horizons-fixtures.md), [M1-08](docs/plan/tasks/m1-08-solar-position.md)) |
+| JPL Horizons (NASA/JPL-Caltech) | **No licence is stated anywhere, and the FAQ asks for permission** — read 2026-09-17. **Settled the same day: this project queries Horizons and does not redistribute its output.** Fixtures are generated into gitignored `data/horizons/`; the recipe and the checksums are committed instead | Sun, Moon and Earth positions and the time scales ([M1-06](docs/plan/tasks/m1-06-horizons-fixtures.md), [M1-08](docs/plan/tasks/m1-08-solar-position.md)) |
 | Orbiter (Martin Schweiger) | MIT at the root; **LGPL** in two directories; the standalone `orbiter-tileedit` repository is GPL v3 | The tile format specification and the archive format. **The licence boundary is not uniform and has its own document:** [`docs/ORBITER-REFERENCE.md`](docs/ORBITER-REFERENCE.md) |
 
 **The Horizons row is the one open item in this file**, and reading the terms
@@ -141,12 +141,19 @@ published physical model at a stated epoch, which in US law (*Feist*, 1991) is
 the kind of thing copyright does not reach. That is an argument, not a
 permission, and it is recorded here as an argument.
 
-**This is the owner's call and is deliberately not decided here.** The options,
-their costs and a recommendation are in
-[`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) section 7, question 8. Nothing
-is blocked today: querying Horizons is plainly fine, and only *committing* its
-output to a public repository is in question. M1-06 is the task that would do
-that, and it is the task after next.
+**Settled 2026-09-17: query, do not redistribute.** The output is generated
+into `data/horizons/`, which is gitignored, and
+[`data/horizons/README.md`](data/horizons/README.md) carries the exact API query
+for each fixture with the reason for every parameter. The fixtures'
+**SHA-256 sums are committed** — a hash of a file is not that file, so it
+redistributes nothing, and it lets a regenerated fixture be verified as the one
+the error budgets were measured against.
+
+What it costs, stated plainly: the suites that check against external truth
+cannot run on a fresh clone until somebody runs the recipe, so they report
+themselves **skipped** rather than passing quietly. That is a real weakening of
+[`docs/VERIFICATION.md`](docs/VERIFICATION.md) rule 3 and is recorded there as
+well as here.
 
 ## What this file is for
 

@@ -44,3 +44,10 @@ data/textures/source/
 data/textures/tiles/
 *.dds
 *.ktx2
+
+# JPL Horizons output. Not committed -- the terms are unclear and the recipe is
+# in data/horizons/README.md instead. The checksums ARE committed, so a locally
+# generated fixture can be verified as the one the budgets were measured against.
+data/horizons/*
+!data/horizons/README.md
+!data/horizons/checksums.sha256
