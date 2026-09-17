@@ -20,19 +20,31 @@ namespace {
 
 constexpr f64 kInf = std::numeric_limits<f64>::infinity();
 
-[[nodiscard]] bool isFinite(const Vec3& v) noexcept {
-    return std::isfinite(v.x) && std::isfinite(v.y) && std::isfinite(v.z);
+// core/Scalar.hpp declares isFinite(f64) and isNaN(f64), and the overloads below
+// would otherwise hide isFinite: unqualified lookup stops at the first scope
+// holding the name, and this anonymous namespace is that scope. Naming them here
+// keeps the overload set whole, so isFinite reads the same whatever it is given.
+//
+// It has to come *before* those overloads, which it did not until 2026-09-17:
+// they called std::isfinite then, and only became constexpr -- and so dependent
+// on this line -- when the exactness proofs below were added.
+using orb::isFinite;
+using orb::isNaN;
+
+[[nodiscard]] constexpr bool isFinite(const Vec3& v) noexcept {
+    return isFinite(v.x) && isFinite(v.y) && isFinite(v.z);
 }
 
-[[nodiscard]] bool isFinite(const StateVector& sv) noexcept {
+[[nodiscard]] constexpr bool isFinite(const StateVector& sv) noexcept {
     return isFinite(sv.pos) && isFinite(sv.vel);
 }
 
-// core/DoubleDouble.hpp declares isFinite(f64), and the two overloads above
-// would otherwise hide it: unqualified lookup stops at the first scope holding
-// the name, and this anonymous namespace is that scope. Naming it here keeps
-// the overload set whole, so isFinite reads the same whatever it is given.
-using orb::isFinite;
+static_assert(isFinite(Vec3{0.0, 1.0, -1e308}) && !isFinite(Vec3{0.0, 1.0, kInf}) &&
+                  !isFinite(Vec3{std::numeric_limits<f64>::quiet_NaN(), 0.0, 0.0}),
+              "a vector is finite when every component is");
+static_assert(isFinite(StateVector{.pos = {7e6, 0, 0}, .vel = {0, 7546.0, 0}}) &&
+                  !isFinite(StateVector{.pos = {7e6, 0, 0}, .vel = {0, kInf, 0}}),
+              "and a state when both of its vectors are");
 
 // An orbit is treated as circular / equatorial below these thresholds, at which
 // point the periapsis direction / ascending node stops being meaningful.
@@ -569,11 +581,11 @@ struct Vec3Exact {
 // where the whole benefit comes from: r x v cancels to nothing when the
 // velocity is nearly parallel to the position, and a plain cross product has
 // already thrown the answer away by the time anything else sees it.
-[[nodiscard]] DoubleDouble dotExact(const Vec3& a, const Vec3& b) noexcept {
+[[nodiscard]] constexpr DoubleDouble dotExact(const Vec3& a, const Vec3& b) noexcept {
     return (twoProduct(a.x, b.x) + twoProduct(a.y, b.y)) + twoProduct(a.z, b.z);
 }
 
-[[nodiscard]] Vec3Exact crossExact(const Vec3& a, const Vec3& b) noexcept {
+[[nodiscard]] constexpr Vec3Exact crossExact(const Vec3& a, const Vec3& b) noexcept {
     return {
         .x = twoProduct(a.y, b.z) - twoProduct(a.z, b.y),
         .y = twoProduct(a.z, b.x) - twoProduct(a.x, b.z),
@@ -581,13 +593,41 @@ struct Vec3Exact {
     };
 }
 
-[[nodiscard]] DoubleDouble normSquaredExact(const Vec3Exact& v) noexcept {
+[[nodiscard]] constexpr DoubleDouble normSquaredExact(const Vec3Exact& v) noexcept {
     return ((v.x * v.x) + (v.y * v.y)) + (v.z * v.z);
 }
 
-[[nodiscard]] Vec3 roundedToDouble(const Vec3Exact& v) noexcept {
+[[nodiscard]] constexpr Vec3 roundedToDouble(const Vec3Exact& v) noexcept {
     return {toDouble(v.x), toDouble(v.y), toDouble(v.z)};
 }
+
+// The claim these four exist for, proved at compile time rather than asserted in
+// prose. The ulp at 1e16 is 2, so 1e16 + 1 is not representable: the plain dot
+// product of these two vectors is 1e16, and the exact one carries the missing 1
+// in its low word. That is the whole reason elementsFromState was moved onto
+// double-double, and until 2026-09-17 nothing checked it without running.
+//
+// Zero tolerances throughout: the claim is exactness, and `==` on a double does
+// not survive -Wfloat-equal (ADR 0017).
+static_assert(nearlyEqual(toDouble(dotExact(Vec3{1e16, 1.0, 0.0}, Vec3{1.0, 1.0, 0.0})),
+                          1e16,
+                          Tolerance{0.0}),
+              "rounded back to a double, the exact dot product is what a double would have given");
+static_assert(nearlyEqual(dotExact(Vec3{1e16, 1.0, 0.0}, Vec3{1.0, 1.0, 0.0}).lo,
+                          1.0,
+                          Tolerance{0.0}),
+              "and the digit the double lost is still there, in the low word");
+static_assert(nearlyEqual(toDouble(dotExact(Vec3{1, 2, 3}, Vec3{4, 5, 6})), 32.0, Tolerance{0.0}),
+              "an ordinary dot product is unchanged");
+static_assert(nearlyEqual(toDouble(normSquaredExact(crossExact(Vec3{1, 0, 0}, Vec3{0, 1, 0}))),
+                          1.0,
+                          Tolerance{0.0}),
+              "x cross y is a unit vector, and its exact norm squared is one");
+static_assert(nearlyEqual(lengthSq(roundedToDouble(crossExact(Vec3{1, 0, 0}, Vec3{0, 1, 0})) -
+                                   Vec3{0, 0, 1}),
+                          0.0,
+                          Tolerance{0.0}),
+              "x cross y is z, through the exact path and back");
 
 // The same trick again, for a vector that is already in double-double. The
 // eccentricity vector needs it for the reason the inputs do: its length is a
@@ -798,11 +838,12 @@ void assignConic(Elements& el, const ExactState& state) {
 //
 // `sma` is allowed to be infinite, and only there: a parabolic orbit has no
 // finite semi-major axis, which is why `slr` is stored beside it.
-[[nodiscard]] bool elementsAreUsable(const Elements& el) noexcept {
-    if (std::isnan(el.sma.value)) return false;
-    return std::isfinite(el.ecc.value) && std::isfinite(el.slr.value) &&
-           std::isfinite(el.inc.value) && std::isfinite(el.lan.value) &&
-           std::isfinite(el.aop.value) && std::isfinite(el.tra.value);
+[[nodiscard]] constexpr bool elementsAreUsable(const Elements& el) noexcept {
+    // sma is legitimately infinite on a parabola, so a NaN is what disqualifies
+    // it -- which is why core/Scalar.hpp grew a constexpr isNaN beside isFinite.
+    if (isNaN(el.sma.value)) return false;
+    return isFinite(el.ecc.value) && isFinite(el.slr.value) && isFinite(el.inc.value) &&
+           isFinite(el.lan.value) && isFinite(el.aop.value) && isFinite(el.tra.value);
 }
 
 // 1 + e cos v, which the radius and the speed both hang on: r = p / this, and

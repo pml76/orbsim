@@ -434,6 +434,39 @@ asked for.
      with explicit terms. The obvious candidate, ERFA, is **circular** -- it is
      what computes our Sun -- so this option needs a source that does not exist
      yet, and would weaken `VERIFICATION.md` rule 3 rather than serve it.
+9. **`quickTwoSum`'s documented precondition is violated by
+    `DoubleDouble::operator+`.** Found 2026-09-17 by asserting it, which is what
+    an assertion is for. The compiler named the case exactly:
+    `quickTwoSum(0.0, 8.673617e-19)`, reached from `(1 + 2^-60) - 1`, where
+    `|a| = 0` is smaller than `|b| = 2^-60`. It happens whenever the high parts
+    cancel: `operator+` renormalises with `quickTwoSum(sum.hi, ...)`, and after
+    cancellation `sum.hi` can be smaller than the low terms it is being combined
+    with. `quickTwoSum` is exact only when `|a| >= |b|`; outside that its error
+    term can be wrong.
+    - **It is not known to be producing a wrong answer today.** Measured: using
+      the safe `twoSum` at all three renormalisation sites leaves every test
+      passing with identical counts, the cross-toolchain checksum included, so
+      nothing currently exercised changes. Where `a` is exactly zero the result
+      is provably still exact; the risk is the case where `sum.hi` is tiny but
+      nonzero.
+    - **The fix costs three extra floating-point operations per double-double
+      add, multiply and divide**, on the hottest path in the conversion --
+      `twoSum` is six operations where `quickTwoSum` is three.
+    - Options: use `twoSum` at the three sites (accuracy over speed, which is
+      working agreement 3); or order the arguments before calling; or narrow the
+      documented precondition to what the callers actually guarantee and prove
+      the cancellation case separately. **The assertion is not in the tree** --
+      it cannot be, while the code violates it -- so this is currently recorded
+      here and nowhere else in code.
+10. **The two `assign*` out-parameters in `elementsFromState`: settled, they
+    stay.** `assignInPlaneAngles` and `assignConic` take an in/out `Elements&`.
+    Converting them to return their results was tried on 2026-09-17 and reverted:
+    it is a clean change in itself, but it costs six lines at the call site and
+    pushes `elementsFromState` past `readability-function-size`. They violate no
+    stated rule -- they are not a `bool` plus an out-parameter, and their two
+    parameters cannot transpose -- and the budget is a better reason for their
+    shape than the aesthetic one previously recorded. Reopen only with a plan for
+    the caller's size.
 
 ---
 

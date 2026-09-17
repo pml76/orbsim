@@ -151,6 +151,31 @@ enum class OrbitError : std::uint8_t {
     return "unknown orbit error";
 }
 
+// The first compile-time proofs in this header, added 2026-09-17. It carried
+// none until then -- against nine in core/Time.hpp and twenty-two in
+// core/DoubleDouble.hpp -- so `describe` was marked constexpr with nothing
+// establishing that it could actually be evaluated in a constant expression,
+// which is the half of non-negotiable 7 that is easy to leave off.
+//
+// Every enumerator says something, and no two say the same thing. The second
+// half matters more than it looks: the usual way this function rots is a case
+// added to the enum and answered by copying its neighbour.
+static_assert(!describe(OrbitError::NotFinite).empty() &&
+                  !describe(OrbitError::DegenerateState).empty() &&
+                  !describe(OrbitError::NonPositiveGravity).empty() &&
+                  !describe(OrbitError::RectilinearOrbit).empty() &&
+                  !describe(OrbitError::UnreachableAnomaly).empty() &&
+                  !describe(OrbitError::SolverDidNotConverge).empty(),
+              "every OrbitError describes itself");
+
+static_assert(
+    describe(OrbitError::NotFinite) != describe(OrbitError::DegenerateState) &&
+        describe(OrbitError::DegenerateState) != describe(OrbitError::NonPositiveGravity) &&
+        describe(OrbitError::NonPositiveGravity) != describe(OrbitError::RectilinearOrbit) &&
+        describe(OrbitError::RectilinearOrbit) != describe(OrbitError::UnreachableAnomaly) &&
+        describe(OrbitError::UnreachableAnomaly) != describe(OrbitError::SolverDidNotConverge),
+    "and no two of them the same thing");
+
 // --- conversions -----------------------------------------------------------
 
 // `mu` is the standard gravitational parameter GM of the central body.

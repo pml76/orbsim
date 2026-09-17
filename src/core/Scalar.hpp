@@ -103,7 +103,7 @@ private:
     constexpr Quantity() noexcept = default;
     explicit constexpr Quantity(f64 v) noexcept : value(v) {}
 
-    constexpr Derived& derived() noexcept { return static_cast<Derived&>(*this); }
+    [[nodiscard]] constexpr Derived& derived() noexcept { return static_cast<Derived&>(*this); }
 };
 
 // A tolerance is its own type so that `nearlyEqual(a, tolerance, b)` cannot
@@ -152,6 +152,47 @@ static_assert(!isFinite(std::numeric_limits<f64>::infinity()) &&
                   !isFinite(-std::numeric_limits<f64>::infinity()) &&
                   !isFinite(std::numeric_limits<f64>::quiet_NaN()),
               "neither infinity nor a NaN is finite, and a NaN fails both comparisons");
+
+// NaN in a constant expression, and without `==`. The usual spelling is
+// `x != x`, which -Wfloat-equal reports and this codebase does not allow; a NaN
+// is instead the only value that fails *both* of isFinite's comparisons, where
+// an infinity fails exactly one. Added 2026-09-17 so that elementsAreUsable in
+// orbit/Orbit.cpp can be constexpr: it has to tell a NaN semi-major axis from an
+// infinite one, because a parabola's is legitimately infinite.
+[[nodiscard]] constexpr bool isNaN(f64 x) noexcept {
+    return !(x >= -std::numeric_limits<f64>::max()) && !(x <= std::numeric_limits<f64>::max());
+}
+
+static_assert(isNaN(std::numeric_limits<f64>::quiet_NaN()) &&
+                  isNaN(std::numeric_limits<f64>::signaling_NaN()),
+              "a NaN is a NaN");
+static_assert(!isNaN(0.0) && !isNaN(-1e308) && !isNaN(std::numeric_limits<f64>::max()) &&
+                  !isNaN(std::numeric_limits<f64>::infinity()) &&
+                  !isNaN(-std::numeric_limits<f64>::infinity()),
+              "nothing else is, and an infinity in particular is not");
+
+// Magnitude in a constant expression; <cmath>'s fabs is not one before C++26
+// either.
+//
+// By clearing the sign bit rather than testing `x < 0.0`, which was the first
+// attempt and was wrong: **-0.0 < 0.0 is false**, so the comparison form hands
+// -0.0 straight back instead of +0.0. The static_assert below caught it, which
+// is the argument for writing the assert before believing the function.
+// Clearing the bit also leaves a NaN a NaN and an infinity infinite, with no
+// branch at all.
+[[nodiscard]] constexpr f64 absOf(f64 x) noexcept {
+    constexpr std::uint64_t kSignBit = 0x8000'0000'0000'0000ULL;
+    return std::bit_cast<f64>(bitsOf(x) & ~kSignBit);
+}
+
+static_assert(nearlyEqual(absOf(-3.5), 3.5, Tolerance{0.0}) &&
+                  nearlyEqual(absOf(3.5), 3.5, Tolerance{0.0}) &&
+                  nearlyEqual(absOf(-0.0), 0.0, Tolerance{0.0}) &&
+                  bitsOf(absOf(-0.0)) == bitsOf(0.0),
+              "magnitude, and -0.0 comes back as +0.0");
+static_assert(isNaN(absOf(std::numeric_limits<f64>::quiet_NaN())) &&
+                  !isFinite(absOf(-std::numeric_limits<f64>::infinity())),
+              "a NaN stays a NaN and an infinity stays infinite");
 
 // Angle wrapping on bare doubles. These exist because `Radians` is defined a
 // header later, in core/Units.hpp, which is where the typed overloads live and
