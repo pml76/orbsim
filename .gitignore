@@ -23,8 +23,12 @@ CMakeFiles/
 *.user
 *.suo
 
-# Compiled shader output, when generated outside the build tree
+# Compiled output generated outside the build tree. *.obj is here for the same
+# reason as *.spv: a stray one appeared at the repository root on 2026-09-17
+# because `cl` writes its object file to the working directory, and it was
+# committed before anyone noticed.
 *.spv
+*.obj
 
 # Profiling and sanitizer output
 *.prof
