@@ -118,14 +118,35 @@ carries terms worth recording.
 | [Blue Marble Next Generation](https://visibleearth.nasa.gov/collection/1484/blue-marble) (NASA) | Public domain | Surface imagery and night lights. Downloaded, not committed — [`data/textures/README.md`](data/textures/README.md) has the URLs |
 | ETOPO 2022, 60 arc-second, ice surface (NOAA NCEI) | Public domain, a US Government work | Elevation, from [M1-54](docs/plan/tasks/m1-54-etopo-ingest.md). One 444 MB GeoTIFF; the URL is in `data/textures/README.md` |
 | [NASA GMAT](https://gmat.gsfc.nasa.gov/) R2026a | Apache-2.0 | Produces the J2 reference trajectory that [M1-68](docs/plan/tasks/m1-68-gmat-fixture.md) asserts against. A tool that generates a committed fixture; no GMAT code enters this project |
-| JPL Horizons (NASA/JPL-Caltech) | **Not yet verified** — see the note below | Sun, Moon and Earth positions and the time scales, as committed fixtures ([M1-06](docs/plan/tasks/m1-06-horizons-fixtures.md), [M1-08](docs/plan/tasks/m1-08-solar-position.md)) |
+| JPL Horizons (NASA/JPL-Caltech) | **No licence is stated anywhere, and the FAQ asks for permission** — read 2026-09-17, see the note below. Not a blocker for *querying*; the open question is *committing* the output | Sun, Moon and Earth positions and the time scales, as committed fixtures ([M1-06](docs/plan/tasks/m1-06-horizons-fixtures.md), [M1-08](docs/plan/tasks/m1-08-solar-position.md)) |
 | Orbiter (Martin Schweiger) | MIT at the root; **LGPL** in two directories; the standalone `orbiter-tileedit` repository is GPL v3 | The tile format specification and the archive format. **The licence boundary is not uniform and has its own document:** [`docs/ORBITER-REFERENCE.md`](docs/ORBITER-REFERENCE.md) |
 
-**The Horizons row is the one open item in this file.** The register verified a
-licence for every other entry on 2026-09-08 and does not record one for
-Horizons. The fixtures are small numeric extracts and each one records the
-exact query that produced it, but the terms themselves should be read and this
-row completed before M1-06 commits a fixture.
+**The Horizons row is the one open item in this file**, and reading the terms
+on 2026-09-17 did not close it. What was found, with the sources, because the
+absence of a statement is itself the finding:
+
+| Source | What it says |
+|---|---|
+| [SSD FAQ](https://ssd.jpl.nasa.gov/faq.html), "I'd like to publish information from your site" | *"The short answer is yes"* — permission is wanted. *"At the very least, we'd be interested in knowing what information you intend to use and how you intend to use it. Ideally, we'd prefer you link from your site directly to the information on our site."* |
+| [JPL image use policy](https://www.jpl.nasa.gov/jpl-image-use-policy/) | Broad reuse *"for any purpose without prior permission"* with the credit *"Courtesy NASA/JPL-Caltech"* — but it is about **images and video**, and says nothing about data |
+| [Horizons API documentation](https://ssd-api.jpl.nasa.gov/doc/horizons.html) | **Nothing.** No licence, citation or redistribution statement at all |
+| [data.gov entry](https://catalog.data.gov/dataset/horizons) | Access level `public`. **No licence field** |
+
+Two facts that bear on it and are easy to get wrong. **JPL is not a US
+Government agency** — it is a federally funded research and development centre
+operated by Caltech — so 17 U.S.C. § 105, which puts US Government works
+outside copyright, does not apply automatically the way it does to NASA-authored
+material. And **a state vector is close to pure fact**: numbers computed from a
+published physical model at a stated epoch, which in US law (*Feist*, 1991) is
+the kind of thing copyright does not reach. That is an argument, not a
+permission, and it is recorded here as an argument.
+
+**This is the owner's call and is deliberately not decided here.** The options,
+their costs and a recommendation are in
+[`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) section 7, question 8. Nothing
+is blocked today: querying Horizons is plainly fine, and only *committing* its
+output to a public repository is in question. M1-06 is the task that would do
+that, and it is the task after next.
 
 ## What this file is for
 

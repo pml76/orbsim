@@ -413,6 +413,27 @@ asked for.
    measured it here. The tree is clean at `/W4 /WX /permissive-` today, so this
    costs nothing to leave open; it is one build to answer. The gap is labelled
    in `CMakeLists.txt` beside the flags rather than left to look deliberate.
+8. **May Horizons output be committed to this public repository?** Opened
+   2026-09-17, when the terms were finally read, and **it is the one open
+   question with a date attached**: M1-06 is the task that commits the first
+   fixture, and it runs immediately after M1-04. The sources and what each says
+   are in [`../THIRD_PARTY.md`](../THIRD_PARTY.md); the short version is that
+   no licence is stated anywhere and the SSD FAQ asks to be told what you intend
+   to use and how. Three ways forward:
+   - **Ask.** The FAQ invites exactly that, and the use is easy to describe: a
+     few dozen numeric values at stated epochs, committed as test fixtures to an
+     MIT-licensed public repository, credited *Courtesy NASA/JPL-Caltech*, each
+     with the query that produced it. Costs a reply's delay, and there is about
+     one task of slack. **Recommended** -- a written answer turns the row from
+     an argument into a fact, which is what this file is for.
+   - **Proceed on the facts argument.** Numbers at stated epochs are facts, and
+     facts are not copyrightable. Defensible, widely relied on by other
+     open-source astronomy projects, and still an argument rather than a
+     permission.
+   - **Avoid it.** Do not commit Horizons output; find an external reference
+     with explicit terms. The obvious candidate, ERFA, is **circular** -- it is
+     what computes our Sun -- so this option needs a source that does not exist
+     yet, and would weaken `VERIFICATION.md` rule 3 rather than serve it.
 
 ---
 
