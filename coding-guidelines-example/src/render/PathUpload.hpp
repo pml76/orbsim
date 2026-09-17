@@ -10,7 +10,7 @@
 // render knows about core, core has never heard of render.
 //
 // [S17] Keeping heavy headers out of headers is also why the build stays fast.
-// If this file included <vulkan/vulkan.h>, every test that touches a Vec3 would
+// If this file included <vulkan/vulkan.h>, every test that touches a Position would
 // pay for it.
 //
 #include "core/Vec3.hpp"
@@ -39,8 +39,8 @@ struct PathVertex {
 //
 // [S18] Takes a span: it does not own the input, does not care how the caller
 // stored it, and cannot silently copy it.
-[[nodiscard]] std::vector<PathVertex> toCameraRelative(std::span<const Vec3> pathWorld,
-                                                       const Vec3& cameraWorld);
+[[nodiscard]] std::vector<PathVertex> toCameraRelative(std::span<const Position> pathWorld,
+                                                       const Position& cameraWorld);
 
 } // namespace orbex::gfx
 

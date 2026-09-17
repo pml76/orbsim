@@ -4,8 +4,8 @@
 #include "orbit/Kepler.hpp"
 
 #include "core/Contract.hpp"
+#include "core/Scalar.hpp"
 #include "core/Units.hpp"
-#include "core/Vec3.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -94,10 +94,10 @@ constexpr int kMaxIterations = 100;
 // between the two `Radians` there is no transposable pair left.
 [[nodiscard]] std::expected<Radians, KeplerError>
 refineEccentricAnomaly(Radians guess, Eccentricity ecc, Radians mean) noexcept {
-    const f64 e = ecc.value;
-    const f64 m = mean.value;
+    const f64 e = ecc.value();
+    const f64 m = mean.value();
 
-    f64 eccentricAnomaly = guess.value;
+    f64 eccentricAnomaly = guess.value();
     f64 low = -kPi;
     f64 high = kPi;
     f64 previousStep = high - low;
@@ -148,7 +148,7 @@ refineEccentricAnomaly(Radians guess, Eccentricity ecc, Radians mean) noexcept {
 } // namespace
 
 Radians wrapToPi(Radians angle) noexcept {
-    const f64 wrapped = std::fmod(angle.value, kTau);
+    const f64 wrapped = std::fmod(angle.value(), kTau);
 
     // [S21] Three returns in five lines. NR.2: the single-return rule is a
     // habit from a language without destructors.
@@ -159,16 +159,16 @@ Radians wrapToPi(Radians angle) noexcept {
 
 std::expected<Radians, KeplerError> solveKepler(Radians meanAnomaly, Eccentricity ecc) noexcept {
     // [S11] Negated comparisons, so that a NaN eccentricity is rejected as
-    // well. The natural spelling -- `ecc.value < 0.0 || ecc.value >= 1.0` -- is
+    // well. The natural spelling -- `ecc.value() < 0.0 || ecc.value() >= 1.0` -- is
     // false for NaN, which would hand NaN to Newton, and Newton would hand back
     // NaN as though it had converged.
-    if (!(ecc.value >= 0.0) || !(ecc.value < 1.0)) {
+    if (!(ecc.value() >= 0.0) || !(ecc.value() < 1.0)) {
         return std::unexpected(KeplerError::EccentricityOutOfRange);
     }
 
     // [S21] Declared at first use, in the smallest scope that works (NR.1).
-    const f64 e = ecc.value;
-    const f64 m = wrapToPi(meanAnomaly).value;
+    const f64 e = ecc.value();
+    const f64 m = wrapToPi(meanAnomaly).value();
 
     // [S20] Rule 5: an assertion on something that cannot happen. wrapToPi has
     // just guaranteed this, and if it ever stops doing so, the failure surfaces

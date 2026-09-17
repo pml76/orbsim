@@ -229,12 +229,15 @@ Two steps, because the second is where the risk is:
    The gate held: **642,205 assertions in 66 test cases, unchanged to the
    assertion**, and `check` green in all six configurations.
 
-   `coding-guidelines-example/` was deliberately left alone. It is a separate
-   CMake project with **its own** `core/Units.hpp` and no external dependency at
-   all, and migrating it would give the worked example a `FetchContent` call it
-   has never had. Whether the reference implementation should still demonstrate
-   hand-rolled units once `src/` has stopped using them is an open question, not
-   an oversight.
+   `coding-guidelines-example/` followed on the same day, in its own commit and
+   under its own record,
+   [`0003`](../../coding-guidelines-example/docs/adr/0003-the-dimension-system-is-mp-units.md).
+   It is a separate CMake project with its own `core/Units.hpp`, and migrating
+   it gave the worked example the first `FetchContent` call it has ever had --
+   a real cost, since being copyable and buildable with nothing else was part of
+   what it was for. It was paid because an example demonstrating a mechanism the
+   real code no longer uses teaches the wrong thing to everyone who reads it.
+   Its **47 checks** are unchanged.
 2. **`Vec3<Dim>`**, then the 104 sites, `orbit/` last because it is the file
    with the measured error budgets. The cross-toolchain checksum in
    `test_orbit_scales.cpp` is the instrument: it pins the bits of an

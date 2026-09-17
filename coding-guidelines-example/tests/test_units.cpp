@@ -5,7 +5,7 @@
 // the point of a strong type is that the mistake stops compiling, and a
 // static_assert is how you prove that stayed true.
 //
-#include "core/Vec3.hpp"
+#include "core/Scalar.hpp"
 #include "tests/TestHarness.hpp"
 
 #include "core/Units.hpp"
@@ -30,8 +30,24 @@ static_assert(!std::is_convertible_v<Radians, f64>,
               "an angle must not decay back into a bare double");
 static_assert(!std::is_convertible_v<Degrees, Radians>,
               "degrees must not become radians without a named conversion");
-static_assert(!std::is_constructible_v<Radians, Eccentricity>,
+// [S23] `is_convertible_v`, not `is_constructible_v`, and the difference is a
+// finding rather than a preference. This assertion read
+// `!std::is_constructible_v<Radians, Eccentricity>` until 2026-09-17, and under
+// mp-units that trait became **true** while `Radians{someEccentricity}` still
+// refused to compile. The cause: mp-units gives every *dimensionless* quantity
+// an `explicit operator V_()` for any V_ constructible from its
+// representation. Its constraints are satisfied, so the trait answers yes; its
+// body then returns a double where a Radians is wanted, and the explicit
+// constructor refuses -- an error in the body, which no trait and no
+// requires-expression can see.
+//
+// So the property is intact and the old instrument stopped detecting it. That
+// is worth more attention than a failing assert: a check that silently stops
+// checking looks exactly like one that passes. Implicit convertibility is the
+// dangerous direction and is still measurable, so that is what is asserted.
+static_assert(!std::is_convertible_v<Eccentricity, Radians>,
               "an eccentricity must never be usable as an angle");
+static_assert(!std::is_convertible_v<Radians, Eccentricity>, "nor an angle as an eccentricity");
 static_assert(!std::is_constructible_v<Metres, Seconds>,
               "a duration must never be usable as a length");
 
@@ -43,8 +59,8 @@ static_assert(std::is_nothrow_move_constructible_v<Metres>);
 
 // [S6] No strong type can be created uninitialized. [S11] Exactly zero, so a
 // zero tolerance rather than `==`.
-static_assert(nearlyEqual(Radians{}.value, 0.0, Tolerance{0.0}));
-static_assert(nearlyEqual(Metres{}.value, 0.0, Tolerance{0.0}));
+static_assert(nearlyEqual(Radians{}.value(), 0.0, Tolerance{0.0}));
+static_assert(nearlyEqual(Metres{}.value(), 0.0, Tolerance{0.0}));
 
 // [S11] No strong type has a floating-point `==`: each deletes the one its
 // defaulted <=> would bring. Exact equality is spelled out, or it is not
@@ -60,20 +76,20 @@ void testConversionsRoundTrip(test::Run& run) {
     // [S11] Approximate comparison, never `==`, with a tolerance that says what
     // it is: two conversions each round once, so a couple of ulps is the floor.
     test::checkNear(run,
-                    toDegrees(toRadians(51.6_deg)).value,
+                    toDegrees(toRadians(51.6_deg)).value(),
                     51.6,
                     Tolerance{1e-13},
                     "degrees -> radians -> degrees");
     test::checkNear(run,
-                    toRadians(toDegrees(Radians{2.5})).value,
+                    toRadians(toDegrees(Radians{2.5})).value(),
                     2.5,
                     Tolerance{1e-15},
                     "radians -> degrees -> radians");
-    test::checkNear(run, toRadians(180.0_deg).value, kPi, Tolerance{1e-15}, "180 deg is pi rad");
-    // Named, not (7.0_km).value: the parentheses are required -- 7.0_km.value
+    test::checkNear(run, toRadians(180.0_deg).value(), kPi, Tolerance{1e-15}, "180 deg is pi rad");
+    // Named, not (7.0_km).value(): the parentheses are required -- 7.0_km.value()
     // lexes as a single pp-number -- and naming it avoids them entirely.
     constexpr Metres kSevenKilometres = 7.0_km;
-    test::checkNear(run, kSevenKilometres.value, 7000.0, Tolerance{0.0}, "km literal is exact");
+    test::checkNear(run, kSevenKilometres.value(), 7000.0, Tolerance{0.0}, "km literal is exact");
 }
 
 void testOrderingIsUsable(test::Run& run) {
@@ -99,7 +115,7 @@ void testOrderingIsUsable(test::Run& run) {
 [[nodiscard]] f64 sumViaStrongType(int count) noexcept {
     f64 total = 0.0;
     for (int i = 0; i < count; ++i) {
-        total += toRadians(Degrees{static_cast<f64>(i)}).value;
+        total += toRadians(Degrees{static_cast<f64>(i)}).value();
     }
     return total;
 }

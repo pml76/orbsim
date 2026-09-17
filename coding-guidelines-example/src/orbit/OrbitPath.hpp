@@ -79,13 +79,23 @@ enum class PathError : std::uint8_t {
 }
 
 // [S18] size_t for a count, matching what the standard library uses for sizes.
+//
+// [S11] It keeps its `==`, unlike every other strong type here, and the reason
+// is the whole point of that rule: the objection is to `==` on a *double*, not
+// to `==`. Two counts are equal or they are not.
 struct SampleCount {
-    std::size_t value{};
+    // [S11] An accessor, for the same reason Tolerance has one: one spelling
+    // for reading a strong scalar, across all of them.
+    [[nodiscard]] constexpr std::size_t value() const noexcept { return value_; }
 
     constexpr SampleCount() noexcept = default;
-    explicit constexpr SampleCount(std::size_t v) noexcept : value(v) {}
+    explicit constexpr SampleCount(std::size_t v) noexcept : value_(v) {}
 
     [[nodiscard]] constexpr auto operator<=>(const SampleCount&) const noexcept = default;
+    [[nodiscard]] constexpr bool operator==(const SampleCount&) const noexcept = default;
+
+private:
+    std::size_t value_{};
 };
 
 // [S2] Bundling the options keeps the argument count low (I.23) and means that
@@ -122,7 +132,7 @@ public:
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wattributes"
 #endif
-    [[nodiscard]] std::span<const Vec3> points() const noexcept [[clang::lifetimebound]] {
+    [[nodiscard]] std::span<const Position> points() const noexcept [[clang::lifetimebound]] {
         return points_;
     }
 #if defined(__GNUC__) && !defined(__clang__)
@@ -136,9 +146,9 @@ public:
     // compare them as numbers, which is a weaker claim and a floating-point
     // `==` besides [S11].
     [[nodiscard]] bool bitIdentical(const OrbitPath& other) const noexcept {
-        return bitsOf(period_.value) == bitsOf(other.period_.value) &&
+        return bitsOf(period_.value()) == bitsOf(other.period_.value()) &&
                std::ranges::equal(
-                   points_, other.points_, [](const Vec3& a, const Vec3& b) noexcept {
+                   points_, other.points_, [](const Position& a, const Position& b) noexcept {
                        return a.bitIdentical(b);
                    });
     }
@@ -149,12 +159,12 @@ private:
     // list written out of order is how a member gets initialized from another
     // member that does not have a value yet (-Wreorder catches that).
     // [S10] The vector arrives by value and is moved, never copied.
-    OrbitPath(std::vector<Vec3> points, Seconds period) noexcept
+    OrbitPath(std::vector<Position> points, Seconds period) noexcept
         : points_(std::move(points)), period_(period) {}
 
     // [S15] A trailing underscore for private data. Never a leading one: `_name`
     // at namespace scope is reserved for the implementation.
-    std::vector<Vec3> points_;
+    std::vector<Position> points_;
     Seconds period_;
 };
 

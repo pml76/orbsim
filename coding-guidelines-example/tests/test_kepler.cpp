@@ -7,8 +7,8 @@
 // scratch. A sign error in the solver cannot hide behind a test that repeats
 // it, which is the whole reason this is worth more than a golden-value table.
 //
+#include "core/Scalar.hpp"
 #include "core/Units.hpp"
-#include "core/Vec3.hpp"
 #include "tests/TestHarness.hpp"
 
 #include "orbit/Kepler.hpp"
@@ -58,9 +58,9 @@ void testSatisfiesKeplersEquation(test::Run& run) {
                 break;
             }
 
-            const f64 bigE = solved->value;
-            const f64 residual = bigE - (e * std::sin(bigE)) - wrapToPi(meanAnomaly).value;
-            worstResidual = std::max(worstResidual, std::abs(wrapToPi(Radians{residual}).value));
+            const f64 bigE = solved->value();
+            const f64 residual = bigE - (e * std::sin(bigE)) - wrapToPi(meanAnomaly).value();
+            worstResidual = std::max(worstResidual, std::abs(wrapToPi(Radians{residual}).value()));
         }
 
         // The documented guarantee in Kepler.hpp is 1e-13. This is that
@@ -102,9 +102,9 @@ void testRandomisedOrbitsAllSolve(test::Run& run) {
             break;
         }
 
-        const f64 bigE = solved->value;
-        const f64 residual = bigE - (ecc.value * std::sin(bigE)) - wrapToPi(meanAnomaly).value;
-        worstResidual = std::max(worstResidual, std::abs(wrapToPi(Radians{residual}).value));
+        const f64 bigE = solved->value();
+        const f64 residual = bigE - (ecc.value() * std::sin(bigE)) - wrapToPi(meanAnomaly).value();
+        worstResidual = std::max(worstResidual, std::abs(wrapToPi(Radians{residual}).value()));
     }
 
     test::check(run, allSolved, "every randomised orbit converged");
@@ -145,17 +145,20 @@ void testWrapping(test::Run& run) {
     test::section("angle wrapping");
 
     test::checkNear(run,
-                    wrapToPi(Radians{kPi + 0.5}).value,
+                    wrapToPi(Radians{kPi + 0.5}).value(),
                     -kPi + 0.5,
                     Tolerance{1e-15},
                     "just past pi wraps negative");
     test::checkNear(run,
-                    wrapToPi(Radians{-kPi - 0.5}).value,
+                    wrapToPi(Radians{-kPi - 0.5}).value(),
                     kPi - 0.5,
                     Tolerance{1e-15},
                     "just past -pi wraps positive");
-    test::checkNear(
-        run, wrapToPi(Radians{0.25}).value, 0.25, Tolerance{0.0}, "an in-range angle is untouched");
+    test::checkNear(run,
+                    wrapToPi(Radians{0.25}).value(),
+                    0.25,
+                    Tolerance{0.0},
+                    "an in-range angle is untouched");
 }
 
 } // namespace

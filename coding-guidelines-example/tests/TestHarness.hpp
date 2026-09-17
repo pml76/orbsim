@@ -40,7 +40,7 @@ inline void check(Run& run, bool condition, std::string_view what) {
 inline void checkNear(Run& run, f64 got, f64 want, Tolerance tolerance, std::string_view what) {
     const bool ok = nearlyEqual(got, want, tolerance);
     if (!ok) {
-        std::print("  (got {:.17g}, want {:.17g}, tol {:g})\n", got, want, tolerance.value);
+        std::print("  (got {:.17g}, want {:.17g}, tol {:g})\n", got, want, tolerance.value());
     }
     check(run, ok, what);
 }

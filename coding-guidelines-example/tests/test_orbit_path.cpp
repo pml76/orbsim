@@ -1,6 +1,7 @@
 //
 // Tests for the orbit path sampler and the GPU boundary.
 //
+#include "core/Scalar.hpp"
 #include "core/Units.hpp"
 #include "core/Vec3.hpp"
 #include "tests/TestHarness.hpp"
@@ -51,7 +52,7 @@ static_assert(std::is_destructible_v<OrbitPath>);
 void testGeometry(test::Run& run) {
     test::section("sampled points lie on the orbit");
 
-    const Elements elements = testOrbit(Metres{kEarthRadius.value + 2000e3}, Eccentricity{0.35});
+    const Elements elements = testOrbit(Metres{kEarthRadius.value() + 2000e3}, Eccentricity{0.35});
     const auto path = OrbitPath::sample(elements,
                                         kMuEarth,
                                         PathOptions{
@@ -65,32 +66,32 @@ void testGeometry(test::Run& run) {
 
     test::check(run, path->size() == 129, "ClosedLoop yields samples + 1 points");
 
-    const f64 e = elements.eccentricity.value;
-    const f64 periapsis = elements.semiMajorAxis.value * (1.0 - e);
-    const f64 apoapsis = elements.semiMajorAxis.value * (1.0 + e);
+    const f64 e = elements.eccentricity.value();
+    const f64 periapsis = elements.semiMajorAxis.value() * (1.0 - e);
+    const f64 apoapsis = elements.semiMajorAxis.value() * (1.0 + e);
 
     // [S9] An algorithm states the intent; an index loop would only imply it.
     // [S7] The predicate cannot throw, and says so (E.8).
-    const bool onOrbit = std::ranges::all_of(path->points(), [&](const Vec3& point) noexcept {
-        const f64 radius = length(point);
+    const bool onOrbit = std::ranges::all_of(path->points(), [&](const Position& point) noexcept {
+        const f64 radius = length(point).value();
         return radius >= periapsis * (1.0 - 1e-9) && radius <= apoapsis * (1.0 + 1e-9);
     });
     test::check(run, onOrbit, "every sample lies between periapsis and apoapsis");
 
-    const Vec3 gap = path->points().front() - path->points().back();
-    test::check(run, length(gap) < periapsis * 1e-9, "the loop closes");
+    const Position gap = path->points().front() - path->points().back();
+    test::check(run, length(gap).value() < periapsis * 1e-9, "the loop closes");
 
     // A 2000 km orbit takes a little over two hours. Anchoring against a number
     // a reader can sanity-check by hand is worth more than a golden value.
     test::check(run,
-                path->period().value > 7000.0 && path->period().value < 8000.0,
+                path->period().value() > 7000.0 && path->period().value() < 8000.0,
                 "period is physically plausible");
 }
 
 void testSpacingModesDiffer(test::Run& run) {
     test::section("time and angle spacing genuinely differ");
 
-    const Elements elements = testOrbit(Metres{kEarthRadius.value + 5000e3}, Eccentricity{0.6});
+    const Elements elements = testOrbit(Metres{kEarthRadius.value() + 5000e3}, Eccentricity{0.6});
     constexpr PathOptions kByTime{
         .samples = SampleCount{std::size_t{64}},
         .spacing = Spacing::UniformInTime,
@@ -122,7 +123,7 @@ void testSpacingModesDiffer(test::Run& run) {
         byAngle->points().begin(),
         0.0,
         [](f64 a, f64 b) { return std::max(a, b); },
-        [](const Vec3& a, const Vec3& b) { return length(a - b); });
+        [](const Position& a, const Position& b) { return length(a - b).value(); });
     test::check(run, largestSeparation > 1.0, "the two spacings place points differently");
 }
 
@@ -161,7 +162,7 @@ void testFailuresAreReported(test::Run& run) {
 void testDeterminism(test::Run& run) {
     test::section("determinism");
 
-    const Elements elements = testOrbit(Metres{kEarthRadius.value + 800e3}, Eccentricity{0.2});
+    const Elements elements = testOrbit(Metres{kEarthRadius.value() + 800e3}, Eccentricity{0.2});
     constexpr PathOptions kOptions{
         .samples = SampleCount{std::size_t{256}},
         .spacing = Spacing::UniformInTime,
@@ -214,7 +215,7 @@ void testConcurrentSamplingNeedsNoLocks(test::Run& run) {
     // Geostationary period is about 24 hours, low Earth orbit about 97 minutes.
     // If these matched, the two workers had trampled each other.
     test::check(run,
-                geostationary->period().value > low->period().value * 10.0,
+                geostationary->period().value() > low->period().value() * 10.0,
                 "the results are independent and each is correct");
 }
 
@@ -222,11 +223,11 @@ void testCameraRelativeUpload(test::Run& run) {
     test::section("the f64 -> f32 boundary");
 
     const auto path = OrbitPath::sample(
-        testOrbit(Metres{kEarthRadius.value + 400e3}, Eccentricity{0.01}), kMuEarth);
+        testOrbit(Metres{kEarthRadius.value() + 400e3}, Eccentricity{0.01}), kMuEarth);
     test::check(run, path.has_value(), "sampling succeeds");
     if (!path) return;
 
-    const Vec3 camera = path->points().front();
+    const Position camera = path->points().front();
     const std::vector<gfx::PathVertex> vertices = gfx::toCameraRelative(path->points(), camera);
 
     test::check(run, vertices.size() == path->size(), "one vertex per point");

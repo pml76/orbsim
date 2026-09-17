@@ -1,9 +1,21 @@
-cmake_minimum_required(VERSION 3.24)
+# 3.28 for EXCLUDE_FROM_ALL on FetchContent_Declare, which mp-units wants:
+# without it every `cmake --build` would also build the library's own tests and
+# examples, which this project never links. Raised from 3.24 on 2026-09-17.
+cmake_minimum_required(VERSION 3.28)
 project(orbex LANGUAGES CXX)
 
 # A standalone example. It builds on its own -- it is not part of the orbsim
 # build -- so that it can be copied, compiled and poked at without dragging a
 # Vulkan SDK along.
+#
+# **It has one dependency as of 2026-09-17, and it is worth knowing what that
+# cost.** mp-units is fetched at configure time, so the first configure now
+# needs a network where before it needed nothing at all. That is a real loss
+# for something meant to be copied and poked at. It was accepted because the
+# example exists to show how the parent project writes C++, and the parent's
+# units stopped being hand-rolled on the same day -- an example demonstrating a
+# mechanism the real code no longer uses is worse than one that needs a
+# network. docs/adr/0003 carries the decision.
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -64,7 +76,13 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/GccWarnings.cmake)
     target_compile_options(orbex_warnings INTERFACE ${ORBEX_GCC_WARNINGS} -Werror)
 elseif(MSVC)
-    target_compile_options(orbex_warnings INTERFACE /W4 /WX /permissive-)
+    # /utf-8 is not a warning switch. MSVC otherwise reads a UTF-8 source file
+    # as the machine's ANSI code page, and mp-units names units with the micro
+    # sign, ohm and euro; without it the build dies with C3872, "this character
+    # is not allowed in an identifier", pointing into headers that are
+    # perfectly well-formed. clang and gcc assume UTF-8 already, so this makes
+    # the three agree rather than adding a behaviour.
+    target_compile_options(orbex_warnings INTERFACE /W4 /WX /permissive- /utf-8)
 endif()
 
 # ---------------------------------------------------------------------------
@@ -100,6 +118,35 @@ add_library(orbex_settings INTERFACE)
 target_link_libraries(orbex_settings INTERFACE orbex_warnings orbex_fp orbex_sanitizers)
 
 # ---------------------------------------------------------------------------
+# [S2] mp-units: the dimension system under core/Units.hpp.
+#
+# Header-only, licence MIT, and no dependency of its own in this configuration.
+# SYSTEM so that -Weverything and /W4 judge this example's code and not the
+# library's; EXCLUDE_FROM_ALL so its own tests and examples are never built.
+#
+# MP_UNITS_API_CONTRACTS=NONE, deliberately: the default is GSL-LITE, which
+# fetches gsl-lite to check the library's own preconditions, and this example
+# already has core/Contract.hpp saying how it handles that question (ADR 0002).
+# A second answer to one question is worse than either answer.
+#
+# Pinned at an exact tag, as every dependency should be. A floating `master`
+# makes a build that worked yesterday fail today for reasons no commit here
+# explains.
+# ---------------------------------------------------------------------------
+include(FetchContent)
+set(MP_UNITS_API_CONTRACTS NONE CACHE STRING "" FORCE)
+set(MP_UNITS_BUILD_INSTALL OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(mp_units
+        GIT_REPOSITORY https://github.com/mpusz/mp-units.git
+        GIT_TAG        v2.5.0
+        GIT_SHALLOW    TRUE
+        SOURCE_SUBDIR  src
+        SYSTEM
+        EXCLUDE_FROM_ALL
+)
+FetchContent_MakeAvailable(mp_units)
+
+# ---------------------------------------------------------------------------
 # [S12] The simulation core. Knows nothing of rendering.
 #
 # The layering is expressed as a dependency, not as a convention somebody has
@@ -111,7 +158,11 @@ add_library(orbex_core STATIC
         src/orbit/OrbitPath.cpp
 )
 target_include_directories(orbex_core PUBLIC src)
-target_link_libraries(orbex_core PUBLIC orbex_fp PRIVATE orbex_warnings orbex_sanitizers)
+# mp-units is PUBLIC because core/Units.hpp names mp_units types in its
+# interface, so every consumer needs the headers. Nothing is linked at run
+# time: the library is header-only.
+target_link_libraries(orbex_core PUBLIC orbex_fp mp-units::mp-units
+        PRIVATE orbex_warnings orbex_sanitizers)
 
 # [S12] The renderer-side layer. Depends on core; core never depends on it.
 add_library(orbex_render STATIC
@@ -128,8 +179,9 @@ target_link_libraries(orbex_render PUBLIC orbex_core PRIVATE orbex_warnings orbe
 # ---------------------------------------------------------------------------
 set(ORBEX_HEADERS
         core/Contract.hpp
-        core/Vec3.hpp
+        core/Scalar.hpp
         core/Units.hpp
+        core/Vec3.hpp
         orbit/Kepler.hpp
         orbit/OrbitPath.hpp
         render/PathUpload.hpp

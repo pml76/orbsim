@@ -1,6 +1,7 @@
 #include "orbit/OrbitPath.hpp" // [S14] SF.5: own header, first
 
 #include "core/Contract.hpp"
+#include "core/Scalar.hpp"
 #include "core/Units.hpp"
 #include "core/Vec3.hpp"
 #include "orbit/Kepler.hpp"
@@ -18,23 +19,23 @@ namespace {
 // [S16] Two points make a line, not a shape. Three is the smallest polygon.
 constexpr std::size_t kMinSamples = 3;
 
-[[nodiscard]] Vec3 rotateAboutZ(const Vec3& v, Radians angle) noexcept {
-    const f64 c = std::cos(angle.value);
-    const f64 s = std::sin(angle.value);
-    return Vec3{.x = (v.x * c) - (v.y * s), .y = (v.x * s) + (v.y * c), .z = v.z};
+[[nodiscard]] Position rotateAboutZ(const Position& v, Radians angle) noexcept {
+    const f64 c = std::cos(angle.value());
+    const f64 s = std::sin(angle.value());
+    return Position{.x = (v.x * c) - (v.y * s), .y = (v.x * s) + (v.y * c), .z = v.z};
 }
 
-[[nodiscard]] Vec3 rotateAboutX(const Vec3& v, Radians angle) noexcept {
-    const f64 c = std::cos(angle.value);
-    const f64 s = std::sin(angle.value);
-    return Vec3{.x = v.x, .y = (v.y * c) - (v.z * s), .z = (v.y * s) + (v.z * c)};
+[[nodiscard]] Position rotateAboutX(const Position& v, Radians angle) noexcept {
+    const f64 c = std::cos(angle.value());
+    const f64 s = std::sin(angle.value());
+    return Position{.x = v.x, .y = (v.y * c) - (v.z * s), .z = (v.y * s) + (v.z * c)};
 }
 
 [[nodiscard]] Radians eccentricToTrueAnomaly(Radians eccentricAnomaly, Eccentricity ecc) noexcept {
-    ORBEX_EXPECTS(ecc.value >= 0.0 && ecc.value < 1.0);
+    ORBEX_EXPECTS(ecc.value() >= 0.0 && ecc.value() < 1.0);
 
-    const f64 e = ecc.value;
-    const f64 half = eccentricAnomaly.value * 0.5;
+    const f64 e = ecc.value();
+    const f64 half = eccentricAnomaly.value() * 0.5;
 
     // atan2 rather than atan(tan(...)): the half-angle form stays finite across
     // the whole revolution, where tan(E/2) blows up at E = pi.
@@ -42,22 +43,26 @@ constexpr std::size_t kMinSamples = 3;
         2.0 * std::atan2(std::sqrt(1.0 + e) * std::sin(half), std::sqrt(1.0 - e) * std::cos(half))};
 }
 
-[[nodiscard]] Vec3 positionAt(const Elements& elements, Radians trueAnomaly) noexcept {
-    const f64 e = elements.eccentricity.value;
-    const f64 semiLatusRectum = elements.semiMajorAxis.value * (1.0 - (e * e));
-    const f64 nu = trueAnomaly.value;
+[[nodiscard]] Position positionAt(const Elements& elements, Radians trueAnomaly) noexcept {
+    const f64 e = elements.eccentricity.value();
+    const f64 semiLatusRectum = elements.semiMajorAxis.value() * (1.0 - (e * e));
+    const f64 nu = trueAnomaly.value();
     const f64 radius = semiLatusRectum / (1.0 + (e * std::cos(nu)));
 
     ORBEX_EXPECTS(semiLatusRectum > 0.0);
     ORBEX_ENSURES(radius > 0.0);
 
     // Perifocal frame: x toward periapsis, z along the angular-momentum vector.
-    const Vec3 perifocal{.x = radius * std::cos(nu), .y = radius * std::sin(nu), .z = 0.0};
+    const Position perifocal{
+        .x = Metres{radius * std::cos(nu)},
+        .y = Metres{radius * std::sin(nu)},
+        .z = Metres{0.0},
+    };
 
     // Perifocal -> inertial is Rz(node) * Rx(inclination) * Rz(argument),
     // applied right to left.
-    const Vec3 inPlane = rotateAboutZ(perifocal, elements.periapsisArgument);
-    const Vec3 tilted = rotateAboutX(inPlane, elements.inclination);
+    const Position inPlane = rotateAboutZ(perifocal, elements.periapsisArgument);
+    const Position tilted = rotateAboutX(inPlane, elements.inclination);
     return rotateAboutZ(tilted, elements.ascendingNode);
 }
 
@@ -85,20 +90,20 @@ OrbitPath::sample(const Elements& elements, GravParam mu, const PathOptions& opt
     // silently repaired input is a spacecraft that mysteriously stops moving
     // three hours into a flight for reasons nobody can reconstruct.
     // [S11] Negated comparisons again, so NaN is rejected rather than admitted.
-    if (!(elements.eccentricity.value >= 0.0) || !(elements.eccentricity.value < 1.0)) {
+    if (!(elements.eccentricity.value() >= 0.0) || !(elements.eccentricity.value() < 1.0)) {
         return std::unexpected(PathError::NotAClosedOrbit);
     }
-    if (!(elements.semiMajorAxis.value > 0.0)) {
+    if (!(elements.semiMajorAxis.value() > 0.0)) {
         return std::unexpected(PathError::NonPositiveSemiMajorAxis);
     }
-    if (!(mu.value > 0.0)) return std::unexpected(PathError::NonPositiveGravity);
-    if (options.samples.value < kMinSamples) return std::unexpected(PathError::TooFewSamples);
+    if (!(mu.value() > 0.0)) return std::unexpected(PathError::NonPositiveGravity);
+    if (options.samples.value() < kMinSamples) return std::unexpected(PathError::TooFewSamples);
 
-    const std::size_t steps = options.samples.value;
+    const std::size_t steps = options.samples.value();
     const std::size_t count =
         steps + (options.closure == PathClosure::ClosedLoop ? std::size_t{1} : std::size_t{0});
 
-    std::vector<Vec3> points;
+    std::vector<Position> points;
     // [S10] Not an optimization, just not being wasteful when the size is
     // sitting right there. [S20] It is also the only allocation, made up front
     // rather than inside the loop.
@@ -127,8 +132,8 @@ OrbitPath::sample(const Elements& elements, GravParam mu, const PathOptions& opt
     ORBEX_ENSURES(points.size() == count);
 
     // Kepler's third law, T = tau * sqrt(a^3 / mu).
-    const f64 a = elements.semiMajorAxis.value;
-    const Seconds period{kTau * std::sqrt((a * a * a) / mu.value)};
+    const f64 a = elements.semiMajorAxis.value();
+    const Seconds period{kTau * std::sqrt((a * a * a) / mu.value())};
 
     // [S10] Moved into the returned object, never copied.
     return OrbitPath{std::move(points), period};

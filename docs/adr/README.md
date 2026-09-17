@@ -74,6 +74,9 @@ a draft and may be rewritten until it is accepted or rejected, which is what
 happened here -- its recommendation changed once between draft and acceptance,
 and its step 2 was re-opened and then closed again in the space of a day.
 
-The worked example keeps its own two records under
+The worked example keeps its own three records under
 [`../../coding-guidelines-example/docs/adr/`](../../coding-guidelines-example/docs/adr/).
-They are superseded by 0001 and 0002 here where the two disagree.
+They are superseded by 0001 and 0002 here where the two disagree. Its 0003 is
+the counterpart of 0019 and was written the same day: the example moved to
+mp-units too, because an example demonstrating a mechanism the real code has
+stopped using is worse than no example.

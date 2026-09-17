@@ -1,6 +1,16 @@
 # ADR 0001: Angles, lengths and durations are types, not doubles
 
-Status: accepted
+Status: accepted, **mechanism superseded by
+[`0003`](0003-the-dimension-system-is-mp-units.md) on 2026-09-17**
+
+The decision below stands: every physical quantity crossing a public interface
+is a distinct type. What changed is that the six are now aliases of one
+`Scalar<kReference>` template over mp-units rather than six hand-written
+structs, and that `Vec3` carries a unit too. One sentence below is now false and
+is left in place because the reasoning that replaced it is worth reading against
+it: *"Nothing converts implicitly, in either direction"* is still true between
+the named types, but a length divided by a duration now produces a speed, which
+no named type declares and none should.
 
 ## Decision
 
