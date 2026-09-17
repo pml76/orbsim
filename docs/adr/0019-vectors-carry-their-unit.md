@@ -105,9 +105,88 @@ preserve its argument's unit, which every option above allows.
 named function after a camera-relative subtraction. Units make that function's
 signature honest; they do not change where it is.
 
+## What the field has already built, and the runtime question
+
+**Surveyed 2026-09-17**, after the owner asked whether this can be done without
+affecting the runtime and pointed at Boost.Units.
+
+**The runtime question does not discriminate, and that is the useful answer.**
+Every serious option here -- A through D above, and every library below -- is
+compile-time only. Empty tag types carrying exponents, erased at instantiation.
+This project has already proved it for its own scalars:
+[`0001`](0001-units-in-the-type-system.md) and `CODING_GUIDELINES.md` section 2
+both say *"at -O2 it compiles to exactly the same machine code as the bare
+`double`"*, and section 21 tells you to go and look at the disassembly rather
+than believe it. So "no runtime cost" is satisfied by all of them and chooses
+between none of them.
+
+**What actually differs is compile time, diagnostics, and whether the code is
+ours to maintain.** Those are the axes this record should be decided on.
+
+| | State, measured or read 2026-09-17 | Fit here |
+|---|---|---|
+| **[mp-units](https://github.com/mpusz/mp-units)** v2.5.0 | **MIT**. C++20 minimum, C++23/26 supported. *"No external dependencies, macro-free API, C++20 modules-ready, freestanding-capable."* Conan, vcpkg and a CMake package. ISO standardisation candidate — P1935 (2020) → P2980 (2023) → **P3045R8 (2026)**, targeting C++29 | The closest fit by far, and the only one that answers the `cross` question completely |
+| **[Boost.Units](https://github.com/boostorg/units)** | **Dormant.** Measured from the remote: `boost-1.91.0`, `1.91.0.beta1`, `1.92.0` and `1.92.0.beta1` all point at the *same commit*, `f39b667d`. It has not changed across four Boost releases | C++03-era template metaprogramming, MPL-based. mp-units' own lineage describes it as the ancestor. Adopting it would mean taking on the error messages the modern libraries exist to fix |
+| **[au](https://github.com/aurora-opensource/au)** 0.6.0 | Apache-2.0, C++14, single-header option, from Aurora. Publishes its own [comparison of alternatives](https://aurora-opensource.github.io/au/main/alternatives/) | Deliberately smaller and simpler than mp-units; dimension-level, not kind-level |
+| **nholthaus/units** | Header-only, C++14, widely used | The least rigorous of the four; no kind system |
+
+**The thing mp-units has that a hand-rolled dimension system would not.** It
+models *kinds*, not merely dimensions: it can tell **torque from energy**, which
+share `kg·m²/s²`, and Hz from Bq. That matters here more than it looks, because
+this domain is full of same-dimension-different-meaning pairs — specific angular
+momentum and kinematic viscosity are both m²/s. Option C as drafted above is a
+dimension vector, and a dimension vector cannot see that distinction. It also
+carries **point origins**, the affine distinction between an absolute position
+and a displacement, which is adjacent to the frames problem this record defers.
+
+**And the honest costs, from the same reading.** Compile time is the real one:
+seconds per translation unit in header mode, in a project whose guidelines say
+*"build time is a feature"* and which has nine translation units and rising.
+The conceptual surface is large — quantity spec, kind, dimension, unit,
+reference, point origin is a five-layer ontology, and the documentation is
+excellent and long. And its zero-overhead claim is **structural plus Compiler
+Explorer links rather than an in-repo benchmark suite**, which for this project
+means the claim is to be *measured here* before it is repeated — working
+agreement 4, and exactly what was done for `Quantity` already.
+
+### E. Adopt mp-units
+
+The option the survey adds, and it largely supersedes C and D. `core/Units.hpp`'s
+nine types become aliases over `mp-units` quantities; `Vec3<Q>` is a small
+wrapper this project still owns; `cross` and `dot` compose units without anyone
+naming `m²/s`.
+
+It follows the precedent the owner has already set twice: ERFA computes the
+astronomy ([`0016`](0016-the-astronomy-is-erfa.md)) and Vulkan-Utility-Libraries
+names `VkResult` values, both on the reasoning that a maintained implementation
+beats a local one where the domain is well served. Dimensional analysis is such
+a domain, and this one is heading into the standard.
+
+Against it: it is by far the largest dependency this project would take —
+compare it with the four surgical ones in `THIRD_PARTY.md` — and the first whose
+types appear in *our* public interfaces rather than behind them. That is a real
+difference in kind from SDL3 or Catch2, and it is the thing to weigh.
+
 ## Recommendation
 
-**C, in two steps, and not before M1-04 lands.**
+**E — adopt mp-units — in two steps, and not before M1-04 lands.** Revised
+2026-09-17 after the survey above; the first draft recommended C, a hand-rolled
+dimension system, because it had not looked at what exists.
+
+Three things moved it. The precedent is already set: this project takes the
+maintained implementation where the domain is well served, which is why ERFA
+computes the astronomy and Khronos names `VkResult` values. The **kind** system
+answers something a hand-rolled dimension vector structurally cannot — telling
+specific angular momentum from kinematic viscosity, both m²/s. And a library
+heading for C++29 is one whose shape this code would eventually be rewritten
+into anyway.
+
+**But there is one measurement to take before accepting this**, and it is
+cheap: build one translation unit of `orbit/` against mp-units and record what
+it does to compile time, against the "build time is a feature" rule. Its own
+zero-overhead claim should be checked the same way `Quantity`'s was — read the
+disassembly. If the compile time is unacceptable, **au** is the fallback and C
+is the floor; the two-step plan below is unchanged either way.
 
 B is the tempting one and it is a trap: it looks smaller, and it pays for that
 by dropping the unit at `cross` and `dot` — the exact operations the elements
@@ -118,8 +197,11 @@ arithmetic is worse than none, because it reads as protection.
 Two steps, because the second is where the risk is:
 
 1. **The dimension system and the scalars**, with `core/Units.hpp`'s nine types
-   becoming aliases. No `Vec3` change. The suites and the static_asserts prove
-   the arithmetic is unchanged; the assertion count must not move.
+   becoming aliases — over mp-units under E, over our own exponents under C. No
+   `Vec3` change. The suites and the static_asserts prove the arithmetic is
+   unchanged; the assertion count must not move. Under E this is also where the
+   compile-time measurement lands, and where the dependency gets its
+   `THIRD_PARTY.md` row.
 2. **`Vec3<Dim>`**, then the 104 sites, `orbit/` last because it is the file
    with the measured error budgets. The cross-toolchain checksum in
    `test_orbit_scales.cpp` is the instrument: it pins the bits of an
@@ -145,6 +227,11 @@ refactor behind two small tasks costs nothing and de-risks both.
   stops being true.
 
 ## Consequences
+
+Under E, `THIRD_PARTY.md` gains a **decided, not yet pinned** row: mp-units,
+**MIT**, arriving with step 1. MIT is the same licence as this project and the
+same as vk-bootstrap and VMA, so it adds no new obligation — unlike
+Vulkan-Utility-Libraries' Apache-2.0, which did.
 
 `VERIFICATION.md` rule 17 stops being *undecided* and becomes either **done**
 or **rejected with a reason** — it cannot stay open once this is answered.
