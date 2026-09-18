@@ -486,6 +486,41 @@ asked for.
 
 ## 8. Gotchas worth not rediscovering
 
+**`readability-trailing-comma` reports a comma that is not there.** A call with
+two or more arguments, each an empty braced-init of an *aggregate whose members
+have default member initializers*, and the check reads the comma **between the
+arguments** as a trailing comma inside the braces. Minimal, and confirmed on
+clang-tidy 23.1.0 (Windows) and 23.1.1 (WSL) on 2026-09-18:
+
+```cpp
+struct A { int m{}; };            // remove the {} and the warning goes away
+int f(A, A);
+int g() { return f(A{}, A{}); }   // readability-trailing-comma fires on the comma
+```
+
+All three ingredients are needed: drop to one argument, drop the default member
+initializer, or put anything inside the braces, and it stops firing. **This is
+an upstream bug, not our code.** `coding-guidelines-example/src/core/Vec3.hpp`
+works around it with `std::declval` in the one place it bit -- that example's
+`Vec3` is an aggregate, where `src/core/Math.hpp`'s is not, which is why only
+the example was affected. Retire the workaround when a clang upgrade fixes it,
+and check with the three lines above rather than by trying the old spelling in
+context.
+
+**A trait can say yes where the compiler says no.** mp-units gives a
+dimensionless quantity an `explicit operator V_()` constrained on V_ being
+*constructible* from its representation, while the operator's body needs V_ to
+be *convertible* from it. Everything in `core/Units.hpp` is explicitly
+constructible from an `f64`, so the operator was viable for all of it and
+`std::is_constructible_v<Metres, Eccentricity>` answered **true** while
+`Metres{someEccentricity}` refused to compile -- the failure being in the
+operator's body, where neither a trait nor a `requires`-expression can see it.
+That cost an assertion for a day. `Scalar<>` deletes the operator, in the one
+case where mp-units grants it, and the comment there says why. The lesson is
+rule 23's: **a check that silently stops checking looks exactly like one that
+passes**, so a static_assert about what must not compile is worth occasionally
+inverting to watch it fail.
+
 **mp-units leaves a default-constructed quantity indeterminate.** Its storage is
 declared without an initialiser and its default constructor is `= default`, so
 `Metres m;` holds whatever was on the stack -- where the old hand-rolled

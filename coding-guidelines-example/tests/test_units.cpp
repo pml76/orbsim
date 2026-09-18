@@ -30,24 +30,27 @@ static_assert(!std::is_convertible_v<Radians, f64>,
               "an angle must not decay back into a bare double");
 static_assert(!std::is_convertible_v<Degrees, Radians>,
               "degrees must not become radians without a named conversion");
-// [S23] `is_convertible_v`, not `is_constructible_v`, and the difference is a
-// finding rather than a preference. This assertion read
-// `!std::is_constructible_v<Radians, Eccentricity>` until 2026-09-17, and under
-// mp-units that trait became **true** while `Radians{someEccentricity}` still
-// refused to compile. The cause: mp-units gives every *dimensionless* quantity
-// an `explicit operator V_()` for any V_ constructible from its
-// representation. Its constraints are satisfied, so the trait answers yes; its
-// body then returns a double where a Radians is wanted, and the explicit
-// constructor refuses -- an error in the body, which no trait and no
-// requires-expression can see.
+// [S23] Both spellings, and the pair is the point.
 //
-// So the property is intact and the old instrument stopped detecting it. That
-// is worth more attention than a failing assert: a check that silently stops
-// checking looks exactly like one that passes. Implicit convertibility is the
-// dangerous direction and is still measurable, so that is what is asserted.
-static_assert(!std::is_convertible_v<Eccentricity, Radians>,
+// For one day -- 2026-09-17 -- the `is_constructible_v` form here answered
+// **true** while `Radians{someEccentricity}` still refused to compile, because
+// mp-units gives a dimensionless quantity an `explicit operator V_()` whose
+// constraint asks only that V_ be *constructible* from its representation while
+// its body needs V_ to be *convertible* from it. A trait that says yes where
+// the compiler says no is worse than either answer, because a trait is what a
+// test asks -- and a check that silently stops checking looks exactly like one
+// that passes.
+//
+// core/Units.hpp deletes that operator, in the one case where mp-units grants
+// it, so this measures what it says again. Both directions of both traits are
+// asserted, because the two answer different questions: convertibility is what
+// happens by accident, constructibility is what happens when somebody writes
+// the braces on purpose.
+static_assert(!std::is_constructible_v<Radians, Eccentricity>,
               "an eccentricity must never be usable as an angle");
-static_assert(!std::is_convertible_v<Radians, Eccentricity>, "nor an angle as an eccentricity");
+static_assert(!std::is_convertible_v<Eccentricity, Radians>, "nor become one on its own");
+static_assert(!std::is_constructible_v<Eccentricity, Radians>, "nor an angle an eccentricity");
+static_assert(!std::is_convertible_v<Radians, Eccentricity>, "in either direction");
 static_assert(!std::is_constructible_v<Metres, Seconds>,
               "a duration must never be usable as a length");
 

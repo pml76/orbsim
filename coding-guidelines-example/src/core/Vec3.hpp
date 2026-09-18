@@ -155,10 +155,15 @@ static_assert(nearlyEqual(lengthSquared((kOneTwoThree * 2.0) - kTwoFourSix).valu
 // [S3] And what the units add: a cross product of two positions is m^2, a unit
 // with no name here, and adding a position to a dimensionless vector is a
 // compile error rather than a review comment.
-// declval rather than `cross(Position{}, Position{})`: two braced-init
-// arguments in a row make readability-trailing-comma read the comma between
-// them as a trailing one, and declval says "a Position, unevaluated" more
-// plainly anyway.
+// declval rather than `cross(Position{}, Position{})`, and the reason is an
+// **upstream clang-tidy bug**, not a style preference: with two or more
+// arguments that are each an empty braced-init of an aggregate whose members
+// have default member initializers, readability-trailing-comma reads the comma
+// *between the arguments* as a trailing comma inside the braces. Three lines
+// reproduce it, and they are in the parent's PROJECT_STATE section 8. Confirmed
+// on clang-tidy 23.1.0 and 23.1.1, 2026-09-18. declval also says "a Position,
+// unevaluated" more plainly, so this stays either way -- but the workaround can
+// go once the check is fixed.
 using CrossOfTwoPositions = decltype(cross(std::declval<Position>(), std::declval<Position>()));
 using SquareMetres = Vec3<units::kMetre * units::kMetre>;
 static_assert(std::is_same_v<CrossOfTwoPositions, SquareMetres>,

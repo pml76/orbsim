@@ -110,6 +110,33 @@ template <auto kReference> struct Scalar : mp_units::quantity<kReference, f64> {
         return bitsOf(value()) == bitsOf(other.value());
     }
 
+    // mp-units gives a *dimensionless* quantity an `explicit operator V_()` for
+    // any V_ merely **constructible** from its representation, so that
+    // `double(ratio)` works. Its body then returns that representation, which
+    // needs V_ to be *convertible* from it -- a stronger thing than the
+    // constraint asks. The gap has a sharp consequence here: every Scalar is
+    // constructible from an f64 explicitly, so the operator is viable for every
+    // one of them, and `std::is_constructible_v<Metres, Eccentricity>` answers
+    // **true** while `Metres{someEccentricity}` still refuses to compile -- the
+    // failure is in the operator's body, where no trait and no
+    // requires-expression can see it. A trait that says yes where the compiler
+    // says no is worse than either answer, because a trait is what a test asks.
+    //
+    // So it is deleted, and only where it exists: the condition is that the
+    // base offers a conversion to a plain number at all, which is exactly
+    // mp-units' dimensionless case. Deleting it unconditionally also kills the
+    // legitimate quantity-to-quantity conversions -- `Scalar<m2/s2>` into a
+    // `SpecificEnergy` in J/kg, which the test support does -- because a
+    // conversion operator on the source beats a converting constructor on the
+    // target. Measured both ways, 2026-09-18.
+    //
+    // Nothing here wants the operator in either case: `.value()` is how a
+    // number comes out of a quantity in this project.
+    static constexpr bool kBaseConvertsToANumber = std::is_constructible_v<f64, base>;
+
+    template <typename V>
+        requires kBaseConvertsToANumber
+    explicit constexpr operator V() const = delete;
     [[nodiscard]] friend constexpr Scalar operator-(Scalar q) noexcept {
         return Scalar{-static_cast<const base&>(q)};
     }
