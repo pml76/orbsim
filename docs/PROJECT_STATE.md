@@ -499,12 +499,32 @@ int g() { return f(A{}, A{}); }   // readability-trailing-comma fires on the com
 ```
 
 All three ingredients are needed: drop to one argument, drop the default member
-initializer, or put anything inside the braces, and it stops firing. **This is
-an upstream bug, not our code.** `coding-guidelines-example/src/core/Vec3.hpp`
-works around it with `std::declval` in the one place it bit -- that example's
-`Vec3` is an aggregate, where `src/core/Math.hpp`'s is not, which is why only
-the example was affected. Retire the workaround when a clang upgrade fixes it,
-and check with the three lines above rather than by trying the old spelling in
+initializer, or put anything inside the braces, and it stops firing.
+
+**This is an upstream bug, it is already reported, and it is already fixed --
+just not in a release we have.** It is
+[llvm/llvm-project#220222](https://github.com/llvm/llvm-project/issues/220222),
+"readability-trailing-comma false positive on empty initializer list", closed by
+[PR #220548](https://github.com/llvm/llvm-project/pull/220548), **merged into
+`main` on 2026-09-04**. There is no backport to `release/23.x`, which is exactly
+why 23.1.0 and 23.1.1 both still reproduce it. A second report of the same thing
+in a different shape,
+[#223646](https://github.com/llvm/llvm-project/issues/223646) (empty braces as a
+*default parameter* rather than as an argument), is still open as a duplicate.
+**Do not file another one.**
+
+The fix is worth knowing because it confirms the cause: the check now uses the
+*written* form of an empty initializer list instead of falling back to the
+*filled-in* form, and returns early when it is empty. The filled-in form is what
+the compiler produces from `A{}` once the default member initializers are
+applied, and it is what was sending the check looking past the braces for a
+comma.
+
+`coding-guidelines-example/src/core/Vec3.hpp` works around it with
+`std::declval` in the one place it bit -- that example's `Vec3` is an aggregate,
+where `src/core/Math.hpp`'s is not, which is why only the example was affected.
+Retire the workaround when this project moves to a clang carrying the fix, and
+check with the three lines above rather than by trying the old spelling in
 context.
 
 **A trait can say yes where the compiler says no.** mp-units gives a
