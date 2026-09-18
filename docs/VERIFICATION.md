@@ -605,7 +605,7 @@ rules a machine checks and which depend on a person remembering.
 | 6 Regression test per bug | A person, visible in the diff | discipline |
 | 7 Assert vs. report | `check` (clang-tidy, partially) + review | partial |
 | 8 Bounded loops, reported | Review; `[[nodiscard]]` on `expected` helps | partial |
-| 9 "In what?" | A person; rule 17 would mechanise it | discipline |
+| 9 "In what?" | The compiler, since 2026-09-17, for anything crossing an interface — rule 17 mechanised it. A person inside `elementsFromState`'s exact path, which is deliberately unit-free | partial |
 | 10 Small commits | `scripts/git-hooks/pre-commit`, partially | partial |
 | 11 Property tests | `check` — reversal, composition, scale invariance, conservation | **done** |
 | 12 Seeded sweeps | `check` — already live | **done** |
@@ -613,7 +613,7 @@ rules a machine checks and which depend on a person remembering.
 | 14 Differential testing | `check` — live for the two propagators, but they share a solver since 2026-09-12, so see rule 2 | **weakened** |
 | 15 Runtime monitors | `check` in the Debug tree, via assertions | **to build** |
 | 16 Determinism | `check` — `TEST_CASE("propagation is bit-identical across runs")`, over 100 steps | **done** |
-| 17 Dimensional analysis | The compiler, if adopted | undecided |
+| 17 Dimensional analysis | The compiler — mp-units under `core/Units.hpp` and `Vec3<R>`, [ADR 0019](adr/0019-vectors-carry-their-unit.md) | **done** |
 | 18 Coverage | By hand, periodically. Orbit.cpp 99.2% lines | **done** |
 | 19 Mutation testing | By hand, periodically | exercised 2026-09-07 |
 | 20 WSL, UBSan, second compiler | By hand, before a milestone | **done** |
