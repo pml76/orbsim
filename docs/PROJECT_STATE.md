@@ -484,6 +484,49 @@ asked for.
 
 ---
 
+11. **mp-units' own contract checking: settled 2026-09-18, leave it off.**
+    `MP_UNITS_API_CONTRACTS` is set to `NONE` in both this project's
+    `CMakeLists.txt` and the worked example's, which compiles the library's 60
+    assertions to nothing. Measured that day before deciding, because the
+    question deserved a number rather than a preference:
+
+    - **54 of the 60 are compile-time**: prime factorisation of unit magnitudes
+      (16), unit symbol text (10), fixed strings (10), rational arithmetic on
+      magnitudes (8), and a few singles. A violated `constexpr` precondition is
+      a compile error whether or not contracts are on, so enabling them buys
+      nothing there. Five more are in text formatting, which this project never
+      does to a quantity.
+    - **Six are runtime**, all in `framework/quantity.h`, and all six are the
+      same check: division or modulo by zero. Of those, `Scalar<R1> / Scalar<R2>`
+      is *our* operator working on raw values, so mp-units' checked divide is
+      never even called; only "quantity over a bare double" routes through it,
+      and the one place that matters -- `normalize()` -- already guards.
+    - **What it would add is the category [ADR 0002](adr/0002-error-handling-strategy.md)
+      forbids.** Division by zero here is caller-caused: fuzzer states, scenario
+      files, user input. The rule is that those are *reported* through
+      `std::expected` and only what a bug could produce is asserted. gsl-lite
+      terminates or throws; neither is `return std::unexpected(...)`. This
+      project has already been bitten by exactly that shape, and the comment is
+      still in the code at `src/orbit/Orbit.cpp`: `ORBSIM_ENSURES(rMag > 0.0)`
+      aborted a Debug build on user input, a fuzzer found it, and it became a
+      reported `NotFinite`. A library assert cannot be fixed at the site the way
+      that one was.
+    - **Neither GSL is fetched for us.** Both options do
+      `find_package(... REQUIRED)`, so switching would mean adding and pinning
+      gsl-lite or Microsoft.GSL ourselves, in both projects.
+    - **The two are not equivalent, if this is ever revisited.** Under `MS-GSL`
+      the six runtime checks sit behind `#if defined NDEBUG`, so they exist only
+      in Debug and asan; under `GSL-LITE` the gating is gsl-lite's own business.
+      Routing them to `core/Contract.hpp` instead is *not* available:
+      `compat_macros.h` defines the four macros unguarded, with no `#ifndef`, so
+      it would mean patching a dependency and this project vendors nothing.
+
+    **The cheap way to reopen it** is not argument but measurement: turn
+    `GSL-LITE` on in a throwaway tree, run the suites and the fuzzer, and see
+    whether any contract fires. Nothing fires means the guards are complete;
+    something fires means a real gap, to be fixed by reporting rather than by
+    shipping an abort.
+
 ## 8. Gotchas worth not rediscovering
 
 **`readability-trailing-comma` reports a comma that is not there.** A call with

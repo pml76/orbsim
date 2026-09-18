@@ -124,10 +124,18 @@ target_link_libraries(orbex_settings INTERFACE orbex_warnings orbex_fp orbex_san
 # SYSTEM so that -Weverything and /W4 judge this example's code and not the
 # library's; EXCLUDE_FROM_ALL so its own tests and examples are never built.
 #
-# MP_UNITS_API_CONTRACTS=NONE, deliberately: the default is GSL-LITE, which
-# fetches gsl-lite to check the library's own preconditions, and this example
-# already has core/Contract.hpp saying how it handles that question (ADR 0002).
-# A second answer to one question is worse than either answer.
+# MP_UNITS_API_CONTRACTS=NONE, deliberately, and **set explicitly rather than
+# left to the default**. mp-units decides this with
+# `#if MP_UNITS_API_CONTRACTS == 2 || (!defined MP_UNITS_API_CONTRACTS &&
+# __has_include(<gsl-lite/gsl-lite.hpp>))`, so a gsl-lite that arrived on the
+# include path for any other reason would switch contract checking on by
+# itself. Setting the variable is what makes that impossible.
+#
+# The default is GSL-LITE, which needs gsl-lite to check the library's own
+# preconditions. This example already has core/Contract.hpp saying how it
+# handles that question (ADR 0002), and a second answer to one question is worse
+# than either answer. The parent's PROJECT_STATE section 7 question 11 has the
+# measurement behind the decision.
 #
 # Pinned at an exact tag, as every dependency should be. A floating `master`
 # makes a build that worked yesterday fail today for reasons no commit here

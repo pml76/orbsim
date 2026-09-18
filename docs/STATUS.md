@@ -19,7 +19,7 @@ A *dated* measurement is not a current claim and does not belong here: "the
 fuzzer ran 77.4 million executions clean on 2026-09-07" is a fact about that
 day and stays in [`HISTORY.md`](HISTORY.md).
 
-Last updated: 2026-09-17.
+Last updated: 2026-09-18.
 
 ## Contents
 
@@ -46,7 +46,7 @@ opens a window and paces frames.** Nothing is drawn yet.
 | Before M1-04, still open | **Nothing. All seven closed, 2026-09-17.** The `constexpr` work and its proofs landed first: `dotExact`, `crossExact`, `normSquaredExact` and `roundedToDouble` are `constexpr` with `static_assert`s proving the exactness the double-double conversion rests on -- including that `dotExact({1e16,1,0},{1,1,0})` keeps in its low word the 1 a double loses -- and so are `isFinite(Vec3)`, `isFinite(StateVector)` and `elementsAreUsable`, which needed a `constexpr isNaN` beside `isFinite` in `core/Scalar.hpp` because a parabola's `sma` is legitimately infinite. `orbit/Orbit.hpp` gained its first `static_assert`s, proving every `OrbitError` describes itself and no two the same. **Corrected while doing it:** the claim that six helpers were `constexpr`-able was wrong -- `factorOutScale` and `exactStateOf` use `std::abs`, `std::ilogb`, `std::scalbn` and `std::frexp`, none `constexpr` before C++26, the same trap `std::isfinite` sprang on MSVC. Then the four that were the owner's to rule on, all settled that day and recorded as questions 7-10 of [`PROJECT_STATE.md`](PROJECT_STATE.md) section 7: **`/Wall`** for MSVC; **Horizons output is queried, never redistributed**, with the recipe and the SHA-256 sums committed instead and M1-06 amended; **`DoubleDouble`'s operators use `twoSum`**, after asserting `quickTwoSum`'s precondition caught the compiler violating it at `(1 + 2^-60) - 1`; and the two `assign*` out-parameters **stay**, because converting them pushes `elementsFromState` past `readability-function-size` |
 | Then | The rest of phase A — the Horizons fixtures (M1-06, now ahead of M1-05); TDB and UT1, where ERFA is pinned; Earth orientation with nutation, and the Sun, both computed by ERFA; then `orbsim_view`, the camera, the pipelines, and the probe mode that verifies everything drawn after it |
 | Phase order | A → B → D → C → E → F → G |
-| Working branch | `master`. The documentation-consistency sweep and the MSVC target landed there on 2026-09-14, eight commits, fast-forwarded from `consistency-fixes-2026-09-13` -- that branch is merged and can be deleted. `git fetch && git switch master` is all another machine needs |
+| Working branch | `master`, and everything through 2026-09-18 is pushed. `git fetch && git switch master` is all another machine needs. **Five merged branches can be deleted** whenever somebody feels like it, local and remote: `clang-23-2026-09`, `consistency-fixes-2026-09-13`, `docs-reorg`, `pre-docs-reorg-2026-09-09`, `review-fixes-2026-09` |
 
 | Component | State |
 |---|---|
@@ -126,15 +126,15 @@ but not yet pinned, and which files of `bc7enc_rdo` may be compiled, are in
 ## Decision records
 
 **The list is [`adr/README.md`](adr/README.md)**, next to the records
-themselves, so that browsing the directory finds it. **Eighteen are
-accepted**: 0008 to 0015 written by
+themselves, so that browsing the directory finds it. **Nineteen are accepted**:
+0008 to 0015 written by
 [M1-02](plan/tasks/m1-02-record-the-decisions.md) from the decisions taken on
 2026-09-08, then 0016 — ERFA computes the astronomy — and 0017 — every warning
-as an error — both on 2026-09-11, and 0018 — `stateFromElements` reports — on
-2026-09-13.
+as an error — both on 2026-09-11, 0018 — `stateFromElements` reports — on
+2026-09-13, and 0019 on 2026-09-17.
 
-**Nineteen are accepted.** 0019 — vectors carry their unit — landed in two
-commits on 2026-09-17, and both of its steps are done. `core/Units.hpp`'s nine
+**0019 — vectors carry their unit** — landed in two commits, and both of its
+steps are done. `core/Units.hpp`'s nine
 types are built on mp-units `v2.5.0`, so `Metres / Seconds` is a
 `MetresPerSecond` and `Eccentricity` is a *kind* no other ratio converts into;
 and `Vec3<R>` is templated on an mp-units **reference**, so `cross(r, v)` is

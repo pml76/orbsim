@@ -315,13 +315,22 @@ option(ORBSIM_BUILD_APP "Build the Vulkan renderer and application" ON)
 # interface, so every consumer needs the headers; SYSTEM so -Weverything and
 # /Wall judge our code and not theirs.
 #
-# MP_UNITS_API_CONTRACTS=NONE, deliberately. The default is GSL-LITE, which
-# fetches gsl-lite to check the library's own preconditions. This project
-# already has a contract facility (core/Contract.hpp, ADR 0002) and a second
-# one would be both a new dependency and a second answer to the same question.
-# The cost is that mp-units' internal preconditions go unchecked; switching
-# this to GSL-LITE or MS-GSL is a one-line change if that trade stops looking
-# right.
+# MP_UNITS_API_CONTRACTS=NONE, deliberately, and **set explicitly rather than
+# left to the default**. mp-units decides this with
+# `#if MP_UNITS_API_CONTRACTS == 2 || (!defined MP_UNITS_API_CONTRACTS &&
+# __has_include(<gsl-lite/gsl-lite.hpp>))`, so a gsl-lite that arrived on the
+# include path for any other reason would switch contract checking on by
+# itself. Setting the variable is what makes that impossible.
+#
+# The default is GSL-LITE, which needs gsl-lite to check the library's own
+# preconditions. This project already has a contract facility
+# (core/Contract.hpp, ADR 0002) and a second would be both a new dependency and
+# a second answer to one question. Measured 2026-09-18 before settling it: 54 of
+# the library's 60 assertions are compile-time and enforced anyway, five are in
+# text formatting this project never does, and the remaining six are all
+# division-by-zero guards -- a condition ADR 0002 says to *report*, not assert.
+# PROJECT_STATE section 7 question 11 carries the full reckoning and the cheap
+# way to reopen it.
 #
 # MP_UNITS_BUILD_INSTALL=OFF because nothing installs this project, and an
 # install rule on a FetchContent dependency leaks into ours.
