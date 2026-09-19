@@ -605,6 +605,37 @@ asked for.
       the question to ask then is whether the string is needed at all, as it
       was not for `dataDirectory()`.
 
+14. **M1-05's questions: all settled 2026-09-19**, decisions 53-67 of
+    [`plan/milestone-1-decisions.md`](plan/milestone-1-decisions.md) section 9.
+    Fourteen were put before the code, each with a measurement behind it; a
+    fifteenth was found while the answers were being written down, and put and
+    ruled the same day. What to know without opening the register:
+
+    - **ERFA v2.0.1 is pinned** and built by our CMake from exactly 249 files,
+      counted at configure time, with its version macros read from its own
+      `meson.build` and checked against the pin. Both of its validation
+      programs are CTest tests. It links privately to `orbsim_core`, and its
+      headers are included in `src/astro/*.cpp` only.
+    - **TDB - TT is asserted within 20 us of Skyfield 1.55**, the Circular 179
+      series, from a fixture that is committed -- `data/skyfield/`, with its
+      generator script and recipe -- so it runs on every clone.
+    - **`tdbFromTt` evaluates the series twice**, because its argument is TDB,
+      the thing being computed; the round trip is asserted to 1 ps, and exact
+      on at least 99% of the sweep -- the rate is what sees the second
+      evaluation, where the 1 ps budget cannot (decision 68). Decisions 68 to
+      71 came after the mutation pass: two of its three gaps became tests, and
+      the geocentre is held by the code.
+    - **UT1 needs a `DeltaUt1`**, which is validated and has no default:
+      `kDeltaUt1Unmodelled` at the call site is the model error of at most
+      0.9 s, written where it is taken. UT1 across a leap second follows ERFA's
+      `eraUtcut1`, and the second a negative leap second would remove is
+      refused by name, through a table-taking overload the suite drives with a
+      synthetic table.
+    - **M1-07 inherits a question** (decision 66): past 2027-01-01 a TT clock
+      has no route to UT1, because TT reaches UTC only through the leap-second
+      table. It is in M1-07's document, to be put with measurements before its
+      code.
+
 ## 8. Gotchas worth not rediscovering
 
 **`readability-trailing-comma` reports a comma that is not there.** A call with
@@ -754,6 +785,11 @@ catch this class of thing. Run all six before pushing a change to `core/`.
   caches at it when the re-cloning becomes annoying; until then the pin being
   live is worth more than the disk.
 
+  **Nor is ERFA** (added 2026-09-19), and it has a safeguard mp-units lacks:
+  the configure step reads the version out of ERFA's own `meson.build` and
+  stops if it is not the pinned one, so a `FETCHCONTENT_SOURCE_DIR_ERFA`
+  pointing at another checkout fails loudly instead of building quietly.
+
   The setting lives in each `CMakeCache.txt`, not in the repository, so
   deleting a build tree loses it and the next configure downloads afresh --
   harmless, but it means two trees can be built from different sources while
@@ -871,7 +907,20 @@ catch this class of thing. Run all six before pushing a change to `core/`.
   `-Wunreachable-code` error, so a mutant spelt that way fails to build and
   reads as caught: five of eight did on 2026-09-19 before it was noticed. Use
   a condition the compiler cannot prove false (`== ''`, `&& key.empty()`),
-  and report a build failure as an invalid mutant, never as a kill.
+  and report a build failure as an invalid mutant, never as a kill. The same
+  trap has a second door, found on M1-05's run: a mutant that stops using a
+  variable or a parameter -- dropping `estimate`, ignoring `table` -- is an
+  unused-variable error under `-Werror`, and two of the first run's were
+  invalid that way. Keep the name in use in an expression the compiler cannot
+  fold (`estimate.picosecondOfDay() < 0 ? ... : ...`).
+- **A Debug-build assertion on Windows opens a modal dialog and waits.** The
+  debug C runtime answers `abort()` with "Microsoft Visual C++ Runtime
+  Library", Abort / Retry / Ignore, and a script that runs the test and waits
+  for it waits forever -- M1-05's mutation harness sat twenty minutes on one
+  before it was noticed. The mutant had been caught; nothing could say so. Run
+  such a harness beside a watchdog that ends any `test_*` process whose window
+  title contains "Runtime Library", and count its exit as a catch by an
+  assertion.
 - **A mutation harness restores from a file copy, never `git checkout --`.**
   That reverts every uncommitted change in the file, not only the mutant. On
   2026-09-19 it silently threw away M1-04's `core/Time.hpp` before M1-04 was
@@ -898,6 +947,13 @@ catch this class of thing. Run all six before pushing a change to `core/`.
 - **A Catch2 test named with a comma cannot be selected by name** on the
   command line: the comma separates filters, and "No test cases matched" is
   the result. `ctest -R` escapes it.
+- **A summary of a web page is not the page.** On 2026-09-19 a summarising
+  fetch of JPL's "Approximate Positions of the Planets" gave the Earth-Moon
+  barycentre's semi-major axis rate as 0.00562 au per century; the table says
+  0.00000562. The first would move the Earth's orbit by 840,000 km a century,
+  which is how it was caught -- and why every constant M1-05 cites was then
+  read out of the raw page. Quote a number from the source, not from a tool's
+  account of it.
 
 ---
 

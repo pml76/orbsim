@@ -1194,6 +1194,80 @@ it is 0.05 mm on a component of 1.3e8 km -- still nine orders of magnitude
 inside M1-08's 72 km, and now written as what it is.
 
 
+### M1-05, TDB and UT1, and ERFA pinned, 2026-09-19
+
+`src/astro/Tdb.hpp` and `.cpp`, the first of `src/astro/`; UT1 and `DeltaUt1`
+in `src/core/Time.hpp`; ERFA v2.0.1 built from source by `CMakeLists.txt`, with
+both of its validation programs in `check`; `tests/test_astro_time.cpp`, new,
+and cases in `test_time.cpp`, `test_fixture_file.cpp` and `fuzz_time.cpp`; and
+the first external reference data that is committed rather than generated,
+`data/skyfield/tdb-minus-tt.txt`, with `scripts/skyfield-fixture.py` beside it.
+Assertions went from 768,266 in 88 cases to 914,521 in 103, identical across
+both Windows trees, `asan`, `windows-msvc`, `linux-sanitize` and `linux-gcc` --
+counted on each.
+
+**Measured before asking.** The session began with the owner's rule, now
+working agreement 1's third refinement: no open questions, and the extra mile
+when in doubt. So the questions went out only after a scratch spike had
+answered what could be answered: ERFA's latest release was still v2.0.1, its
+library was exactly the 249 files the plan said, and they built with zero
+warnings and passed both validation programs under all five toolchain
+configurations; Skyfield's licence and dependencies were read from its sdist;
+its seven-term series was measured against `eraDtdb` -- 9.28 us at worst over
+1900-2100 -- which is what sized the budget at 20 us rather than 100; and a
+round trip in integer picoseconds was simulated both ways, which is what showed
+that the plan had the approximate direction of the TDB conversion backwards and
+that one fixed-point step makes the round trip exact where one evaluation leaves
+17% a picosecond out. Fourteen questions, each with options and a
+recommendation; every recommendation taken.
+
+**A fifteenth came from writing the answers down.** Recording decision 59, the
+text said UT1 -> UTC -> UT1 is exact everywhere. It is not, on a day that ends
+in a negative leap second: under one DeltaUT1 a second of UT1 then has no UTC
+instant at all. That was my error, in a ruling's wording rather than in code;
+it was corrected in the register the same hour, marked as a correction, and put
+to the owner as its own question before any code. Answer: report it by name
+(decision 67).
+
+**One number came back wrong from a tool, and the unit caught it.** A
+summarising fetch of JPL's table of mean elements gave the Earth-Moon
+barycentre's semi-major axis a rate of 0.00562 au per century -- 840,000 km --
+where the page says 0.00000562. Every constant the physics test uses was then
+read from the raw page. PROJECT_STATE section 8 has the lesson.
+
+**The stubs, and what passing against one means.** Against stubs with the
+approved interfaces, all three of the reader's new cases failed, six of seven
+UT1 cases, and two of four TDB cases. Each that passed is an identity the stub
+also was -- DeltaUT1 unmodelled; a round trip through a conversion that does
+nothing -- which is why the mutation pass mattered more than usual here.
+
+**The mutation pass: 20 valid mutants, 16 caught, 4 survived.** Three were
+caught by `static_assert`s before a test ran, two by Debug-build assertions,
+eleven by tests. Of the survivors one is equivalent -- the guard that keeps
+DeltaUT1's scaling inside 2^52 behaves identically at 1.0 and at 10.0 -- and
+three are gaps, each put to the owner: dropping the fixed-point step, which
+the 1 ps round-trip budget cannot see; dropping the time of day from ERFA's
+date, which a fixture sampled only at 0h cannot see; and moving the observer
+off the geocentre, whose 2 us is under a 20 us budget. The owner ruled the
+same day (decisions 68 to 71): the first two became tests -- the round trip
+exact on at least 99% of its sweep, where the mutant managed 8,263 of 10,000;
+and TDB - TT's change over half a day against the Kepler problem's, 0.37 us
+worst against a derived 1 us, where the mutant was 14 us out -- and the third
+is held by the code. Two lessons about the
+harness, both now in PROJECT_STATE section 8: a mutant that leaves a variable
+unused fails to compile under `-Werror` and is invalid, not caught -- two of the
+first run's were; and a Debug-build assertion on Windows opens a modal dialog,
+so a harness that runs the tests waits on it forever. The first hung for twenty
+minutes before it was noticed.
+
+**Two findings from the tools**: `readability-trailing-comma` on a multi-line
+`Seconds{eraDtdb(...)}`, fixed by naming the value; and
+`readability-function-size` on the fuzzer's entry point once it carried M1-05's
+claims, which moved into a function of their own. `fuzz_time` then ran
+2,489,115 executions in 241 s under ASan and UBSan with no finding -- 10,328 a
+second, a third of M1-04's rate, because every input now pays for four
+evaluations of an 800-term series.
+
 ---
 
 ## 4. The bug that justified the session

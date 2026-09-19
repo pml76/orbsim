@@ -52,6 +52,7 @@
 #include <cstdint>
 #include <expected>
 #include <limits>
+#include <span>
 #include <string_view>
 #include <type_traits>
 #include <utility>
@@ -94,6 +95,11 @@ enum class TimeError : std::uint8_t {
     // is only the crossing to TAI that has no whole-second answer.
     BeforeLeapSecondEra,    // before 1972-01-01, when UTC ran at its own rate
     LeapSecondTableExpired, // past the last date the committed bulletin covers
+
+    // UT1 (M1-05). A value of UT1 - UTC arrives from outside -- an IERS
+    // series, in time -- so a wrong one is reported, not asserted (ADR 0002).
+    DeltaUt1OutOfRange,      // |UT1 - UTC| beyond 0.9 s, which UTC is defined never to reach
+    InsideRemovedLeapSecond, // UT1 in the second a negative leap second removes from UTC
 };
 
 [[nodiscard]] constexpr std::string_view describe(TimeError error) noexcept {
@@ -115,6 +121,11 @@ enum class TimeError : std::uint8_t {
     case TimeError::LeapSecondTableExpired:
         return "past the last date the committed IERS bulletin covers, so TAI - UTC is "
                "not yet known";
+    case TimeError::DeltaUt1OutOfRange:
+        return "UT1 - UTC is beyond 0.9 s, which UTC's definition rules out (ITU-R TF.460-6)";
+    case TimeError::InsideRemovedLeapSecond:
+        return "that UT1 falls in the second a negative leap second removes from UTC, so no "
+               "UTC instant has it";
     }
     return "unknown time error";
 }
@@ -993,6 +1004,132 @@ static_assert(kTtMinusTaiPicoseconds == (32 * kPicosecondsPerSecond) + 184'000'0
     return utcFromTai(taiFromTt(tt));
 }
 
+// --- UT1 ----------------------------------------------------------------------
+//
+// UT1 is the Earth's rotation read as a clock, and DeltaUT1 = UT1 - UTC is how
+// far UTC's atomic seconds have drifted from it since the last leap second.
+// **The sign** is ITU-R TF.460-6 (2002), Annex 1 section D: DUT1 is
+// approximately UT1 - UTC, "a correction to be added to UTC to obtain a better
+// approximation to UT1". So UT1 = UTC + DeltaUT1.
+//
+// **The convention is ERFA's eraUtcut1** (register decision 59): UT1 is the SI
+// seconds elapsed in the UTC day plus DeltaUT1, on days of 86 400 s. ERFA gets
+// there through TAI, taking DeltaAT at 0h of the UTC day, and that DeltaAT
+// cancels -- so this needs no leap-second table, cannot fail, and is exact
+// integer arithmetic on the stored picoseconds. DeltaUT1 on a day that ends in a
+// leap second is the IERS value for that day.
+//
+// **The model error, while no IERS series is supplied** (M1-05, ADR 0009): a
+// caller with nothing better passes kDeltaUt1Unmodelled, and UT1 is then UTC.
+// That is wrong by DeltaUT1 itself, which UTC is defined never to let past
+// 0.9 s: **at most 0.9 s of UT1, 13.5" of Earth rotation, about 420 m at the
+// equator.** Recorded, not asserted -- it is a decision with a size, not a
+// defect. One consequence is worth knowing before it is met: across a leap
+// second the published DeltaUT1 steps by +1 s, and without it UT1 steps *back*
+// by a second at the UTC midnight that follows -- each side of the step still
+// inside the 0.9 s.
+//
+// **The way back is not quite a bijection**, and cannot be, under one DeltaUT1
+// for the day. Inside a positive leap second the forward map is two-to-one --
+// 23:59:60.5 and 00:00:00.5 of the next day have the same UT1 -- and the way
+// back returns the later, never writing 23:59:60. Across a *negative* leap
+// second, which has never happened, the forward map skips a second of UT1, and
+// the way back reports an instant in it as InsideRemovedLeapSecond (decision
+// 67). So UT1 -> UTC -> UT1 is exact wherever UTC has the instant, and
+// UTC -> UT1 -> UTC exact everywhere but inside a positive leap second.
+
+// The largest DeltaUT1 there can be: ITU-R TF.460-6 (2002), Annex 1 section
+// D.1.2, "The departure of UTC from UT1 should not exceed +-0.9 s". The IERS
+// schedules leap seconds to keep it so. In picoseconds, as DeltaUt1 holds it.
+inline constexpr std::int64_t kDeltaUt1LimitPicoseconds = 900'000'000'000;
+
+// UT1 - UTC, validated, to the nearest picosecond.
+//
+// A factory rather than a constructor, because the value arrives from outside
+// -- an IERS series, when one is read -- and a wrong one is reported, not
+// asserted (ADR 0002, register decision 60). Held in integer picoseconds, so
+// that the conversions below are integer arithmetic and 0.3 s is exactly
+// 300 000 000 000 ps rather than the double nearest 0.3; the bound is checked
+// on that held value, which is the nearest picosecond to the one given. No
+// default constructor: a DeltaUT1 of zero is a modelling decision, and it is
+// spelled kDeltaUt1Unmodelled at the call site that takes it (decision 61).
+class DeltaUt1 {
+public:
+    [[nodiscard]] static constexpr std::expected<DeltaUt1, TimeError>
+    fromSeconds(Seconds value) noexcept {
+        if (!isFinite(value.value())) return std::unexpected(TimeError::NotFinite);
+        // Refused before it is scaled, so that what is scaled is below a
+        // second and roundHalfAwayFromZero's range is never approached: 1e12 ps
+        // is far inside 2^52.
+        if (absOf(value.value()) > 1.0) return std::unexpected(TimeError::DeltaUt1OutOfRange);
+        // The nearest picosecond, as picosecondsIntoDay rounds one: the product
+        // is below 2^40, where a double resolves 1.2e-4 ps.
+        const std::int64_t picoseconds =
+            detail::roundHalfAwayFromZero(value.value() * detail::kPicosecondsPerSecondF);
+        if (picoseconds > kDeltaUt1LimitPicoseconds || picoseconds < -kDeltaUt1LimitPicoseconds) {
+            return std::unexpected(TimeError::DeltaUt1OutOfRange);
+        }
+        return DeltaUt1{picoseconds};
+    }
+
+    [[nodiscard]] constexpr std::int64_t picoseconds() const noexcept { return picoseconds_; }
+
+private:
+    explicit constexpr DeltaUt1(std::int64_t picoseconds) noexcept : picoseconds_{picoseconds} {}
+
+    std::int64_t picoseconds_{};
+};
+
+// DeltaUT1 = 0: UT1 taken as UTC, with the model error stated above. The name
+// is the point -- it says, at every call site, that UT1 is not being modelled.
+inline constexpr DeltaUt1 kDeltaUt1Unmodelled = DeltaUt1::fromSeconds(Seconds{0.0}).value();
+
+// UTC -> UT1. The UTC day and the SI picoseconds into it, plus DeltaUT1,
+// carried over days of 86 400 s: 86 400.5 s into a day with a leap second is
+// 0.5 s into the next UT1 day. No table, no failure.
+[[nodiscard]] constexpr Ut1Time ut1FromUtc(UtcTime utc, DeltaUt1 deltaUt1) noexcept {
+    return detail::Builder::make<TimeScale::Ut1>(detail::carry({
+        .mjd = utc.modifiedJulianDay(),
+        .picos = utc.picosecondOfDay() + deltaUt1.picoseconds(),
+    }));
+}
+
+// UT1 -> UTC, over any leap-second table.
+//
+// Takes the table as a span, as the queries in core/LeapSeconds.hpp do, so the
+// suite can drive the negative-leap-second refusal with a synthetic table: the
+// published one has never had a negative step and cannot reach it (register
+// decisions 33 and 67). The table decides only which UTC days are short. The
+// instant built is inside its day on the published table too, which is what
+// UtcTime is normalised against: carry() leaves it below 86 400 s, and every
+// day the published table describes holds at least that many --
+// everyPublishedStepIsPositive, in core/LeapSeconds.hpp, fails the build the
+// day that stops being true, and this is one of the places it points at.
+[[nodiscard]] constexpr std::expected<UtcTime, TimeError>
+utcFromUt1(std::span<const LeapSecondStep> table, Ut1Time ut1, DeltaUt1 deltaUt1) noexcept {
+    // A Ut1Time has no arithmetic, so it comes from a factory or from
+    // ut1FromUtc, and its day is finite.
+    ORBSIM_EXPECTS(isFinite(ut1.modifiedJulianDay()));
+    const detail::DayAndPicos parts = detail::carry({
+        .mjd = ut1.modifiedJulianDay(),
+        .picos = ut1.picosecondOfDay() - deltaUt1.picoseconds(),
+    });
+    // Before anything asks how long that day is: the table's answer, and
+    // UtcTime's own normalisation, are for days inside the calendar.
+    if (!detail::inCalendarRange(parts.mjd)) return std::unexpected(TimeError::YearOutOfRange);
+    const auto mjd = static_cast<std::int64_t>(parts.mjd);
+    if (parts.picos >= secondsInUtcDay(table, mjd) * kPicosecondsPerSecond) {
+        return std::unexpected(TimeError::InsideRemovedLeapSecond);
+    }
+    return detail::Builder::make<TimeScale::Utc>(parts);
+}
+
+// The same, over the published table.
+[[nodiscard]] constexpr std::expected<UtcTime, TimeError> utcFromUt1(Ut1Time ut1,
+                                                                     DeltaUt1 deltaUt1) noexcept {
+    return utcFromUt1(kIersLeapSeconds, ut1, deltaUt1);
+}
+
 // --- compile-time proofs ----------------------------------------------------
 
 static_assert(sizeof(TtTime) == sizeof(f64) + sizeof(std::int64_t),
@@ -1108,6 +1245,54 @@ static_assert(std::is_same_v<decltype(taiFromUtc(std::declval<UtcTime>())),
               "UTC to TAI needs the table, which has two edges, so it reports");
 static_assert(std::is_same_v<decltype(utcFromTai(std::declval<TaiTime>())),
                              std::expected<UtcTime, TimeError>>);
+
+// --- UT1, at compile time ------------------------------------------------------
+
+static_assert(
+    std::is_same_v<decltype(ut1FromUtc(std::declval<UtcTime>(), kDeltaUt1Unmodelled)), Ut1Time>,
+    "UTC to UT1 needs no table and cannot fail");
+static_assert(std::is_same_v<decltype(utcFromUt1(std::declval<Ut1Time>(), kDeltaUt1Unmodelled)),
+                             std::expected<UtcTime, TimeError>>,
+              "UT1 to UTC reports the calendar's ends and a removed leap second");
+static_assert(!std::is_default_constructible_v<DeltaUt1> &&
+                  !std::is_constructible_v<DeltaUt1, Seconds> &&
+                  !std::is_constructible_v<DeltaUt1, std::int64_t>,
+              "a DeltaUT1 comes from the factory, which validates, or is kDeltaUt1Unmodelled "
+              "by name");
+static_assert(std::is_trivially_copyable_v<DeltaUt1>);
+static_assert(DeltaUt1::fromSeconds(Seconds{0.9}).has_value() &&
+                  !DeltaUt1::fromSeconds(Seconds{0.900000000001}).has_value(),
+              "0.9 s is inside the limit, and a picosecond past it is not");
+
+// The sign, as ITU-R TF.460-6 states it: UT1 = UTC + DeltaUT1. Noon of
+// 2017-01-01 (MJD 57 754) with DeltaUT1 = +0.3 s is 0.3 s past noon in UT1.
+consteval bool theUt1SignHolds() {
+    const UtcTime noon =
+        UtcTime::fromCalendar({.year = 2017, .month = 1, .day = 1, .hour = 12}).value();
+    const Ut1Time ut1 = ut1FromUtc(noon, DeltaUt1::fromSeconds(Seconds{0.3}).value());
+    return nearlyEqual(ut1.modifiedJulianDay(), 57'754.0, Tolerance{0.0}) &&
+           ut1.picosecondOfDay() == (43'200 * kPicosecondsPerSecond) + 300'000'000'000;
+}
+static_assert(theUt1SignHolds(), "UT1 = UTC + DeltaUT1");
+
+// 23:59:60.5 UTC on 2016-12-31 is 0.5 s into 2017-01-01 UT1, with DeltaUT1
+// unmodelled: UT1 has no leap seconds, only UTC does.
+consteval bool theLeapSecondRunsIntoTheNextUt1Day() {
+    const UtcTime inside = UtcTime::fromCalendar({
+                                                     .year = 2016,
+                                                     .month = 12,
+                                                     .day = 31,
+                                                     .hour = 23,
+                                                     .minute = 59,
+                                                     .second = Seconds{60.5},
+                                                 })
+                               .value();
+    const Ut1Time ut1 = ut1FromUtc(inside, kDeltaUt1Unmodelled);
+    return nearlyEqual(ut1.modifiedJulianDay(), 57'754.0, Tolerance{0.0}) &&
+           ut1.picosecondOfDay() == kPicosecondsPerSecond / 2;
+}
+static_assert(theLeapSecondRunsIntoTheNextUt1Day(),
+              "86 400.5 s into a day with a leap second is 0.5 s into the next UT1 day");
 
 } // namespace orb
 

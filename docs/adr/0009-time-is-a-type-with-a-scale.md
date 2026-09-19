@@ -211,3 +211,49 @@ available -- `std::chrono::get_leap_second_info` reads the platform's tzdata,
 an independent transcription of the same bulletins, and it was measured on all
 four toolchains before being relied on: usable everywhere, agreeing on all 28
 rows and on every one of the 20,089 days of the era.
+
+## Update, 2026-09-19: what M1-05 settled
+
+Written with [M1-05](../plan/tasks/m1-05-tdb-and-ut1.md), on the owner's
+rulings of the same day -- decisions 53 to 67 of
+[the register](../plan/milestone-1-decisions.md), all put before the code.
+**The decision stands**, and all five scales now convert: TDB through ERFA
+([`0016`](0016-the-astronomy-is-erfa.md)), UT1 in `core/Time.hpp`, which needs
+no ERFA.
+
+- **DeltaUT1 = 0 is a model error of at most 0.9 s** -- 13.5" of Earth
+  rotation, about 420 m at the equator -- recorded, not asserted. The bound is
+  UTC's own: ITU-R TF.460-6 (2002), Annex 1 section D.1.2, "The departure of
+  UTC from UT1 should not exceed +-0.9 s". So a `DeltaUt1` is a validated type
+  that refuses anything past it, by name, and holds its value in integer
+  picoseconds; and it has no default argument: a caller with no IERS series
+  writes `kDeltaUt1Unmodelled`, which says at every call site that UT1 is not
+  being modelled. The sign is the same recommendation's: DUT1 is "a correction
+  to be added to UTC", so UT1 = UTC + DeltaUT1.
+- **UT1 follows ERFA's `eraUtcut1` convention**: the SI seconds elapsed in the
+  UTC day, plus DeltaUT1, on days of 86 400 s. DeltaAT cancels, so the forward
+  conversion needs no table and cannot fail. Inside a positive leap second two
+  UTC instants share a UT1, and the way back returns the later, never
+  23:59:60; in the second a negative leap second would remove, no UTC instant
+  has the UT1, and the way back says `InsideRemovedLeapSecond`. The
+  consequence worth knowing: without a real DeltaUT1, which steps by +1 s at a
+  leap second, UT1 steps back by a second at the midnight after one -- each
+  side still inside the 0.9 s above.
+- **TDB - TT is ERFA's `eraDtdb` at the geocentre, evaluated at TDB in both
+  directions.** Its argument is formally TDB; TT -> TDB takes one fixed-point
+  step to reach it, and that is what makes the round trip exact on 1,000,000
+  of 1,000,000 instants where one evaluation left 17% a picosecond out. The
+  plan had the approximate direction the wrong way round.
+- **The budgets moved, on measurement.** TDB - TT from 100 us to **20 us**,
+  against Skyfield 1.55's evaluation of USNO Circular 179 -- the independent
+  reference 0016 asked for, which is itself 9.28 us from `eraDtdb` over
+  1900-2100, so no tighter budget is honest; the committed fixture's 1,975
+  epochs come in at 7.89 us worst. And the TT <-> TDB round trip from 1e-9 s to
+  **1 ps**, one rounding each way -- and exact on at least 99% of a seeded
+  sweep, which is what shows the series is evaluated at TDB (decision 68).
+  The table near the top of this record still says 100 us; it is what was
+  decided then, and this is the amendment.
+- **Nothing is refused far from J2000.** `eraDtdb` has no status, TDB - TT is
+  defined everywhere, and at six sample epochs between year 1 and year 9999
+  the whole term stayed within 1.76 ms; `astro/Tdb.hpp` states where each
+  accuracy claim holds and where none is made.

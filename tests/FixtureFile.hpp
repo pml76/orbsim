@@ -19,8 +19,9 @@
 // CRLF, and the last line must end in a newline: a file that stops short of
 // one was cut off, which is how a download through a proxy fails. Horizons
 // output is turned into this by scripts/horizons-fixture.py (decided
-// 2026-09-19, register decision 42), and M1-05's reference values and
-// M1-68's GMAT trajectory are to arrive in it too.
+// 2026-09-19, register decision 42); M1-05's TDB - TT reference values are
+// written in it by scripts/skyfield-fixture.py (decision 55), and M1-68's GMAT
+// trajectory is to arrive in it too.
 //
 // **Two layers, and units at the first moment a number exists** (decided
 // 2026-09-19). parseFixtureTable() checks the file's shape and that every
@@ -197,6 +198,32 @@ parseStateVectors(std::string_view text);
 
 [[nodiscard]] std::expected<StateVectorFixture, FixtureError>
 readStateVectors(const std::filesystem::path& path);
+
+// --- TDB - TT ----------------------------------------------------------------
+
+// One row of a TDB - TT fixture (M1-05): an instant in TDB, and how far TDB is
+// ahead of TT at it.
+struct TdbMinusTtAtEpoch {
+    TdbTime epoch;
+    Seconds tdbMinusTt;
+};
+
+struct TdbMinusTtFixture {
+    FixtureHeader header;
+    std::vector<TdbMinusTtAtEpoch> rows;
+};
+
+// The header a TDB - TT fixture must carry. The epoch is TDB because that is
+// the argument Skyfield's tdb_minus_tt takes, and the difference is in seconds:
+// read as milliseconds, a value of 1.6 ms would be a 1.6 s claim, still
+// plausible-looking to anything that does not check its unit.
+inline constexpr std::string_view kTdbMinusTtTimeScale = "TDB";
+inline constexpr std::string_view kTdbMinusTtColumns = "jd_tdb tdb_minus_tt_s";
+
+[[nodiscard]] std::expected<TdbMinusTtFixture, FixtureError> parseTdbMinusTt(std::string_view text);
+
+[[nodiscard]] std::expected<TdbMinusTtFixture, FixtureError>
+readTdbMinusTt(const std::filesystem::path& path);
 
 // data/ in the source tree. The build names it, as it names ORBSIM_ASSET_DIR
 // for the application.

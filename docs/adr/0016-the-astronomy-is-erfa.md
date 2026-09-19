@@ -136,3 +136,35 @@ of J2000**, JD 2415020.0 to 2488070.0 TDB -- 1899-12-31T12:00 to
 ERFA resolves that boundary only to its arithmetic's resolution, about 0.63 µs
 at 36 525 days from J2000: a date a picosecond outside reports as inside, and
 a millisecond outside does not.
+
+## Update, 2026-09-19: the pin, and the first reference
+
+ERFA is pinned, with [M1-05](../plan/tasks/m1-05-tdb-and-ut1.md), on the
+owner's rulings of the same day (decisions 53 to 67 of
+[the register](../plan/milestone-1-decisions.md)). **The decision stands**; what
+this adds is how it was carried out, and what was measured first.
+
+- **v2.0.1**, re-verified as the latest release on the day. Master was twelve
+  commits ahead and unreleased; the one touching code makes the leap-second
+  table thread-safe, and this project does not call ERFA's leap-second
+  functions.
+- **All 249 library files, found rather than listed**: the build globs ERFA's
+  sources, drops its two validation programs, and stops unless exactly 249
+  remain. Its version macros are read from its own `meson.build`, not
+  transcribed. Its include directory is `SYSTEM`, which the lint header filter
+  needed: that filter matches any path containing `/src/`, and ERFA's headers
+  have one.
+- **Both of upstream's validation programs** run in `check`, where this record
+  named one: `t_erfa_c`, 1,494 checks, and `t_erfa_c_extra`, which is the only
+  thing that exercises two of the 249 files. Measured before the pin: zero
+  warnings and both passing under clang 23.1.0, clang 23.1.1 with ASan and
+  UBSan, gcc-14 at -O0 and -O2, and MSVC 19.51.
+- **The independent reference for TDB - TT is Skyfield 1.55**, whose
+  `tdb_minus_tt` is USNO Circular 179 eq. 2.6, written independently of SOFA.
+  NOVAS 3.1 evaluates the same equation, so it adds no independence, and its
+  terms could not be confirmed on the day. One thing found then matters for
+  [M1-07](../plan/tasks/m1-07-earth-orientation.md) and is recorded there: the
+  NOVAS C3.1 user's guide says its IAU 2000A nutation and its equation of the
+  equinoxes are built on the same IERS modules as SOFA's, so for the nutation
+  its independence from ERFA is partial -- which M1-07 has to weigh when it
+  chooses its reference, not something decided here.

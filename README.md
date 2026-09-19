@@ -21,12 +21,18 @@ a window, creates a device and paces frames. Nothing is drawn yet. See
 - **Time on five scales** — UTC, TAI, TT, TDB and UT1 as distinct types, held
   as a day and a count of picoseconds. UTC, TAI and TT convert exactly, over
   the IERS leap-second table, and refuse by name before 1972 and past the last
-  bulletin rather than extrapolating. TDB and UT1 are next.
+  bulletin rather than extrapolating. UT1 converts from UTC exactly, with a
+  UT1 - UTC that is validated and, until an IERS series is read, zero -- a
+  stated model error of at most 0.9 s. TDB converts through
+  [ERFA](https://github.com/liberfa/erfa), within 20 us of an implementation
+  written independently of it, and back to the picosecond.
 - **Reference data this project did not produce** — JPL Horizons state vectors,
   read in metres and TDB with their provenance attached. Horizons output is
   queried, not redistributed: `data/horizons/README.md` has the recipe and the
-  build checks what it generates against a committed hash.
-- **Five Catch2 test suites, several hundred thousand checks**
+  build checks what it generates against a committed hash. TDB - TT from
+  Skyfield is committed, with the script that wrote it, and every clone checks
+  against it.
+- **Six Catch2 test suites, several hundred thousand checks**
   (`docs/STATUS.md` has the count), the useful ones crossing the code
   against something it did not produce: elements and anomalies against
   references computed in 60-digit decimal arithmetic, state→elements against
@@ -73,8 +79,9 @@ million kilometres away.
 Needs a C++23 compiler with `<expected>`, `<print>` and `<ranges>` — clang 17+
 or MSVC 19.36+ — plus CMake 3.28, Ninja, a Vulkan loader, and Python 3, which
 `check` uses for its document-link and fixture-converter tests. Dependencies
-(SDL3, vk-bootstrap, VMA, Vulkan-Headers, Vulkan-Utility-Libraries, Catch2 and
-mp-units) are fetched and pinned by CMake.
+(SDL3, vk-bootstrap, VMA, Vulkan-Headers, Vulkan-Utility-Libraries, Catch2,
+mp-units and ERFA) are fetched and pinned by CMake; ERFA is C, and is built by
+the same toolchain.
 
 ```
 cmake --preset relwithdebinfo

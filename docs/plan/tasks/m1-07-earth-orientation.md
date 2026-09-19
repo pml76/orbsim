@@ -63,6 +63,33 @@ and ΔUT1, as numbers rather than leaving them implied.
   is written where somebody debugging a 400 m discrepancy will find it. *(Was:
   nutation ≤ 25″ and ΔUT1, together ≤ 40″ ≈ 1.2 km.)*
 
+## Open question, left by M1-05 (decision 66)
+
+Recorded 2026-09-19, when M1-05's questions were ruled, on the owner's
+instruction to write it down here rather than answer it there. **Put it to the
+owner, with measurements, before this task's code.**
+
+**Where does a `Ut1Time` come from, past the leap-second table's expiry?** The
+simulation clock runs on TT. M1-05's `ut1FromUtc` takes a `UtcTime`, and a TT
+instant reaches UTC only through the leap-second table, which expires
+**2027-01-01T00:00:00 UTC** — 104 days after this was written. As planned,
+`earthFixedFromInertial(TtTime, Ut1Time)` could therefore not be called for any
+instant past that date: the Earth's orientation would be refused, by name, for
+every scenario and every "now" after it. Candidates to measure and cost, not a
+recommendation:
+
+- accept the refusal, and renew the table with every IERS Bulletin C;
+- a table-free `ut1FromTt(TtTime, DeltaT)`, with ΔT = TT − UT1 from a stated
+  prediction and its error written down as model error;
+- something neither of these is.
+
+Also found that day, and relevant to this task's independent reference: the
+NOVAS C3.1 user's guide, Appendix D, says NOVAS is "generally independent of
+SOFA", except that its `iau2000a` (nutation) and `ee_ct` are based on the same
+IERS modules as SOFA's `iauNut00a` and `iauEect00`. For the nutation part of
+this task NOVAS is therefore not fully independent of ERFA, and that has to be
+weighed when the reference is chosen.
+
 ## Out of scope
 
 Polar motion, and ΔUT1 from IERS data: both stay zero, with their sizes

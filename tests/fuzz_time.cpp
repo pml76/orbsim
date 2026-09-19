@@ -25,6 +25,11 @@
 //     TAI round trip that returns the instant it started from, bit for bit.**
 //     Not nearly: the arithmetic is whole seconds and whole picoseconds, so
 //     anything short of identity is a defect rather than a rounding.
+//   * *(M1-05, register decision 64.)* A DeltaUT1 accepted only inside 0.9 s;
+//     UT1 -> UTC -> UT1 bit for bit wherever UTC has the instant, for the same
+//     reason; and TT -> TDB -> TT within the one picosecond each rounding
+//     allows, both ways, at any date the calendar holds -- ERFA underneath,
+//     across all of years 1 to 9999.
 //
 // Build and run, on Windows, where the fuzzing happens (VERIFICATION.md rule
 // 13):
@@ -37,6 +42,7 @@
 // orbsim_fuzz_objects, so that the full warning set and check's lint cover it
 // even where the fuzzer itself is not built.
 //
+#include "astro/Tdb.hpp"
 #include "core/LeapSeconds.hpp"
 #include "core/Scalar.hpp"
 #include "core/Time.hpp"
@@ -51,13 +57,17 @@
 namespace {
 
 using orb::CalendarDate;
+using orb::DeltaUt1;
 using orb::f64;
 using orb::JulianDate;
 using orb::Seconds;
 using orb::TaiTime;
+using orb::TdbTime;
 using orb::TimePoint;
 using orb::TimeScale;
 using orb::Tolerance;
+using orb::TtTime;
+using orb::Ut1Time;
 using orb::UtcTime;
 
 // libFuzzer reports a non-zero exit as the finding, so abort is the whole
@@ -117,12 +127,74 @@ void requireLeapSecondIsWhereTheTableSaysItIs(Seconds second, UtcTime utc) {
     require(utc.picosecondOfDay() >= orb::kPicosecondsPerDay);
 }
 
-// The whole input, as one trivially copyable layout: a calendar date and a
-// Julian date in two parts. One memcpy from libFuzzer's buffer fills it, which
-// is how this harness reads its bytes without doing arithmetic on a raw
-// pointer -- cppcoreguidelines-pro-bounds-pointer-arithmetic and clang's
-// -Wunsafe-buffer-usage both object to that, and both are right that a pointer
-// walked by hand is how a fuzz harness gets its own buffer overrun.
+// M1-05's three claims, on whatever the fuzzer reached (register decision 64).
+//
+// A DeltaUT1 the factory accepts is inside 0.9 s, to the picosecond.
+void requireDeltaUt1InRange(DeltaUt1 delta) {
+    require(delta.picoseconds() <= orb::kDeltaUt1LimitPicoseconds);
+    require(delta.picoseconds() >= -orb::kDeltaUt1LimitPicoseconds);
+}
+
+// UT1 -> UTC -> UT1 is exact wherever UTC has the instant -- which is the
+// direction that is a claim everywhere; the other is two-to-one inside a leap
+// second (decision 59). A refusal is a legitimate outcome, by name.
+void requireUt1RoundTrip(Ut1Time ut1, DeltaUt1 delta) {
+    const auto utc = orb::utcFromUt1(ut1, delta);
+    if (!utc) return;
+    requireNormalised(*utc);
+    const Ut1Time back = orb::ut1FromUtc(*utc, delta);
+    requireNormalised(back);
+    require(back == ut1);
+}
+
+// |a - b| in picoseconds, for two instants a picosecond or so apart.
+template <TimeScale Scale>
+[[nodiscard]] std::int64_t picosecondsApart(const TimePoint<Scale>& a, const TimePoint<Scale>& b) {
+    const f64 days = a.modifiedJulianDay() - b.modifiedJulianDay();
+    const std::int64_t apart = (static_cast<std::int64_t>(days) * orb::kPicosecondsPerDay) +
+                               (a.picosecondOfDay() - b.picosecondOfDay());
+    return apart < 0 ? -apart : apart;
+}
+
+// TT -> TDB -> TT, and the other way, within the one picosecond each rounding
+// allows (decision 57), at any instant the calendar holds.
+void requireTdbRoundTrip(TtTime tt) {
+    const TdbTime tdb = orb::tdbFromTt(tt);
+    requireNormalised(tdb);
+    require(picosecondsApart(orb::ttFromTdb(tdb), tt) <= 1);
+}
+
+void requireTtRoundTrip(TdbTime tdb) {
+    const TtTime tt = orb::ttFromTdb(tdb);
+    requireNormalised(tt);
+    require(picosecondsApart(orb::tdbFromTt(tt), tdb) <= 1);
+}
+
+// All of M1-05's, on one date: TDB from it on the two dynamical scales, and
+// UT1 from a DeltaUT1 the fuzzer chose -- accepted only inside 0.9 s, and then
+// applied to the date read as UT1 and as UTC. A function of its own, so that
+// the entry point stays inside readability-function-size.
+void requireTdbAndUt1(const CalendarDate& date, Seconds deltaUt1) {
+    if (const auto tt = TtTime::fromCalendar(date); tt) requireTdbRoundTrip(*tt);
+    if (const auto tdb = TdbTime::fromCalendar(date); tdb) requireTtRoundTrip(*tdb);
+
+    const auto delta = DeltaUt1::fromSeconds(deltaUt1);
+    if (!delta) return; // refused by name, which is a legitimate outcome
+    requireDeltaUt1InRange(*delta);
+    if (const auto ut1 = Ut1Time::fromCalendar(date); ut1) requireUt1RoundTrip(*ut1, *delta);
+    if (const auto utc = UtcTime::fromCalendar(date); utc) {
+        const Ut1Time ut1 = orb::ut1FromUtc(*utc, *delta);
+        requireNormalised(ut1);
+        requireUt1RoundTrip(ut1, *delta);
+    }
+}
+
+// The whole input, as one trivially copyable layout: a calendar date, a
+// Julian date in two parts, and a DeltaUT1 in seconds. One memcpy from libFuzzer's buffer fills it,
+// which is how this harness reads its bytes without doing arithmetic on a raw pointer --
+// cppcoreguidelines-pro-bounds-pointer-arithmetic and clang's -Wunsafe-buffer-usage both object to
+// that, and both are right that a pointer walked by hand is how a fuzz harness gets its own buffer
+// overrun.
 struct RawInput {
     std::int32_t year;
     std::int32_t month;
@@ -132,6 +204,7 @@ struct RawInput {
     double second;
     double julianDay;
     double julianFraction;
+    double deltaUt1;
 };
 static_assert(std::is_trivially_copyable_v<RawInput>,
               "the input is filled by one memcpy, so it must be copyable that way");
@@ -210,5 +283,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
         requireNormalised(*tai);
         requireJulianDate(*tai);
     }
+
+    requireTdbAndUt1(date, Seconds{raw.deltaUt1});
     return 0;
 }

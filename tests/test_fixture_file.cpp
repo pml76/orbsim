@@ -30,6 +30,7 @@
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 
+#include <algorithm>
 #include <array>
 #include <bit>
 #include <cstddef>
@@ -474,6 +475,146 @@ TEST_CASE("a state-vector fixture in the wrong frame, scale or units is refused"
         REQUIRE(fixture.error().kind == refusal.kind);
         REQUIRE(fixture.error().line == refusal.line);
     }
+}
+
+// --- TDB - TT -------------------------------------------------------------------
+
+namespace {
+
+// The first three rows of data/skyfield/tdb-minus-tt.txt, under its header.
+constexpr std::string_view kGoodTdbFixture =
+    "# orbsim fixture: TDB - TT at the geocentre\n"
+    "source      = Skyfield 1.55 (Brandon Rhodes, MIT licence)\n"
+    "function    = skyfield.timelib.tdb_minus_tt\n"
+    "model       = USNO Circular 179 (Kaplan 2005), eq. 2.6\n"
+    "numpy       = 2.5.3\n"
+    "time scale  = TDB\n"
+    "columns     = jd_tdb tdb_minus_tt_s\n"
+    "2415020.5 -1.841120030058693e-05\n"
+    "2415057.5 0.000997346517151686\n"
+    "2415094.5 0.0016089583859698765\n";
+
+// kGoodTdbFixture with one header line replaced, by search, as withHeaderLine
+// does for the state vectors.
+[[nodiscard]] std::string withTdbHeaderLine(HeaderEdit edit) {
+    std::string text{kGoodTdbFixture};
+    const std::string prefix = std::string{edit.key} + " ";
+    const std::size_t start = text.find(prefix);
+    REQUIRE(start != std::string::npos);
+    const std::size_t end = text.find('\n', start);
+    text.replace(start, end - start, edit.replacement);
+    return text;
+}
+
+} // namespace
+
+// The epochs against the calendar, and the values against the compiler's own
+// reading of each literal: correctly rounded, and owing nothing to the reader.
+// Catch2 macro expansion, not written complexity. See the note above.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("a TDB - TT fixture arrives in TDB and seconds", "[fixture][tdb]") {
+    const auto fixture = parseTdbMinusTt(kGoodTdbFixture);
+    INFO(errorName(fixture));
+    REQUIRE(fixture.has_value());
+    REQUIRE(fixture->rows.size() == 3);
+    REQUIRE(headerValue(fixture->header, "function") == "skyfield.timelib.tdb_minus_tt");
+
+    // JD 2415020.5 is 1900-01-01T00:00, and the rows are 37 days apart.
+    const auto first = TdbTime::fromCalendar({.year = 1900, .month = 1, .day = 1});
+    REQUIRE(first.has_value());
+    REQUIRE(fixture->rows.front().epoch == *first);
+    REQUIRE_THAT((fixture->rows.at(1).epoch - fixture->rows.front().epoch).value(),
+                 WithinAbsOf(37.0 * 86'400.0, Tolerance{0.0}));
+
+    REQUIRE(fixture->rows.at(0).tdbMinusTt.bitIdentical(Seconds{-1.841120030058693e-05}));
+    REQUIRE(fixture->rows.at(1).tdbMinusTt.bitIdentical(Seconds{0.000997346517151686}));
+    REQUIRE(fixture->rows.at(2).tdbMinusTt.bitIdentical(Seconds{0.0016089583859698765}));
+}
+
+// A TDB - TT fixture must be in the scale and the unit this reader converts
+// from, and anything else is refused by name.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("a TDB - TT fixture in the wrong scale or unit is refused", "[fixture][tdb][errors]") {
+    const std::array refusals = std::to_array<Refusal>({
+        {
+            .name = "epochs in TT",
+            .text = withTdbHeaderLine({.key = "time scale", .replacement = "time scale = TT"}),
+            .kind = FixtureErrorKind::UnexpectedHeaderValue,
+            .line = 6,
+        },
+        {
+            .name = "milliseconds",
+            .text = withTdbHeaderLine(
+                {.key = "columns", .replacement = "columns = jd_tdb tdb_minus_tt_ms"}),
+            .kind = FixtureErrorKind::UnexpectedHeaderValue,
+            .line = 7,
+        },
+        {
+            .name = "no time scale at all",
+            .text = withTdbHeaderLine({.key = "time scale", .replacement = "# removed"}),
+            .kind = FixtureErrorKind::MissingHeaderKey,
+            .line = 0,
+        },
+        {
+            .name = "an epoch past the calendar",
+            .text =
+                [] {
+                    std::string t{kGoodTdbFixture};
+                    t.replace(t.find("2415057.5"), 9, "9999999999.5");
+                    return t;
+                }(),
+            .kind = FixtureErrorKind::InvalidEpoch,
+            .line = 9,
+        },
+    });
+
+    for (const Refusal& refusal : refusals) {
+        const auto fixture = parseTdbMinusTt(refusal.text);
+        INFO(refusal.name << " -> " << errorName(fixture));
+        REQUIRE(!fixture.has_value());
+        REQUIRE(fixture.error().kind == refusal.kind);
+        REQUIRE(fixture.error().line == refusal.line);
+    }
+}
+
+// The committed file itself. Not skipped when absent, unlike the Horizons
+// fixtures: it is in the repository (register decision 55), so its absence is
+// a broken checkout. A plausibility check on its shape and its unit, not an
+// accuracy claim -- that is test_astro_time.cpp's, against these same rows.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("the committed TDB - TT fixture reads, in seconds", "[fixture][tdb]") {
+    const auto fixture =
+        readTdbMinusTt(std::filesystem::path{dataDirectory()} / "skyfield" / "tdb-minus-tt.txt");
+    INFO(errorName(fixture) << " at line " << (fixture ? std::size_t{0} : fixture.error().line));
+    REQUIRE(fixture.has_value());
+    REQUIRE(headerValue(fixture->header, "source") ==
+            "Skyfield 1.55 (Brandon Rhodes, MIT licence)");
+    REQUIRE(headerValue(fixture->header, "model") == "USNO Circular 179 (Kaplan 2005), eq. 2.6");
+
+    // 1900-01-01 to 2100-01-01 on a 37-day stride: MJD 15020 to 88069 holds
+    // floor((88069 - 15020) / 37) + 1 = 1975 epochs.
+    REQUIRE(fixture->rows.size() == 1975);
+    const auto first = TdbTime::fromCalendar({.year = 1900, .month = 1, .day = 1});
+    REQUIRE(first.has_value());
+    REQUIRE(fixture->rows.front().epoch == *first);
+    for (std::size_t i = 1; i < fixture->rows.size(); ++i) {
+        CAPTURE(i);
+        REQUIRE_THAT((fixture->rows.at(i).epoch - fixture->rows.at(i - 1).epoch).value(),
+                     WithinAbsOf(37.0 * 86'400.0, Tolerance{0.0}));
+    }
+
+    // In seconds: the term's amplitude is about 1.7 ms, so every value lies
+    // inside 2 ms and the largest reaches past 1.5 ms. Milliseconds read as
+    // seconds would put them near 1.7, and microseconds near 1e-9.
+    f64 largest = 0.0;
+    for (const TdbMinusTtAtEpoch& row : fixture->rows) {
+        const f64 seconds = row.tdbMinusTt.value();
+        CAPTURE(seconds);
+        REQUIRE(absOf(seconds) < 2e-3);
+        largest = std::max(largest, absOf(seconds));
+    }
+    CAPTURE(largest);
+    REQUIRE(largest > 1.5e-3);
 }
 
 // --- the Sun fixture itself ---------------------------------------------------

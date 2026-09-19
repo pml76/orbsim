@@ -27,14 +27,17 @@ Nothing is vendored into this repository: there is no third-party source under
 
 ## Pinned and compiled today
 
-Read from the `FetchContent_Declare` calls in `CMakeLists.txt`. All seven are
+Read from the `FetchContent_Declare` calls in `CMakeLists.txt`. All eight are
 declared `SYSTEM`, which is what keeps this project's warning set from firing
 on somebody else's headers — the full set produced 643 warnings once, and 639
-of them were inside two of these.
+of them were inside two of these. ERFA, which has no CMake build of its own and
+is built by ours, has its include directory marked `SYSTEM` by hand for the
+same reason.
 
 **Apache-2.0 arrived with Vulkan-Utility-Libraries on 2026-09-16** and is the
 first copyleft-free-but-not-permissive-simple licence here; everything else is
-MIT, zlib, BSL-1.0, or Apache-2.0 **OR** MIT at the user's choice. It is
+MIT, zlib, BSL-1.0, BSD-3-Clause (ERFA, since 2026-09-19), or Apache-2.0
+**OR** MIT at the user's choice. It is
 compatible with this project's MIT, and its notice requirement is satisfied by
 this file plus the notice that ships with any binary distribution.
 
@@ -46,7 +49,8 @@ this file plus the notice that ships with any binary distribution.
 | [VulkanMemoryAllocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) | `v3.2.1` | MIT | GPU memory allocation |
 | [Catch2](https://github.com/catchorg/Catch2) | `v3.16.0` | Boost Software License 1.0 | The test framework — [`docs/adr/0013`](docs/adr/0013-catch2-is-the-test-framework.md) |
 | [Vulkan-Utility-Libraries](https://github.com/KhronosGroup/Vulkan-Utility-Libraries) | `v1.3.302` | **Apache-2.0** | Khronos' utility headers. `string_VkResult` today; `vk_format_utils.h` is wanted by the tile work in phase B. **Nothing of it is compiled** — see below. Pinned at the tag matching Vulkan-Headers, because a later utility header can name enumerators an older `vulkan_core.h` does not have |
-| [mp-units](https://github.com/mpusz/mp-units) | `v2.5.0` | MIT | The dimension system under `core/Units.hpp` — [`docs/adr/0019`](docs/adr/0019-vectors-carry-their-unit.md). Header-only, and **no dependency of its own in our configuration**: `MP_UNITS_API_CONTRACTS` is set to `NONE`, where its default of `GSL-LITE` would require one. mp-units does not fetch it either — both GSL options are `find_package(... REQUIRED)`, so switching would mean pinning gsl-lite or Microsoft.GSL here too. Settled 2026-09-18 with the measurement in [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) section 7 question 11. The first dependency `orbsim_core` links, so the headless core is no longer dependency-free at the source level even though it still needs no library at link time |
+| [mp-units](https://github.com/mpusz/mp-units) | `v2.5.0` | MIT | The dimension system under `core/Units.hpp` — [`docs/adr/0019`](docs/adr/0019-vectors-carry-their-unit.md). Header-only, and **no dependency of its own in our configuration**: `MP_UNITS_API_CONTRACTS` is set to `NONE`, where its default of `GSL-LITE` would require one. mp-units does not fetch it either — both GSL options are `find_package(... REQUIRED)`, so switching would mean pinning gsl-lite or Microsoft.GSL here too. Settled 2026-09-18 with the measurement in [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) section 7 question 11. The first dependency `orbsim_core` links, so the headless core is no longer dependency-free at the source level even though it still needs no library at link time -- true until ERFA, below |
+| [ERFA](https://github.com/liberfa/erfa) | `v2.0.1` | **BSD-3-Clause**, after a preamble on its SOFA heritage; copyright the NumFOCUS Foundation. Uniform across the repository — no other licence file, no vendored code, the leap-second table in `dat.c` under the same terms — verified 2026-09-10. A binary distribution must carry its notice. **Not SOFA**, whose own licence (SPDX `SOFA`) adds conditions on derived work | The astronomy — [`docs/adr/0016`](docs/adr/0016-the-astronomy-is-erfa.md): TDB − TT now ([M1-05](docs/plan/tasks/m1-05-tdb-and-ut1.md)), the celestial-to-terrestrial rotation and the Sun from M1-07 and M1-08. **Pinned 2026-09-19**, when v2.0.1 (2023-10-13) was re-verified as the latest release; master was twelve commits ahead and unreleased. Built **unedited** by `CMakeLists.txt` as the static C library `orbsim_erfa` from all 249 library files — the build stops if it finds any other number — with the version macros read from its own `meson.build`, and linked **privately** to `orbsim_core`, so its headers are seen by `src/astro/*.cpp` and nothing else. Both of its validation programs, `t_erfa_c` (1,494 checks) and `t_erfa_c_extra`, are CTest tests. **The first dependency the core needs at link time**: it is compiled from source like everything else, so the headless core still needs nothing installed |
 
 The Vulkan **SDK** is not a dependency in this sense: it supplies the loader and
 `glslc`, and its version is a property of the machine
@@ -55,8 +59,9 @@ The Vulkan **SDK** is not a dependency in this sense: it supplies the loader and
 ## Decided, not yet pinned
 
 Settled on 2026-09-08 in
-[the milestone 1 register](docs/plan/milestone-1-decisions.md) -- ERFA on
-2026-09-11 -- and each one arrives with the task that first needs it. **The exact repository URL and tag
+[the milestone 1 register](docs/plan/milestone-1-decisions.md), and each one
+arrives with the task that first needs it. *(ERFA, settled on 2026-09-11, was
+here until M1-05 pinned it on 2026-09-19.)* **The exact repository URL and tag
 go in the table above when the pin lands** — they are deliberately not written
 here from memory.
 
@@ -66,7 +71,6 @@ here from memory.
 | `bc7enc_rdo` (Richard Geldreich) | **Three licences in one repository** — see below | [M1-29](docs/plan/tasks/m1-29-bc7.md) | BC7 encoding for the tile pyramid |
 | DejaVu Sans Mono, release **2.37** (`dejavu-fonts-ttf-2.37.zip`) | Bitstream Vera derived: permissive; bundling inside a larger package is allowed; the notice must be carried; the fonts may not be sold by themselves; a derivative must be renamed | [M1-78](docs/plan/tasks/m1-78-font.md) | The MFD font. Committed as its TTF, baked at build time, and the **atlas embedded in the executable**, so there is no runtime font file |
 | AgX minimal implementation (Benjamin Wrensch, *Missing Deadlines*) | MIT, confirmed by the author in the licensing discussion on his repository. The constants derive from Troy Sobotka's OCIO configuration | [M1-15](docs/plan/tasks/m1-15-exposure-and-agx.md) | The tonemap — [`docs/adr/0014`](docs/adr/0014-radiometric-chain.md). Attribution goes in the shader header as well as here |
-| ERFA (`liberfa/erfa`), decided 2026-09-11 | **BSD-3-Clause**, after a preamble on its SOFA heritage; copyright the NumFOCUS Foundation. Uniform across the repository — no other licence file, no vendored code, the leap-second table in `dat.c` under the same terms — verified 2026-09-10. A binary distribution must carry its notice. **Not SOFA**, whose own licence (SPDX `SOFA`) adds conditions on derived work | [M1-05](docs/plan/tasks/m1-05-tdb-and-ut1.md) | TDB − TT, the celestial-to-terrestrial rotation and the Sun — [`docs/adr/0016`](docs/adr/0016-the-astronomy-is-erfa.md). Built unedited as its own C library, all 249 library files, with its validation program `t_erfa_c` as a CTest test; called from `src/astro/` only. The latest release on 2026-09-10 was v2.0.1 (2023-10-13); re-verify when the pin lands |
 
 ## `bc7enc_rdo`: which files are compiled
 
@@ -119,6 +123,7 @@ carries terms worth recording.
 | [Blue Marble Next Generation](https://visibleearth.nasa.gov/collection/1484/blue-marble) (NASA) | Public domain | Surface imagery and night lights. Downloaded, not committed — [`data/textures/README.md`](data/textures/README.md) has the URLs |
 | ETOPO 2022, 60 arc-second, ice surface (NOAA NCEI) | Public domain, a US Government work | Elevation, from [M1-54](docs/plan/tasks/m1-54-etopo-ingest.md). One 444 MB GeoTIFF; the URL is in `data/textures/README.md` |
 | [NASA GMAT](https://gmat.gsfc.nasa.gov/) R2026a | Apache-2.0 | Produces the J2 reference trajectory that [M1-68](docs/plan/tasks/m1-68-gmat-fixture.md) asserts against. A tool that generates a committed fixture; no GMAT code enters this project |
+| [Skyfield](https://rhodesmill.org/skyfield/) 1.55 (Brandon Rhodes) | MIT. Its `tdb_minus_tt` is USNO Circular 179 eq. 2.6 (Kaplan 2005), written independently of SOFA; its dependencies are certifi, jplephem, numpy and sgp4, none of them ERFA -- checked 2026-09-19 | Generates the committed TDB − TT reference, [`data/skyfield/tdb-minus-tt.txt`](data/skyfield/tdb-minus-tt.txt), that [M1-05](docs/plan/tasks/m1-05-tdb-and-ut1.md) asserts its 20 µs budget against (register decisions 53-55). **Committed**, unlike Horizons output: the terms are MIT, and a table of numbers computed from a published formula is not the software. No Skyfield code enters this project; [`data/skyfield/README.md`](data/skyfield/README.md) has the recipe. NOVAS 3.1 evaluates the same equation, and was not chosen: it would add no independence, and its terms could not be confirmed that day -- the user's guide states no licence and asks users to e-mail USNO, the USNO source URL returned HTTP 500, and the Astrophysics Source Code Library failed TLS verification |
 | JPL Horizons (NASA/JPL-Caltech) | **No licence is stated anywhere, and the FAQ asks for permission** — read 2026-09-17. **Settled the same day: this project queries Horizons and does not redistribute its output.** Fixtures are generated into gitignored `data/horizons/`; the recipe and the checksums are committed instead | Sun, Moon and Earth positions and the time scales ([M1-06](docs/plan/tasks/m1-06-horizons-fixtures.md), [M1-08](docs/plan/tasks/m1-08-solar-position.md)) |
 | Orbiter (Martin Schweiger) | MIT at the root; **LGPL** in two directories; the standalone `orbiter-tileedit` repository is GPL v3 | The tile format specification and the archive format. **The licence boundary is not uniform and has its own document:** [`docs/ORBITER-REFERENCE.md`](docs/ORBITER-REFERENCE.md) |
 

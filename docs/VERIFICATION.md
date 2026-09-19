@@ -599,7 +599,7 @@ rules a machine checks and which depend on a person remembering.
 |---|---|---|
 | 1 Test first | A person, visible in the diff | discipline |
 | 2 Never check code against itself | A person, at review | discipline |
-| 3 External truth | `check` -- since 2026-09-19 (M1-06) the Horizons mechanism and its first fixture exist, and `check` verifies the fixture is the one generated; no budget is asserted against it until M1-08 | **partial** |
+| 3 External truth | `check` -- since 2026-09-19 (M1-06) the Horizons mechanism and its first fixture exist, and `check` verifies the fixture is the one generated; no budget is asserted against it until M1-08. **The first budget against external data landed the same day with M1-05**: TDB - TT within 20 us of Skyfield's evaluation of USNO Circular 179, from a committed fixture, so it runs on every clone | **partial** |
 | 4 Error budget | `check` — the test asserts the number | partial |
 | 5 Singularities | `check` — zero dt on every conic, near-rectilinear, e=0, i=0, i=pi, retrograde | **done** |
 | 6 Regression test per bug | A person, visible in the diff | discipline |
@@ -615,7 +615,7 @@ rules a machine checks and which depend on a person remembering.
 | 16 Determinism | `check` — `TEST_CASE("propagation is bit-identical across runs")`, over 100 steps | **done** |
 | 17 Dimensional analysis | The compiler — mp-units under `core/Units.hpp` and `Vec3<R>`, [ADR 0019](adr/0019-vectors-carry-their-unit.md) | **done** |
 | 18 Coverage | By hand, periodically. Orbit.cpp 99.2% lines | **done** |
-| 19 Mutation testing | By hand, periodically | exercised 2026-09-07, and again 2026-09-19 on M1-04 and M1-06 |
+| 19 Mutation testing | By hand, periodically | exercised 2026-09-07, and again 2026-09-19 on M1-04, M1-06 and M1-05 |
 | 20 WSL, UBSan, second compiler | By hand, before a milestone | **done** |
 | 21 `check` is the definition of done | The build, both trees | **done** |
 | 22–24 The human rules | A person | discipline |
@@ -632,7 +632,9 @@ should believe.
 Rule 4 is *partial*: one error budget is genuinely derived rather than tuned --
 the near-rectilinear round trip, whose tolerance is stated as the conditioning
 law `ulp / (1-e)^2` it was measured to follow. What is missing is the external
-half, which waits on rule 3.
+half, which waits on rule 3. *(2026-09-19: it has begun -- M1-05's TDB - TT
+budget is asserted against Skyfield's series, and set at twice that series' own
+measured distance from the full one, 9.28 us, rather than tuned.)*
 
 Rule 5's orbital singularities are now covered -- `e = 0`, either side of
 `e = 1`, `i = 0`, `i = pi`, retrograde, near-rectilinear to `e = 0.9999`, and a
@@ -656,6 +658,19 @@ compiles: five of the reader's first eight "failed at compile time" because
 nothing about the tests. Rewritten to compile, all eight were caught at run
 time ([`PROJECT_STATE.md`](PROJECT_STATE.md) section 8).
 
+And on M1-05, the same day: twenty valid mutants, sixteen caught -- three by
+`static_assert`s before a test ran, two by Debug-build assertions -- and four
+surviving. One is equivalent. The other three are gaps a budget cannot see: a
+dropped fixed-point step moves the TDB round trip by a picosecond, inside its
+1 ps budget; a dropped time of day moves TDB - TT by up to 28 us, and the
+fixture samples only midnights; and an observer moved off the geocentre adds
+2 us under a 20 us budget. Each went to the owner rather than being closed by a
+test nobody had ruled on, and the owner ruled the same day: the first two are
+now tests -- the round trip exact on at least 99% of its sweep, and TDB - TT's
+change within a day against the Kepler problem's -- each seen catching its
+mutant; the third is accepted as held by the code. A passing budget is not a
+test of everything beneath it, which is the reason this rule exists.
+
 Two things follow from this table, and they are the reason it exists.
 
 **The rules marked "to build" are not yet rules.** They are intentions, and by
@@ -675,7 +690,9 @@ then 15 (runtime monitors).** 3 and 4 are one piece of work really, and ADR 0006
 makes every accuracy claim in the project depend on it. *(2026-09-19: 3 is now
 partial. The reader, the converter and the first fixture exist and `check`
 verifies them; what 3 and 4 still lack is a budget asserted against the data,
-which M1-05 and M1-08 bring.)* 15 waits on there being
+which M1-05 and M1-08 bring. M1-05 brought the first, the same day: TDB - TT
+within 20 us of an implementation written independently of SOFA, committed
+rather than generated, so no clone skips it.)* 15 waits on there being
 a simulation loop to monitor, which is milestone 1 phase E.
 
 Rule 11 was the first one built, on 2026-09-07, and it paid immediately: adding

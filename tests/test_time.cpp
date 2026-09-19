@@ -900,6 +900,8 @@ TEST_CASE("every time error describes itself", "[time][errors]") {
         TimeError::InvalidTimeOfDay,
         TimeError::BeforeLeapSecondEra,
         TimeError::LeapSecondTableExpired,
+        TimeError::DeltaUt1OutOfRange,
+        TimeError::InsideRemovedLeapSecond,
     });
     for (std::size_t i = 0; i < kErrors.size(); ++i) {
         CAPTURE(i);
@@ -1829,4 +1831,280 @@ TEST_CASE("a UTC Julian date is a fraction of its own day", "[time][leap][julian
     const UtcTime noon = utcAt({.mjd = kOrdinaryDay, .picosecondOfDay = 43'200'000'000'000'000});
     REQUIRE_THAT(noon.julianDate().fraction, WithinAbsOf(0.5, Tolerance{0.0}));
     REQUIRE(converted(UtcTime::fromJulianDate(noon.julianDate())) == noon);
+}
+
+// --- UT1 (M1-05) -------------------------------------------------------------
+//
+// UT1 = UTC + DeltaUT1. The sign is ITU-R TF.460-6 (2002), Annex 1 section D:
+// DUT1 is approximately UT1 - UTC, "a correction to be added to UTC to obtain a
+// better approximation to UT1". Every expected value below is an integer
+// number of picoseconds worked out from that definition, not read from the
+// code; the convention across a leap second is ERFA's eraUtcut1 (register
+// decision 59), and the size limit is the same recommendation's 0.9 s
+// (decision 60).
+
+namespace {
+
+// 0.9 s, from ITU-R TF.460-6 Annex 1 section D.1.2 -- "The departure of UTC
+// from UT1 should not exceed +-0.9 s" -- written here rather than taken from
+// the header, so that the header's number is checked against the source's.
+constexpr std::int64_t kItuUt1Limit = 900'000'000'000;
+static_assert(kDeltaUt1LimitPicoseconds == kItuUt1Limit);
+
+// A tenth of a second in picoseconds, for the cases below.
+constexpr std::int64_t kTenthOfASecond = 100'000'000'000;
+
+// A UT1 instant at an exact stamp, through the public calendar, as taiAt does
+// for TAI.
+[[nodiscard]] Ut1Time ut1At(Stamp stamp) {
+    CalendarDate date = dateOfMjd(stamp.mjd);
+    const std::int64_t secondOfDay = stamp.picosecondOfDay / kSecond;
+    const std::int64_t rest = stamp.picosecondOfDay % kSecond;
+    date.hour = static_cast<std::int32_t>(secondOfDay / 3'600);
+    date.minute = static_cast<std::int32_t>((secondOfDay / 60) % 60);
+    date.second = Seconds{static_cast<f64>(secondOfDay % 60) +
+                          (static_cast<f64>(rest) / detail::kPicosecondsPerSecondF)};
+    const Ut1Time t = instant<TimeScale::Ut1>(date);
+    INFO("the calendar built the UT1 instant intended");
+    REQUIRE(t.picosecondOfDay() == stamp.picosecondOfDay);
+    return t;
+}
+
+// A DeltaUT1 the test knows to be valid; a refusal is reported by name.
+[[nodiscard]] DeltaUt1 validDeltaUt1(Seconds value) {
+    const auto delta = DeltaUt1::fromSeconds(value);
+    CAPTURE(value.value());
+    INFO(errorName(delta));
+    REQUIRE(delta.has_value());
+    return *delta;
+}
+
+// An instant's two stored numbers against a stamp, exactly.
+template <TimeScale Scale> void requireAt(const TimePoint<Scale>& t, Stamp stamp) {
+    CAPTURE(t, stamp.mjd, stamp.picosecondOfDay);
+    REQUIRE_THAT(t.modifiedJulianDay(), WithinAbsOf(static_cast<f64>(stamp.mjd), Tolerance{0.0}));
+    REQUIRE(t.picosecondOfDay() == stamp.picosecondOfDay);
+}
+
+} // namespace
+
+// With DeltaUT1 unmodelled, UT1 carries UTC's day and time of day unchanged, and
+// the way back is exact. Over the same seeded dates as the calendar sweep; none
+// lies inside a leap second, which UT1 has no label for (the case below).
+TEST_CASE("with DeltaUT1 unmodelled, UT1 is UTC's day and time of day", "[time][ut1]") {
+    Sampler sampler;
+    for (std::size_t i = 0; i < kSweepCases; ++i) {
+        const UtcTime utc = instant<TimeScale::Utc>(drawDate(sampler));
+        const Ut1Time ut1 = ut1FromUtc(utc, kDeltaUt1Unmodelled);
+        CAPTURE(kSweepSeed, i, utc);
+        requireAt(ut1,
+                  {
+                      .mjd = static_cast<std::int64_t>(utc.modifiedJulianDay()),
+                      .picosecondOfDay = utc.picosecondOfDay(),
+                  });
+        REQUIRE(converted(utcFromUt1(ut1, kDeltaUt1Unmodelled)) == utc);
+    }
+}
+
+// The sign, asserted against the definition: +0.3 s puts UT1 ahead of UTC by
+// exactly 300 000 000 000 ps, -0.3 s behind it, and either carries across
+// midnight rather than out of the day.
+// Catch2 macro expansion, not written complexity. See the note above.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("UT1 = UTC + DeltaUT1, to the picosecond", "[time][ut1]") {
+    constexpr std::int64_t kDayOne = 57'754; // 2017-01-01, which ends in no leap second
+    constexpr std::int64_t kNoon = 43'200 * kSecond;
+    const DeltaUt1 ahead = validDeltaUt1(Seconds{0.3});
+    const DeltaUt1 behind = validDeltaUt1(Seconds{-0.3});
+    REQUIRE(ahead.picoseconds() == 3 * kTenthOfASecond);
+    REQUIRE(behind.picoseconds() == -3 * kTenthOfASecond);
+
+    const UtcTime noon = utcAt({.mjd = kDayOne, .picosecondOfDay = kNoon});
+    requireAt(ut1FromUtc(noon, ahead),
+              {.mjd = kDayOne, .picosecondOfDay = kNoon + (3 * kTenthOfASecond)});
+    requireAt(ut1FromUtc(noon, behind),
+              {.mjd = kDayOne, .picosecondOfDay = kNoon - (3 * kTenthOfASecond)});
+
+    // 23:59:59.9 UTC plus 0.3 s is 00:00:00.2 UT1 of the next day, and
+    // 00:00:00.1 UTC less 0.3 s is 23:59:59.8 UT1 of the day before.
+    const UtcTime late = utcAt({.mjd = kDayOne, .picosecondOfDay = kDay - kTenthOfASecond});
+    requireAt(ut1FromUtc(late, ahead),
+              {.mjd = kDayOne + 1, .picosecondOfDay = 2 * kTenthOfASecond});
+    const UtcTime early = utcAt({.mjd = kDayOne + 1, .picosecondOfDay = kTenthOfASecond});
+    requireAt(ut1FromUtc(early, behind),
+              {.mjd = kDayOne, .picosecondOfDay = kDay - (2 * kTenthOfASecond)});
+
+    // And every one of them back, exactly.
+    REQUIRE(converted(utcFromUt1(ut1FromUtc(noon, ahead), ahead)) == noon);
+    REQUIRE(converted(utcFromUt1(ut1FromUtc(noon, behind), behind)) == noon);
+    REQUIRE(converted(utcFromUt1(ut1FromUtc(late, ahead), ahead)) == late);
+    REQUIRE(converted(utcFromUt1(ut1FromUtc(early, behind), behind)) == early);
+}
+
+// Across a positive leap second (register decision 59). UT1 has no 23:59:60:
+// 86 400.5 s into the UTC day is 0.5 s into the next UT1 day, and the way back
+// lands on 00:00:00.5, a second later -- the forward map is two-to-one there.
+// With a DeltaUT1 that steps by +1 s at the leap second, as the published
+// series does, UT1 runs on through it; with DeltaUT1 unmodelled it steps back
+// instead, which is the model error the header states.
+// Catch2 macro expansion, not written complexity. See the note above.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("UT1 across a leap second runs on, and the way back lands a second later",
+          "[time][ut1][leap]") {
+    constexpr std::int64_t kLeapDay = 57'753; // 2016-12-31, which ends in 23:59:60
+    constexpr std::int64_t kNextDay = kLeapDay + 1;
+    constexpr std::int64_t kIntoLeapSecond = 86'400 * kSecond;
+
+    const UtcTime inside =
+        utcAt({.mjd = kLeapDay, .picosecondOfDay = kIntoLeapSecond + (5 * kTenthOfASecond)});
+    const Ut1Time ut1 = ut1FromUtc(inside, kDeltaUt1Unmodelled);
+    requireAt(ut1, {.mjd = kNextDay, .picosecondOfDay = 5 * kTenthOfASecond});
+    const UtcTime back = converted(utcFromUt1(ut1, kDeltaUt1Unmodelled));
+    REQUIRE(back == utcAt({.mjd = kNextDay, .picosecondOfDay = 5 * kTenthOfASecond}));
+
+    // 23:59:60.9 with the leap day's own DeltaUT1, -0.4 s, and 00:00:00.0 with
+    // the next day's, +0.6 s: a tenth of an SI second apart, and a tenth of a
+    // second of UT1 apart.
+    const UtcTime last =
+        utcAt({.mjd = kLeapDay, .picosecondOfDay = kIntoLeapSecond + (9 * kTenthOfASecond)});
+    const UtcTime midnight = utcAt({.mjd = kNextDay, .picosecondOfDay = 0});
+    requireAt(ut1FromUtc(last, validDeltaUt1(Seconds{-0.4})),
+              {.mjd = kNextDay, .picosecondOfDay = 5 * kTenthOfASecond});
+    requireAt(ut1FromUtc(midnight, validDeltaUt1(Seconds{0.6})),
+              {.mjd = kNextDay, .picosecondOfDay = 6 * kTenthOfASecond});
+
+    // Unmodelled, the later instant has the earlier UT1.
+    REQUIRE(ut1FromUtc(midnight, kDeltaUt1Unmodelled) < ut1FromUtc(last, kDeltaUt1Unmodelled));
+}
+
+// UT1 -> UTC -> UT1 is exact wherever UTC has the instant, which on the
+// published table is everywhere: no negative leap second has occurred. DeltaUT1
+// is drawn over its whole range, to the picosecond, and read back to the
+// picosecond it was drawn as.
+// Catch2 macro expansion, not written complexity. See the note above.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("UT1 to UTC and back is exact over a seeded sweep", "[time][ut1]") {
+    Sampler sampler;
+    for (std::size_t i = 0; i < kSweepCases; ++i) {
+        const Ut1Time ut1 = instant<TimeScale::Ut1>(drawDate(sampler));
+        const std::int64_t drawn = sampler.between({.lo = -kItuUt1Limit, .hi = kItuUt1Limit});
+        CAPTURE(kSweepSeed, i, ut1, drawn);
+        const DeltaUt1 delta =
+            validDeltaUt1(Seconds{static_cast<f64>(drawn) / detail::kPicosecondsPerSecondF});
+        REQUIRE(delta.picoseconds() == drawn);
+        const UtcTime utc = converted(utcFromUt1(ut1, delta));
+        REQUIRE(ut1FromUtc(utc, delta) == ut1);
+    }
+}
+
+// Every way a DeltaUT1 can be wrong, by name, and the edges that are right.
+// Catch2 macro expansion, not written complexity. See the note above.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("DeltaUT1 is refused by name beyond 0.9 s and when not finite", "[time][ut1][errors]") {
+    struct Refused {
+        f64 seconds;
+        TimeError error;
+    };
+    constexpr std::array kRefused = std::to_array<Refused>({
+        {.seconds = kNaN, .error = TimeError::NotFinite},
+        {.seconds = kInf, .error = TimeError::NotFinite},
+        {.seconds = -kInf, .error = TimeError::NotFinite},
+        {.seconds = 0.900000000001, .error = TimeError::DeltaUt1OutOfRange}, // 0.9 s + 1 ps
+        {.seconds = -0.900000000001, .error = TimeError::DeltaUt1OutOfRange},
+        {.seconds = 1.0, .error = TimeError::DeltaUt1OutOfRange},
+        {.seconds = -1.0, .error = TimeError::DeltaUt1OutOfRange},
+        {.seconds = 1e300, .error = TimeError::DeltaUt1OutOfRange},
+        {.seconds = -1e300, .error = TimeError::DeltaUt1OutOfRange},
+    });
+    for (const Refused& r : kRefused) {
+        const auto delta = DeltaUt1::fromSeconds(Seconds{r.seconds});
+        CAPTURE(r.seconds);
+        INFO(errorName(delta));
+        REQUIRE(!delta.has_value());
+        REQUIRE(delta.error() == r.error);
+    }
+
+    // The limit itself is inside it, both ways.
+    REQUIRE(validDeltaUt1(Seconds{0.9}).picoseconds() == kItuUt1Limit);
+    REQUIRE(validDeltaUt1(Seconds{-0.9}).picoseconds() == -kItuUt1Limit);
+    // The bound is on the value held, which is the nearest picosecond: 0.4 ps
+    // past the limit is the limit.
+    REQUIRE(validDeltaUt1(Seconds{0.9000000000004}).picoseconds() == kItuUt1Limit);
+    // And zero is zero, whichever zero.
+    REQUIRE(validDeltaUt1(Seconds{-0.0}).picoseconds() == 0);
+    REQUIRE(kDeltaUt1Unmodelled.picoseconds() == 0);
+}
+
+// A UTC instant stays inside the calendar that says how long its day is, so UT1
+// within a second of either end can have no UTC, and says so by name.
+// Catch2 macro expansion, not written complexity. See the note above.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("UT1 to UTC past either end of the calendar is YearOutOfRange", "[time][ut1][errors]") {
+    const Ut1Time first =
+        instant<TimeScale::Ut1>({.year = 1, .month = 1, .day = 1, .second = Seconds{0.1}});
+    const auto before = utcFromUt1(first, validDeltaUt1(Seconds{0.3}));
+    INFO("0001-01-01T00:00:00.1 UT1 less 0.3 s -> " << errorName(before));
+    REQUIRE(!before.has_value());
+    REQUIRE(before.error() == TimeError::YearOutOfRange);
+    // 0.1 s less is the first instant there is.
+    REQUIRE(converted(utcFromUt1(first, validDeltaUt1(Seconds{0.1}))) ==
+            instant<TimeScale::Utc>({.year = 1, .month = 1, .day = 1}));
+
+    const Ut1Time last = instant<TimeScale::Ut1>(
+        {.year = 9999, .month = 12, .day = 31, .hour = 23, .minute = 59, .second = Seconds{59.9}});
+    const auto after = utcFromUt1(last, validDeltaUt1(Seconds{-0.3}));
+    INFO("9999-12-31T23:59:59.9 UT1 plus 0.3 s -> " << errorName(after));
+    REQUIRE(!after.has_value());
+    REQUIRE(after.error() == TimeError::YearOutOfRange);
+    REQUIRE(utcFromUt1(last, validDeltaUt1(Seconds{-0.05})).has_value());
+}
+
+// **A negative leap second, which has never been inserted** (register decision
+// 67). Its day holds 86 399 s, so under one DeltaUT1 the forward conversion
+// skips a second of UT1: from 86 399 s + DeltaUT1 into the short day to
+// DeltaUT1 into the next. No UTC instant has a UT1 in that window, and the way
+// back says so by name. Driven through the table-taking overload with a
+// synthetic table, as decision 33's queries are, because the published table
+// cannot reach it -- and checked against the published table too, where the
+// same day is ordinary and the same UT1 has its UTC.
+// Catch2 macro expansion, not written complexity. See the note above.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("UT1 in the second a negative leap second removes has no UTC", "[time][ut1][leap]") {
+    constexpr std::int64_t kShortDay = 60'000;
+    constexpr auto kNegative = std::to_array<LeapSecondStep>({
+        {.utcMjd = 59'000, .deltaAtSeconds = 37},
+        {.utcMjd = kShortDay + 1, .deltaAtSeconds = 36},
+    });
+    const std::span<const LeapSecondStep> table{kNegative};
+    REQUIRE(secondsInUtcDay(table, kShortDay) == 86'399);
+
+    const DeltaUt1 delta = validDeltaUt1(Seconds{0.2});
+    constexpr std::int64_t kGapBegins = (86'399 * kSecond) + (2 * kTenthOfASecond);
+    constexpr std::int64_t kGapEnds = 2 * kTenthOfASecond; // into the next day
+
+    for (const Stamp inside : {
+             Stamp{.mjd = kShortDay, .picosecondOfDay = kGapBegins},
+             Stamp{.mjd = kShortDay, .picosecondOfDay = kGapBegins + (5 * kTenthOfASecond)},
+             Stamp{.mjd = kShortDay + 1, .picosecondOfDay = kGapEnds - 1},
+         }) {
+        const auto utc = utcFromUt1(table, ut1At(inside), delta);
+        CAPTURE(inside.mjd, inside.picosecondOfDay);
+        INFO(errorName(utc));
+        REQUIRE(!utc.has_value());
+        REQUIRE(utc.error() == TimeError::InsideRemovedLeapSecond);
+    }
+
+    // A picosecond either side of the window, each a UTC instant.
+    const Ut1Time justBefore = ut1At({.mjd = kShortDay, .picosecondOfDay = kGapBegins - 1});
+    requireAt(converted(utcFromUt1(table, justBefore, delta)),
+              {.mjd = kShortDay, .picosecondOfDay = (86'399 * kSecond) - 1});
+    const Ut1Time justAfter = ut1At({.mjd = kShortDay + 1, .picosecondOfDay = kGapEnds});
+    requireAt(converted(utcFromUt1(table, justAfter, delta)),
+              {.mjd = kShortDay + 1, .picosecondOfDay = 0});
+
+    // On the published table MJD 60 000 is an ordinary day, and the same UT1
+    // has a UTC: 23:59:59 of it.
+    const Ut1Time gapStart = ut1At({.mjd = kShortDay, .picosecondOfDay = kGapBegins});
+    requireAt(converted(utcFromUt1(gapStart, delta)),
+              {.mjd = kShortDay, .picosecondOfDay = 86'399 * kSecond});
 }

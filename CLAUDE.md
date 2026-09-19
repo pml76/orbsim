@@ -58,6 +58,7 @@ place, bit for bit. The mechanism is a `RenderQuality` struct living in
 ```
 src/core/     maths, units, time, contracts — no dependencies
 src/orbit/    orbital mechanics             — depends on core only
+src/astro/    astronomy, through ERFA       — depends on core; ERFA's C headers in its .cpp files only
 src/render/   Vulkan renderer               — depends on core; never the reverse
 src/app/      window and main loop
 tests/        CTest suites
@@ -92,6 +93,12 @@ note that exists only on one of them is a note that does not exist.
    confident guess is not. This is rule 23 of `docs/VERIFICATION.md` applied
    to the decision as well as to the code: a configuration that silently stops
    checking looks exactly like one that passes.
+
+   A third, added 2026-09-19: **no open questions, and the extra mile when in
+   doubt.** A task starts only when every question it raises has the owner's
+   answer. Where a decision could be wrong, verify it -- a spike, a primary
+   source, a second implementation -- before proposing it, and say what was
+   checked.
 2. **A failing test means fix the code.** If the test itself is genuinely
    wrong, say so and ask -- do not quietly edit it. A test that passes under
    one compiler and fails under another is evidence of an unstable algorithm,

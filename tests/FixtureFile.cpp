@@ -326,6 +326,43 @@ readStateVectors(const std::filesystem::path& path) {
     return parseStateVectors(*text);
 }
 
+std::expected<TdbMinusTtFixture, FixtureError> parseTdbMinusTt(std::string_view text) {
+    const auto table = parseFixtureTable(text);
+    if (!table) return std::unexpected(table.error());
+
+    if (const auto held =
+            require(*table, Required{.key = "time scale", .value = kTdbMinusTtTimeScale});
+        !held) {
+        return std::unexpected(held.error());
+    }
+    // Compared as words, as the state-vector columns are.
+    if (table->columns != words(kTdbMinusTtColumns)) {
+        const auto columns = std::ranges::find(table->header, "columns", &HeaderLine::key);
+        return refused(FixtureErrorKind::UnexpectedHeaderValue,
+                       columns == table->header.end() ? 0 : columns->line);
+    }
+
+    TdbMinusTtFixture fixture{.header = table->header, .rows = {}};
+    fixture.rows.reserve(table->rows.size());
+    for (const FixtureRow& row : table->rows) {
+        const auto epoch = epochOf(row.fields.at(0));
+        if (!epoch) return refused(FixtureErrorKind::InvalidEpoch, row.line);
+        // Already known to be a finite number: parseFixtureTable() checked
+        // every field, so this cannot fail, and the reading is the same
+        // correctly rounded one.
+        const auto seconds = parseFinite(row.fields.at(1));
+        if (!seconds) return refused(FixtureErrorKind::NonNumericField, row.line);
+        fixture.rows.push_back(TdbMinusTtAtEpoch{.epoch = *epoch, .tdbMinusTt = Seconds{*seconds}});
+    }
+    return fixture;
+}
+
+std::expected<TdbMinusTtFixture, FixtureError> readTdbMinusTt(const std::filesystem::path& path) {
+    const auto text = readFixtureText(path);
+    if (!text) return std::unexpected(text.error());
+    return parseTdbMinusTt(*text);
+}
+
 std::string_view dataDirectory() { return ORBSIM_DATA_DIR; }
 
 } // namespace orb::test

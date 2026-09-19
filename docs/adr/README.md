@@ -57,6 +57,14 @@ nutation is modelled, and the pairing of equinox-based precession with the
 Earth rotation angle -- measured at 0.342° out -- is replaced by ERFA's
 CIO-based rotation.
 
+**0009 gained two more**, with the tasks that built on it: on 2026-09-18 with
+M1-04 -- the leap-second table's expiry, exact conversions, the quasi-Julian
+date -- and on 2026-09-19 with M1-05, which records the DeltaUT1 = 0 model
+error of at most 0.9 s, UT1's convention across a leap second, and the TDB
+budgets moving to 20 us and 1 ps on measurement. **0016 gained one** the same
+day, when ERFA was pinned: both validation programs in `check`, and Skyfield
+as the first independent reference.
+
 **0017 extends 0005, the same day**: clang builds with `-Weverything` and gcc
 with every warning it lists, as errors, less a few exceptions each written
 down with its reason; a warning raised by a library's interface is switched

@@ -354,12 +354,106 @@ FetchContent_Declare(mp_units
 FetchContent_MakeAvailable(mp_units)
 
 # ---------------------------------------------------------------------------
+# ERFA -- the astronomy (ADR 0016, M1-05).
+#
+# The BSD-3-Clause edition of the IAU's SOFA library, copyright the NumFOCUS
+# Foundation. It computes TDB - TT now, and the celestial-to-terrestrial
+# rotation and the Sun from M1-07 and M1-08, called only from src/astro/
+# through typed wrappers. THIRD_PARTY.md has the licence.
+#
+# Pinned at v2.0.1 (2023-10-13), still the latest release when re-verified on
+# 2026-09-19. Master was twelve commits ahead that day and unreleased; the one
+# that touches code, "Make leap seconds threadsafe" (2026-09-03), is about
+# eraDat and what is built on it, which this project does not call -- the leap
+# seconds are core/LeapSeconds.hpp's (ADR 0009, register decision 28).
+#
+# ERFA has no CMake build, so it is built here, **unedited**, as its own static
+# C library:
+#
+#   * every library file upstream's own builds compile -- all of src/*.c but
+#     the two validation programs -- and configuration stops unless that is
+#     exactly the 249 they list, so that a changed pin fails loudly rather than
+#     compiling a different set (register decision 63);
+#   * the five version macros its autotools and meson builds generate, read out
+#     of upstream's meson.build rather than transcribed, and the version checked
+#     against the pin;
+#   * with this project's floating-point settings, and the sanitizers when they
+#     are on -- but none of its warnings: it is not our code;
+#   * its include directory SYSTEM, which keeps -Weverything and clang-tidy off
+#     its headers where src/astro/ includes them. That matters more than usual
+#     here: the lint header filter matches any path with /src/ in it, and
+#     _deps/erfa-src/src/erfa.h has one.
+#
+# Measured before the pin, on 2026-09-19: all 249 files compile with zero
+# warnings under -Wall -Wextra -Wpedantic -Wconversion -Wshadow
+# -Wdouble-promotion, and both validation programs pass, under clang 23.1.0,
+# clang 23.1.1 with ASan and UBSan, gcc-14 at -O0 and -O2, and MSVC 19.51 at /W3.
+#
+# PRIVATE on orbsim_core, so nothing that includes an orbsim header can see
+# ERFA's: they are included from src/astro/*.cpp and nowhere else, and the
+# header self-check below proves it, because its translation units link
+# orbsim_core and would not find erfa.h.
+# ---------------------------------------------------------------------------
+set(ORBSIM_ERFA_VERSION 2.0.1)
+FetchContent_Declare(erfa
+        GIT_REPOSITORY https://github.com/liberfa/erfa.git
+        GIT_TAG        v${ORBSIM_ERFA_VERSION}
+        GIT_SHALLOW    TRUE
+        SYSTEM
+)
+# ERFA has no CMakeLists.txt, so this only fetches it; the target is below.
+FetchContent_MakeAvailable(erfa)
+
+file(READ "${erfa_SOURCE_DIR}/meson.build" orbsim_erfa_meson)
+string(REGEX MATCH "\n    version: '([0-9]+)\\.([0-9]+)\\.([0-9]+)'" orbsim_erfa_match
+        "${orbsim_erfa_meson}")
+set(orbsim_erfa_upstream_version "${CMAKE_MATCH_1}.${CMAKE_MATCH_2}.${CMAKE_MATCH_3}")
+if(NOT orbsim_erfa_upstream_version STREQUAL ORBSIM_ERFA_VERSION)
+    message(FATAL_ERROR "ERFA: pinned at ${ORBSIM_ERFA_VERSION}, but its meson.build says "
+            "'${orbsim_erfa_upstream_version}'. Is FETCHCONTENT_SOURCE_DIR_ERFA pointing at "
+            "another checkout? See PROJECT_STATE.md section 8.")
+endif()
+set(orbsim_erfa_version_definitions
+        PACKAGE_VERSION="${ORBSIM_ERFA_VERSION}"
+        PACKAGE_VERSION_MAJOR=${CMAKE_MATCH_1}
+        PACKAGE_VERSION_MINOR=${CMAKE_MATCH_2}
+        PACKAGE_VERSION_MICRO=${CMAKE_MATCH_3}
+)
+string(REGEX MATCH "set_quoted\\('SOFA_VERSION', '([0-9]+)'\\)" orbsim_erfa_match
+        "${orbsim_erfa_meson}")
+if(NOT CMAKE_MATCH_1)
+    message(FATAL_ERROR "ERFA: no SOFA_VERSION in its meson.build")
+endif()
+list(APPEND orbsim_erfa_version_definitions SOFA_VERSION="${CMAKE_MATCH_1}")
+
+file(GLOB orbsim_erfa_sources "${erfa_SOURCE_DIR}/src/*.c")
+list(REMOVE_ITEM orbsim_erfa_sources
+        "${erfa_SOURCE_DIR}/src/t_erfa_c.c"
+        "${erfa_SOURCE_DIR}/src/t_erfa_c_extra.c")
+list(LENGTH orbsim_erfa_sources orbsim_erfa_count)
+if(NOT orbsim_erfa_count EQUAL 249)
+    message(FATAL_ERROR "ERFA ${ORBSIM_ERFA_VERSION}: found ${orbsim_erfa_count} library "
+            "files where upstream lists 249 (register decision 63)")
+endif()
+
+add_library(orbsim_erfa STATIC ${orbsim_erfa_sources})
+target_include_directories(orbsim_erfa SYSTEM PUBLIC "${erfa_SOURCE_DIR}/src")
+target_compile_definitions(orbsim_erfa PRIVATE ${orbsim_erfa_version_definitions})
+target_link_libraries(orbsim_erfa PRIVATE orbsim_fp orbsim_sanitizers)
+# sin, cos and the rest live in libm on Linux, and a C program -- the two
+# validation programs below -- does not get it through a C++ runtime.
+if(NOT WIN32)
+    target_link_libraries(orbsim_erfa PUBLIC m)
+endif()
+
+# ---------------------------------------------------------------------------
 # Simulation core
 #
 # Deliberately free of any dependency on the renderer or on SDL: the physics
 # must run headless, both for tests and for a future scenario batch-runner.
 # ---------------------------------------------------------------------------
 set(ORBSIM_CORE_SOURCES
+        src/astro/Tdb.cpp
         src/core/LeapSeconds.cpp
         src/orbit/Orbit.cpp
 )
@@ -367,7 +461,7 @@ add_library(orbsim_core STATIC ${ORBSIM_CORE_SOURCES})
 target_include_directories(orbsim_core PUBLIC src)
 target_link_libraries(orbsim_core
         PUBLIC orbsim_fp mp-units::mp-units
-        PRIVATE orbsim_warnings orbsim_sanitizers
+        PRIVATE orbsim_warnings orbsim_sanitizers orbsim_erfa
 )
 
 # ---------------------------------------------------------------------------
@@ -440,6 +534,7 @@ target_compile_definitions(orbsim_test_support PRIVATE
 )
 
 set(ORBSIM_TESTS
+        test_astro_time
         test_double_double
         test_fixture_file
         test_orbit
@@ -468,6 +563,19 @@ set_tests_properties(horizons_fixture_checksums PROPERTIES
         SKIP_REGULAR_EXPRESSION "SKIPPED:"
         LABELS fixtures
 )
+
+# ERFA's own validation, both programs upstream's `make check` runs (register
+# decision 62): t_erfa_c over the library's routines, 1,494 checks, and
+# t_erfa_c_extra over the version functions and the leap-second table's getter
+# and setter -- erfaversion.c and erfadatextra.c are among the 249 files
+# compiled, and only the second program exercises them. They prove the library
+# was built right by *this* toolchain with *these* flags, which a pin cannot:
+# each exits non-zero on any failure.
+foreach(erfa_validation IN ITEMS t_erfa_c t_erfa_c_extra)
+    add_executable(${erfa_validation} "${erfa_SOURCE_DIR}/src/${erfa_validation}.c")
+    target_link_libraries(${erfa_validation} PRIVATE orbsim_erfa orbsim_fp orbsim_sanitizers)
+    add_test(NAME ${erfa_validation} COMMAND ${erfa_validation})
+endforeach()
 
 # ---------------------------------------------------------------------------
 # Fuzzing. See VERIFICATION.md rule 13 and tests/fuzz_orbit.cpp.
@@ -742,6 +850,7 @@ function(orbsim_add_header_selfcheck target link_target)
 endfunction()
 
 orbsim_add_header_selfcheck(orbsim_header_selfcheck orbsim_core
+        astro/Tdb.hpp
         core/Contract.hpp
         core/Scalar.hpp
         core/Units.hpp
@@ -959,6 +1068,8 @@ add_custom_target(check
 )
 add_dependencies(check
         ${ORBSIM_TESTS}
+        t_erfa_c
+        t_erfa_c_extra
         orbsim_header_selfcheck
         orbsim_test_header_selfcheck
         # The fuzz sources, compiled under the full warning set. Not in this
