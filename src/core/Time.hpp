@@ -43,6 +43,7 @@
 // holds precisely are out of scope (M1-03).
 //
 #include "core/Contract.hpp"
+#include "core/LeapSeconds.hpp"
 #include "core/Scalar.hpp"
 #include "core/Units.hpp"
 
@@ -53,6 +54,7 @@
 #include <limits>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 
 namespace orb {
 
@@ -84,7 +86,14 @@ enum class TimeError : std::uint8_t {
     YearOutOfRange,   // outside 1-9999, the years this calendar supports
     InvalidMonth,     // outside 1-12
     InvalidDay,       // a day that month does not have, in that year
-    InvalidTimeOfDay, // an hour, minute or second outside 00:00:00 to 23:59:59.999...
+    InvalidTimeOfDay, // an hour, minute or second outside the day's own length
+
+    // The two the leap-second table reports (M1-04, ADR 0009). Both are
+    // refusals to convert, not refusals to *represent*: an instant outside the
+    // table is still a perfectly good UtcTime, as kUnixEpoch below is, and it
+    // is only the crossing to TAI that has no whole-second answer.
+    BeforeLeapSecondEra,    // before 1972-01-01, when UTC ran at its own rate
+    LeapSecondTableExpired, // past the last date the committed bulletin covers
 };
 
 [[nodiscard]] constexpr std::string_view describe(TimeError error) noexcept {
@@ -98,7 +107,14 @@ enum class TimeError : std::uint8_t {
     case TimeError::InvalidDay:
         return "that month does not have that day, in that year";
     case TimeError::InvalidTimeOfDay:
-        return "the time of day is outside 00:00:00 to 23:59:59.999...";
+        return "the time of day lies outside the day it is in, which for UTC may hold a "
+               "leap second";
+    case TimeError::BeforeLeapSecondEra:
+        return "before 1972-01-01, when UTC ran at its own rate rather than in whole "
+               "seconds, so TAI - UTC is not an integer";
+    case TimeError::LeapSecondTableExpired:
+        return "past the last date the committed IERS bulletin covers, so TAI - UTC is "
+               "not yet known";
     }
     return "unknown time error";
 }
@@ -287,10 +303,75 @@ inline constexpr DayAndPicos kNotAnInstant{
     return {.mjd = parts.mjd + static_cast<f64>(days), .picos = picos};
 }
 
+// A day's length, its own type rather than a bare count.
+//
+// It meets an f64 fraction in scaleDayFraction, and clang-tidy's
+// bugprone-easily-swappable-parameters counts f64 and std::int64_t as
+// convertible -- correctly, since transposing them there compiles and produces
+// a wrong instant. This is non-negotiable 1 applied inside the header rather
+// than only across its interface.
+struct DayLength {
+    std::int64_t picoseconds{};
+};
+
+// How many picoseconds a day holds on a given scale.
+//
+// **Only UTC's varies.** TAI, TT and TDB run on SI seconds by definition, so
+// their days are 86 400 of them; UT1 follows the Earth's rotation, which this
+// type labels rather than measures, and it has no duration arithmetic either.
+// A UTC day holds 86 399, 86 400 or 86 401, and the table says which
+// (core/LeapSeconds.hpp).
+//
+// The day is taken as an f64 rather than an integer so the cast happens here,
+// once, behind the range check: a uniform scale can hold the NaN day a violated
+// arithmetic precondition leaves in a Release build (see operator+), and
+// casting that to an integer would be undefined behaviour. inCalendarRange is
+// false for a NaN and bounds the cast at the same time.
+[[nodiscard]] constexpr DayLength picosecondsInDayOf(TimeScale scale, f64 mjd) noexcept {
+    if (scale != TimeScale::Utc) return {.picoseconds = kPicosecondsPerDay};
+    ORBSIM_EXPECTS(inCalendarRange(mjd));
+    if (!inCalendarRange(mjd)) return {.picoseconds = kPicosecondsPerDay};
+    return {.picoseconds = secondsInUtcDay(static_cast<std::int64_t>(mjd)) * kPicosecondsPerSecond};
+}
+
+// A validated date's time of day is at most its day's length, and reaches it
+// only when the last representable instant rounds up to the next midnight. So
+// one step is the whole normalisation: carry()'s general division is for
+// durations, and the scale whose days differ in length has none.
+[[nodiscard]] constexpr DayAndPicos carryOneDay(DayAndPicos parts, DayLength day) noexcept {
+    ORBSIM_EXPECTS(parts.picos >= 0 && parts.picos <= day.picoseconds);
+    if (parts.picos >= day.picoseconds) return {.mjd = parts.mjd + 1.0, .picos = 0};
+    return parts;
+}
+
+// How many seconds the last minute of a day holds: 59, 60 or 61. Its own type
+// so it cannot be transposed with the other counts around it, and so that a
+// call site says which number it is passing (I.24).
+struct FinalMinuteLength {
+    std::int32_t seconds{60};
+};
+
+// The same question as picosecondsInDayOf, asked of the final minute, and
+// answered the same way: only UTC's varies. A function rather than a branch at
+// the call site so that fromCalendar's local can be const -- an `if constexpr`
+// that assigns is a variable that cannot be, and misc-const-correctness is
+// right to say so.
+[[nodiscard]] constexpr FinalMinuteLength finalMinuteOf(TimeScale scale,
+                                                        std::int64_t mjd) noexcept {
+    if (scale != TimeScale::Utc) return {};
+    return {.seconds = secondsInFinalMinuteOfUtcDay(mjd)};
+}
+
 // NotFinite first (ADR 0002: a NaN says the input is corrupt, not merely
 // wrong), then each field in turn, so a date wrong in one way reports that
 // way.
-[[nodiscard]] constexpr std::expected<void, TimeError> validate(const CalendarDate& date) noexcept {
+//
+// **Split from the time of day on 2026-09-18, with M1-04.** How long the last
+// minute of a UTC day is depends on which day it is, and that is not known
+// until the year, the month and the day have been checked. The order the two
+// halves run in is the order the errors were reported in before the split.
+[[nodiscard]] constexpr std::expected<void, TimeError>
+validateDate(const CalendarDate& date) noexcept {
     if (!isFinite(date.second.value())) return std::unexpected(TimeError::NotFinite);
     if (date.year < kFirstYear || date.year > kLastYear) {
         return std::unexpected(TimeError::YearOutOfRange);
@@ -300,10 +381,25 @@ inline constexpr DayAndPicos kNotAnInstant{
     if (date.day < 1 || date.day > daysInMonth(civil)) {
         return std::unexpected(TimeError::InvalidDay);
     }
-    const bool withinTheDay = date.hour >= 0 && date.hour < 24 && date.minute >= 0 &&
-                              date.minute < 60 && date.second.value() >= 0.0 &&
-                              date.second.value() < 60.0;
-    if (!withinTheDay) return std::unexpected(TimeError::InvalidTimeOfDay);
+    return {};
+}
+
+// The time of day, against the length of the minute that ends the day.
+//
+// **A leap second is only ever inserted at 23:59:60**, so the allowance belongs
+// to the final minute and not to the day. 12:30:60 is an invalid time on every
+// day there has ever been, and a check written against the day's total length
+// alone would wave it through -- 45 060 s is comfortably inside 86 401. A
+// negative leap second shortens the same minute to 59 seconds, and the same
+// comparison then refuses 23:59:59 on such a day.
+[[nodiscard]] constexpr std::expected<void, TimeError>
+validateTimeOfDay(const CalendarDate& date, FinalMinuteLength finalMinute) noexcept {
+    const bool fieldsInRange =
+        date.hour >= 0 && date.hour < 24 && date.minute >= 0 && date.minute < 60;
+    const bool endsTheDay = date.hour == 23 && date.minute == 59;
+    const f64 secondsAllowed = endsTheDay ? static_cast<f64>(finalMinute.seconds) : 60.0;
+    const bool withinTheMinute = date.second.value() >= 0.0 && date.second.value() < secondsAllowed;
+    if (!fieldsInRange || !withinTheMinute) return std::unexpected(TimeError::InvalidTimeOfDay);
     return {};
 }
 
@@ -311,9 +407,11 @@ inline constexpr DayAndPicos kNotAnInstant{
 // is split before it is scaled: the whole seconds are exact integers, and the
 // part below one second, times 10^12, stays under 2^40, where an f64 resolves
 // 1.2e-4 ps. The result can be a whole day -- 23:59:59.9999999999996 is the
-// next midnight to the nearest picosecond -- and carry() takes it from there.
+// next midnight to the nearest picosecond -- and carryOneDay() takes it from
+// there. On a UTC day with a leap second the whole second reaches 60 and the
+// result reaches 86 401 s, which is that day's own length.
 [[nodiscard]] constexpr std::int64_t picosecondsIntoDay(const CalendarDate& date) noexcept {
-    const auto wholeSecond = static_cast<std::int64_t>(date.second.value());   // [0, 59]
+    const auto wholeSecond = static_cast<std::int64_t>(date.second.value());   // [0, 60]
     const f64 subSecond = date.second.value() - static_cast<f64>(wholeSecond); // exact
     const std::int64_t secondOfDay =
         (((static_cast<std::int64_t>(date.hour) * 60) + date.minute) * 60) + wholeSecond;
@@ -321,32 +419,92 @@ inline constexpr DayAndPicos kNotAnInstant{
            roundHalfAwayFromZero(subSecond * kPicosecondsPerSecondF);
 }
 
-// fraction * kPicosecondsPerDay without losing a picosecond, for a fraction in
-// [0, 1]: the whole part exactly, and the rest to 2.4e-4 ps.
+// How many bits of a product's significand a whole number consumes: its value
+// with the trailing zeros taken off.
+[[nodiscard]] constexpr int significantBits(std::int64_t value) noexcept {
+    ORBSIM_EXPECTS(value > 0);
+    std::int64_t odd = value;
+    while (odd % 2 == 0) {
+        odd /= 2;
+    }
+    int bits = 0;
+    while (odd > 0) {
+        ++bits;
+        odd /= 2;
+    }
+    return bits;
+}
+
+// The power of two a day fraction is split at, so that the high part times the
+// day's picoseconds is exact: the two significands together must fit in 53
+// bits. An ordinary day is 2^19 x 164 794 921 875 and spends 38 of them,
+// leaving 15; a day with a leap second is 2^12 times an odd number of 45 bits
+// and leaves 8.
+[[nodiscard]] constexpr f64 fractionSplitFor(DayLength day) noexcept {
+    constexpr int kDoubleSignificandBits = 53;
+    const int highBits = kDoubleSignificandBits - significantBits(day.picoseconds);
+    ORBSIM_EXPECTS(highBits > 0 && highBits < 63);
+    // Unsigned on both sides: bugprone-signed-bitwise objects to a signed
+    // operand of a shift, and is right that a signed shift is a trap worth
+    // never getting used to.
+    return static_cast<f64>(std::uint64_t{1} << static_cast<unsigned>(highBits));
+}
+
+// fraction * picosecondsInDay without losing a picosecond, for a fraction in
+// [0, 1]: the whole part exactly, and the rest to a fraction of a picosecond.
 //
-// The fraction is split at 2^-15. Its leading 15 bits times the day's 38
-// significant bits make 53, so that product is exact, and a whole number of
-// picoseconds. What is left is below 2^-15, and times the day it is below
-// 2^41.3, where an f64 resolves 2^-11 ps. Both splits are exact: scaling by a
-// power of two, flooring, and subtracting the part that was kept.
+// The fraction is split at fractionSplitFor(). Its leading bits times the day's
+// make 53, so that product is exact, and -- because every day length here is a
+// multiple of 2^12 and the split never exceeds 2^15 -- a whole number of
+// picoseconds. What is left is below the split, and times the day it is small
+// enough to resolve far finer than a picosecond: 2.4e-4 ps for an ordinary day,
+// 3.8e-2 ps for one with a leap second, against an ulp of the fraction itself
+// of up to 9.6 ps. Both splits are exact: scaling by a power of two, flooring,
+// and subtracting the part that was kept.
+//
+// **The ordinary day is bit-for-bit what M1-03 proved**, because its split is
+// still 2^15; only a leap-second day takes the wider one.
 struct Scaled {
     std::int64_t whole{};
     f64 rest{};
 };
 
-[[nodiscard]] inline Scaled scaleDayFraction(f64 fraction) noexcept {
+[[nodiscard]] inline Scaled scaleDayFraction(f64 fraction, DayLength day) noexcept {
     ORBSIM_EXPECTS(fraction >= 0.0 && fraction <= 1.0);
-    constexpr f64 kSplit = 32'768.0; // 2^15
-    const f64 high = std::floor(fraction * kSplit) / kSplit;
+    const f64 split = fractionSplitFor(day);
+    const f64 dayF = static_cast<f64>(day.picoseconds); // exact: 45 bits at most
+    const f64 high = std::floor(fraction * split) / split;
     const f64 low = fraction - high;
     return {
-        .whole = static_cast<std::int64_t>(high * kPicosecondsPerDayF),
-        .rest = low * kPicosecondsPerDayF,
+        .whole = static_cast<std::int64_t>(high * dayF),
+        .rest = low * dayF,
     };
+}
+
+// A ratio of whole numbers, as one parameter: two adjacent std::int64_t
+// transpose in silence, and a transposed ratio here is a wrong instant.
+struct Ratio {
+    std::int64_t numerator{};
+    std::int64_t denominator{};
+};
+
+// The nearest whole number to a ratio, halves away from zero -- the rule
+// roundHalfAwayFromZero uses, in integers, where it is exact rather than nearly
+// so.
+[[nodiscard]] constexpr std::int64_t roundedQuotient(Ratio ratio) noexcept {
+    ORBSIM_EXPECTS(ratio.denominator > 0);
+    const std::int64_t half = ratio.denominator / 2;
+    if (ratio.numerator >= 0) return (ratio.numerator + half) / ratio.denominator;
+    return -((-ratio.numerator + half) / ratio.denominator);
 }
 
 // One part of a Julian date as whole days plus picoseconds, exactly. Truncating
 // rather than flooring keeps value - days exact for a negative value too.
+//
+// **Always on the ordinary day**, even for UTC: a Julian date counts days of
+// 86 400 seconds, and UTC's quasi-Julian date differs from it only in what the
+// *fraction* of the day it lands on means. fromJulianDate rescales that
+// fraction afterwards, once it knows which day it is.
 struct DaysAndScaled {
     f64 days{};
     Scaled picos;
@@ -355,7 +513,8 @@ struct DaysAndScaled {
 [[nodiscard]] inline DaysAndScaled splitDays(f64 value) noexcept {
     const f64 days = std::trunc(value);
     const f64 fraction = value - days; // exact; (-1, 1), with the sign of value
-    const Scaled scaled = scaleDayFraction(std::fabs(fraction));
+    const Scaled scaled =
+        scaleDayFraction(std::fabs(fraction), DayLength{.picoseconds = kPicosecondsPerDay});
     if (fraction < 0.0) {
         return {.days = days, .picos = {.whole = -scaled.whole, .rest = -scaled.rest}};
     }
@@ -380,10 +539,42 @@ struct DaysAndScaled {
     return carry({.mjd = start.mjd + days, .picos = start.picos + picos});
 }
 
+// A quasi-Julian date's fraction belongs to the UTC day it lands in, and
+// splitDays measured it against an ordinary one; this is the correction, and
+// the identity on every other scale.
+//
+// Whole-number arithmetic: picos * inserted is at most 8.65e16, a hundredth of
+// what an int64 holds, and the single rounded division is exact to half a
+// picosecond -- against the 9.6 ps an ulp of the fraction is worth at the far
+// end of a day.
+//
+// Only fromJulianDate needs it; julianDate() goes the other way by handing
+// scaleDayFraction the day's real length, which is exact rather than rounded.
+// The two directions differ because a Julian date arrives split in two parts
+// and does not say which day it is in until they are summed.
+[[nodiscard]] inline DayAndPicos rescaleIntoDay(TimeScale scale, DayAndPicos parts) noexcept {
+    if (scale != TimeScale::Utc) return parts;
+    ORBSIM_EXPECTS(inCalendarRange(parts.mjd));
+    const std::int64_t inserted = leapSecondsAtEndOfUtcDay(static_cast<std::int64_t>(parts.mjd));
+    if (inserted == 0) return parts;
+    const DayAndPicos scaled{
+        .mjd = parts.mjd,
+        .picos = parts.picos + roundedQuotient({
+                                   .numerator = parts.picos * inserted,
+                                   .denominator = kSecondsPerDay,
+                               }),
+    };
+    return carryOneDay(scaled, picosecondsInDayOf(scale, parts.mjd));
+}
+
 // Used to prove, below, that duration arithmetic exists only where it means
 // something.
 template <typename T>
 concept AddsSeconds = requires(const T t, Seconds duration) { t + duration; };
+
+// Declared here and defined below TimePoint, which it needs complete. It is
+// the one thing TimePoint befriends; the argument is on the definition.
+struct Builder;
 
 } // namespace detail
 
@@ -398,17 +589,28 @@ template <TimeScale Scale> class TimePoint {
 public:
     // Reports a date a scenario file can get wrong, field by field, and one
     // that rounds to the next midnight past 9999-12-31 as out of range.
+    //
+    // **A UTC second of 60 is accepted on exactly the days the table gives a
+    // positive leap second to, and refused on every other day** (M1-04). The
+    // date has to be checked before that question can be asked -- which day it
+    // is decides how long its last minute is -- so the validation runs in two
+    // halves, in the order it reported in before it was split.
     [[nodiscard]] static constexpr std::expected<TimePoint, TimeError>
     fromCalendar(const CalendarDate& date) noexcept {
-        if (const auto valid = detail::validate(date); !valid) {
+        if (const auto valid = detail::validateDate(date); !valid) {
             return std::unexpected(valid.error());
         }
-        const std::int64_t jdn =
-            detail::julianDayNumber({.year = date.year, .month = date.month, .day = date.day});
-        const detail::DayAndPicos parts = detail::carry({
-            .mjd = static_cast<f64>(jdn - detail::kJdnOfMjdZero),
-            .picos = detail::picosecondsIntoDay(date),
-        });
+        const std::int64_t mjd =
+            detail::julianDayNumber({.year = date.year, .month = date.month, .day = date.day}) -
+            detail::kJdnOfMjdZero;
+        const detail::FinalMinuteLength finalMinute = detail::finalMinuteOf(Scale, mjd);
+        if (const auto valid = detail::validateTimeOfDay(date, finalMinute); !valid) {
+            return std::unexpected(valid.error());
+        }
+        const f64 mjdAsDouble = static_cast<f64>(mjd);
+        const detail::DayAndPicos parts =
+            detail::carryOneDay({.mjd = mjdAsDouble, .picos = detail::picosecondsIntoDay(date)},
+                                detail::picosecondsInDayOf(Scale, mjdAsDouble));
         if (!detail::inCalendarRange(parts.mjd)) return std::unexpected(TimeError::YearOutOfRange);
         const TimePoint instant{parts};
         ORBSIM_ENSURES(instant.isNormalised());
@@ -417,6 +619,12 @@ public:
 
     // The nearest picosecond to a Julian date split any way. Reports one that
     // is not finite, or that falls outside the supported years.
+    //
+    // **For UTC the input is a quasi-Julian date**, ERFA's convention: its
+    // fraction is a fraction of that UTC day, "whether the length is 86399,
+    // 86400 or 86401 SI seconds" (`dtf2d.c`), which is what keeps the fraction
+    // inside [0, 1) across a leap second. See julianDate() for the other
+    // direction.
     [[nodiscard]] static std::expected<TimePoint, TimeError>
     fromJulianDate(JulianDate date) noexcept {
         if (!isFinite(date.day) || !isFinite(date.fraction)) {
@@ -434,7 +642,7 @@ public:
         const detail::DayAndPicos parts =
             detail::carry({.mjd = (first.days + second.days) - 2'400'000.0, .picos = picos});
         if (!detail::inCalendarRange(parts.mjd)) return std::unexpected(TimeError::YearOutOfRange);
-        const TimePoint instant{parts};
+        const TimePoint instant{detail::rescaleIntoDay(Scale, parts)};
         ORBSIM_ENSURES(instant.isNormalised());
         return instant;
     }
@@ -450,13 +658,29 @@ public:
             detail::civilDay(static_cast<std::int64_t>(mjd_) + detail::kJdnOfMjdZero);
         const std::int64_t secondOfDay = picos_ / kPicosecondsPerSecond;
         const std::int64_t rest = picos_ % kPicosecondsPerSecond;
+        std::int64_t hour = secondOfDay / 3'600;
+        std::int64_t minute = (secondOfDay / 60) % 60;
+        std::int64_t second = secondOfDay % 60;
+        if constexpr (Scale == TimeScale::Utc) {
+            // An inserted leap second is 23:59:60, which is 86 400 s into the
+            // day: the plain division above would call it hour 24 of a day that
+            // has no such hour, and 00:00:00 of a day that has not begun. Every
+            // second at or past 86 400 is in the final minute, which starts
+            // 86 340 s in.
+            constexpr std::int64_t kFinalMinuteBegins = 86'340;
+            if (secondOfDay >= kSecondsPerDay) {
+                hour = 23;
+                minute = 59;
+                second = secondOfDay - kFinalMinuteBegins;
+            }
+        }
         return CalendarDate{
             .year = static_cast<std::int32_t>(civil.year),
             .month = static_cast<std::int32_t>(civil.month),
             .day = static_cast<std::int32_t>(civil.day),
-            .hour = static_cast<std::int32_t>(secondOfDay / 3'600),
-            .minute = static_cast<std::int32_t>((secondOfDay / 60) % 60),
-            .second = Seconds{static_cast<f64>(secondOfDay % 60) +
+            .hour = static_cast<std::int32_t>(hour),
+            .minute = static_cast<std::int32_t>(minute),
+            .second = Seconds{static_cast<f64>(second) +
                               (static_cast<f64>(rest) / detail::kPicosecondsPerSecondF)},
         };
     }
@@ -468,11 +692,23 @@ public:
     // from the exact product in scaleDayFraction, makes it the nearest: the
     // residual is picoseconds the first quotient missed, known to 2.4e-4 ps,
     // against an ulp of the fraction of up to 9.6 ps.
+    //
+    // **For UTC this is a quasi-Julian date**, and the fraction is measured
+    // against that day's own length rather than against 86 400 s (ERFA's
+    // convention, ADR 0009's update; decided 2026-09-18). Without it the
+    // fraction would reach 1.0000116 inside a leap second and break the [0, 1)
+    // the type promises -- and the number would not be what anything consuming
+    // a UTC Julian date, ERFA included, means by one. On a day with a leap
+    // second the residual is known to 3.8e-2 ps instead of 2.4e-4 ps, because
+    // 86 401e12 spends more of the significand than 86 400e12 does; both are
+    // far inside the ulp above.
     [[nodiscard]] JulianDate julianDate() const noexcept {
-        const f64 approximate = static_cast<f64>(picos_) / detail::kPicosecondsPerDayF;
-        const detail::Scaled back = detail::scaleDayFraction(approximate);
+        const detail::DayLength dayLength = detail::picosecondsInDayOf(Scale, mjd_);
+        const f64 dayPicosF = static_cast<f64>(dayLength.picoseconds);
+        const f64 approximate = static_cast<f64>(picos_) / dayPicosF;
+        const detail::Scaled back = detail::scaleDayFraction(approximate, dayLength);
         const f64 residual = static_cast<f64>(picos_ - back.whole) - back.rest;
-        const f64 fraction = approximate + (residual / detail::kPicosecondsPerDayF);
+        const f64 fraction = approximate + (residual / dayPicosF);
         const f64 day = kMjdZero + mjd_;
         // The nearest double to the last four picoseconds of a day is 1.0. It
         // is carried, so the fraction stays in [0, 1) and the sum is the same.
@@ -553,16 +789,51 @@ public:
     }
 
 private:
+    // The one door for a scale conversion, and the reason it is one friend
+    // rather than six: see detail::Builder below.
+    friend struct detail::Builder;
+
     explicit constexpr TimePoint(detail::DayAndPicos parts) noexcept
         : mjd_{parts.mjd}, picos_{parts.picos} {}
 
+    // A whole day, and a time of day inside *that day*.
+    //
+    // The last clause used to read `picos_ < kPicosecondsPerDay`. It became the
+    // day's own length with M1-04: a UTC day with a leap second simply runs to
+    // 86 401 s, so 23:59:60.5 is 86 400.5 s into it, exactly, and the invariant
+    // is "within that day's length" rather than "within 86 400 s". Nothing else
+    // changes -- the other four scales still get kPicosecondsPerDay, from the
+    // same function.
     [[nodiscard]] constexpr bool isNormalised() const noexcept {
-        return detail::isWhole(mjd_) && picos_ >= 0 && picos_ < kPicosecondsPerDay;
+        if (!detail::isWhole(mjd_)) return false;
+        if (picos_ < 0) return false;
+        return picos_ < detail::picosecondsInDayOf(Scale, mjd_).picoseconds;
     }
 
     f64 mjd_;
     std::int64_t picos_;
 };
+
+namespace detail {
+
+// **The one way to build a TimePoint from stored parts outside the class.**
+//
+// An instant is otherwise reachable only through a factory that validates,
+// which is what makes its normalisation a postcondition rather than a hope. A
+// scale conversion has to build one from another instant's stored parts --
+// there is no calendar date in between, and going through one would throw away
+// picoseconds -- so it needs a door, and this is it. One friend rather than one
+// per conversion, so the surface does not grow as M1-05 adds TDB and UT1.
+struct Builder {
+    template <TimeScale Scale>
+    [[nodiscard]] static constexpr TimePoint<Scale> make(DayAndPicos parts) noexcept {
+        const TimePoint<Scale> instant{parts};
+        ORBSIM_ENSURES(instant.isNormalised());
+        return instant;
+    }
+};
+
+} // namespace detail
 
 using UtcTime = TimePoint<TimeScale::Utc>;
 using TaiTime = TimePoint<TimeScale::Tai>;
@@ -586,6 +857,134 @@ inline constexpr TtTime kJ2000 =
 inline constexpr UtcTime kUnixEpoch =
     UtcTime::fromCalendar(CalendarDate{.year = 1970, .month = 1, .day = 1}).value();
 
+// --- the conversions between scales -----------------------------------------
+//
+// **Exact, not merely accurate.** DeltaAT is a whole number of seconds and
+// TT - TAI is a whole number of picoseconds, so every step below is integer
+// arithmetic on the stored picosecond count: the error of a UTC -> TAI -> TT
+// round trip is zero, against a budget of 1e-9 s (M1-04, ADR 0009).
+//
+// The day part is carried in *seconds* rather than picoseconds wherever a
+// multiplication by the day is involved. mjd * 86 400 is about 5e9 for a date
+// the table covers; mjd * 86 400 * 10^12 would be 5e21, and an int64 stops at
+// 9.2e18.
+
+// TT - TAI, exactly 32.184 s by definition.
+//
+// IAU 1991 Resolution A4, Recommendation IV defines TT with its origin chosen
+// so that TT - TAI = 32.184 s at 1977 January 1, 0h TAI; both run on the SI
+// second, so that offset holds for all time. The number itself is inherited
+// from Ephemeris Time -- ET - TAI = 32.184 s, the 1976 IAU value -- so that TT
+// continues ET without a step. IERS Conventions (2010), section 10.1.
+//
+// **In picoseconds, not in Seconds.** 32.184 is not a binary fraction: the
+// nearest double is 32.18400000000000034..., so adding it as an f64 would be
+// exact only by accident of rounding. As a whole number of picoseconds it is
+// exact by construction, which is what makes the chain above exact.
+inline constexpr std::int64_t kTtMinusTaiPicoseconds = 32'184'000'000'000;
+static_assert(kTtMinusTaiPicoseconds == (32 * kPicosecondsPerSecond) + 184'000'000'000,
+              "32.184 s, as 32 s and 184 ms");
+
+// TAI -> TT and back. No table, no era, no expiry: a fixed offset between two
+// scales that both run on the SI second, so neither can fail and neither
+// returns std::expected (decided 2026-09-18). The type system already says
+// which conversions can refuse -- those are the four below.
+[[nodiscard]] constexpr TtTime ttFromTai(TaiTime tai) noexcept {
+    return detail::Builder::make<TimeScale::Tt>(detail::carry({
+        .mjd = tai.modifiedJulianDay(),
+        .picos = tai.picosecondOfDay() + kTtMinusTaiPicoseconds,
+    }));
+}
+
+[[nodiscard]] constexpr TaiTime taiFromTt(TtTime tt) noexcept {
+    return detail::Builder::make<TimeScale::Tai>(detail::carry({
+        .mjd = tt.modifiedJulianDay(),
+        .picos = tt.picosecondOfDay() - kTtMinusTaiPicoseconds,
+    }));
+}
+
+// UTC -> TAI: add the DeltaAT in force during that UTC day.
+//
+// The leap second needs no special case in this direction. 2016-12-31T23:59:60
+// is stored as 86 400 s into a day whose DeltaAT is 36, and 57 753 * 86 400 +
+// 36 + 86 400 is 57 754 * 86 400 + 36 -- 2017-01-01T00:00:36 TAI, one second
+// before the 00:00:37 that 2017-01-01T00:00:00 UTC maps to. The arithmetic
+// carries it.
+[[nodiscard]] constexpr std::expected<TaiTime, TimeError> taiFromUtc(UtcTime utc) noexcept {
+    ORBSIM_EXPECTS(detail::inCalendarRange(utc.modifiedJulianDay()));
+    const auto utcMjd = static_cast<std::int64_t>(utc.modifiedJulianDay());
+    if (utcMjd < kLeapSecondEraFirstMjd) return std::unexpected(TimeError::BeforeLeapSecondEra);
+    if (utcMjd >= kLeapSecondTableExpiryMjd) {
+        return std::unexpected(TimeError::LeapSecondTableExpired);
+    }
+    const std::int64_t wholeSeconds = utc.picosecondOfDay() / kPicosecondsPerSecond;
+    const std::int64_t rest = utc.picosecondOfDay() % kPicosecondsPerSecond;
+    const std::int64_t taiSeconds =
+        (utcMjd * kSecondsPerDay) + deltaAtSecondsForUtcDay(utcMjd) + wholeSeconds;
+    // Named rather than written inside the braces: the division is meant to be
+    // a whole number of days, and bugprone-integer-division is right to ask
+    // about an integer quotient converted straight to a double.
+    const std::int64_t taiMjd = taiSeconds / kSecondsPerDay;
+    const std::int64_t taiSecondOfDay = taiSeconds % kSecondsPerDay;
+    return detail::Builder::make<TimeScale::Tai>({
+        .mjd = static_cast<f64>(taiMjd),
+        .picos = (taiSecondOfDay * kPicosecondsPerSecond) + rest,
+    });
+}
+
+// TAI -> UTC: subtract the DeltaAT in force at that TAI instant.
+//
+// This direction *does* need the leap second named, because subtracting 36 from
+// 2017-01-01T00:00:36 TAI lands on 57 754 * 86 400 exactly -- the midnight that
+// begins 2017-01-01 -- when the answer is the second before it, 23:59:60 of
+// 2016-12-31. Inside an inserted second the label is always exactly that: the
+// table's step is one second, so the subtraction always lands on the midnight,
+// and the instant is the day before it with 86 400 s on the clock.
+//
+// A *negative* leap second needs nothing here. The second it removes is skipped
+// because the next step takes over exactly where that second would have begun,
+// and the subtraction never produces it.
+[[nodiscard]] inline std::expected<UtcTime, TimeError> utcFromTai(TaiTime tai) noexcept {
+    ORBSIM_EXPECTS(detail::inCalendarRange(tai.modifiedJulianDay()));
+    const auto taiMjd = static_cast<std::int64_t>(tai.modifiedJulianDay());
+    const std::int64_t wholeSeconds = tai.picosecondOfDay() / kPicosecondsPerSecond;
+    const std::int64_t rest = tai.picosecondOfDay() % kPicosecondsPerSecond;
+
+    const TaiDayAndSecond instant{.mjd = taiMjd, .secondOfDay = wholeSeconds};
+    if (instant < kLeapSecondEraFirstTai) return std::unexpected(TimeError::BeforeLeapSecondEra);
+    if (instant >= kLeapSecondTableExpiryTai) {
+        return std::unexpected(TimeError::LeapSecondTableExpired);
+    }
+
+    const TaiLookup lookup = leapSecondLookupForTai(instant);
+    const std::int64_t utcSeconds =
+        (taiMjd * kSecondsPerDay) + wholeSeconds - lookup.deltaAtSeconds;
+    std::int64_t utcMjd = utcSeconds / kSecondsPerDay;
+    std::int64_t secondOfDay = utcSeconds % kSecondsPerDay;
+    if (lookup.insideInsertedLeapSecond) {
+        ORBSIM_EXPECTS(secondOfDay == 0);
+        utcMjd -= 1;
+        secondOfDay += kSecondsPerDay;
+    }
+    return detail::Builder::make<TimeScale::Utc>({
+        .mjd = static_cast<f64>(utcMjd),
+        .picos = (secondOfDay * kPicosecondsPerSecond) + rest,
+    });
+}
+
+// The composed pair. Written out rather than through and_then so that the
+// failure that can occur -- the table's, on the UTC side -- is visible at the
+// one place it happens.
+[[nodiscard]] constexpr std::expected<TtTime, TimeError> ttFromUtc(UtcTime utc) noexcept {
+    const auto tai = taiFromUtc(utc);
+    if (!tai) return std::unexpected(tai.error());
+    return ttFromTai(*tai);
+}
+
+[[nodiscard]] inline std::expected<UtcTime, TimeError> utcFromTt(TtTime tt) noexcept {
+    return utcFromTai(taiFromTt(tt));
+}
+
 // --- compile-time proofs ----------------------------------------------------
 
 static_assert(sizeof(TtTime) == sizeof(f64) + sizeof(std::int64_t),
@@ -607,6 +1006,100 @@ static_assert(nearlyEqual(kJ2000.modifiedJulianDay(), 51'544.0, Tolerance{0.0}) 
               kJ2000.picosecondOfDay() == kPicosecondsPerDay / 2);
 static_assert(nearlyEqual(kUnixEpoch.modifiedJulianDay(), 40'587.0, Tolerance{0.0}) &&
               kUnixEpoch.picosecondOfDay() == 0);
+
+// --- the scales, at compile time ---------------------------------------------
+
+// The day lengths the fraction split was chosen for. If a fourth ever appears,
+// fractionSplitFor is what has to be checked, and this is where it says so.
+static_assert(detail::significantBits(kPicosecondsPerDay) == 38,
+              "an ordinary day is 2^19 x 164 794 921 875");
+static_assert(detail::significantBits(86'401'000'000'000'000) == 45,
+              "a day with a leap second is 2^12 times an odd number");
+static_assert(detail::significantBits(86'399'000'000'000'000) == 45, "and so is a shortened one");
+static_assert(nearlyEqual(detail::fractionSplitFor({.picoseconds = kPicosecondsPerDay}),
+                          32'768.0,
+                          Tolerance{0.0}),
+              "2^15 for an ordinary day: exactly the split M1-03 measured, so its arithmetic "
+              "is unchanged");
+static_assert(nearlyEqual(detail::fractionSplitFor({.picoseconds = 86'401'000'000'000'000}),
+                          256.0,
+                          Tolerance{0.0}),
+              "2^8 where the day spends seven more bits of the significand");
+
+static_assert(detail::roundedQuotient({.numerator = 7, .denominator = 2}) == 4 &&
+                  detail::roundedQuotient({.numerator = -7, .denominator = 2}) == -4 &&
+                  detail::roundedQuotient({.numerator = 5, .denominator = 2}) == 3 &&
+                  detail::roundedQuotient({.numerator = 0, .denominator = 2}) == 0,
+              "halves away from zero, symmetrically");
+
+// **The worked example M1-04 states**, at compile time rather than only in the
+// suite: 2017-01-01T00:00:00 UTC is 2017-01-01T00:00:37 TAI, and
+// 2017-01-01T00:01:09.184 TT. MJD 57 754 is 2017-01-01.
+consteval bool theWorkedExampleHolds() {
+    const UtcTime utc = UtcTime::fromCalendar({.year = 2017, .month = 1, .day = 1}).value();
+    const TaiTime tai = taiFromUtc(utc).value();
+    const TtTime tt = ttFromTai(tai);
+    return nearlyEqual(tai.modifiedJulianDay(), 57'754.0, Tolerance{0.0}) &&
+           tai.picosecondOfDay() == 37 * kPicosecondsPerSecond &&
+           nearlyEqual(tt.modifiedJulianDay(), 57'754.0, Tolerance{0.0}) &&
+           tt.picosecondOfDay() == (69 * kPicosecondsPerSecond) + 184'000'000'000;
+}
+static_assert(theWorkedExampleHolds(), "UTC + 37 s is TAI, and TAI + 32.184 s is TT");
+
+// **The leap second is representable, and it is one second before that.**
+consteval bool theLeapSecondHolds() {
+    const CalendarDate date{
+        .year = 2016,
+        .month = 12,
+        .day = 31,
+        .hour = 23,
+        .minute = 59,
+        .second = Seconds{60.0},
+    };
+    const UtcTime utc = UtcTime::fromCalendar(date).value();
+    const TaiTime tai = taiFromUtc(utc).value();
+    return nearlyEqual(utc.modifiedJulianDay(), 57'753.0, Tolerance{0.0}) &&
+           utc.picosecondOfDay() == 86'400 * kPicosecondsPerSecond &&
+           nearlyEqual(tai.modifiedJulianDay(), 57'754.0, Tolerance{0.0}) &&
+           tai.picosecondOfDay() == 36 * kPicosecondsPerSecond &&
+           // TT has no leap seconds, whatever the date: only UTC does.
+           !TtTime::fromCalendar(date).has_value();
+}
+static_assert(theLeapSecondHolds(),
+              "23:59:60 UTC is 86 400 s into 2016-12-31 and 00:00:36 TAI the next day");
+
+// A second of 60 on a day the table gives no leap second to is an invalid time
+// of day, on UTC as on every other scale.
+static_assert(
+    !UtcTime::fromCalendar(
+         {.year = 2017, .month = 1, .day = 1, .hour = 23, .minute = 59, .second = Seconds{60.0}})
+         .has_value(),
+    "2017-01-01 has no leap second at its end");
+
+// The two refusals, by name. kUnixEpoch is a perfectly good UtcTime and only
+// its conversion has no answer, which is the distinction the two errors draw.
+static_assert(!taiFromUtc(kUnixEpoch).has_value() &&
+                  taiFromUtc(kUnixEpoch).error() == TimeError::BeforeLeapSecondEra,
+              "1970 is before UTC ran on whole seconds");
+static_assert(
+    !taiFromUtc(UtcTime::fromCalendar({.year = 2027, .month = 1, .day = 1}).value()).has_value() &&
+        taiFromUtc(UtcTime::fromCalendar({.year = 2027, .month = 1, .day = 1}).value()).error() ==
+            TimeError::LeapSecondTableExpired,
+    "2027-01-01T00:00:00 is the first instant IERS Bulletin C 72 does not cover");
+static_assert(
+    taiFromUtc(UtcTime::fromCalendar({.year = 2026, .month = 12, .day = 31}).value()).has_value(),
+    "and the day before it is covered");
+
+// The conversions that cannot fail do not pretend they can, and the ones that
+// can say so in their type.
+static_assert(std::is_same_v<decltype(ttFromTai(std::declval<TaiTime>())), TtTime>,
+              "TAI to TT is a fixed offset and has no failure to report");
+static_assert(std::is_same_v<decltype(taiFromTt(std::declval<TtTime>())), TaiTime>);
+static_assert(std::is_same_v<decltype(taiFromUtc(std::declval<UtcTime>())),
+                             std::expected<TaiTime, TimeError>>,
+              "UTC to TAI needs the table, which has two edges, so it reports");
+static_assert(std::is_same_v<decltype(utcFromTai(std::declval<TaiTime>())),
+                             std::expected<UtcTime, TimeError>>);
 
 } // namespace orb
 

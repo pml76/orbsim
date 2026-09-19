@@ -527,6 +527,34 @@ asked for.
     something fires means a real gap, to be fixed by reporting rather than by
     shipping an abort.
 
+12. **M1-04's ten questions: all settled 2026-09-18, and all before any code
+    was written.** They are decisions 32-41 of
+    [`plan/milestone-1-decisions.md`](plan/milestone-1-decisions.md) section 9,
+    and the substantive ones are summarised in
+    [ADR 0009](adr/0009-time-is-a-type-with-a-scale.md)'s update of that date.
+    The four worth knowing without opening either:
+
+    - **The leap-second table expires 2027-01-01T00:00:00 UTC**, which is what
+      IERS Bulletin C 72 guarantees and nothing more. The IERS
+      `leap-seconds.list` claims 2027-06-28, which additionally assumes the
+      March 2027 opportunity goes unused. `docs/STATUS.md` carries the date, and
+      **no test fails on a calendar date** -- a time bomb in the suite would
+      trade one silent failure for another.
+    - **A UTC Julian date is ERFA's quasi-Julian date**: the fraction is of that
+      UTC day, whatever its length. Anything handing a UTC instant to ERFA in
+      M1-05 or M1-07 wants that convention, not a fraction of 86 400 s.
+    - **`detail::Builder` is the one door** into `TimePoint`'s private
+      constructor, and the only thing it befriends. M1-05's TDB and UT1
+      conversions go through it rather than adding friends of their own.
+    - **`ttFromTai` and `taiFromTt` do not return `std::expected`**, because
+      they cannot fail. Only the four conversions that consult the table report.
+
+    What is *not* settled by any of this: whether a negative leap second is ever
+    announced. The arithmetic handles one, a `static_assert` records that every
+    published step so far is +1, and the only thing that exercises the negative
+    path is a synthetic table in the suite. If one is announced, that
+    `static_assert` is the reminder to re-read the tests that assume otherwise.
+
 ## 8. Gotchas worth not rediscovering
 
 **`readability-trailing-comma` reports a comma that is not there.** A call with

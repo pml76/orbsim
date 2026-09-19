@@ -1059,6 +1059,73 @@ the family the NaN was in. Coverage went from 71 edges to 73 and 7.68 million
 executions came back clean.
 
 
+### M1-04, UTC, TAI and TT: the leap-second table, 2026-09-18
+
+`src/core/LeapSeconds.hpp` and `.cpp`, the six conversions in
+`src/core/Time.hpp`, eleven new test cases and a second fuzz target.
+Assertions went from 642,205 in 66 cases to 747,987 in 77, identical across
+Windows clang in both trees, `windows-msvc`, `linux-gcc` and `linux-sanitize`.
+
+**The ten open points went up before the first line of code**, as working
+agreement 1 asks, and all ten came back the same day; they are decisions 32-41
+of [the register](plan/milestone-1-decisions.md) and the substantive ones are
+summarised in [ADR 0009](adr/0009-time-is-a-type-with-a-scale.md)'s update.
+Four of them -- the expiry date, the quasi-Julian convention, how a conversion
+reaches another scale's private constructor, and which oracle to check against
+-- shaped the code that was then written once rather than twice.
+
+**Two facts were fetched rather than remembered.** IERS Bulletin C 72 (Paris,
+2026-07-06) confirmed the table still ends at 2017-01-01 with DeltaAT = 37 s,
+and the IERS/IANA `leap-seconds.list` agreed with it, down to the update stamp
+falling on the bulletin's own issue date. The 28 MJDs were converted from that
+file's NTP seconds independently rather than copied across, and the suite then
+converts them a third time through `std::chrono`.
+
+**The oracle was measured before it was trusted.** `std::chrono::get_leap_second_info`
+reads the platform's tzdata, which is a transcription of the same bulletins by
+people with no connection to this project -- but a test that silently does
+nothing where tzdata is absent is exactly ADR 0005's complaint. So a throwaway
+probe ran on all four toolchains first: Windows clang 23.1.0 and MSVC 19.51 on
+tzdb 2022g.27, WSL clang 23.1.1 on libstdc++ 15 and gcc-14 on libstdc++ 14, both
+on tzdb 2026a. All four usable, all four agreeing on all 28 rows. The suite
+compares every one of the 20,089 days of the era, and `SKIP`s loudly where the
+list is missing.
+
+**The arithmetic turned out to be exact rather than merely accurate.** DeltaAT
+is a whole number of seconds and TT - TAI a whole number of picoseconds, so the
+UTC -> TAI -> UTC round trip is bit-identical -- an error of zero against a
+budget of 1e-9 s. The budget's "1972-2035" was amended, because UTC <-> TAI
+cannot be exact over years the table deliberately refuses.
+
+**Three things the tools found that review had not.**
+
+1. The compiler found the test assertion this task inverts. `-Wunreachable-code`
+   reported `leapSecond.error()` as dead, because 23:59:60 UTC now succeeds --
+   the one existing assertion M1-04 had to change, reported by the build rather
+   than by somebody remembering.
+2. `Seconds` has no `operator==`, so `tai - previousTai == Seconds{1.0}` did not
+   compile. That deletion (ADR 0017) exists for exactly the mistake it caught.
+3. **gcc-14 rejected a useless cast** clang and MSVC both accept:
+   `static_cast<std::int32_t>(int{ymd.year()})`, where `std::chrono::year`
+   already had an `operator int`. One platform tells you about your code.
+
+**And one number that was mine, not the code's.** A new assertion required the
+Julian-date round trip on a leap-second instant to land within 1 ps and it
+landed 4 ps out. Rather than widen it, the ideal answer was computed with exact
+rational arithmetic: `round(nearest_double(picos / L) * L)` for that instant is
+**-4 ps**, bit for bit what the code produced. The fraction is a double whose
+ulp is 9.6 ps at the far end of a day, so no implementation can do better --
+the bound had simply been mis-derived. The test now asserts the eight exactly
+rounded values rather than a tolerance, which is the stronger claim: "within
+5 ps" would also pass for an implementation that was 4 ps out the wrong way.
+
+**The fuzzer's first run:** 6,252,716 executions in 181 seconds under ASan and
+UBSan, zero findings. It asserts what a fuzzer can know without knowing the
+right answer -- a success is normalised, a Julian fraction stays in [0, 1), a
+second of 60 appears only where the table says one does, and UTC -> TAI -> UTC
+returns the instant it started from.
+
+
 ---
 
 ## 4. The bug that justified the session

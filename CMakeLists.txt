@@ -360,6 +360,7 @@ FetchContent_MakeAvailable(mp_units)
 # must run headless, both for tests and for a future scenario batch-runner.
 # ---------------------------------------------------------------------------
 set(ORBSIM_CORE_SOURCES
+        src/core/LeapSeconds.cpp
         src/orbit/Orbit.cpp
 )
 add_library(orbsim_core STATIC ${ORBSIM_CORE_SOURCES})
@@ -478,37 +479,46 @@ endforeach()
 # `check` now, at the bottom of this file.
 set(ORBSIM_FUZZ_SOURCES
         tests/fuzz_orbit.cpp
+        tests/fuzz_time.cpp
 )
 add_library(orbsim_fuzz_objects OBJECT ${ORBSIM_FUZZ_SOURCES})
 target_link_libraries(orbsim_fuzz_objects PRIVATE orbsim_core orbsim_warnings)
 
 if(ORBSIM_BUILD_FUZZERS)
-    add_executable(fuzz_orbit tests/fuzz_orbit.cpp)
-    target_link_libraries(fuzz_orbit PRIVATE orbsim_core orbsim_warnings)
-    # The sanitizers come with the fuzzer here rather than through
-    # orbsim_sanitizers, so that a fuzz build is always instrumented: an
-    # uninstrumented fuzzer finds only the crashes that would have crashed
-    # anyway, which is the smallest and least interesting class.
-    #
-    # The same flags on both platforms. UndefinedBehaviorSanitizer is in that
-    # list on Windows too, and it is not doing less there: measured on
-    # 2026-09-12 over eight kinds of undefined behaviour -- signed overflow,
-    # division by zero, an over-wide shift, an out-of-range float cast, a null
-    # dereference, a misaligned store, an invalid bool and an invalid enum --
-    # Windows and Linux gave the same verdict on every one.
-    target_compile_options(fuzz_orbit PRIVATE
-            -fsanitize=fuzzer,address,undefined -fno-sanitize-recover=all -fno-omit-frame-pointer)
-    target_link_options(fuzz_orbit PRIVATE -fsanitize=fuzzer,address,undefined)
-    if(WIN32)
-        # Beside the executable rather than only in the build root, so the
-        # fuzzer runs from wherever it is invoked with no PATH set up: without
-        # this DLL it does not reach main at all.
-        orbsim_find_asan_runtime(orbsim_asan_dlls)
-        add_custom_command(TARGET fuzz_orbit POST_BUILD
-                COMMAND ${CMAKE_COMMAND} -E copy_if_different
-                ${orbsim_asan_dlls} $<TARGET_FILE_DIR:fuzz_orbit>
-                COMMENT "clang_rt.asan_dynamic beside fuzz_orbit")
-    endif()
+    # Two targets, one recipe. fuzz_time joined on 2026-09-18 with M1-04: the
+    # calendar and the Julian date are the second surface in this project that
+    # turns bytes from outside into numbers, which is what rule 13 says to
+    # point a fuzzer at.
+    foreach(fuzz_target IN ITEMS fuzz_orbit fuzz_time)
+        add_executable(${fuzz_target} tests/${fuzz_target}.cpp)
+        target_link_libraries(${fuzz_target} PRIVATE orbsim_core orbsim_warnings)
+        # The sanitizers come with the fuzzer here rather than through
+        # orbsim_sanitizers, so that a fuzz build is always instrumented: an
+        # uninstrumented fuzzer finds only the crashes that would have crashed
+        # anyway, which is the smallest and least interesting class.
+        #
+        # The same flags on both platforms. UndefinedBehaviorSanitizer is in
+        # that list on Windows too, and it is not doing less there: measured on
+        # 2026-09-12 over eight kinds of undefined behaviour -- signed overflow,
+        # division by zero, an over-wide shift, an out-of-range float cast, a
+        # null dereference, a misaligned store, an invalid bool and an invalid
+        # enum -- Windows and Linux gave the same verdict on every one.
+        target_compile_options(${fuzz_target} PRIVATE
+                -fsanitize=fuzzer,address,undefined
+                -fno-sanitize-recover=all
+                -fno-omit-frame-pointer)
+        target_link_options(${fuzz_target} PRIVATE -fsanitize=fuzzer,address,undefined)
+        if(WIN32)
+            # Beside the executable rather than only in the build root, so the
+            # fuzzer runs from wherever it is invoked with no PATH set up:
+            # without this DLL it does not reach main at all.
+            orbsim_find_asan_runtime(orbsim_asan_dlls)
+            add_custom_command(TARGET ${fuzz_target} POST_BUILD
+                    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                    ${orbsim_asan_dlls} $<TARGET_FILE_DIR:${fuzz_target}>
+                    COMMENT "clang_rt.asan_dynamic beside ${fuzz_target}")
+        endif()
+    endforeach()
 endif()
 
 if(ORBSIM_BUILD_APP)
@@ -713,6 +723,7 @@ orbsim_add_header_selfcheck(orbsim_header_selfcheck orbsim_core
         core/Units.hpp
         core/DoubleDouble.hpp
         core/Math.hpp
+        core/LeapSeconds.hpp
         core/Time.hpp
         orbit/Orbit.hpp
 )

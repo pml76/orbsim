@@ -153,3 +153,61 @@ nutation is modelled, so the "as modelled" budget above falls from <= 40" to
 <= 14.1". The other budgets in the table move with it, in 0016 and the register.
 The five scales, their storage, and the leap-second table that reports rather
 than extrapolates all stand.
+
+## Update, 2026-09-18: what M1-04 settled
+
+Written with [M1-04](../plan/tasks/m1-04-leap-seconds.md), on the owner's
+rulings of the same day -- decisions 32 to 41 of
+[the register](../plan/milestone-1-decisions.md). **The decision stands**: the
+table reports rather than extrapolates, and both of its edges are named errors.
+What this adds is the particulars the record above left open, and one number
+worth having.
+
+- **The table expires where the bulletin does.** IERS Bulletin C 72 (Paris,
+  2026-07-06) rules out a leap second at the end of December 2026 and says
+  nothing later, so the table is valid to **2027-01-01T00:00:00 UTC** and
+  refuses past it. The IERS `leap-seconds.list` carries a later expiry of its
+  own, 2027-06-28, which additionally assumes the 2027 March opportunity goes
+  unused -- true of every year so far, and not something any bulletin has ruled
+  out. Being too conservative costs a loud refusal; being too generous costs a
+  wrong answer that looks right, which is the failure this record exists to
+  prevent.
+- **The round trip is exact, not merely inside its budget.** DeltaAT is a whole
+  number of seconds and TT - TAI is a whole number of picoseconds, so every
+  step is integer arithmetic on the stored picosecond count. Measured over
+  10,000 seeded instants and eight offsets at each of the 27 boundaries: the
+  UTC -> TAI -> UTC round trip is **bit-identical**, an error of zero against a
+  budget of 1e-9 s. The budget's "1972-2035" is amended, because UTC <-> TAI
+  cannot be exact over years the table deliberately refuses; TAI <-> TT is,
+  because it needs no table.
+- **TT - TAI is held in picoseconds, not in an f64 of seconds.** 32.184 is not
+  a binary fraction -- the nearest double is 32.18400000000000034... -- so
+  adding it as a duration would be exact only by accident of rounding.
+  `kTtMinusTaiPicoseconds` is 32'184'000'000'000 and is exact by construction.
+- **The UTC day's length reaches the invariant.** `isNormalised()` used to read
+  `picos_ < kPicosecondsPerDay`; it now reads "within that day's length", which
+  for UTC the table supplies and for the other four scales is the same
+  86 400 s it always was. That is what makes 23:59:60.5 representable as
+  86 400.5 s into 2016-12-31, exactly, rather than as a special case.
+- **A UTC Julian date is a quasi-Julian date**, ERFA's convention: its fraction
+  is of that UTC day, "whether the length is 86399, 86400 or 86401 SI seconds"
+  (`dtf2d.c`). Without it the fraction reaches 1.0000116 inside a leap second
+  and breaks the [0, 1) the type promises -- and the number would not be what
+  anything consuming a UTC Julian date, ERFA included, means by one.
+- **Conversions that cannot fail do not pretend they can.** `ttFromTai` and
+  `taiFromTt` return their instant; the four that consult the table return
+  `std::expected`. A signature that reports an error which cannot occur is the
+  dead defensive code [`0002`](0002-error-handling-strategy.md) argues against.
+- **A negative leap second is handled and cannot be tested from the published
+  table**, so the queries take a `std::span` and the suite drives them with a
+  synthetic one. The mechanism allows a negative step, the Earth's rotation has
+  been making one likelier, and "handled" must not be allowed to mean "written
+  and never run" ([`../VERIFICATION.md`](../VERIFICATION.md) rule 23).
+
+**And ERFA is still not used for this**, as 0016 says: `eraDat` extrapolates
+past its own table, in silence until 2028, which is precisely what this record
+rules out. What did change is that ERFA is no longer the only second opinion
+available -- `std::chrono::get_leap_second_info` reads the platform's tzdata,
+an independent transcription of the same bulletins, and it was measured on all
+four toolchains before being relied on: usable everywhere, agreeing on all 28
+rows and on every one of the 20,089 days of the era.

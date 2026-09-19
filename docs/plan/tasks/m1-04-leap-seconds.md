@@ -1,6 +1,6 @@
 # M1-04 — UTC, TAI and TT: the leap-second table
 
-Phase: A | Status: not started
+Phase: A | Status: **done, 2026-09-18**
 Prerequisites: M1-03
 Decided by: [ADR 0009](../../adr/0009-time-is-a-type-with-a-scale.md), [ADR 0016](../../adr/0016-the-astronomy-is-erfa.md)
 
@@ -76,8 +76,20 @@ Extends `tests/test_time.cpp`.
 
 ## Error budget
 
-UTC ↔ TAI ↔ TT round trip **exact to 1e-9 s** over 1972–2035. TT − TAI is exact
-by definition, so any deviation is a bug rather than a tolerance.
+UTC ↔ TAI ↔ TT round trip **exact to 1e-9 s**. TT − TAI is exact by definition,
+so any deviation is a bug rather than a tolerance.
+
+*(Amended 2026-09-18, register decision 38.)* This read "over 1972–2035", which
+asserts a round trip over years the table deliberately refuses. **UTC ↔ TAI is
+exact wherever the table is valid**, which is 1972-01-01 to 2027-01-01 today;
+**TAI ↔ TT is exact over all of 1972–2035**, because it needs no table.
+
+**Measured 2026-09-18: the error is zero.** ΔAT is a whole number of seconds and
+TT − TAI is a whole number of picoseconds, so every step is integer arithmetic
+on the stored picosecond count and there is nothing to round. The suite asserts
+**bit identity** rather than the 1e-9 s budget, over 10,000 seeded instants and
+eight offsets at each of the 27 boundaries -- a budget a thousand times looser
+than the arithmetic cannot see a regression in it.
 
 ## Verification
 
@@ -85,7 +97,22 @@ The standing rules.
 
 ## Done when
 
-- [ ] `check` green in both trees.
-- [ ] The table records the IERS bulletin it came from and its validity date.
-- [ ] Expiry and the pre-1972 era are reported by name, with a test for each.
-- [ ] The leap second at 2016-12-31T23:59:60 round-trips.
+- [x] `check` green in both trees. **Also** `linux-gcc`, `linux-sanitize` and
+      `windows-msvc`: 78 CTest entries on Windows, 77 on the core-only Linux
+      presets, all passing, and 747,987 assertions identical across all five.
+- [x] The table records the IERS bulletin it came from and its validity date.
+      **IERS Bulletin C 72**, Paris, 2026-07-06, confirmed against the bulletin
+      itself and against the IERS/IANA `leap-seconds.list` (hash
+      `a9bad145 84c31c70 758402aa b37bfd54 5923836a`), which agree; the MJDs
+      were converted from the NTP seconds independently rather than copied.
+      Validity ends **2027-01-01T00:00:00 UTC** (decision 32), and
+      [`../../STATUS.md`](../../STATUS.md) carries that date.
+- [x] Expiry and the pre-1972 era are reported by name, with a test for each.
+- [x] The leap second at 2016-12-31T23:59:60 round-trips.
+
+**Beyond what was asked:** a second fuzz target,
+[`tests/fuzz_time.cpp`](../../../tests/fuzz_time.cpp) (decision 41), 6,252,716
+executions clean on the first run; a synthetic negative leap second, which no
+published table can reach (decision 33); and `std::chrono::get_leap_second_info`
+as an independent oracle over every one of the 20,089 days of the era
+(decision 37).
