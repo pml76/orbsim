@@ -4,7 +4,8 @@ A space flight simulator in the spirit of [Orbiter](https://github.com/orbitersi
 real orbital mechanics, 6-DOF vessels, and MFD-style instrumentation. Written
 from scratch in C++23 with Vulkan.
 
-**Status: early.** The two-body core is complete and tested; the renderer opens
+**Status: early.** The two-body core and the time scales are complete and
+tested, and the first external reference data can be read; the renderer opens
 a window, creates a device and paces frames. Nothing is drawn yet. See
 [the milestone 1 plan](docs/plan/milestone-1-earth.md) for what comes next.
 
@@ -17,7 +18,15 @@ a window, creates a device and paces frames. Nothing is drawn yet. See
   trajectories through one code path, at every scale from a lunar orbit to the
   outer solar system. Escape trajectories are ordinary here, not a special
   case.
-- **Four Catch2 test suites, several hundred thousand checks**
+- **Time on five scales** — UTC, TAI, TT, TDB and UT1 as distinct types, held
+  as a day and a count of picoseconds. UTC, TAI and TT convert exactly, over
+  the IERS leap-second table, and refuse by name before 1972 and past the last
+  bulletin rather than extrapolating. TDB and UT1 are next.
+- **Reference data this project did not produce** — JPL Horizons state vectors,
+  read in metres and TDB with their provenance attached. Horizons output is
+  queried, not redistributed: `data/horizons/README.md` has the recipe and the
+  build checks what it generates against a committed hash.
+- **Five Catch2 test suites, several hundred thousand checks**
   (`docs/STATUS.md` has the count), the useful ones crossing the code
   against something it did not produce: elements and anomalies against
   references computed in 60-digit decimal arithmetic, state→elements against
@@ -39,7 +48,8 @@ a window, creates a device and paces frames. Nothing is drawn yet. See
 for the physics and the image alike: multi-body gravity with perturbations, a
 real epoch with real time scales, real reference frames, and a radiometric
 renderer. A single point mass is ruled out. Today the core solves the two-body
-problem exactly and everything else is ahead — see
+problem exactly and keeps UTC, TAI and TT to the picosecond, and everything
+else is ahead — see
 [`docs/adr/0006`](docs/adr/0006-simulation-not-sandbox.md) for the decision and
 [`docs/plan/realism.md`](docs/plan/realism.md) for the distance still to go.
 
@@ -61,9 +71,10 @@ million kilometres away.
 ## Building
 
 Needs a C++23 compiler with `<expected>`, `<print>` and `<ranges>` — clang 17+
-or MSVC 19.36+ — plus CMake 3.28, Ninja, and a Vulkan loader. Dependencies
-(SDL3, vk-bootstrap, VMA, Vulkan-Headers, Vulkan-Utility-Libraries and Catch2)
-are fetched and pinned by CMake.
+or MSVC 19.36+ — plus CMake 3.28, Ninja, a Vulkan loader, and Python 3, which
+`check` uses for its document-link and fixture-converter tests. Dependencies
+(SDL3, vk-bootstrap, VMA, Vulkan-Headers, Vulkan-Utility-Libraries, Catch2 and
+mp-units) are fetched and pinned by CMake.
 
 ```
 cmake --preset relwithdebinfo
@@ -84,11 +95,17 @@ cmake --build build/relwithdebinfo --target check
 ```
 
 `-DORBSIM_BUILD_APP=OFF` builds the simulation core and its tests without the
-Vulkan SDK. Combined with the `linux-sanitize` or `linux-gcc` preset, that is
-how the core gets built under UndefinedBehaviorSanitizer or by a second
-compiler — neither of which works on Windows directly, both of which run under
-WSL. Both presets pass. There is no CI; verification is the `check` target,
-run locally, plus the Linux presets before a milestone lands.
+Vulkan SDK. The `linux-sanitize` and `linux-gcc` presets use it under WSL, for
+AddressSanitizer with UndefinedBehaviorSanitizer and for gcc as a second
+compiler, and `windows-msvc` builds the whole tree with a third. There is no
+CI; verification is the `check` target, run locally, plus those presets before
+a milestone lands.
+
+**Reference data from JPL Horizons is generated, not cloned.** On a fresh
+checkout the suites that need it report themselves skipped; running the
+recipe in [`data/horizons/README.md`](data/horizons/README.md) once — a `curl`
+and a conversion — makes them run, and `check` verifies the result against the
+committed hash.
 
 ## Code standards
 
@@ -103,8 +120,9 @@ The project has an opinionated, enforced house style:
   the error strategy, reverse-Z, pinned dependencies, how correctness is
   enforced, simulation-not-sandbox, scalable render quality, eight more taken
   before milestone 1 began, from how the renderer is verified to how the
-  integrator is put together, and three since — ERFA computes the astronomy,
-  every warning is an error, and every conversion in `orbit/` reports.
+  integrator is put together, and four since — ERFA computes the astronomy,
+  every warning is an error, every conversion in `orbit/` reports, and vectors
+  carry their unit.
   [The index](docs/adr/README.md) is the list, and the count is in
   [`docs/STATUS.md`](docs/STATUS.md)
 - [`docs/VERIFICATION.md`](docs/VERIFICATION.md) — how the project knows the
@@ -141,4 +159,5 @@ Dependencies: [SDL3](https://github.com/libsdl-org/SDL) (zlib),
 [vk-bootstrap](https://github.com/charles-lunarg/vk-bootstrap) (MIT),
 [VulkanMemoryAllocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) (MIT),
 [Vulkan-Utility-Libraries](https://github.com/KhronosGroup/Vulkan-Utility-Libraries) (Apache-2.0),
-[Catch2](https://github.com/catchorg/Catch2) (BSL-1.0).
+[Catch2](https://github.com/catchorg/Catch2) (BSL-1.0),
+[mp-units](https://github.com/mpusz/mp-units) (MIT).
