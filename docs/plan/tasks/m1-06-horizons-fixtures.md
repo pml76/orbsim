@@ -1,6 +1,6 @@
 # M1-06 — The Horizons fixture format
 
-Phase: A | Status: not started
+Phase: A | Status: **done, 2026-09-19**
 Prerequisites: M1-01, M1-03
 Decided by: [ADR 0009](../../adr/0009-time-is-a-type-with-a-scale.md), [ADR 0016](../../adr/0016-the-astronomy-is-erfa.md)
 
@@ -20,6 +20,17 @@ early, and deliberately plainly.
 
 ## What to implement
 
+**Amended again 2026-09-19, before the code, on the owner's rulings** --
+decisions 42-51 of [the register](../milestone-1-decisions.md). The headline is
+a measurement: **a raw Horizons response can never match a committed
+checksum**, because line 7 stamps the moment of the request and two more lines
+change daily. So each response is converted, deterministically, into the plain
+format described below, by `scripts/horizons-fixture.py` (decision 42); the
+`retrieved = ... by <who>` key is dropped, because anything that changes per run
+breaks the hash (43); and `check` verifies the hashes (44). Where this section
+and those rulings differ, the rulings win, and the text below has been brought
+into line with them.
+
 **Amended 2026-09-17: the Horizons output is not committed.** The terms were
 read that day and state no licence anywhere, while the SSD FAQ asks to be told
 what you intend to use and how ([`../../../THIRD_PARTY.md`](../../../THIRD_PARTY.md)).
@@ -34,13 +45,21 @@ What that changes for this task is below, marked.
   `key = value` lines that makes the data reproducible and self-describing:
 
   ```
-  source     = JPL Horizons
-  retrieved  = 2026-09-.. by <who>
-  query      = target=10 (Sun); center=500@399 (Earth geocentre);
-               vectors; frame=ICRF; time scale=TDB; units=km, km/s;
-               corrections=none (geometric)
-  columns    = jd_tdb  x_km  y_km  z_km  vx_kms  vy_kms  vz_kms
+  source      = JPL Horizons API
+  ephemeris   = DE441
+  target      = Sun (10)
+  center      = Earth (399)
+  frame       = ICRF
+  corrections = none
+  time scale  = TDB
+  columns     = jd_tdb x_km y_km z_km vx_km_s vy_km_s vz_km_s
   ```
+
+  *(As built, 2026-09-19.)* Every key is derived by the converter from what
+  Horizons' own header **says it did**, not from what was asked, and the
+  converter refuses a response whose header disagrees. There is no `retrieved`
+  key (decision 43): the git history of `checksums.sha256` records when a
+  fixture was generated and by whom.
 
   *(Amended 2026-09-11.)* **Geometric**, with neither light-time nor aberration
   applied: M1-08 now asserts 0.1″ against these vectors, and aberration alone
@@ -64,16 +83,33 @@ What that changes for this task is below, marked.
   ADR 0005's "a step that has silently been doing nothing". Catch2's `SKIP` with
   a message naming `data/horizons/README.md` is the shape.
 - **`tests/FixtureFile.hpp`**, a reader used by the suites: opens the file,
-  parses the header into a small map, parses rows into a `std::vector` of
-  records, and **reports by name** — `MissingHeaderKey`, `MalformedRow`,
-  `WrongColumnCount`, `FileNotFound` — rather than throwing or returning a
-  half-read table.
+  parses the header and the rows, and **reports by name** rather than throwing
+  or returning a half-read table.
+
+  *(As built, 2026-09-19.)* Eight names, each with the line it happened on
+  (decisions 45 and 46): `FileNotFound`, `EmptyFile`, `TruncatedFile`,
+  `MissingHeaderKey`, `UnexpectedHeaderValue`, `WrongColumnCount`,
+  `NonNumericField` and `InvalidEpoch`. **Units at the first moment a number
+  exists** (46): the untyped layer keeps every field as text, and the typed
+  reader for state vectors turns it into `TdbTime`, `Position` and `Velocity`
+  in one step -- kilometres to metres by moving the decimal exponent and
+  parsing once, which is correctly rounded, where parsing and multiplying by
+  1000 rounds twice and, measured, lands on a different double for three of
+  the first eight Horizons-shaped values tried.
 - **The first fixture**: geocentric Sun position and velocity at roughly 40
   epochs spread over 2000–2050, including two near perihelion and two near
   aphelion, so the distance test in M1-08 has something to bite on.
+
+  *(As built, 2026-09-19, decision 47.)* 36 epochs on a 507-day stride from
+  J2000.0 -- not a yearly one, which would sample one direction 36 times -- and
+  the perihelion and aphelion noons of 2000 and 2050, read from Horizons' own
+  daily distances. All at noon TDB, so every Julian date is exact.
   *(Corrected 2026-09-11: this said M1-07, which has no distance test.)*
 - **`data/horizons/README.md`**: already written, 2026-09-17. Extend it with
-  the query for each new fixture. It also carries why the output is not
+  the query for each new fixture. *(2026-09-19: extended with the conversion
+  step, the forty epochs and why, and the measurement behind the conversion;
+  the recipe was then run verbatim in a clean directory and reproduced the
+  committed hash.)* It also carries why the output is not
   committed. The old reason for committing it -- a test that needs the network
   is a test that fails for reasons unrelated to the code -- still holds, and is
   exactly why the data is generated **once** into a gitignored directory rather
@@ -100,6 +136,13 @@ Fixtures for anything but the Sun; the GMAT trajectory fixture has its own task
   precision in its own reader is a reference that quietly loosens every budget
   that depends on it.
 
+  *(2026-09-19.)* Horizons itself writes 16 significant digits, not 17, so its
+  own values are 16-digit decimals; the reader's claim is tested on 17-digit
+  text of 10,000 seeded doubles instead, and the conversion to metres against
+  exact rational arithmetic. The fixture's 16 digits are good to half a unit in
+  the last of them -- 0.05 mm on a component of 1.3e8 km -- against M1-08's
+  budgets of 72 km of direction and 150 km of distance.
+
 ## Notes
 
 The reader consumes only files this repository controls, so it gets no fuzz
@@ -116,7 +159,21 @@ The standing rules.
 
 ## Done when
 
-- [ ] `check` green in both trees; `test_fixture_file` in the CTest list.
-- [ ] Every reader failure has a test that asks for it by name.
-- [ ] The Sun fixture is committed with a complete, reproducible header.
-- [ ] `tests/fixtures/README.md` explains how to regenerate every fixture.
+*(Two items corrected 2026-09-19, decision 48: the second-to-last still said
+the fixture is committed, and the last named `tests/fixtures/`, both left over
+from before the 2026-09-17 amendment.)*
+
+- [x] `check` green in both trees; `test_fixture_file` in the CTest list.
+      **Also** `linux-gcc`, `linux-sanitize` and `windows-msvc`.
+- [x] Every reader failure has a test that asks for it by name -- and by line.
+- [x] The Sun fixture is **generated** with a complete, reproducible header, and
+      its SHA-256 is committed in `data/horizons/checksums.sha256` and verified
+      by `check`.
+- [x] [`data/horizons/README.md`](../../../data/horizons/README.md) explains how
+      to regenerate every fixture.
+
+**Beyond what was asked:** the converter's own golden test in `check`
+(`horizons_fixture_converter`), with its test input chosen after a mutation --
+re-printing the numbers through a double -- passed it on 2026-09-19; and
+`TimePoint`'s two members initialised in `core/Time.hpp` (decision 51), the
+cause of the one lint finding the typed reader raised.

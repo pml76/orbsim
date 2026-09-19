@@ -599,7 +599,7 @@ rules a machine checks and which depend on a person remembering.
 |---|---|---|
 | 1 Test first | A person, visible in the diff | discipline |
 | 2 Never check code against itself | A person, at review | discipline |
-| 3 External truth | `check`, once Horizons fixtures exist | **to build** |
+| 3 External truth | `check` -- since 2026-09-19 (M1-06) the Horizons mechanism and its first fixture exist, and `check` verifies the fixture is the one generated; no budget is asserted against it until M1-08 | **partial** |
 | 4 Error budget | `check` — the test asserts the number | partial |
 | 5 Singularities | `check` — zero dt on every conic, near-rectilinear, e=0, i=0, i=pi, retrograde | **done** |
 | 6 Regression test per bug | A person, visible in the diff | discipline |
@@ -615,7 +615,7 @@ rules a machine checks and which depend on a person remembering.
 | 16 Determinism | `check` — `TEST_CASE("propagation is bit-identical across runs")`, over 100 steps | **done** |
 | 17 Dimensional analysis | The compiler — mp-units under `core/Units.hpp` and `Vec3<R>`, [ADR 0019](adr/0019-vectors-carry-their-unit.md) | **done** |
 | 18 Coverage | By hand, periodically. Orbit.cpp 99.2% lines | **done** |
-| 19 Mutation testing | By hand, periodically | exercised 2026-09-07 |
+| 19 Mutation testing | By hand, periodically | exercised 2026-09-07, and again 2026-09-19 on M1-04 and M1-06 |
 | 20 WSL, UBSan, second compiler | By hand, before a milestone | **done** |
 | 21 `check` is the definition of done | The build, both trees | **done** |
 | 22–24 The human rules | A person | discipline |
@@ -645,6 +645,17 @@ day, which is how they were shown not to be decoration: restoring the historical
 absolute-tolerance bug made scale invariance fail in 6 places and composition in
 4. It will need running again the next time a test passes on the first try.
 
+Run again on 2026-09-19, and it earned its place twice. **On M1-04** eight
+mutants of the leap-second code were all caught -- five by the `static_assert`s
+in `core/LeapSeconds.hpp` and `core/Time.hpp` before a test ran. **On M1-06**
+the converter's golden test let one through: printing the numbers again
+through a double passed, because the synthetic input held only round values;
+it now holds 2^53 + 1, which no double can. And a mutant counts only if it
+compiles: five of the reader's first eight "failed at compile time" because
+`if (false)` is a `-Wunreachable-code` error under `-Werror`, which says
+nothing about the tests. Rewritten to compile, all eight were caught at run
+time ([`PROJECT_STATE.md`](PROJECT_STATE.md) section 8).
+
 Two things follow from this table, and they are the reason it exists.
 
 **The rules marked "to build" are not yet rules.** They are intentions, and by
@@ -661,7 +672,10 @@ to pretend the list is self-enforcing.
 Three remain, and the order is the order they will catch something: **3
 (Horizons fixtures), then the external half of 4 (error budgets against them),
 then 15 (runtime monitors).** 3 and 4 are one piece of work really, and ADR 0006
-makes every accuracy claim in the project depend on it. 15 waits on there being
+makes every accuracy claim in the project depend on it. *(2026-09-19: 3 is now
+partial. The reader, the converter and the first fixture exist and `check`
+verifies them; what 3 and 4 still lack is a budget asserted against the data,
+which M1-05 and M1-08 bring.)* 15 waits on there being
 a simulation loop to monitor, which is milestone 1 phase E.
 
 Rule 11 was the first one built, on 2026-09-07, and it paid immediately: adding

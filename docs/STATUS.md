@@ -40,11 +40,12 @@ opens a window and paces frames.** Nothing is drawn yet.
 | | |
 |---|---|
 | Current milestone | 1 — Earth, orbit track, Orbit MFD |
-| Last task completed | [M1-04](plan/tasks/m1-04-leap-seconds.md), UTC, TAI and TT: the leap-second table, 2026-09-18 |
+| Last task completed | [M1-06](plan/tasks/m1-06-horizons-fixtures.md), the Horizons fixture format, 2026-09-19. Before it, [M1-04](plan/tasks/m1-04-leap-seconds.md), UTC, TAI and TT, 2026-09-18 |
 | Before M1-04 | **All done, 2026-09-13.** Two tasks on 2026-09-12: `elementsFromState` is now accurate to the resolution of a double -- every element within 40 u of the nearest double to the exact conversion, worst case 9.4 u, measured against 60-digit references over 56,532 states across nine families on three toolchains. The cancelling steps are carried in double-double ([`src/core/DoubleDouble.hpp`](../src/core/DoubleDouble.hpp)) on a state scaled by a power of two. And the circular threshold moved from e = 1e-9 to 1e-15, where the 2e it costs a round trip is the resolution of a double rather than 1.8e-9. Then two more on 2026-09-13: the five findings that commit left open, and **`stateFromElements` reports** ([ADR 0018](adr/0018-state-from-elements-reports.md)) -- it returns `std::expected` and a new `UnreachableAnomaly`, after it was found returning a NaN position for 169 of 10,000 nearly radial element sets and a radius 2.2 times too small, unmarked |
-| Next task | [M1-06](plan/tasks/m1-06-horizons-fixtures.md), the Horizons fixture format — moved ahead of M1-05 on 2026-09-11, because M1-05 checks TDB against values that arrive through that reader |
-| Before M1-06, still open | **Nothing.** M1-04's ten open points were all put to the owner before any code was written and all ruled the same day, 2026-09-18; they are decisions 32-41 of the [register](plan/milestone-1-decisions.md). Earlier: **all seven closed, 2026-09-17.** The `constexpr` work and its proofs landed first: `dotExact`, `crossExact`, `normSquaredExact` and `roundedToDouble` are `constexpr` with `static_assert`s proving the exactness the double-double conversion rests on -- including that `dotExact({1e16,1,0},{1,1,0})` keeps in its low word the 1 a double loses -- and so are `isFinite(Vec3)`, `isFinite(StateVector)` and `elementsAreUsable`, which needed a `constexpr isNaN` beside `isFinite` in `core/Scalar.hpp` because a parabola's `sma` is legitimately infinite. `orbit/Orbit.hpp` gained its first `static_assert`s, proving every `OrbitError` describes itself and no two the same. **Corrected while doing it:** the claim that six helpers were `constexpr`-able was wrong -- `factorOutScale` and `exactStateOf` use `std::abs`, `std::ilogb`, `std::scalbn` and `std::frexp`, none `constexpr` before C++26, the same trap `std::isfinite` sprang on MSVC. Then the four that were the owner's to rule on, all settled that day and recorded as questions 7-10 of [`PROJECT_STATE.md`](PROJECT_STATE.md) section 7: **`/Wall`** for MSVC; **Horizons output is queried, never redistributed**, with the recipe and the SHA-256 sums committed instead and M1-06 amended; **`DoubleDouble`'s operators use `twoSum`**, after asserting `quickTwoSum`'s precondition caught the compiler violating it at `(1 + 2^-60) - 1`; and the two `assign*` out-parameters **stay**, because converting them pushes `elementsFromState` past `readability-function-size` |
-| Then | The rest of phase A — TDB and UT1 (M1-05), where ERFA is pinned; Earth orientation with nutation, and the Sun, both computed by ERFA; then `orbsim_view`, the camera, the pipelines, and the probe mode that verifies everything drawn after it |
+| Next task | [M1-05](plan/tasks/m1-05-tdb-and-ut1.md), TDB and UT1, where ERFA is pinned. Its TDB reference values arrive through M1-06's fixture format, from an implementation independent of ERFA |
+| Before M1-05, still open | **Nothing.** M1-06's open points were all put to the owner before the code and ruled on 2026-09-19 -- decisions 42-52 of the [register](plan/milestone-1-decisions.md), including two raised mid-task by the linter and answered the same day. M1-04's ten, decisions 32-41, were ruled on 2026-09-18 |
+| Then | The rest of phase A — Earth orientation with nutation, and the Sun, both computed by ERFA, the Sun checked against the Horizons fixture M1-06 generated; then `orbsim_view`, the camera, the pipelines, and the probe mode that verifies everything drawn after it |
+| Reference data | **The geocentric Sun at 40 epochs, 2000-2050**, from JPL Horizons (DE441), generated into gitignored `data/horizons/` and converted by `scripts/horizons-fixture.py`. SHA-256 `61291048...7fd53`, committed in [`data/horizons/checksums.sha256`](../data/horizons/checksums.sha256) and verified by `check`. **A fresh clone has none**: run the recipe in [`data/horizons/README.md`](../data/horizons/README.md), or the suites that need it report themselves skipped |
 | Leap-second table valid until | **2027-01-01T00:00:00 UTC**, from IERS **Bulletin C 72** (Paris, 2026-07-06), which rules out a leap second at the end of December 2026 and says nothing later. Past it, every UTC conversion reports `LeapSecondTableExpired` by name rather than extrapolating. Renewing it is four lines in [`src/core/LeapSeconds.hpp`](../src/core/LeapSeconds.hpp), which says how |
 | Phase order | A → B → D → C → E → F → G |
 | Working branch | `master`, and everything through 2026-09-19 is pushed. `git fetch && git switch master` is all another machine needs. **Five merged branches can be deleted** whenever somebody feels like it, local and remote: `clang-23-2026-09`, `consistency-fixes-2026-09-13`, `docs-reorg`, `pre-docs-reorg-2026-09-09`, `review-fixes-2026-09` |
@@ -56,32 +57,38 @@ opens a window and paces frames.** Nothing is drawn yet.
 | `src/render/` | Vulkan 1.3 device, swapchain, frame pacing, RAII handles, buffer upload, shader loading. **No pipelines, no drawing.** |
 | `src/app/` | Window, event loop, argument parsing, frame loop. |
 | `shaders/` | Four GLSL shaders compile to SPIR-V at build time and are **never loaded**. They are placeholders for phase A. |
-| `tests/` | Four Catch2 suites, 747,987 assertions in 77 test cases, plus a GPU smoke test and two libFuzzer targets. |
+| `tests/` | Five Catch2 suites, 768,266 assertions in 88 test cases, plus a GPU smoke test, two fixture tests and two libFuzzer targets. |
 
 ## Test suites
 
 | Suite | Assertions | What it covers |
 |---|---|---|
 | `test_double_double` | 135,020, in 8 cases | `core/DoubleDouble.hpp`: the exact product against `std::fma`, which computes the same rounding error by a completely different route, over 20,000 operands spanning every scale; the exact sum against `std::int64_t` arithmetic; the split above its 2^996 ceiling, where it used to return a correct product with a NaN error term; a cancelling difference keeping what a double loses; the quotient and the square root reconstructing their inputs to 2^-100; and every way an overflow could become a NaN instead of staying an overflow |
+| `test_fixture_file` | 20,279, in 11 cases -- **20,153 with one case skipped** where the Horizons fixture has not been generated | `tests/FixtureFile.hpp`, the reference-data reader: a known-good file; comments, blank lines and CRLF; fifteen malformed files, each refused by name **and line**; a missing file; every error describing itself; 10,000 seeded doubles written with 17 digits reading back bit for bit; kilometres to metres against exact rational arithmetic on three values where parsing and then multiplying by 1000 gives the wrong double; state vectors arriving as `TdbTime`, metres and m/s against the compiler's own literals; a fractional epoch kept exact; the wrong frame, scale, corrections or units refused; and the generated Sun fixture itself -- 40 rows, J2000.0 first, every distance in metres between 0.98 and 1.02 AU |
+| `horizons_fixture_checksums` | -- | The generated Horizons fixtures against their committed SHA-256 sums, by a CMake script. A wrong hash fails and names both; a fixture not generated is reported **skipped** |
+| `horizons_fixture_converter` | -- | `scripts/horizons-fixture.py --self-test`: a synthetic response to a known text; identical output when the timestamp and Earth-orientation lines change; eleven refusals. Its input holds 2^53 + 1, which no double can, so a converter that re-printed the numbers fails |
 | `test_orbit` | 763, in 8 cases | Earth-orbit round trips, degenerate orbits, analytic values, propagator agreement, invariants, hyperbolic, Kepler solver, reported failures |
 | `test_orbit_scales` | 85,673, in 30 cases | Heliocentric circles, parabolic trajectories, non-finite inputs, states that are finite but are not orbits, states with no orbital plane, `length()` exact at every binary scale, the fuzzer's nearly radial hyperbola at 1e-158 m, nearly radial ellipses and hyperbolas at 7000 km classified by their energy, an eccentricity that rounds to 1, `orbitInfo`'s radius and speed on four states that broke them and a fuzzer state whose semi-major axis underflows, a zero time step on every conic, near-rectilinear orbits, propagation composing, canonical scale invariance, bit-identical determinism, a seeded sweep of 200 closed + 100 hyperbolic orbits around the Moon, Earth, Jupiter and the Sun, a second seeded sweep of 10,000 states -- ordinary, nearly radial, near-parabolic, e down to 1e-16, and out along a hyperbola's asymptote to r/|a| = 1e6 -- against the conditioning of the round trip through the elements, element propagation on five conics within 2e-9 of a parabola against 60-digit references, a third seeded sweep of 2,000 element sets -- ordinary, near-parabolic, parabolic and near-circular -- against the state propagator and against stepping back, seven measured states, one per failure mechanism, where every one of the seven elements is checked against a 60-digit reference, the perifocal velocity's e - 1 at 1 - e = 1e-6, a radial trajectory at the rectilinear threshold from the correct side, a committed checksum pinning the elements that are bit-identical on every toolchain, and three cases on `stateFromElements` -- a NaN position, a radius 2.2 times too small, and an anomaly past a hyperbola's asymptote |
 | `test_time` | 526,531, in 31 cases | The published epochs both ways; the calendar against `std::chrono`'s on every day of 1900–2100, and which dates exist against its `ok()`; a seeded calendar round trip; 1 ns at the end of a day and across it, and a million 1 µs steps; arithmetic by the nearest picosecond across every day boundary; ordering against the difference; every refusal by name; the Julian-date conversions against exact rational arithmetic; and, at compile time, that no scale converts to another and UTC and UT1 have no duration arithmetic. **M1-04 added eleven cases:** the 28 published steps against a second transcription and against `std::chrono::get_leap_second_info` on every one of the 20,089 days of the era; the worked example 2017-01-01T00:00:00 UTC = 00:00:37 TAI = 00:01:09.184 TT; TT − TAI exact at 1,000 epochs; every step one second either side, both directions; 23:59:60 representable and round-tripping; a seeded sweep of 10,000 instants plus eight offsets at each of 27 boundaries, all **bit-identical** through UTC → TAI → UTC and through TT; both scales strictly increasing across every boundary; each refusal by name; a **synthetic** negative leap second, which no published table can reach; and the quasi-Julian date of a leap-second day against exactly-rounded reference values |
 | `fuzz_orbit`, `fuzz_time` | — | libFuzzer over the core under ASan and UBSan. `fuzz_time` joined on 2026-09-18 with M1-04 and throws arbitrary bytes at the calendar, the Julian date and the scale conversions, asserting that a success is normalised, that a Julian fraction stays in [0, 1), and that UTC → TAI → UTC is bit-identical. Not CTest tests: run deliberately with a time budget, `cmake --preset windows-fuzz`. The `linux-fuzz` preset builds the same targets under WSL and is kept only for LeakSanitizer, which Windows has no equivalent of. |
 | `orbsim_smoke` | — | Runs the app under the Vulkan validation layers for 2 s; fails on any validation error. Labelled `gpu`. |
 
-Totals: **747,987 assertions in 77 test cases**, and the same 747,987 under
-both Windows trees, under ASan, under `windows-msvc`, and under both Linux
-presets. Catch2 **v3.16.0**.
+Totals: **768,266 assertions in 88 test cases**, and the same 768,266 under
+both Windows trees, under `windows-msvc`, and under both Linux presets, which
+read the same generated fixture through `/mnt/c`. On a machine without it,
+`test_fixture_file` skips one case and the total is 768,140. Catch2
+**v3.16.0**.
 
 **Three implementations now agree to the digit**, which is what `windows-msvc`
 was added on 2026-09-14 to find out. It builds the whole tree, renderer
 included — the only configuration that does, since both Linux presets are core
-only — with **zero warnings under `/Wall /WX /permissive-`**, and passes all 78
+only — with **zero warnings under `/Wall /WX /permissive-`**, and passes all 91
 CTest entries including the GPU smoke test.
 
 The seeds for the random sweeps are written into the suites: `20260905` in
-`tests/test_orbit_scales.cpp` and `20260910` in `tests/test_time.cpp`, each the
-date its suite was written. `test_time` draws straight from the engine rather
+`tests/test_orbit_scales.cpp`, `20260910` in `tests/test_time.cpp` and
+`20260919` in `tests/test_fixture_file.cpp`, each the date its suite was
+written. `test_time` draws straight from the engine rather
 than through a `std::` distribution, whose algorithm the standard leaves to the
 library, so its sweep is the same dates under MSVC's library and libstdc++. A
 failure prints the failing case's parameters,
@@ -90,8 +97,9 @@ run. Catch2 prints a `Randomness seeded to:` line that differs between runs; it
 seeds only `GENERATE` and `--order rand`, neither of which this project uses,
 and the sweeps' own generators are still seeded from `kSweepSeed`.
 `catch_discover_tests` makes each `TEST_CASE` its own CTest test, so `ctest -R`
-selects one and `ctest -N` lists **78**: the seventy-seven Catch2 cases plus
-`orbsim_smoke`. `ctest -LE gpu` lists the seventy-seven.
+selects one and `ctest -N` lists **91**: the eighty-eight Catch2 cases, the
+two fixture tests, and `orbsim_smoke`. `ctest -LE gpu` lists ninety, and
+`ctest -L fixtures` the two fixture tests.
 
 ## What this machine has
 

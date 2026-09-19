@@ -1126,6 +1126,74 @@ second of 60 appears only where the table says one does, and UTC -> TAI -> UTC
 returns the instant it started from.
 
 
+### M1-06, the Horizons fixture format, 2026-09-19
+
+`tests/FixtureFile.hpp` and `.cpp`, `tests/test_fixture_file.cpp`,
+`scripts/horizons-fixture.py`, `cmake/VerifyFixtureChecksums.cmake`, and the
+first external reference data this project has had: the geocentric Sun at 40
+epochs from JPL Horizons, generated into gitignored `data/horizons/` with its
+SHA-256 committed. Assertions went from 747,987 in 77 cases to 768,266 in 88,
+identical across both Windows trees, `windows-msvc`, `linux-gcc` and
+`linux-sanitize` -- counted on each, not assumed.
+
+**The plan was wrong about one thing, and running it once showed which.** The
+ruling of 2026-09-17 was to commit hashes rather than Horizons output, so that
+a regenerated fixture could be shown to be the one the budgets were measured
+against. The committed recipe, run twice, gave two different files: line 7
+stamps the moment of the request, and the two EOP lines change daily. A raw
+response can never match a committed hash. That went to the owner as the first
+of nine questions, with the options costed, and the answer was a converter that
+drops exactly those lines and copies every number as text. Two fetches at
+different moments then converted to byte-identical files, and the README's
+recipe, run verbatim in a clean directory, reproduced the committed hash.
+
+**The first answer to the format question was A; B was confirmed before any
+code.** Every answer the round before had been A, and this time the
+recommendation was B, so the letter was checked rather than acted on. It had
+been habit.
+
+**The stub caught two flaws in the tests, not the code.** Written against a stub
+with the approved interface, ten of eleven cases failed -- but two of them
+failed by *aborting*: one compared two empty parses, found them equal, and then
+called `front()`; the other called `back()` without checking a size. A crash is
+not a failure someone else can diagnose, and the first was a test passing for
+the wrong reason. Both gained the size check that makes them fail with a
+message.
+
+**Double rounding is common, not exotic.** Parsing kilometres and multiplying by
+1000 lands on a different double from the correctly rounded metres for three
+of the first eight Horizons-shaped values searched, by exact rational
+arithmetic. The reader moves the decimal exponent and parses once, and the
+suite pins those three values, so the obvious simplification fails a test.
+
+**Three things the tools found that reading had not**, each settled by the
+owner with a measurement beside it:
+
+1. `bugprone-exception-escape` on every struct holding a `std::map`: its move
+   constructor allocates under the MSVC library. The header became a vector of
+   lines, which also removed a parallel map of line numbers.
+2. `cppcoreguidelines-pro-type-member-init` on `StateAtEpoch`, whose cause was
+   `TimePoint`'s two members lacking initialisers. Fixed in `core/Time.hpp`,
+   measured first: full build, every `static_assert`, zero findings, all tests.
+3. gcc's `-Wabi-tag` on the three structs holding `std::string`. Tagging them
+   was measured and spreads to every function returning one; the owner ruled a
+   gcc-only pragma at the site. `dataDirectory()`, the one other site, was
+   fixed rather than suppressed: it returns a view of the build's literal.
+
+**Two mutation runs, and the first did not mean what it said.** Five of eight
+mutations of the reader reported "caught at compile time" -- because
+`if (false)` trips `-Wunreachable-code` under `-Werror`, which says nothing
+about the tests. Rewritten to compile, all eight were caught at run time. The
+converter's golden test let one mutation through: printing the numbers again
+through a double passed, because the synthetic values were round. It now holds
+2^53 + 1, which no double can.
+
+**And one number of mine that was wrong before it was committed.** The task
+document first put the fixture's 16-digit precision at 15 µm at 1 AU; computed,
+it is 0.05 mm on a component of 1.3e8 km -- still nine orders of magnitude
+inside M1-08's 72 km, and now written as what it is.
+
+
 ---
 
 ## 4. The bug that justified the session

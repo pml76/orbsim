@@ -810,8 +810,16 @@ private:
         return picos_ < detail::picosecondsInDayOf(Scale, mjd_).picoseconds;
     }
 
-    f64 mjd_;
-    std::int64_t picos_;
+    // Initialised although the one constructor always sets both, and although
+    // TimePoint has no default constructor at all (CODING_GUIDELINES section 6).
+    // Without the initialisers, cppcoreguidelines-pro-type-member-init cannot
+    // see that an instant held inside an aggregate is ever set, and reports the
+    // aggregate -- found by M1-06's StateAtEpoch, the first struct to hold one,
+    // and fixed here, where the cause is, on the owner's ruling of 2026-09-19.
+    // Measured before and after: every static_assert below still holds,
+    // trivially copyable included.
+    f64 mjd_{};
+    std::int64_t picos_{};
 };
 
 namespace detail {

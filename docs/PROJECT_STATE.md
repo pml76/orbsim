@@ -83,9 +83,22 @@ cmake --build build/relwithdebinfo --target check
 cmake --build build/debug --target check
 ```
 
-Needs clang 17+ (23 here), CMake 3.28+, Ninja, and a Vulkan SDK for the loader
-and `glslc`. Everything else is fetched and pinned by CMake. Without a Vulkan
-SDK, `-DORBSIM_BUILD_APP=OFF` builds the core and its tests.
+Needs clang 17+ (23 here), CMake 3.28+, Ninja, Python 3, and a Vulkan SDK for
+the loader and `glslc`. Everything else is fetched and pinned by CMake. Without
+a Vulkan SDK, `-DORBSIM_BUILD_APP=OFF` builds the core and its tests. Python is
+not optional: `check` runs `scripts/check-doc-links.py` and the Horizons
+converter's golden test, and both fail rather than pass when it is missing.
+
+**Then generate the reference data, once per machine** (since 2026-09-19).
+JPL Horizons output is queried, never committed, so a fresh clone has none,
+and `check` reports two tests skipped -- `horizons_fixture_checksums` and "the
+generated Sun fixture reads, in metres" -- which is correct and loud, but means
+nothing has been checked against the data. The recipe is
+[`../data/horizons/README.md`](../data/horizons/README.md): one `curl` and one
+`python3 scripts/horizons-fixture.py`, run from `data/horizons/`, then
+`sha256sum -c checksums.sha256` must say `OK`. It must before M1-08, whose
+budgets are asserted against that file. Behind a proxy that cuts off large
+downloads, the README gives the `curl` flags that resume.
 
 **The second toolchain, which is not optional before a milestone lands.** It
 has already caught two defects that Windows clang could not see -- an unstable
@@ -453,6 +466,14 @@ asked for.
    themselves **skipped and say so loudly** — a silent pass would be exactly
    ADR 0005's "a step that has silently been doing nothing".
 
+   **Corrected 2026-09-19, by measurement.** The ruling assumed a regenerated
+   file could be checked against a committed hash, and a raw Horizons response
+   never can be: line 7 stamps the moment of the request, and two more lines
+   change daily. So each response is converted, deterministically, by
+   `scripts/horizons-fixture.py`, and the hash is of the converted file -- two
+   fetches at different moments converted to byte-identical files. The ruling
+   stands; the mechanism under it changed. See item 13.
+
 9. **`quickTwoSum`'s precondition: settled 2026-09-17, the operators use
    `twoSum`.** Found by asserting it, which is what an assertion is for. The
    compiler named the case during constant evaluation:
@@ -554,6 +575,35 @@ asked for.
     published step so far is +1, and the only thing that exercises the negative
     path is a synthetic table in the suite. If one is announced, that
     `static_assert` is the reminder to re-read the tests that assume otherwise.
+
+13. **M1-06's questions: all settled 2026-09-19**, decisions 42-52 of
+    [`plan/milestone-1-decisions.md`](plan/milestone-1-decisions.md) section 9.
+    Nine were put before the code; the owner's first answer on the format was
+    A, and it was confirmed as B before anything was built, because every
+    answer the round before had been A. Two more came from the linter mid-task
+    and were put the same day, each with a measurement. What to know without
+    opening the register:
+
+    - **Reference data arrives through `tests/FixtureFile.hpp`**, in this
+      project's own plain format. The untyped layer keeps every field as text;
+      a typed reader turns it into units at once. `readStateVectors()` is the
+      first, and gives `TdbTime`, `Position` and `Velocity`, with kilometres
+      becoming metres by moving the decimal exponent rather than multiplying.
+      M1-05's TDB values and M1-68's GMAT trajectory are to use the same format
+      and add typed readers of their own.
+    - **Horizons responses are converted, never used raw**, by
+      `scripts/horizons-fixture.py`, which refuses a response in the wrong
+      units, frame or corrections. A new Horizons fixture is a curl, a
+      conversion, and a line in `data/horizons/checksums.sha256`.
+    - **`check` verifies the fixtures' hashes** and reports a missing fixture as
+      skipped. On a fresh clone that is expected, and loud.
+    - **`TimePoint`'s members are initialised** (`core/Time.hpp`), so any struct
+      holding an instant passes `cppcoreguidelines-pro-type-member-init`.
+    - **gcc's `-Wabi-tag` is off at one site** -- the three untyped structs in
+      `tests/FixtureFile.hpp`, which hold `std::string`. Any other type of ours
+      holding a `std::string` with external linkage will draw it on gcc again;
+      the question to ask then is whether the string is needed at all, as it
+      was not for `dataDirectory()`.
 
 ## 8. Gotchas worth not rediscovering
 
@@ -816,6 +866,38 @@ catch this class of thing. Run all six before pushing a change to `core/`.
   asked without a source file, rather than as on or off, so a script that
   takes only `[disabled]` misses exactly those. `scripts/gcc-warnings.py`
   takes both.
+- **A mutation only counts if it compiles** -- the same trap as the one above,
+  by another road. Under `-Weverything -Werror`, `if (false)` is a
+  `-Wunreachable-code` error, so a mutant spelt that way fails to build and
+  reads as caught: five of eight did on 2026-09-19 before it was noticed. Use
+  a condition the compiler cannot prove false (`== ''`, `&& key.empty()`),
+  and report a build failure as an invalid mutant, never as a kill.
+- **A mutation harness restores from a file copy, never `git checkout --`.**
+  That reverts every uncommitted change in the file, not only the mutant. On
+  2026-09-19 it silently threw away M1-04's `core/Time.hpp` before M1-04 was
+  committed; the file was rebuilt by replaying every edit from the session and
+  proved faithful only because the assertion count came back identical,
+  526,531. Copy the file aside first, and compare it byte for byte after.
+- **`std::map`'s move constructor allocates under the MSVC library**, so it may
+  throw, and `bugprone-exception-escape` reports every struct that holds one --
+  a move is expected not to. A handful of entries is better as a
+  `std::vector` searched with `std::ranges::find`, which is what
+  `tests/FixtureFile.hpp` does.
+- **gcc's `-Wabi-tag` fires on any type of ours with external linkage that
+  holds a `std::string` or returns a `std::filesystem::path`**, because
+  libstdc++ tags both with its "cxx11" ABI. Tagging our types spreads to every
+  function returning them (measured 2026-09-19). Ask first whether the string
+  is needed at all -- `dataDirectory()` returns a `string_view` of a literal
+  for that reason -- and otherwise the owner's ruling is a gcc-only pragma at
+  the site, as in `tests/FixtureFile.hpp`.
+- **Git Bash mangles what it hands to `wsl`.** An argument starting `/mnt/c/`
+  arrives as `C:/Program Files/Git/mnt/c/...`, and a `$var` inside
+  `wsl ... bash -c '...'` arrives empty, so a loop over presets silently runs
+  with no preset. Call `wsl` from PowerShell, or put the commands in a script
+  and pass its `/mnt/c` path from PowerShell.
+- **A Catch2 test named with a comma cannot be selected by name** on the
+  command line: the comma separates filters, and "No test cases matched" is
+  the result. `ctest -R` escapes it.
 
 ---
 

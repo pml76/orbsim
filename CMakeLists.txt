@@ -420,6 +420,7 @@ include(Catch)
 # vtables are emitted, once (-Wweak-vtables, ADR 0017). PUBLIC, so that every
 # suite still gets the warnings and the sanitizers, and so does this source.
 set(ORBSIM_TEST_SUPPORT_SOURCES
+        tests/FixtureFile.cpp
         tests/OrbitTestSupport.cpp
 )
 add_library(orbsim_test_support STATIC ${ORBSIM_TEST_SUPPORT_SOURCES})
@@ -430,9 +431,17 @@ target_link_libraries(orbsim_test_support PUBLIC
         orbsim_sanitizers
         Catch2::Catch2WithMain
 )
+# Where the suites find reference data: data/ in the source tree, named by the
+# build exactly as ORBSIM_ASSET_DIR names it for the application. Private,
+# because only tests/FixtureFile.cpp reads it -- dataDirectory() is the one
+# place the path enters C++, and every suite asks that function.
+target_compile_definitions(orbsim_test_support PRIVATE
+        ORBSIM_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data"
+)
 
 set(ORBSIM_TESTS
         test_double_double
+        test_fixture_file
         test_orbit
         test_orbit_scales
         test_time
@@ -444,6 +453,21 @@ foreach(test_name IN LISTS ORBSIM_TESTS)
     # a failure names the case rather than the executable.
     catch_discover_tests(${test_name})
 endforeach()
+
+# The generated reference data is the data the error budgets were measured
+# against, or `check` says otherwise (M1-06, register decision 44). Horizons
+# output is not redistributed, so a fresh clone has none: the script then
+# prints SKIPPED, which CTest reports as a skip in its summary rather than
+# counting as a pass. A fixture present with the wrong hash fails.
+add_test(NAME horizons_fixture_checksums
+        COMMAND ${CMAKE_COMMAND}
+                -DDIRECTORY=${CMAKE_CURRENT_SOURCE_DIR}/data/horizons
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/VerifyFixtureChecksums.cmake
+)
+set_tests_properties(horizons_fixture_checksums PROPERTIES
+        SKIP_REGULAR_EXPRESSION "SKIPPED:"
+        LABELS fixtures
+)
 
 # ---------------------------------------------------------------------------
 # Fuzzing. See VERIFICATION.md rule 13 and tests/fuzz_orbit.cpp.
@@ -728,6 +752,7 @@ orbsim_add_header_selfcheck(orbsim_header_selfcheck orbsim_core
         orbit/Orbit.hpp
 )
 orbsim_add_header_selfcheck(orbsim_test_header_selfcheck orbsim_test_support
+        tests/FixtureFile.hpp
         tests/OrbitTestSupport.hpp
 )
 add_dependencies(test_orbit orbsim_header_selfcheck orbsim_test_header_selfcheck)
@@ -908,6 +933,23 @@ else()
             VERBATIM
     )
 endif()
+
+# The Horizons converter's golden test (M1-06). The converter sits in the
+# provenance chain of every Horizons fixture, so it is tested in `check` like
+# anything else: a synthetic response must convert to a known text, convert
+# identically when its timestamp and Earth-orientation lines change, and be
+# refused when it is in the wrong units, frame or corrections. Python is
+# already required by doc-links; without it this fails rather than passing by
+# doing nothing, by the same rule.
+if(ORBSIM_PYTHON)
+    add_test(NAME horizons_fixture_converter
+            COMMAND ${ORBSIM_PYTHON}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/horizons-fixture.py --self-test
+    )
+else()
+    add_test(NAME horizons_fixture_converter COMMAND ${CMAKE_COMMAND} -E false)
+endif()
+set_tests_properties(horizons_fixture_converter PROPERTIES LABELS fixtures)
 
 add_custom_target(check
         COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
