@@ -19,7 +19,7 @@ A *dated* measurement is not a current claim and does not belong here: "the
 fuzzer ran 77.4 million executions clean on 2026-09-07" is a fact about that
 day and stays in [`HISTORY.md`](HISTORY.md).
 
-Last updated: 2026-09-18.
+Last updated: 2026-09-19.
 
 ## Contents
 
@@ -47,7 +47,7 @@ opens a window and paces frames.** Nothing is drawn yet.
 | Then | The rest of phase A — TDB and UT1 (M1-05), where ERFA is pinned; Earth orientation with nutation, and the Sun, both computed by ERFA; then `orbsim_view`, the camera, the pipelines, and the probe mode that verifies everything drawn after it |
 | Leap-second table valid until | **2027-01-01T00:00:00 UTC**, from IERS **Bulletin C 72** (Paris, 2026-07-06), which rules out a leap second at the end of December 2026 and says nothing later. Past it, every UTC conversion reports `LeapSecondTableExpired` by name rather than extrapolating. Renewing it is four lines in [`src/core/LeapSeconds.hpp`](../src/core/LeapSeconds.hpp), which says how |
 | Phase order | A → B → D → C → E → F → G |
-| Working branch | `master`, and everything through 2026-09-18 is pushed. `git fetch && git switch master` is all another machine needs. **Five merged branches can be deleted** whenever somebody feels like it, local and remote: `clang-23-2026-09`, `consistency-fixes-2026-09-13`, `docs-reorg`, `pre-docs-reorg-2026-09-09`, `review-fixes-2026-09` |
+| Working branch | `master`, and everything through 2026-09-19 is pushed. `git fetch && git switch master` is all another machine needs. **Five merged branches can be deleted** whenever somebody feels like it, local and remote: `clang-23-2026-09`, `consistency-fixes-2026-09-13`, `docs-reorg`, `pre-docs-reorg-2026-09-09`, `review-fixes-2026-09` |
 
 | Component | State |
 |---|---|
