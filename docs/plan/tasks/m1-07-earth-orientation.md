@@ -1,6 +1,6 @@
 # M1-07 — Precession, nutation and the Earth rotation angle
 
-Phase: A | Status: not started
+Phase: A | Status: **done, 2026-09-20**
 Prerequisites: M1-05, M1-06, M1-86
 Decided by: [ADR 0009](../../adr/0009-time-is-a-type-with-a-scale.md), [ADR 0016](../../adr/0016-the-astronomy-is-erfa.md)
 
@@ -189,10 +189,15 @@ survivors go to the owner.
 
 ## Done when
 
-- [ ] `check` green in both trees.
-- [ ] The 0.1 mas budget is asserted against Skyfield, not against ERFA.
-- [ ] The model error appears as a number in the header and the commit message.
-- [ ] The rate test uses the stellar day, and the composition test would fail
-      the pairing this document first asked for.
-- [ ] The conversion is tested on all four of its branches.
-- [ ] Every published constant carries its citation.
+- [x] `check` green in both trees.
+- [x] The 0.1 mas budget is asserted against Skyfield, not against ERFA:
+      measured worst **53.5 µas**, at 2099.
+- [x] The model error appears as a number in the header and the commit message.
+- [x] The rate test uses the stellar day, and the composition test would fail
+      the pairing this document first asked for -- by 1,170″ to 2,320″. The
+      mutation pass showed the rate test catching a date handed to ERFA as one
+      number, 1.8e-5 s of period, which the 1e-4 s this document first carried
+      would have accepted.
+- [x] The conversion is tested on all four of its branches, which needed
+      synthetic matrices: the Earth's reach two.
+- [x] Every published constant carries its citation.

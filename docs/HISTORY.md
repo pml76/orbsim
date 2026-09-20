@@ -1270,6 +1270,75 @@ evaluations of an 800-term series.
 
 ---
 
+### M1-07, precession, nutation and the Earth rotation angle, 2026-09-20
+
+`src/astro/EarthOrientation.hpp` and `.cpp`; `RotationMatrix`, `isRotation`
+and `quaternionFrom` in `core/Math.hpp`; `tests/test_math.cpp`, the first
+suite that header has had, and `tests/test_earth_orientation.cpp`; a typed
+reader in `tests/FixtureFile.hpp`; and a second committed Skyfield reference,
+`data/skyfield/earth-orientation.txt`, 1,029 rotations over 1900-2100.
+
+**Ten questions went out before the code**, each with a measurement from a
+scratch spike, and every recommendation was taken: decisions 75 to 83. The
+spike is what moved the budget. The plan carried 0.1" over 2000-2050; the
+independent reference turned out to agree with ERFA to **54 µas**, so 0.1"
+could not see an omitted frame bias (23 mas), the wrong nutation model
+(3.1 mas) or UT1 wrong by a millisecond (15 mas). The budget is **0.1 mas**
+over 1900-2100 now -- about twice the measured worst, which is the rule
+decision 54 set for M1-05 -- and the measured worst on the committed fixture
+is 53.5 µas, at 2099.
+
+**Most of that 54 µas is one term.** ERFA's `eraC2t06a` applies the TIO
+locator s', -47 µas a century from J2000, even when polar motion is passed as
+zero; the equinox-based route does not. That also settled how the wrapper is
+written: `Rz(ERA) x eraC2i06a` is **not** `eraC2t06a`, measured bit-identical
+in 0 of 200,000 epochs, so the wrapper calls `eraC2t06a` rather than composing
+it, and the composition test allows s' and asserts that what is left over is a
+spin and not a tilt. The "13 µas" M1-07's plan quoted for the two correct
+routes is s' in 2026.
+
+**The conversion needed a suite of its own**, because the Earth cannot
+exercise it: the matrix-to-quaternion conversion picks whichever component is
+largest, and the celestial-to-terrestrial matrices reach two of its four
+branches -- 200,346 and 199,654 of 400,000, with none taking x or y. So
+`test_math.cpp` drives it with synthetic rotations, including within 1e-7 rad
+of a half turn, where the trace-only conversion everyone writes first is off
+by more than 1e-6 and this one stays within 4e-15.
+
+**A gap the tests had, found by looking for it rather than by a mutant.**
+Nothing pinned the *spin* of the TT-only rotation: a wrapper that returned the
+full rotation would have had the right pole, which is all the pole test can
+see, and M1-08 would have referred a declination to a frame spun by up to a
+whole turn. The suite now asserts that the intermediate frame is the full
+rotation less `Rz(ERA)`, to 0.1 mas, which is s' and nothing else.
+
+**The mutation pass: twelve valid mutants, twelve caught**, each run against
+all three suites rather than the one it was aimed at. Two earned their keep.
+Handing ERFA the date as one number leaves the recovered stellar day 1.8e-5 s
+out -- inside the 1e-4 s the plan carried, so that tolerance would have
+accepted it, and caught by the 1e-7 s derived from what the arithmetic
+resolves. And the intermediate frame quietly including the Earth's turn is
+caught only by the test written for it that morning, when the suite was read
+for what it could not see.
+
+**The second and third implementations both found something**, as they have
+at every core change since they were added. MSVC's `/Wall` reported C5246 --
+a `std::array` assigned a braced list without braces for its own inner array
+-- and gcc's `-Wmissing-braces` reported fourteen of the same thing across the
+two new suites, where clang had accepted all of them. Both are the same
+defect of style, in test code only, and the fix is the extra braces or
+`std::to_array`, which the rest of the suites already use.
+
+**The tolerances the plan carried were four orders too loose**, and are
+derived now (decision 80): the quaternion reproduces ERFA's matrix to 2e-15
+where 8.3e-16 was measured over 450,000 matrices, the round trip and the
+"only UT1 turns the Earth" claims to 4e-15 where 1.4e-15 and 1.2e-15 were
+measured, the rate test to 1e-7 s where the arithmetic resolves 5 ns, and the
+Earth rotation angle at J2000.0 to 2e-13 rad, which is what ERFA's own
+arithmetic reaches with the date split this wrapper uses. That split was
+measured too: the day and the fraction of the day give 0.04 µas of ERA, the
+MJD method `astro/Tdb.cpp` uses gives 9.5 µas.
+
 ### M1-86, UT1 from TT, 2026-09-20
 
 `DeltaT`, `ut1FromTt`, `ttFromUt1`, `deltaTFromLeapSecondTable` and

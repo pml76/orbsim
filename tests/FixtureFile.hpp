@@ -225,6 +225,43 @@ inline constexpr std::string_view kTdbMinusTtColumns = "jd_tdb tdb_minus_tt_s";
 [[nodiscard]] std::expected<TdbMinusTtFixture, FixtureError>
 readTdbMinusTt(const std::filesystem::path& path);
 
+// --- the Earth's orientation ---------------------------------------------------
+
+// One row of an Earth-orientation fixture (M1-07): the two instants the
+// rotation is a function of, and the rotation itself.
+//
+// Both instants are written out, rather than one and a DeltaT, because the
+// rotation is a function of the two and the test hands the code exactly what
+// the reference was given. Each arrives as a day and a fraction, the split the
+// generator writes them in, so that neither is rounded on the way in.
+struct RotationAtEpoch {
+    TtTime tt;
+    Ut1Time ut1;
+    RotationMatrix celestialToTerrestrial;
+};
+
+struct EarthOrientationFixture {
+    FixtureHeader header;
+    std::vector<RotationAtEpoch> rows;
+};
+
+// The header an Earth-orientation fixture must carry. A rotation read with the
+// wrong polar motion, or between the wrong pair of frames, is a plausible
+// matrix and a wrong claim -- and this one is asserted to 0.1 mas, where polar
+// motion alone is 600.
+inline constexpr std::string_view kEarthOrientationFrame = "ICRS to ITRS";
+inline constexpr std::string_view kEarthOrientationPolarMotion = "none";
+inline constexpr std::string_view kEarthOrientationTimeScale = "TT and UT1";
+inline constexpr std::string_view kEarthOrientationColumns =
+    "jd_tt_day jd_tt_fraction jd_ut1_day jd_ut1_fraction "
+    "c2t_11 c2t_12 c2t_13 c2t_21 c2t_22 c2t_23 c2t_31 c2t_32 c2t_33";
+
+[[nodiscard]] std::expected<EarthOrientationFixture, FixtureError>
+parseEarthOrientation(std::string_view text);
+
+[[nodiscard]] std::expected<EarthOrientationFixture, FixtureError>
+readEarthOrientation(const std::filesystem::path& path);
+
 // data/ in the source tree. The build names it, as it names ORBSIM_ASSET_DIR
 // for the application.
 //

@@ -168,3 +168,46 @@ this adds is how it was carried out, and what was measured first.
   equinoxes are built on the same IERS modules as SOFA's, so for the nutation
   its independence from ERFA is partial -- which M1-07 has to weigh when it
   chooses its reference, not something decided here.
+
+## Update, 2026-09-20: the frame, its reference, and its budget
+
+Written with [M1-07](../plan/tasks/m1-07-earth-orientation.md), on the owner's
+rulings of 2026-09-19 -- decisions 75 to 83 of
+[the register](../plan/milestone-1-decisions.md), all put before the code.
+**The decision stands**: ERFA computes the rotation, through `eraC2t06a` and
+`eraC2i06a`, and `src/astro/EarthOrientation.hpp` is the typed wrapper. What
+this adds is the independent reference this record asked each task to choose,
+and what measuring it changed.
+
+- **The reference is Skyfield 1.55**, and its independence has a stated limit.
+  Its route is the other correct one -- Greenwich apparent sidereal time
+  applied to the equinox-based bias-precession-nutation matrix, where ERFA's
+  is CIO-based -- with its own frame bias, precession, sidereal-time
+  polynomial and Earth rotation angle. Its IAU 2000A nutation, though, is a
+  port of NOVAS's, which NOVAS's own guide ties to the same IERS modules as
+  SOFA's. The coefficient table *is* the model and every implementation shares
+  it; what an independent route checks is the *use* of the model -- the scale
+  passed, the units, the composition, the direction -- and every misuse of
+  that kind was measured failing the budget.
+- **The budget is 0.1 mas over 1900-2100**, where this record's table carried
+  0.1" over 2000-2050. Measured first: the two agree to **53.6 µas** on the
+  committed fixture, of which about 47 µas is the TIO locator s'. At 0.1" the
+  test could not have seen an omitted frame bias (23.1 mas), IAU 2000B
+  nutation (3.1 mas), IAU 2000 precession (2.7 mas), or UT1 wrong by a
+  millisecond (15 mas). At 0.1 mas all of them fail it.
+- **`eraC2t06a` applies s' even when polar motion is zero**, which is worth
+  knowing before composing anything by hand: `Rz(ERA) x eraC2i06a` is *not*
+  the same matrix, measured bit-identical in **0 of 200,000** epochs. So the
+  wrapper calls `eraC2t06a` for the whole rotation rather than composing it,
+  and the suite's composition test allows s' and asserts that what is left is
+  a spin rather than a tilt.
+- **A rotation that needs no UT1 was added**, `intermediateFromInertial`, from
+  `eraC2i06a`: M1-63's J2 term runs inside an integrator clocked on TT and
+  M1-08's equinox test needs the equator of date, and neither depends on the
+  Earth's rotation. Its pole is bit-for-bit the pole of the full rotation, on
+  200,000 of 200,000 epochs.
+- **ERFA's date goes in as the day and the fraction of the day.** Measured
+  against a 60-digit evaluation of the defining formula: the Earth rotation
+  angle comes out within 0.04 µas that way, and within 9.5 µas with the "MJD
+  method" `astro/Tdb.cpp` uses -- where it cannot matter, since TDB - TT moves
+  by microseconds a day and ERA by a whole turn.

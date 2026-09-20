@@ -453,6 +453,7 @@ endif()
 # must run headless, both for tests and for a future scenario batch-runner.
 # ---------------------------------------------------------------------------
 set(ORBSIM_CORE_SOURCES
+        src/astro/EarthOrientation.cpp
         src/astro/Tdb.cpp
         src/core/LeapSeconds.cpp
         src/orbit/Orbit.cpp
@@ -536,7 +537,9 @@ target_compile_definitions(orbsim_test_support PRIVATE
 set(ORBSIM_TESTS
         test_astro_time
         test_double_double
+        test_earth_orientation
         test_fixture_file
+        test_math
         test_orbit
         test_orbit_scales
         test_time
@@ -850,6 +853,7 @@ function(orbsim_add_header_selfcheck target link_target)
 endfunction()
 
 orbsim_add_header_selfcheck(orbsim_header_selfcheck orbsim_core
+        astro/EarthOrientation.hpp
         astro/Tdb.hpp
         core/Contract.hpp
         core/Scalar.hpp

@@ -115,6 +115,25 @@ constexpr int kKilometresToMetres = 3;
 }
 
 // One `key = value` line, into the table's header.
+// A Julian date as the Earth-orientation fixture writes one: the day, and the
+// fraction of it, in two fields. One parameter rather than two strings, which
+// would transpose in silence into a different instant.
+struct SplitDate {
+    std::string_view day;
+    std::string_view fraction;
+};
+
+// The instant a split Julian date names, on any scale. Nothing for a field
+// that is not a finite number, or for a date the calendar does not hold.
+template <TimeScale Scale> [[nodiscard]] std::optional<TimePoint<Scale>> instantOf(SplitDate date) {
+    const auto day = parseFinite(date.day);
+    const auto fraction = parseFinite(date.fraction);
+    if (!day || !fraction) return std::nullopt;
+    const auto instant = TimePoint<Scale>::fromJulianDate({.day = *day, .fraction = *fraction});
+    if (!instant) return std::nullopt;
+    return *instant;
+}
+
 [[nodiscard]] std::expected<void, FixtureError>
 addHeaderLine(std::string_view line, std::size_t lineNumber, FixtureTable& table) {
     const std::size_t equals = line.find('=');
@@ -355,6 +374,64 @@ std::expected<TdbMinusTtFixture, FixtureError> parseTdbMinusTt(std::string_view 
         fixture.rows.push_back(TdbMinusTtAtEpoch{.epoch = *epoch, .tdbMinusTt = Seconds{*seconds}});
     }
     return fixture;
+}
+
+// The rotation from the celestial frame to the terrestrial one, at two
+// instants written out in full (M1-07).
+//
+// The header is checked first, because the nine numbers mean nothing without
+// it: which frames, which way round, and whether polar motion is in them.
+std::expected<EarthOrientationFixture, FixtureError> parseEarthOrientation(std::string_view text) {
+    const auto table = parseFixtureTable(text);
+    if (!table) return std::unexpected(table.error());
+
+    for (const Required& required : {
+             Required{.key = "frame", .value = kEarthOrientationFrame},
+             Required{.key = "polar motion", .value = kEarthOrientationPolarMotion},
+             Required{.key = "time scale", .value = kEarthOrientationTimeScale},
+         }) {
+        if (const auto held = require(*table, required); !held) {
+            return std::unexpected(held.error());
+        }
+    }
+    if (table->columns != words(kEarthOrientationColumns)) {
+        const auto columns = std::ranges::find(table->header, "columns", &HeaderLine::key);
+        return refused(FixtureErrorKind::UnexpectedHeaderValue,
+                       columns == table->header.end() ? 0 : columns->line);
+    }
+
+    EarthOrientationFixture fixture{.header = table->header, .rows = {}};
+    fixture.rows.reserve(table->rows.size());
+    for (const FixtureRow& row : table->rows) {
+        const auto tt = instantOf<TimeScale::Tt>({
+            .day = row.fields.at(0),
+            .fraction = row.fields.at(1),
+        });
+        const auto ut1 = instantOf<TimeScale::Ut1>({
+            .day = row.fields.at(2),
+            .fraction = row.fields.at(3),
+        });
+        if (!tt || !ut1) return refused(FixtureErrorKind::InvalidEpoch, row.line);
+
+        RotationMatrix matrix{};
+        for (std::size_t element = 0; element < 9; ++element) {
+            // Already known to be a finite number: parseFixtureTable() checked
+            // every field, and this is the same correctly rounded reading.
+            const auto value = parseFinite(row.fields.at(4 + element));
+            if (!value) return refused(FixtureErrorKind::NonNumericField, row.line);
+            matrix.rows.at(element / 3).at(element % 3) = *value;
+        }
+        fixture.rows.push_back(
+            RotationAtEpoch{.tt = *tt, .ut1 = *ut1, .celestialToTerrestrial = matrix});
+    }
+    return fixture;
+}
+
+std::expected<EarthOrientationFixture, FixtureError>
+readEarthOrientation(const std::filesystem::path& path) {
+    const auto text = readFixtureText(path);
+    if (!text) return std::unexpected(text.error());
+    return parseEarthOrientation(*text);
 }
 
 std::expected<TdbMinusTtFixture, FixtureError> readTdbMinusTt(const std::filesystem::path& path) {

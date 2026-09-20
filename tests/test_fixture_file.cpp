@@ -40,6 +40,7 @@
 #include <format>
 #include <limits>
 #include <random>
+#include <set>
 #include <string>
 #include <string_view>
 
@@ -627,6 +628,206 @@ TEST_CASE("the committed TDB - TT fixture reads, in seconds", "[fixture][tdb]") 
 // **Skipped loudly when absent**, never passed quietly: Horizons output is not
 // redistributed, so a fresh clone does not have it, and a suite that silently
 // stopped checking would be ADR 0005's complaint exactly.
+// --- the Earth's orientation (M1-07) -------------------------------------------
+
+namespace {
+
+// The header of data/skyfield/earth-orientation.txt, and its first two rows.
+constexpr std::string_view kGoodOrientationFixture =
+    "# orbsim fixture: the rotation from the celestial frame to the terrestrial one\n"
+    "source      = Skyfield 1.55 (Brandon Rhodes, MIT licence)\n"
+    "function    = skyfield.framelib.itrs.rotation_at\n"
+    "models      = IAU 2006 precession, IAU 2000A nutation, IERS 2003 frame bias\n"
+    "route       = equinox based: R3(GAST) x N x P x B\n"
+    "numpy       = 2.5.3\n"
+    "frame       = ICRS to ITRS\n"
+    "polar motion = none\n"
+    "delta t     = 69.2138671875 s, held constant\n"
+    "time scale  = TT and UT1\n"
+    "columns     = jd_tt_day jd_tt_fraction jd_ut1_day jd_ut1_fraction c2t_11 c2t_12 c2t_13 "
+    "c2t_21 c2t_22 c2t_23 c2t_31 c2t_32 c2t_33\n"
+    "2415020.5 0.0 2415019.5 0.9991989135742188 "
+    "-0.19380523262618962 0.9810384464698054 -0.0017602144238795104 "
+    "-0.9809922303609004 -0.1938131894709629 -0.009523211571717058 "
+    "-0.00968378945736312 -0.00011889156041587714 0.999953103943651\n"
+    "2415091.5 0.6180648803710938 2415091.5 0.6172637939453125 "
+    "0.8263893590332926 0.5630415523648832 0.008052179027377293 "
+    "-0.5630161808252377 0.8264285794920545 -0.005346319080050962 "
+    "-0.009664750669678679 -0.00011536588556995582 0.9999532885516229\n";
+
+// The same, with one header line replaced.
+//
+// Anchored at the start of a line, unlike the two helpers above: this
+// fixture's own comment line contains the word "frame", and a search for the
+// key alone edited the comment and left the header it meant to change --
+// which made a refusal test pass by not testing anything.
+[[nodiscard]] std::string withOrientationHeaderLine(HeaderEdit edit) {
+    std::string text{kGoodOrientationFixture};
+    const std::string prefix = "\n" + std::string{edit.key} + " ";
+    const std::size_t found = text.find(prefix);
+    REQUIRE(found != std::string::npos);
+    const std::size_t start = found + 1;
+    const std::size_t end = text.find('\n', start);
+    text.replace(start, end - start, edit.replacement);
+    return text;
+}
+
+} // namespace
+
+// The two instants against the calendar and against the literals themselves,
+// and the nine elements against the compiler's own reading of each: the reader
+// owes the test nothing.
+// Catch2 macro expansion, not written complexity. See the note above.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("an Earth-orientation fixture arrives as two instants and a rotation",
+          "[fixture][orientation]") {
+    const auto fixture = parseEarthOrientation(kGoodOrientationFixture);
+    INFO(errorName(fixture));
+    REQUIRE(fixture.has_value());
+    REQUIRE(fixture->rows.size() == 2);
+    REQUIRE(headerValue(fixture->header, "function") == "skyfield.framelib.itrs.rotation_at");
+    REQUIRE(headerValue(fixture->header, "polar motion") == "none");
+
+    // JD 2415020.5 is 1900-01-01T00:00 exactly, and the UT1 of that row is
+    // 69.2138671875 s earlier -- 23:58:50.7861328125 of 1899-12-31.
+    const auto midnight = TtTime::fromCalendar({.year = 1900, .month = 1, .day = 1});
+    REQUIRE(midnight.has_value());
+    REQUIRE(fixture->rows.front().tt == *midnight);
+    const auto ut1 = Ut1Time::fromCalendar({
+        .year = 1899,
+        .month = 12,
+        .day = 31,
+        .hour = 23,
+        .minute = 58,
+        .second = Seconds{50.7861328125},
+    });
+    REQUIRE(ut1.has_value());
+    REQUIRE(fixture->rows.front().ut1 == *ut1);
+
+    // Row-major, in the order the columns name: c2t_11 first, c2t_33 last.
+    const RotationMatrix& m = fixture->rows.front().celestialToTerrestrial;
+    REQUIRE_THAT(m.rows.at(0).at(0), WithinAbsOf(-0.19380523262618962, Tolerance{0.0}));
+    REQUIRE_THAT(m.rows.at(0).at(2), WithinAbsOf(-0.0017602144238795104, Tolerance{0.0}));
+    REQUIRE_THAT(m.rows.at(1).at(1), WithinAbsOf(-0.1938131894709629, Tolerance{0.0}));
+    REQUIRE_THAT(m.rows.at(2).at(2), WithinAbsOf(0.999953103943651, Tolerance{0.0}));
+    REQUIRE(isRotation(m, kRotationTolerance));
+
+    // The second row's time of day is a whole number of 2^-19 days, which is
+    // what keeps every instant exact: 0.6180648803710938 * 2^19 = 324044.
+    // Divided before it is multiplied: a day is 2^19 x 164 794 921 875 ps
+    // exactly, and the product the other way round overflows an int64.
+    constexpr std::int64_t kUnitsPerDay = 524'288; // 2^19, as the generator divides the day
+    constexpr std::int64_t kUnitOfDay = 86'400'000'000'000'000LL / kUnitsPerDay;
+    static_assert(kUnitOfDay * kUnitsPerDay == 86'400'000'000'000'000LL, "2^-19 day, exactly");
+    REQUIRE(fixture->rows.at(1).tt.picosecondOfDay() == 324'044LL * kUnitOfDay);
+}
+
+// The header decides what the nine numbers mean. A rotation read as though
+// polar motion were in it, or between the wrong frames, is a plausible matrix
+// and a wrong claim -- and the budget asserted against it is 0.1 mas, where
+// polar motion alone is 600.
+TEST_CASE("an Earth-orientation fixture in the wrong frame or scale is refused",
+          "[fixture][orientation][errors]") {
+    const std::array refusals = std::to_array<Refusal>({
+        {
+            .name = "polar motion applied",
+            .text = withOrientationHeaderLine(
+                {.key = "polar motion", .replacement = "polar motion = IERS EOP 20 C04"}),
+            .kind = FixtureErrorKind::UnexpectedHeaderValue,
+            .line = 8,
+        },
+        {
+            .name = "the other direction",
+            .text = withOrientationHeaderLine(
+                {.key = "frame", .replacement = "frame       = ITRS to ICRS"}),
+            .kind = FixtureErrorKind::UnexpectedHeaderValue,
+            .line = 7,
+        },
+        {
+            .name = "UTC where UT1 belongs",
+            .text = withOrientationHeaderLine(
+                {.key = "time scale", .replacement = "time scale  = TT and UTC"}),
+            .kind = FixtureErrorKind::UnexpectedHeaderValue,
+            .line = 10,
+        },
+        {
+            .name = "no frame at all",
+            .text = withOrientationHeaderLine({.key = "frame", .replacement = "# removed"}),
+            .kind = FixtureErrorKind::MissingHeaderKey,
+            .line = 0,
+        },
+        {
+            .name = "a column missing",
+            .text = withOrientationHeaderLine({
+                .key = "columns",
+                .replacement = "columns     = jd_tt_day jd_tt_fraction jd_ut1_day "
+                               "jd_ut1_fraction c2t_11 c2t_12 c2t_13 c2t_21 c2t_22 c2t_23 "
+                               "c2t_31 c2t_32",
+            }),
+            .kind = FixtureErrorKind::WrongColumnCount,
+            // The first data row, which the header has just stopped
+            // describing: twelve columns named, thirteen fields written.
+            .line = 12,
+        },
+        {
+            .name = "an epoch past the calendar",
+            .text =
+                [] {
+                    std::string t{kGoodOrientationFixture};
+                    t.replace(t.find("2415091.5"), 9, "9999999999.5");
+                    return t;
+                }(),
+            .kind = FixtureErrorKind::InvalidEpoch,
+            // The second data row: the header is eleven lines.
+            .line = 13,
+        },
+    });
+
+    for (const Refusal& refusal : refusals) {
+        const auto fixture = parseEarthOrientation(refusal.text);
+        INFO(refusal.name << " -> " << errorName(fixture));
+        REQUIRE(!fixture.has_value());
+        REQUIRE(fixture.error().kind == refusal.kind);
+        REQUIRE(fixture.error().line == refusal.line);
+    }
+}
+
+// The committed file itself: its shape, its stride, and that every row really
+// is a rotation. The accuracy claim against it is
+// tests/test_earth_orientation.cpp's.
+// Catch2 macro expansion, not written complexity. See the note above.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("the committed Earth-orientation fixture reads, as rotations", "[fixture][orientation]") {
+    const auto fixture = readEarthOrientation(std::filesystem::path{dataDirectory()} / "skyfield" /
+                                              "earth-orientation.txt");
+    INFO(errorName(fixture) << " at line " << (fixture ? std::size_t{0} : fixture.error().line));
+    REQUIRE(fixture.has_value());
+
+    // 1900-01-01 to 2100-01-01 on a 71-day stride: MJD 15020 to 88069 holds
+    // floor((88069 - 15020) / 71) + 1 = 1029 epochs.
+    REQUIRE(fixture->rows.size() == 1029);
+    const auto first = TtTime::fromCalendar({.year = 1900, .month = 1, .day = 1});
+    REQUIRE(first.has_value());
+    REQUIRE(fixture->rows.front().tt == *first);
+
+    constexpr std::int64_t kDeltaTPicoseconds = 69'213'867'187'500; // 420 / 2^19 day
+    std::set<std::int64_t> timesOfDay;
+    for (std::size_t i = 0; i < fixture->rows.size(); ++i) {
+        const RotationAtEpoch& row = fixture->rows.at(i);
+        CAPTURE(i, row.tt, row.ut1);
+        REQUIRE(isRotation(row.celestialToTerrestrial, kRotationTolerance));
+        timesOfDay.insert(row.tt.picosecondOfDay());
+        // Every UT1 is its TT less the DeltaT the header names, exactly.
+        REQUIRE(ttFromUt1(row.ut1, DeltaT::fromPicoseconds(kDeltaTPicoseconds).value()) == row.tt);
+        if (i == 0) continue;
+        REQUIRE_THAT(row.tt.modifiedJulianDay() - fixture->rows.at(i - 1).tt.modifiedJulianDay(),
+                     WithinAbsOf(71.0, Tolerance{1.0}));
+    }
+    // Every row at a different time of day, which is what makes the Earth
+    // rotation angle sweep rather than repeat.
+    REQUIRE(timesOfDay.size() == fixture->rows.size());
+}
+
 // NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("the generated Sun fixture reads, in metres", "[fixture][horizons]") {
     const auto fixture = readStateVectors(std::filesystem::path{dataDirectory()} / "horizons" /

@@ -830,6 +830,12 @@ catch this class of thing. Run all six before pushing a change to `core/`.
   harmless, but it means two trees can be built from different sources while
   both report green. If a dependency ever behaves differently between trees,
   check this before anything else.
+- **`eraC2t06a` applies the TIO locator s' even with polar motion zero**, so
+  it is not `Rz(ERA)` times `eraC2i06a`: measured bit-identical in **0 of
+  200,000** epochs on 2026-09-20, differing by s' -- -47 µas a century from
+  J2000. Compose the rotation by hand and it will be a few tens of
+  microarcseconds from ERFA's for no visible reason. The third row, the pole,
+  *is* bit-identical between the two, which is what M1-63 and M1-08 rely on.
 - **The Epic Games overlay layer** logs a duplicate-layer warning at every
   Vulkan startup. It is noise, not a problem.
 - **There is one clang here now, and it is meant to stay that way.** 23.1.0 on

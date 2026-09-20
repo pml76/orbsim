@@ -19,10 +19,13 @@
 // property of the struct holding it, written in a comment on StateVector::pos.
 // Quat stays dimensionless, because a rotation is.
 //
+#include "core/Contract.hpp"
 #include "core/Units.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
+#include <cstddef>
 #include <limits>
 
 namespace orb {
@@ -253,9 +256,76 @@ rotateAxis(const Vec3<R1>& v, const Vec3<R2>& axis, Radians angle) noexcept {
     return (v * c) + (cross(u, v) * s) + (u * (dot(u, v) * (1.0 - c)));
 }
 
+// ------------------------------------------------------ RotationMatrix -----
+
+// A 3x3 rotation, row-major, as ERFA hands one over (M1-07).
+//
+// Storage and nothing else: no arithmetic, because nothing needs any yet
+// (CODING_GUIDELINES section 17 -- the cheapest code to maintain is the code
+// that does not exist). `src/astro/` builds one from ERFA's matrix and
+// quaternionFrom turns it into the rotation the rest of the project uses; the
+// type exists so that the matrix can cross an interface without ERFA's header
+// crossing with it, and so that a test can see what the quaternion was made
+// from without including one either (ADR 0016).
+//
+// A plain aggregate: its members are its interface, there is no invariant to
+// protect, and what must be true of it -- orthonormal, and a rotation rather
+// than a reflection -- is quaternionFrom's precondition, asserted there.
+struct RotationMatrix {
+    std::array<std::array<f64, 3>, 3> rows{};
+};
+
+// Is this a rotation? Orthonormal to `tolerance` in every element of M M^T - I,
+// and orientation-preserving.
+//
+// Public because it is quaternionFrom's precondition and a precondition
+// nothing can check from outside is one nobody can test. The determinant is
+// only asked for its sign: an orthonormal matrix has determinant +1 or -1, and
+// -1 is a reflection, which has no quaternion at all.
+[[nodiscard]] constexpr bool isRotation(const RotationMatrix& m, Tolerance tolerance) noexcept {
+    for (std::size_t i = 0; i < 3; ++i) {
+        for (std::size_t j = 0; j < 3; ++j) {
+            const f64 product = (m.rows.at(i).at(0) * m.rows.at(j).at(0)) +
+                                (m.rows.at(i).at(1) * m.rows.at(j).at(1)) +
+                                (m.rows.at(i).at(2) * m.rows.at(j).at(2));
+            const f64 expected = i == j ? 1.0 : 0.0;
+            if (!nearlyEqual(product, expected, tolerance)) return false;
+        }
+    }
+    const f64 determinant =
+        (m.rows.at(0).at(0) *
+         ((m.rows.at(1).at(1) * m.rows.at(2).at(2)) - (m.rows.at(1).at(2) * m.rows.at(2).at(1)))) -
+        (m.rows.at(0).at(1) *
+         ((m.rows.at(1).at(0) * m.rows.at(2).at(2)) - (m.rows.at(1).at(2) * m.rows.at(2).at(0)))) +
+        (m.rows.at(0).at(2) *
+         ((m.rows.at(1).at(0) * m.rows.at(2).at(1)) - (m.rows.at(1).at(1) * m.rows.at(2).at(0))));
+    return determinant > 0.0;
+}
+
+// How far from orthonormal a matrix may be and still be a rotation that
+// rounding produced, rather than one that was never a rotation at all.
+//
+// Measured 2026-09-19 before it was chosen (register decision 78): ERFA's
+// celestial-to-terrestrial matrices are orthonormal to 8.9e-16 over 400,000
+// epochs, and a matrix built as a product of three rotations -- which is how
+// the reference fixture's are made -- to 6.3e-15. Rounding therefore stays
+// under 1e-14, and 1e-12 is two orders above that: what fails this was never a
+// rotation. Uninitialised, scaled, transposed into a reflection, or built from
+// degrees.
+inline constexpr Tolerance kRotationTolerance{1e-12};
+
 // ---------------------------------------------------------------- Quat -----
 
-// Unit quaternion, w + xi + yj + zk, representing a body->world rotation.
+// Unit quaternion, w + xi + yj + zk.
+//
+// **Which frames it maps between is in the name of whatever produced it**, as
+// it is for a conversion between time scales: `earthFixedFromInertial(...)`
+// returns the rotation whose `rotate()` takes an inertial vector to an
+// Earth-fixed one, and a vessel's attitude takes a body vector to a world one.
+// (This said "representing a body->world rotation" until 2026-09-19, which was
+// true of the only producer there was then and not of the frame work -- ERFA's
+// matrix goes the other way, and a wrapper that transposed it to satisfy a
+// comment would be a transposition nobody asked for. Register decision 79.)
 struct Quat {
     // Public by design; see the note on Quantity::value in core/Scalar.hpp.
     // Unit length is a precondition of the rotation functions rather than an
@@ -311,6 +381,53 @@ struct Quat {
                bitsOf(y) == bitsOf(other.y) && bitsOf(z) == bitsOf(other.z);
     }
 };
+
+// The rotation a matrix represents, as a unit quaternion (M1-07).
+//
+// **The largest component first** (Shepperd, 1978). Each of the four
+// components can be had from the trace and the diagonal -- 4w^2 = 1 + trace,
+// 4x^2 = 1 + m00 - m11 - m22, and so on -- and the other three then follow
+// from the off-diagonal sums and differences, divided by it. Taking the
+// largest is what keeps that division away from zero: near a half turn the
+// scalar part vanishes, and the textbook route, which always divides by it,
+// loses everything. Measured on rotations within 1e-7 rad of a half turn
+// (tests/test_math.cpp): this stays within 4e-15 of the matrix where the
+// trace-only route is off by more than 1e-6.
+//
+// The sign that survives is the one that makes the largest component
+// positive. q and -q are the same rotation, so this is a choice of
+// representative and not of rotation -- but it is a choice, and a consumer
+// that interpolates between two of these has to pick its own hemisphere.
+//
+// Not constexpr: std::sqrt is not, before C++26.
+[[nodiscard]] inline Quat quaternionFrom(const RotationMatrix& m) noexcept {
+    ORBSIM_EXPECTS(isRotation(m, kRotationTolerance));
+    const f64 m00 = m.rows.at(0).at(0);
+    const f64 m01 = m.rows.at(0).at(1);
+    const f64 m02 = m.rows.at(0).at(2);
+    const f64 m10 = m.rows.at(1).at(0);
+    const f64 m11 = m.rows.at(1).at(1);
+    const f64 m12 = m.rows.at(1).at(2);
+    const f64 m20 = m.rows.at(2).at(0);
+    const f64 m21 = m.rows.at(2).at(1);
+    const f64 m22 = m.rows.at(2).at(2);
+    const f64 trace = (m00 + m11) + m22;
+
+    if (trace >= m00 && trace >= m11 && trace >= m22) {
+        const f64 s = std::sqrt(1.0 + trace) * 2.0; // 4w
+        return {0.25 * s, (m21 - m12) / s, (m02 - m20) / s, (m10 - m01) / s};
+    }
+    if (m00 >= m11 && m00 >= m22) {
+        const f64 s = std::sqrt(((1.0 + m00) - m11) - m22) * 2.0; // 4x
+        return {(m21 - m12) / s, 0.25 * s, (m01 + m10) / s, (m02 + m20) / s};
+    }
+    if (m11 >= m22) {
+        const f64 s = std::sqrt(((1.0 + m11) - m00) - m22) * 2.0; // 4y
+        return {(m02 - m20) / s, (m01 + m10) / s, 0.25 * s, (m12 + m21) / s};
+    }
+    const f64 s = std::sqrt(((1.0 + m22) - m00) - m11) * 2.0; // 4z
+    return {(m10 - m01) / s, (m02 + m20) / s, (m12 + m21) / s, 0.25 * s};
+}
 
 [[nodiscard]] inline Quat normalize(const Quat& q) noexcept {
     const f64 n = std::sqrt((q.w * q.w) + (q.x * q.x) + (q.y * q.y) + (q.z * q.z));

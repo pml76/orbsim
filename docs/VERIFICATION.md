@@ -599,7 +599,7 @@ rules a machine checks and which depend on a person remembering.
 |---|---|---|
 | 1 Test first | A person, visible in the diff | discipline |
 | 2 Never check code against itself | A person, at review | discipline |
-| 3 External truth | `check` -- since 2026-09-19 (M1-06) the Horizons mechanism and its first fixture exist, and `check` verifies the fixture is the one generated; no budget is asserted against it until M1-08. **The first budget against external data landed the same day with M1-05**: TDB - TT within 20 us of Skyfield's evaluation of USNO Circular 179, from a committed fixture, so it runs on every clone | **partial** |
+| 3 External truth | `check` -- since 2026-09-19 (M1-06) the Horizons mechanism and its first fixture exist, and `check` verifies the fixture is the one generated; no budget is asserted against it until M1-08. **The first budget against external data landed the same day with M1-05**: TDB - TT within 20 us of Skyfield's evaluation of USNO Circular 179, from a committed fixture, so it runs on every clone. **The second landed 2026-09-20 with M1-07**: the celestial-to-terrestrial rotation within 0.1 mas of Skyfield's equinox-based route, over 1,029 epochs, also committed | **partial** |
 | 4 Error budget | `check` — the test asserts the number | partial |
 | 5 Singularities | `check` — zero dt on every conic, near-rectilinear, e=0, i=0, i=pi, retrograde | **done** |
 | 6 Regression test per bug | A person, visible in the diff | discipline |
@@ -615,7 +615,7 @@ rules a machine checks and which depend on a person remembering.
 | 16 Determinism | `check` — `TEST_CASE("propagation is bit-identical across runs")`, over 100 steps | **done** |
 | 17 Dimensional analysis | The compiler — mp-units under `core/Units.hpp` and `Vec3<R>`, [ADR 0019](adr/0019-vectors-carry-their-unit.md) | **done** |
 | 18 Coverage | By hand, periodically. Orbit.cpp 99.2% lines | **done** |
-| 19 Mutation testing | By hand, periodically | exercised 2026-09-07, again 2026-09-19 on M1-04, M1-06 and M1-05, and 2026-09-20 on M1-86 -- twelve of twelve caught |
+| 19 Mutation testing | By hand, periodically | exercised 2026-09-07, again 2026-09-19 on M1-04, M1-06 and M1-05, and 2026-09-20 on M1-86 and M1-07 -- twelve of twelve caught each time |
 | 20 WSL, UBSan, second compiler | By hand, before a milestone | **done** |
 | 21 `check` is the definition of done | The build, both trees | **done** |
 | 22–24 The human rules | A person | discipline |
@@ -657,6 +657,21 @@ compiles: five of the reader's first eight "failed at compile time" because
 `if (false)` is a `-Wunreachable-code` error under `-Werror`, which says
 nothing about the tests. Rewritten to compile, all eight were caught at run
 time ([`PROJECT_STATE.md`](PROJECT_STATE.md) section 8).
+
+**On M1-07, 2026-09-20: twelve valid mutants, twelve caught**, across the
+ERFA wrapper, the matrix-to-quaternion conversion and the fixture reader, each
+built and run against all three suites that could catch it rather than only
+the one it was aimed at.
+
+Two of them are the argument for deriving tolerances rather than inheriting
+them (register decision 80). **Handing ERFA the date as one number instead of
+a day and a fraction** leaves the recovered stellar day 1.8e-5 s out -- which
+the 1e-4 s the plan carried would have *accepted*, and the 1e-7 s derived from
+what the arithmetic actually resolves catches. And **the intermediate frame
+including the Earth's turn** is caught only by the test added for it the same
+morning: the pole test cannot see a spin, which is precisely why that test was
+written before the mutants ran. The gap was found by asking what the suite
+could not see, and the mutant then proved the answer.
 
 **On M1-86, 2026-09-20: twelve valid mutants, twelve caught**, five of them
 by `static_assert`s before a test ran. Each compile-time catch was re-run to
