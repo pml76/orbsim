@@ -480,10 +480,19 @@ accepted survivor is recorded, as M1-05 has three; an undeclared survivor fails
 the run, so a mutant that starts surviving after a change is a result rather
 than a line nobody reads.
 
-**It is deliberately not part of `check`** -- a pass rebuilds once per mutant
-and takes minutes, and this rule is periodic by design. `mutate.py <file>
---verify` is the cheap half, checking only that every anchor still matches its
-file exactly once, which is what rots as code moves.
+**A pass is deliberately not part of `check`** -- it rebuilds once per mutant
+and takes minutes, and this rule is periodic by design. **The anchors are,
+since 2026-09-20**, as the `mutant-anchors` target: `mutate.py scripts/mutants
+--verify` checks only that every mutant's `find` string still matches its file
+exactly once, which is the half that rots as code moves, and it costs
+milliseconds.
+
+That is the same argument as `doc-links`, one level in. A mutant whose anchor
+no longer matches is a mutant that cannot run, and a mutant that cannot run is
+not a kill -- so a committed mutant file decays into a record of a pass that
+would no longer happen, and nothing says so. The script fails on an empty
+directory rather than passing, and names the mutant and the count when an
+anchor is stale. All three behaviours were exercised before it was wired in.
 
 ### Rule 20. Run the other implementations — a second and third front end, and UBSan
 

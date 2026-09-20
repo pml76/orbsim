@@ -3,6 +3,7 @@
 
     mutate.py scripts/mutants/m1-08.json                 run the pass
     mutate.py scripts/mutants/m1-08.json --verify        check the anchors only
+    mutate.py scripts/mutants --verify                   every task's anchors
     mutate.py scripts/mutants/m1-08.json --tree build/debug
 
 Why this exists: VERIFICATION.md rule 19 calls mutation testing "an act, not a
@@ -25,10 +26,13 @@ unless every file it will touch is clean, and it restores with `git checkout
 --` in a finally block, so an exception or a Ctrl-C cannot leave a mutant in
 the working tree. That is the one hazard a committed harness must not have.
 
-It is deliberately **not** part of `check`: a full pass builds the tree once
-per mutant and takes minutes, and rule 19 is periodic by design. `--verify` is
-the cheap half -- it only checks that every mutant's anchor still appears
-exactly once in its file, which is what rots as the code moves.
+A full pass is deliberately **not** part of `check`: it builds the tree once
+per mutant and takes minutes, and rule 19 is periodic by design. **`--verify`
+is, since 2026-09-20** -- it only checks that every mutant's anchor still
+appears exactly once in its file, which is the half that rots as the code
+moves, and it costs milliseconds. Given a directory it verifies every task's
+file, and **it fails on an empty directory rather than passing**: a check that
+silently stops checking is the failure mode ADR 0005 exists to prevent.
 
 The mutant file is JSON:
 
@@ -147,9 +151,45 @@ def run_mutant(root: Path, cmake: str, tree: str, mutant: dict) -> tuple:
     return "SURVIVED", ""
 
 
+def verify(root: Path, given: Path) -> int:
+    """Every anchor still matches its file exactly once.
+
+    An anchor that no longer matches is a mutant that cannot run, and a mutant
+    that cannot run is not a kill -- so this rots into a pass unless something
+    checks it. Hence `check`.
+    """
+    files = sorted(given.glob("*.json")) if given.is_dir() else [given]
+    if not files:
+        print(f"no mutant files in {given}: a check that checks nothing must fail "
+              f"rather than pass (ADR 0005)", file=sys.stderr)
+        return 1
+
+    problems, anchors = [], 0
+    for path in files:
+        spec = json.loads(path.read_text(encoding="utf-8"))
+        for mutant in spec["mutants"]:
+            anchors += 1
+            target = root / mutant["file"]
+            if not target.is_file():
+                problems.append(f"{path.name}: {mutant['name']}: "
+                                f"no such file {mutant['file']}")
+                continue
+            found = target.read_text(encoding="utf-8").count(mutant["find"])
+            if found != 1:
+                problems.append(f"{path.name}: {mutant['name']}: anchor appears "
+                                f"{found} times in {mutant['file']}")
+    for problem in problems:
+        print(problem, file=sys.stderr)
+    print(f"mutant-anchors: {len(files)} tasks, {anchors} anchors, "
+          f"{len(problems)} stale",
+          file=sys.stderr if problems else sys.stdout)
+    return 1 if problems else 0
+
+
 def main(argv: list) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("mutants", help="the JSON mutant file")
+    parser.add_argument("mutants",
+                        help="a JSON mutant file, or a directory of them with --verify")
     parser.add_argument("--tree", help="build tree; default is the file's")
     parser.add_argument("--cmake", default=DEFAULT_CMAKE)
     parser.add_argument("--verify", action="store_true",
@@ -157,27 +197,20 @@ def main(argv: list) -> int:
     args = parser.parse_args(argv[1:])
 
     root = repo_root()
-    spec = json.loads(Path(args.mutants).read_text(encoding="utf-8"))
+    given = Path(args.mutants)
+
+    if args.verify:
+        return verify(root, given)
+
+    if given.is_dir():
+        print("a directory is only accepted with --verify; name one file to run a pass",
+              file=sys.stderr)
+        return 2
+
+    spec = json.loads(given.read_text(encoding="utf-8"))
     mutants = spec["mutants"]
     tree = args.tree or spec["tree"]
     files = {m["file"] for m in mutants}
-
-    if args.verify:
-        problems = []
-        for mutant in mutants:
-            path = root / mutant["file"]
-            if not path.is_file():
-                problems.append(f"{mutant['name']}: no such file {mutant['file']}")
-                continue
-            found = path.read_text(encoding="utf-8").count(mutant["find"])
-            if found != 1:
-                problems.append(f"{mutant['name']}: anchor appears {found} times "
-                                f"in {mutant['file']}")
-        for problem in problems:
-            print(problem, file=sys.stderr)
-        print(f"mutants: {spec['task']}, {len(mutants)} anchors, {len(problems)} stale",
-              file=sys.stderr if problems else sys.stdout)
-        return 1 if problems else 0
 
     dirty = dirty_files(root, files)
     if dirty:

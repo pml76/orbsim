@@ -142,7 +142,9 @@ cmake --build build/debug --target check
 runs `clang-format --dry-run --Werror`, verifies that the lint configuration
 names only checks that exist and then runs `clang-tidy` over every translation
 unit with headers included, checks that no document links **or
-points in backticks** at something that is not there, and runs `ctest` --
+points in backticks** at something that is not there, checks that every
+mutation-pass anchor in `scripts/mutants/` still matches its file exactly once,
+and runs `ctest` --
 including a two-second run of
 the application under the Vulkan validation layers (`orbsim_smoke`, label
 `gpu`) that fails on any validation error. Both trees, because assertions are

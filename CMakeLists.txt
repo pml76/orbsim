@@ -1050,6 +1050,30 @@ else()
     )
 endif()
 
+# The mutation harness's anchors (VERIFICATION.md rule 19, scripts/mutate.py).
+# A pass itself is periodic and far too slow for `check`: it rebuilds the tree
+# once per mutant. But the anchors rot silently as the code moves -- a mutant
+# whose `find` string no longer matches is a mutant that cannot run, and a
+# mutant that cannot run is not a kill, which is the trap M1-06 recorded five
+# of. Verifying them costs milliseconds, and the argument is doc-links': a
+# reference that has rotted is invisible from the inside. The script fails on
+# an empty directory rather than passing, by the same rule as below.
+if(ORBSIM_PYTHON)
+    add_custom_target(mutant-anchors
+            COMMAND ${ORBSIM_PYTHON}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutate.py
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutants --verify
+            COMMENT "mutant-anchors: every mutation-pass anchor still matches once"
+            VERBATIM
+    )
+else()
+    add_custom_target(mutant-anchors
+            COMMAND ${CMAKE_COMMAND} -E false
+            COMMENT "python was not found on PATH; mutant-anchors cannot run"
+            VERBATIM
+    )
+endif()
+
 # The Horizons converter's golden test (M1-06). The converter sits in the
 # provenance chain of every Horizons fixture, so it is tested in `check` like
 # anything else: a synthetic response must convert to a known text, convert
@@ -1086,6 +1110,7 @@ add_dependencies(check
         lint
         format-check
         doc-links
+        mutant-anchors
 )
 if(ORBSIM_BUILD_APP)
     add_dependencies(check orbsim orbsim_render_header_selfcheck)
