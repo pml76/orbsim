@@ -599,8 +599,8 @@ rules a machine checks and which depend on a person remembering.
 |---|---|---|
 | 1 Test first | A person, visible in the diff | discipline |
 | 2 Never check code against itself | A person, at review | discipline |
-| 3 External truth | `check` -- since 2026-09-19 (M1-06) the Horizons mechanism and its first fixture exist, and `check` verifies the fixture is the one generated; no budget is asserted against it until M1-08. **The first budget against external data landed the same day with M1-05**: TDB - TT within 20 us of Skyfield's evaluation of USNO Circular 179, from a committed fixture, so it runs on every clone. **The second landed 2026-09-20 with M1-07**: the celestial-to-terrestrial rotation within 0.1 mas of Skyfield's equinox-based route, over 1,029 epochs, also committed | **partial** |
-| 4 Error budget | `check` — the test asserts the number | partial |
+| 3 External truth | `check` -- since 2026-09-19 (M1-06) the Horizons mechanism and its first fixture exist, and `check` verifies the fixture is the one generated; no budget is asserted against it until M1-08. **The first budget against external data landed the same day with M1-05**: TDB - TT within 20 us of Skyfield's evaluation of USNO Circular 179, from a committed fixture, so it runs on every clone. **The second landed 2026-09-20 with M1-07**: the celestial-to-terrestrial rotation within 0.1 mas of Skyfield's equinox-based route, over 1,029 epochs, also committed. **The third the same day, with M1-08, and it is the one this rule was written for**: the geocentric Sun within 0.02″ and 5e-8 AU of **JPL Horizons**, at the 40 epochs of the fixture M1-06 built the machinery for -- the first budget asserted against Horizons itself, which rule 3 named as "the single highest-value test asset this project can acquire" | **done for what exists** |
+| 4 Error budget | `check` — the test asserts the number, and since 2026-09-20 three of them are derived from measurement against external data rather than inherited from a plan | **done for what exists** |
 | 5 Singularities | `check` — zero dt on every conic, near-rectilinear, e=0, i=0, i=pi, retrograde | **done** |
 | 6 Regression test per bug | A person, visible in the diff | discipline |
 | 7 Assert vs. report | `check` (clang-tidy, partially) + review | partial |
@@ -629,12 +629,23 @@ reference that replaced the independence. The row says "weakened" rather than
 "done" because a status table whose entries only ever improve is a table nobody
 should believe.
 
-Rule 4 is *partial*: one error budget is genuinely derived rather than tuned --
-the near-rectilinear round trip, whose tolerance is stated as the conditioning
-law `ulp / (1-e)^2` it was measured to follow. What is missing is the external
-half, which waits on rule 3. *(2026-09-19: it has begun -- M1-05's TDB - TT
-budget is asserted against Skyfield's series, and set at twice that series' own
-measured distance from the full one, 9.28 us, rather than tuned.)*
+Rule 4 was *partial* for a long time: one error budget was genuinely derived
+rather than tuned -- the near-rectilinear round trip, whose tolerance is stated
+as the conditioning law `ulp / (1-e)^2` it was measured to follow -- and what
+was missing was the external half, which waited on rule 3. *(2026-09-19: it
+began -- M1-05's TDB - TT budget is asserted against Skyfield's series, and set
+at twice that series' own measured distance from the full one, 9.28 us, rather
+than tuned.)*
+
+**2026-09-20 closed it for the code that exists.** M1-07's 0.1 mas and
+M1-08's 0.02″ and 5e-8 AU are both set at about twice a measurement taken
+before the number was written down, and both tightened a looser figure the
+plan had carried -- M1-07 from 0.1″, M1-08 from 0.1″ and 1e-6 AU. M1-08's
+entry records the uncomfortable half honestly: no *named* defect lives between
+0.02″ and 0.1″, and the reason to tighten is that a budget with twelvefold
+headroom has stopped testing anything. The rows say "done for what exists"
+rather than "done", because every new accuracy claim has to earn its own
+budget the same way.
 
 Rule 5's orbital singularities are now covered -- `e = 0`, either side of
 `e = 1`, `i = 0`, `i = pi`, retrograde, near-rectilinear to `e = 0.9999`, and a
@@ -673,6 +684,24 @@ morning: the pole test cannot see a spin, which is precisely why that test was
 written before the mutants ran. The gap was found by asking what the suite
 could not see, and the mutant then proved the answer.
 
+**On M1-08, 2026-09-20: twelve valid mutants, twelve caught** -- three by
+`static_assert`s before a test ran, including the one pinning this project's
+astronomical unit to ERFA's own, and one against the lift of decision 89,
+which is what shows `astro/EarthOrientation.cpp` is still covered after
+`TwoPartDate` was deleted from it. **Two were invalid on the first attempt
+and had to be rewritten to compile**, which is M1-06's lesson arriving again:
+`if (false)` is an unused-variable error under `-Werror`, and a mutant naming
+a function the file does not include is a mutation of nothing.
+
+And one kill is recorded for what it actually was rather than for what it
+looks like. **Handing `eraEpv00` a date 1.7 ms out -- the size of TDB - TT --
+is caught, but only by the span cases**, which see the shifted date cross
+ERFA's boundary; the budget cannot see it, because 1.7 ms of solar motion is
+7e-5″ against a 0.02″ claim. That is exactly what `astro/Sun.hpp` says the
+suite cannot see, and the mutant confirms the limit rather than removing it.
+A "12 of 12" with no note would have implied a budget that can catch a
+time-scale substitution. It cannot.
+
 **On M1-86, 2026-09-20: twelve valid mutants, twelve caught**, five of them
 by `static_assert`s before a test ran. Each compile-time catch was re-run to
 record *which* assertion fired, because "it did not compile" is not by itself
@@ -707,16 +736,20 @@ check whether a test is independent of the code it tests), and the honest
 response is to name them as the ones that need attention at review, rather than
 to pretend the list is self-enforcing.
 
-Three remain, and the order is the order they will catch something: **3
-(Horizons fixtures), then the external half of 4 (error budgets against them),
-then 15 (runtime monitors).** 3 and 4 are one piece of work really, and ADR 0006
-makes every accuracy claim in the project depend on it. *(2026-09-19: 3 is now
-partial. The reader, the converter and the first fixture exist and `check`
-verifies them; what 3 and 4 still lack is a budget asserted against the data,
-which M1-05 and M1-08 bring. M1-05 brought the first, the same day: TDB - TT
-within 20 us of an implementation written independently of SOFA, committed
-rather than generated, so no clone skips it.)* 15 waits on there being
-a simulation loop to monitor, which is milestone 1 phase E.
+Three used to remain, and the order was the order they would catch something:
+**3 (Horizons fixtures), then the external half of 4 (error budgets against
+them), then 15 (runtime monitors).** 3 and 4 are one piece of work really, and
+ADR 0006 makes every accuracy claim in the project depend on it. *(2026-09-19:
+3 became partial. The reader, the converter and the first fixture existed and
+`check` verified them; what 3 and 4 still lacked was a budget asserted against
+the data, which M1-05 and M1-08 bring. M1-05 brought the first, the same day:
+TDB - TT within 20 us of an implementation written independently of SOFA,
+committed rather than generated, so no clone skips it.)*
+
+***2026-09-20: M1-08 brought the one 3 was written for** -- the geocentric Sun
+against JPL Horizons, at 0.02″ and 5e-8 AU. Both rows now read "done for what
+exists".* **Only 15 remains**, and it waits on there being a simulation loop to
+monitor, which is milestone 1 phase E.
 
 Rule 11 was the first one built, on 2026-09-07, and it paid immediately: adding
 the composition and scale-invariance properties is what turned rule 5 from a

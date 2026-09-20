@@ -121,9 +121,9 @@ library files with **zero warnings** under `-Wall -Wextra -Wpedantic
   written down; the UT1 conversion already takes dUT1 as a parameter.
 - **Which independent implementation each task checks against.** M1-05 and
   M1-07 each settle theirs, and record its terms, before relying on it.
-- **What the Sun wrapper does outside 1900-2100**, where `eraEpv00` warns that
-  its stated accuracy lapses. That is [M1-08](../plan/tasks/m1-08-solar-position.md)'s
-  question, put to the owner before that task starts.
+- ~~**What the Sun wrapper does outside 1900-2100**, where `eraEpv00` warns
+  that its stated accuracy lapses.~~ *Decided as decision 31 on 2026-09-11 and
+  **built and tested on 2026-09-20** with M1-08; see the updates below.*
 
 ## Update, 2026-09-11: the Sun outside ERFA's span is reported by name
 
@@ -211,3 +211,43 @@ and what measuring it changed.
   angle comes out within 0.04 µas that way, and within 9.5 µas with the "MJD
   method" `astro/Tdb.cpp` uses -- where it cannot matter, since TDB - TT moves
   by microseconds a day and ERA by a whole turn.
+
+## Update, 2026-09-20: the Sun, and what this record no longer leaves open
+
+[M1-08](../plan/tasks/m1-08-solar-position.md) landed the last of phase A's
+astronomy, and with it **the open question above is closed rather than merely
+answered**: the wrapper exists, `eraEpv00`'s status is what draws the
+boundary, and tests at both ends -- a millisecond either side, from both
+functions -- pin it. Register decisions 85 to 91.
+
+What the work added to this record's reasoning:
+
+- **The budget is now measured, not inherited.** `eraEpv00`'s own note 4
+  claims 3.7 km RMS and 11.2 km worst against DE405 over 1900-2100, which is
+  0.016" of direction. Against **JPL Horizons (DE441)** at the fixture's 40
+  epochs over 2000-2050, measured worst is **0.0085" and 2.14e-8 au**, and the
+  asserted budget is twice that: 0.02" and 5e-8 au, where the plan had carried
+  0.1" and 1e-6 au. **The asserted span is the fixture's and is narrower than
+  ERFA's**, and the budget is tighter than ERFA's own claim over the wider
+  span -- so widening the assertion means re-measuring, not pointing the test
+  at more epochs.
+- **The astronomical unit is ERFA's, proved by the compiler.** `eraEpv00`'s
+  series is expressed in au, so a different constant would rescale the answer
+  silently by 6e-11 -- about 9 m, which no test here resolves. A
+  `static_assert` in `astro/Sun.cpp` requires this project's
+  `kAstronomicalUnit` to be bit-identical to `ERFA_DAU`.
+- **Both output arrays are passed, and only one is read.** ERFA's note 5
+  permits a single array for both, but it then receives the *barycentric*
+  values -- up to about 0.01 au from the heliocentric ones, 0.6 degrees of
+  solar direction. A mutant confirms the suite catches that substitution.
+- **What the suite cannot see is written in the header.** TT handed in place
+  of TDB is 7e-5" and invisible to any budget this data supports; ERFA's own
+  note 1 permits the substitution. The mutation pass confirmed the limit
+  rather than removing it: a 1.7 ms shift is caught only by the span cases,
+  which see the date cross the boundary, and never by the accuracy claim.
+- **`TwoPartDate` is gone.** `astro/EarthOrientation.cpp`'s private copy of
+  the two-part date was a field-for-field duplicate of `core/Time.hpp`'s
+  `JulianDate`, whose own comment already read "the split may be anything at
+  all -- ERFA's convention". The measurement in the entry above now lives on
+  `JulianDate`, and `src/astro/` hands ERFA that type directly. `astro/Tdb.cpp`
+  keeps the MJD split it measured for itself.

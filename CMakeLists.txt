@@ -454,6 +454,7 @@ endif()
 # ---------------------------------------------------------------------------
 set(ORBSIM_CORE_SOURCES
         src/astro/EarthOrientation.cpp
+        src/astro/Sun.cpp
         src/astro/Tdb.cpp
         src/core/LeapSeconds.cpp
         src/orbit/Orbit.cpp
@@ -542,6 +543,7 @@ set(ORBSIM_TESTS
         test_math
         test_orbit
         test_orbit_scales
+        test_sun
         test_time
 )
 foreach(test_name IN LISTS ORBSIM_TESTS)
@@ -854,6 +856,7 @@ endfunction()
 
 orbsim_add_header_selfcheck(orbsim_header_selfcheck orbsim_core
         astro/EarthOrientation.hpp
+        astro/Sun.hpp
         astro/Tdb.hpp
         core/Contract.hpp
         core/Scalar.hpp

@@ -253,6 +253,12 @@ using Eccentricity = Scalar<kEccentricityKind[mp_units::one]>;
 // what lets `position * fdot` be checked as a velocity.
 using PerSecond = Scalar<mp_units::one / units::kSecond>;
 
+// Radiant flux per unit area, W/m^2. The solar constant is one, and so is
+// everything the radiometric renderer exposes for (M1-08, M1-18). Named so
+// that an irradiance cannot be handed to something expecting a radiance,
+// W/(m^2 sr), which is the mistake this domain actually makes.
+using Irradiance = Scalar<mp_units::si::watt / mp_units::pow<2>(units::kMetre)>;
+
 // Standard gravitational parameter GM of a central body, m^3/s^2.
 using GravParam = Scalar<mp_units::pow<3>(units::kMetre) / mp_units::pow<2>(units::kSecond)>;
 
@@ -365,6 +371,18 @@ concept equatable = requires(const A& x, const B& y) { x == y; };
 static_assert(addable<Metres, Metres>);
 static_assert(!addable<Metres, Seconds>, "a length plus a time must not compile");
 static_assert(!addable<Radians, Eccentricity>, "an angle plus a ratio must not compile");
+static_assert(!addable<Irradiance, Metres>, "nor a flux density plus a length");
+
+// Irradiance is a power over an area, and the algebra knows it. The second of
+// these is what stops the inverse-square law in astro/Sun.hpp being written
+// with the ratio the wrong way up: an irradiance times an area is a power, and
+// the unit comes out of the library rather than out of a comment.
+static_assert(!std::is_constructible_v<Irradiance, Metres>, "nor a length a flux density");
+static_assert(nearlyEqual((Irradiance{1361.0} * (Metres{2.0} * Metres{3.0}))
+                              .numerical_value_in(mp_units::si::watt),
+                          8166.0,
+                          Tolerance{0.0}),
+              "an irradiance over an area is a power");
 
 // **Two units of one dimension must not add either.** Both of these are
 // angles, so mp-units' own operator+ is perfectly willing; the deleted
