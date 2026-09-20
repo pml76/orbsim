@@ -963,8 +963,34 @@ static_assert(kTtMinusTaiPicoseconds == (32 * kPicosecondsPerSecond) + 184'000'0
 // A *negative* leap second needs nothing here. The second it removes is skipped
 // because the next step takes over exactly where that second would have begun,
 // and the subtraction never produces it.
+// **A TAI instant outside the calendar is reported, not asserted** (found by
+// `tests/fuzz_time.cpp` on 2026-09-19, fixed 2026-09-20). It is not a bug for
+// one to exist: arithmetic may carry an instant past 9999 and `toCalendar` is
+// where that is reported, and `taiFromTt` puts the first 32.184 s of year 1 in
+// year 0. Both are conditions a caller can produce, so ADR 0002 reports them --
+// and the table has no DeltaAT at either end anyway, so the names already
+// existed. This used to assert instead, which aborted a build with assertions
+// live on an instant a scenario file can name, while a Release build reported
+// correctly.
+//
+// The two bounds are read off the day as a double, before the cast: a day past
+// what an int64 holds -- `tai + Seconds{1e300}` reaches one -- would make that
+// cast undefined. They are a day wide on purpose. The era begins at 00:00:10
+// TAI on its first day and the expiry falls at 00:00:37 TAI on its last, so a
+// day at either edge is passed on to the exact comparisons below, which know
+// the second.
 [[nodiscard]] inline std::expected<UtcTime, TimeError> utcFromTai(TaiTime tai) noexcept {
-    ORBSIM_EXPECTS(detail::inCalendarRange(tai.modifiedJulianDay()));
+    // Only a violated precondition upstream leaves a day that is not finite
+    // (see operator+); the report behind the assertion keeps a Release build
+    // from casting a NaN, which would be undefined.
+    ORBSIM_EXPECTS(isFinite(tai.modifiedJulianDay()));
+    if (!isFinite(tai.modifiedJulianDay())) return std::unexpected(TimeError::NotFinite);
+    if (tai.modifiedJulianDay() < static_cast<f64>(kLeapSecondEraFirstMjd)) {
+        return std::unexpected(TimeError::BeforeLeapSecondEra);
+    }
+    if (tai.modifiedJulianDay() > static_cast<f64>(kLeapSecondTableExpiryMjd)) {
+        return std::unexpected(TimeError::LeapSecondTableExpired);
+    }
     const auto taiMjd = static_cast<std::int64_t>(tai.modifiedJulianDay());
     const std::int64_t wholeSeconds = tai.picosecondOfDay() / kPicosecondsPerSecond;
     const std::int64_t rest = tai.picosecondOfDay() % kPicosecondsPerSecond;

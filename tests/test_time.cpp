@@ -1669,6 +1669,60 @@ TEST_CASE("the leap-second table refuses by name", "[time][leap][errors]") {
                  .has_value());
 }
 
+// **A TAI instant outside the calendar is reported, not asserted.**
+//
+// Found by `fuzz_time` on 2026-09-19, and named after the symptom: a build with
+// assertions live aborted where a Release build had been answering correctly
+// all along. TT 0001-01-01T00:00:00 is 0000-12-31T23:59:27.816 TAI, a year the
+// calendar does not hold, and `utcFromTai` asserted that the day was inside it.
+// Arithmetic reaches the same place from the other end -- an instant carried
+// past 9999 is not an error, and `toCalendar` is where that is reported -- so
+// the condition is one a caller can produce, and ADR 0002 says those are
+// reported. The two edges also decide which name: the era below, the table's
+// expiry above.
+// Catch2 macro expansion, not written complexity. See the note above.
+// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+TEST_CASE("a TAI instant outside the calendar is reported rather than asserted",
+          "[time][leap][errors]") {
+    // The first 32.184 s of year 1, in TT: every one of them has a TAI in
+    // year 0, and none of them may abort.
+    for (const f64 second : {0.0, 10.0, 32.0}) {
+        const TtTime tt =
+            instant<TimeScale::Tt>({.year = 1, .month = 1, .day = 1, .second = Seconds{second}});
+        CAPTURE(second);
+        REQUIRE(!detail::inCalendarRange(taiFromTt(tt).modifiedJulianDay()));
+        const auto utc = utcFromTt(tt);
+        INFO(errorName(utc));
+        REQUIRE(!utc.has_value());
+        REQUIRE(utc.error() == TimeError::BeforeLeapSecondEra);
+    }
+
+    // Arithmetic carries an instant past the calendar's far end, where the
+    // table has no DeltaAT either -- including a day far past what an int64
+    // holds, which nothing may cast.
+    const TaiTime last =
+        instant<TimeScale::Tai>({.year = 9999, .month = 12, .day = 31, .hour = 23});
+    for (const f64 seconds : {86'400.0 * 400, 1e300}) {
+        const auto beyond = utcFromTai(last + Seconds{seconds});
+        CAPTURE(seconds);
+        INFO(errorName(beyond));
+        REQUIRE(!beyond.has_value());
+        REQUIRE(beyond.error() == TimeError::LeapSecondTableExpired);
+    }
+
+    // And the day the table expires on is not refused wholesale: the seconds of
+    // it before 00:00:37 TAI are 2026-12-31 in UTC, and the picosecond after is
+    // the first the bulletin does not cover.
+    const TaiTime lastCovered =
+        taiAt({.mjd = kLeapSecondTableExpiryMjd, .picosecondOfDay = (37 * kSecond) - 1});
+    const UtcTime covered = converted(utcFromTai(lastCovered));
+    REQUIRE_THAT(covered.modifiedJulianDay(),
+                 WithinAbsOf(static_cast<f64>(kLeapSecondTableExpiryMjd - 1), Tolerance{0.0}));
+    REQUIRE(covered.picosecondOfDay() == kDay - 1);
+    REQUIRE(!utcFromTai(taiAt({.mjd = kLeapSecondTableExpiryMjd, .picosecondOfDay = 37 * kSecond}))
+                 .has_value());
+}
+
 // **A negative leap second, which has never been inserted.**
 //
 // The mechanism allows one and the Earth's rotation has been making one likelier,

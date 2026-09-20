@@ -1270,6 +1270,47 @@ evaluations of an 800-term series.
 
 ---
 
+### A TAI instant outside the calendar, reported rather than asserted, 2026-09-20
+
+`utcFromTai` in `src/core/Time.hpp` asserted that its argument's day lay inside
+the calendar. **That is a condition a caller can produce**, so under
+[ADR 0002](adr/0002-error-handling-strategy.md) it belongs in the return type,
+and asserting it aborted any build with assertions live -- while a Release
+build, where the assertion is compiled out, had been answering correctly all
+along.
+
+Two ways in, neither exotic. `taiFromTt` puts the first 32.184 s of year 1 in
+year 0, so `utcFromTt(0001-01-01T00:00:00 TT)` aborted; and arithmetic may
+carry an instant past 9999, which `TimePoint` documents as no error at all and
+`toCalendar` reports. Measured in a Release build before the fix was chosen:
+the first gives `BeforeLeapSecondEra`, the second `LeapSecondTableExpired` --
+the right answers, from code the assertion was standing in front of.
+
+**The fuzzer found it**, in the run M1-86 added its claims to: 37,731
+executions in, on a date of 0001-01-01 with a DeltaT of 8e-310. Nothing before
+it had fed an arbitrary TT instant to `utcFromTt`; M1-86's new road from TT to
+UT1 goes through it, which is what put the input in reach. This is the same
+shape as the fourth defect in [`VERIFICATION.md`](VERIFICATION.md) rule 13's
+list -- `propagate`'s postcondition asserted where it should have reported, a
+Debug build aborting on user input -- and the fuzzer found that one too.
+
+The fix reports both edges by name and reads the bounds off the day **as a
+double, before the cast to an integer**: `tai + Seconds{1e300}` reaches a day
+past what an int64 holds, and casting it would have been undefined. The bounds
+are a day wide, because the era begins at 00:00:10 TAI on its first day and the
+expiry falls at 00:00:37 TAI on its last, so a day at either edge is still
+passed to the exact comparison that knows the second. A NaN day stays asserted
+-- only a violated precondition upstream leaves one -- with a `NotFinite`
+report behind it, as `operator+` does.
+
+The owner ruled the shape of the fix before it was written: report at the root,
+rather than guarding the one new caller or `utcFromTt` alone, so that every
+caller is covered; and as its own commit, ahead of the feature whose fuzzing
+found it. The regression test is named after the symptom, and it was seen
+failing in the `asan` tree -- where assertions are live and the release C
+runtime prints rather than opening the modal dialog a Debug build would
+(`PROJECT_STATE.md` section 8).
+
 ## 4. The bug that justified the session
 
 `propagate()` returned `SolverDidNotConverge` for a plain circular orbit at
