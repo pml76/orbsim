@@ -1429,6 +1429,126 @@ failing in the `asan` tree -- where assertions are live and the release C
 runtime prints rather than opening the modal dialog a Debug build would
 (`PROJECT_STATE.md` section 8).
 
+### M1-08, the solar position, 2026-09-20
+
+`src/astro/Sun.hpp` and `.cpp` wrap ERFA's `eraEpv00` -- the Earth's
+heliocentric position, negated -- to give the geocentric Sun: geometric, ICRF,
+metres, reporting `OutsideEphemerisRange` past the span ERFA vouches for.
+`Irradiance` joins `core/Units.hpp`. Nine questions went up before the code and
+were ruled the same day, decisions 85 to 91.
+
+**Both budgets tightened, because both were measured first.** Against JPL
+Horizons (DE441) at the fixture's forty epochs over 2000-2050 the worst is
+**0.0085" of direction and 2.14e-8 au of distance**; the asserted budgets are
+0.02" and 5e-8 au, where the plan had carried 0.1" and 1e-6 au. That is
+decision 54's rule -- about twice the measurement -- and it makes this the
+first error budget the project asserts against Horizons itself, which
+[`VERIFICATION.md`](VERIFICATION.md) rule 3 named as the highest-value test
+asset it could acquire. Rules 3 and 4 moved to "done for what exists"; only
+rule 15 remains.
+
+The entry records the uncomfortable half: **no named defect lives between
+0.02" and 0.1"**. Aberration is 20.5", a barycentric-for-heliocentric slip
+0.6 degrees, and every plausible error fails either budget. The reason to
+tighten is that a budget with twelvefold headroom has stopped testing
+anything.
+
+#### The apsis window, which is the lesson worth keeping
+
+The task document asked that "the annual minimum and maximum distances" land at
+0.9833 and 1.0167 au. The obvious reading is a calendar year. **A calendar year
+is the wrong window, and it is wrong in a way no distance assertion can see.**
+
+Perihelion falls 2-5 January, so 1 January to 31 December holds the early-
+January passage *and* the approach to the next one, and the deeper of the two
+wins. Near perihelion `r - q` is about `2.56e-6 dt^2` au for `dt` in days, so
+being four days early costs 4.1e-5 au -- while the year-to-year spread of the
+perihelion distance itself is **1.11e-4 au**, nearly three times larger.
+Whenever next January's passage is the deeper one by more than about 4e-5 au,
+the 31 December sample wins.
+
+It happens in **two of the fifty years**, 2003 and 2047:
+
+```
+2003  minimum on 12-31  0.9833182     <- late December
+2004  minimum on 01-04  0.9832650     <- four days later, and deeper
+```
+
+`0.9832650 + 4.1e-5 = 0.9833059`, against `0.9833182` measured, which is the
+mechanism accounted for.
+
+**Why it would have survived review and testing alike.** The distance passes
+under either window -- 0.9833182 is a perfectly good perihelion distance,
+comfortably inside 1e-4 au of the published figure. Only the *date* is wrong,
+and only in two years out of fifty, so a single-year test had a 96% chance of
+picking a year that passed. And the task document asked only for the distance,
+so implemented exactly as written the test would never have failed at all,
+and the window would have stayed wrong with nothing to show it.
+
+It surfaced only because the months to assert were **measured rather than
+assumed**: a spike printed `perihelion months 1..12, days 2..31`, and that
+`12` is the whole finding. The fix is the window, not a tolerance -- 1 October
+to 31 March and 1 April to 30 September, one apsis each -- and with it the
+dates became clean enough to assert, 2-5 January and 3-6 July, so the test now
+makes the stronger claim rather than the weaker one.
+
+In this project's own terms it is rule 5 in an unexpected place: the
+singularity is not in the physics but in **the window boundary landing on the
+feature being extremised**. And it is rule 23, because a passing distance
+assertion was agreement that proved nothing.
+
+The same session's equinox tolerance has the same moral in miniature: 2e-4
+degrees was proposed, and measured to fail on 2025 (-3.13e-4) before it was
+written down. The 1e-3 that replaced it is derived -- minute-rounding of the
+published instant, plus the Earth's wobble about the Earth-Moon barycentre.
+
+#### The sweep that followed
+
+The owner asked whether the same shape hid elsewhere. Every apsis in
+`src/orbit/` and in `coding-guidelines-example/` turns out to be **analytic** --
+`1 - e` and `1 + e`, from the eccentricity vector -- and so cannot have the
+defect. One other site searches a bounded window for a feature:
+`tests/test_astro_time.cpp` counts the zero crossings of TDB - TT over 2024
+and 2025, and the upward crossing is at perihelion, in early January, against
+a window that opens on 1 January.
+
+Measured rather than reasoned about: the four counted crossings are
+2024-01-05, 2024-07-05, 2025-01-03 and 2025-07-05; the first is 4.149 days
+inside the start, and the fifth -- 2026-01-03, which must not be counted -- is
+**2.904 days past the end**, against that test's own 2.1-day crossing
+tolerance. A 1.38x margin.
+
+It was left alone, on two grounds the apsis case did not have: the assertion is
+`crossings.size() == 4`, which fails **loudly** if the count moves, where the
+apsis distance passed under either window; and the crossings are deterministic,
+because ERFA is pinned. The margin is now written at the assertion, so that
+whoever next changes that window's start or length knows it is under three
+days.
+
+#### The rest
+
+`TwoPartDate` was **deleted** rather than lifted (decision 89). It was a
+field-for-field copy of `core/Time.hpp`'s `JulianDate`, whose own comment
+already read "the split may be anything at all -- ERFA's convention", so
+`src/astro/` now hands ERFA that type directly and decision 83's measurement
+moved onto it. The owner's first instruction was to lift it into a shared
+header; the finding was put up, and the ruling changed.
+
+`kAstronomicalUnit` is bit-identical to `ERFA_DAU` by `static_assert`, because
+`eraEpv00`'s series is in au and a constant that differed would rescale the
+answer by 6e-11 -- about 9 m -- below anything the data resolves.
+
+The mutation pass was twelve valid mutants, twelve caught, three by
+`static_assert` before a test ran. Two were invalid on the first attempt and
+had to be rewritten to compile, which is M1-06's lesson arriving again. **One
+kill is recorded for what it actually was**: a 1.7 ms date shift, the size of
+TDB - TT, is caught only by the span cases, never by the accuracy budget it
+appears to test -- which is exactly what `astro/Sun.hpp` says the suite cannot
+see. A bare "twelve of twelve" would have implied a budget that catches a
+time-scale substitution. It does not. That pass is now
+[`scripts/mutate.py`](../scripts/mutate.py) with its mutants in
+`scripts/mutants/`, and `check` verifies the anchors still match.
+
 ## 4. The bug that justified the session
 
 `propagate()` returned `SolverDidNotConverge` for a plain circular orbit at

@@ -270,6 +270,25 @@ TEST_CASE("the annual term peaks and crosses zero where the physics says", "[ast
     // Twice a year, and only there: the other terms' slopes are two orders of
     // magnitude below the annual term's where it crosses zero, so they cannot
     // add a crossing of their own.
+    //
+    // **The window edge sits near a crossing, and the margin is measured**
+    // (2026-09-20, while sweeping for M1-08's apsis-window defect). The upward
+    // crossing is at perihelion, which is in early January, and this window
+    // opens on 1 January -- so the same shape as the apsis sweep, where a
+    // calendar year turned out to hold two perihelia. Measured here: the four
+    // counted crossings are 2024-01-05, 2024-07-05, 2025-01-03 and 2025-07-05,
+    // the first of them 4.149 days inside the start, and the fifth --
+    // 2026-01-03, which must *not* be counted -- is **2.904 days past the
+    // end**, against this test's own 2.1-day crossing tolerance. A 1.38x
+    // margin.
+    //
+    // It is left as it is, on two grounds the apsis case did not have: this
+    // assertion fails *loudly* if the count moves, where the apsis distance
+    // passed under either window; and the crossings are deterministic, because
+    // ERFA is pinned, so nothing here can flap between runs or toolchains.
+    // **Anyone changing the window's start or length should know the margin is
+    // under three days**, which is why it is written down rather than left to
+    // be rediscovered.
     REQUIRE(crossings.size() == 4);
     const f64 tolerance = kCrossingToleranceDays * kMeanAnomalyDegreesPerDay;
     for (const Crossing& c : crossings) {
