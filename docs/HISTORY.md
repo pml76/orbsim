@@ -1354,7 +1354,8 @@ task of its own, numbered 86 as M1-85 was numbered, and committed ahead of the
 task that needed it (decisions 72 and 73).
 
 **What decided the answer was measurement, not preference.** The IERS EOP 20
-C04 series, 1962 to 2026-08-20, downloaded and summed two independent ways --
+C04 series, 1962 to 2026-08-20 -- `https://hpiers.obspm.fr/iers/eop/eopc04/eopc04.1962-now`,
+one curl -- downloaded and summed two independent ways --
 the leap-second table against the series' own UT1 - UTC, and the integral of
 its excess length of day, agreeing to 3.7 ms -- says DeltaT drifts at worst
 1.15 s in a year (1972) and 10.4 s in ten; since 2000, 0.54 s and 3.5 s; and
