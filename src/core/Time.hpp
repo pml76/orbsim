@@ -100,6 +100,10 @@ enum class TimeError : std::uint8_t {
     // series, in time -- so a wrong one is reported, not asserted (ADR 0002).
     DeltaUt1OutOfRange,      // |UT1 - UTC| beyond 0.9 s, which UTC is defined never to reach
     InsideRemovedLeapSecond, // UT1 in the second a negative leap second removes from UTC
+
+    // TT - UT1 (M1-86). A DeltaT arrives from outside too -- a scenario, a
+    // prediction -- and is reported rather than asserted for the same reason.
+    DeltaTOutOfRange, // |TT - UT1| beyond 10^6 s, past what its picoseconds are built to hold
 };
 
 [[nodiscard]] constexpr std::string_view describe(TimeError error) noexcept {
@@ -126,6 +130,9 @@ enum class TimeError : std::uint8_t {
     case TimeError::InsideRemovedLeapSecond:
         return "that UT1 falls in the second a negative leap second removes from UTC, so no "
                "UTC instant has it";
+    case TimeError::DeltaTOutOfRange:
+        return "TT - UT1 is beyond 10^6 s, past what its picoseconds are built to hold; no model "
+               "of the Earth's rotation reaches it inside years 1 to 9999";
     }
     return "unknown time error";
 }
@@ -1156,6 +1163,157 @@ utcFromUt1(std::span<const LeapSecondStep> table, Ut1Time ut1, DeltaUt1 deltaUt1
     return utcFromUt1(kIersLeapSeconds, ut1, deltaUt1);
 }
 
+// --- UT1 from TT (M1-86) --------------------------------------------------------
+//
+// **The Earth turns on UT1, and the simulation's clock runs on TT** (register
+// decision 72). Before M1-86 the only road between the two went through UTC --
+// TT to TAI to UTC by the leap-second table, then UT1 = UTC + DeltaUT1 -- so the
+// Earth's orientation inherited the table's two edges: refused before
+// 1972-01-01 and from 2027-01-01, and, with DeltaUT1 unmodelled, stepping back
+// a second at the midnight after every leap second while TT ran on. None of that
+// is physics. UT1 is the angle the Earth has turned through, continuous in TT,
+// and the table is a labelling convention for UTC. The table refuses because a
+// UTC label is an integer a committee has not yet chosen; UT1 is a quantity
+// whose prediction is a model with a size, like DeltaUT1 = 0 already is.
+//
+// So UT1 = TT - DeltaT, where DeltaT = TT - UT1 is a model the caller chooses
+// and names, as kDeltaUt1Unmodelled is named: exact integer picoseconds, no
+// table, and no failure. Two sources of a DeltaT are provided:
+//
+//   * deltaTFromLeapSecondTable(tt, deltaUt1): 32.184 s + DeltaAT - DeltaUT1,
+//     exact wherever the table holds and refused, by name, where it does not.
+//     UT1 from it is the UTC road's UT1 to the picosecond, leap seconds and
+//     all -- the suite asserts exactly that;
+//   * kDeltaTHeldAtTableExpiry: the same at the table's last step with DeltaUT1
+//     unmodelled -- 32.184 + 37 = 69.184 s -- for instants past the expiry.
+//
+// **The model error is the caller's to take, and to name.** From the table with
+// DeltaUT1 unmodelled: at most 0.9 s, as the UTC road always was. Held constant
+// from some date: that, plus however far DeltaT drifts after it. The IERS EOP
+// 20 C04 series, 1962 to 2026-08-20 (retrieved 2026-09-19), puts the worst
+// drift at **1.15 s in one year** (1972) and 10.4 s in ten; since 2000, 0.54 s
+// and 3.5 s; and about +0.1 s a year in 2026. A second of DeltaT is 15.04" of
+// Earth rotation, about 465 m at the equator. Recorded, not asserted: it is a
+// decision with a size, not a defect (ADR 0009).
+
+// The largest DeltaT this type holds: 10^6 s, in picoseconds.
+//
+// **A limit of the representation, not of the Earth.** DeltaUT1 has a bound by
+// definition; DeltaT has none. What bounds it here is that an instant's
+// picoseconds less DeltaT's must stay far inside an int64, 9.2e18, and 10^18
+// leaves a factor of nine. No model reaches it inside the calendar's years:
+// the largest DeltaT one gives there is Morrison and Stephenson's (2004)
+// long-term parabola, -20 + 32 u^2 s with u = (year - 1820) / 100 -- as
+// Skyfield 1.55 carries it -- at 9999: about 2.1e5 s, two and a half days.
+inline constexpr std::int64_t kDeltaTLimitPicoseconds = 1'000'000 * kPicosecondsPerSecond;
+
+// TT - UT1, validated, to the nearest picosecond.
+//
+// Shaped as DeltaUt1 is, for the same reasons: a factory, because a DeltaT
+// arrives from outside -- a scenario, a prediction, one day an IERS series --
+// and a wrong one is reported, not asserted (ADR 0002); integer picoseconds, so
+// that UT1 from TT is integer arithmetic; and no default constructor, because
+// every DeltaT is a modelling decision somebody takes by name.
+class DeltaT {
+public:
+    // The nearest picosecond to a DeltaT given in seconds. Reports one that is
+    // not finite, and one past the limit -- the limit itself is inside it.
+    //
+    // **The whole seconds are split off before anything is scaled**, as
+    // picosecondsIntoDay does, so that what is scaled stays below a second and
+    // the nearest picosecond comes out right whatever the size. Scaled whole, a
+    // DeltaT of days would not: 10^12 times a value near 1.3e5 s lands where a
+    // double resolves only 16 ps. The limit is checked first, because it is
+    // also what keeps the cast to an integer defined.
+    [[nodiscard]] static constexpr std::expected<DeltaT, TimeError>
+    fromSeconds(Seconds value) noexcept {
+        // Named before it becomes a double: the quotient is meant to be whole,
+        // 10^6, and bugprone-integer-division is right to ask about one that
+        // goes straight into a floating-point context.
+        constexpr std::int64_t kLimitWholeSeconds = kDeltaTLimitPicoseconds / kPicosecondsPerSecond;
+        constexpr auto kLimitSeconds = static_cast<f64>(kLimitWholeSeconds); // exact
+        if (!isFinite(value.value())) return std::unexpected(TimeError::NotFinite);
+        if (absOf(value.value()) > kLimitSeconds) {
+            return std::unexpected(TimeError::DeltaTOutOfRange);
+        }
+        const auto whole = static_cast<std::int64_t>(value.value()); // truncates toward zero
+        const f64 part = value.value() - static_cast<f64>(whole);    // exact, in (-1, 1)
+        return fromPicoseconds(
+            (whole * kPicosecondsPerSecond) +
+            detail::roundHalfAwayFromZero(part * detail::kPicosecondsPerSecondF));
+    }
+
+    // A DeltaT given exactly, in picoseconds. Reports one past the limit,
+    // which is the only thing that can be wrong with an integer here.
+    [[nodiscard]] static constexpr std::expected<DeltaT, TimeError>
+    fromPicoseconds(std::int64_t picoseconds) noexcept {
+        if (picoseconds > kDeltaTLimitPicoseconds || picoseconds < -kDeltaTLimitPicoseconds) {
+            return std::unexpected(TimeError::DeltaTOutOfRange);
+        }
+        return DeltaT{picoseconds};
+    }
+
+    [[nodiscard]] constexpr std::int64_t picoseconds() const noexcept { return picoseconds_; }
+
+private:
+    explicit constexpr DeltaT(std::int64_t picoseconds) noexcept : picoseconds_{picoseconds} {}
+
+    std::int64_t picoseconds_{};
+};
+
+// DeltaT as the committed table leaves it: 32.184 s + the last published
+// DeltaAT, with DeltaUT1 unmodelled -- 69.184 s since 2017-01-01. For an instant
+// past the table's expiry, where deltaTFromLeapSecondTable refuses, a caller
+// that takes this is holding DeltaT at the last value anyone published, and the
+// model error stated above -- 0.9 s, plus the drift since -- is the one it
+// takes. Derived from the table rather than written out, so that renewing the
+// table with a new step moves it too.
+inline constexpr DeltaT kDeltaTHeldAtTableExpiry =
+    DeltaT::fromPicoseconds(
+        kTtMinusTaiPicoseconds +
+        (std::int64_t{kIersLeapSeconds.back().deltaAtSeconds} * kPicosecondsPerSecond))
+        .value();
+
+// TT -> UT1: UT1 = TT - DeltaT, carried over days of 86 400 s. Integer
+// arithmetic on the stored picoseconds, so it cannot fail and is exact; the
+// limit keeps the difference far inside an int64, and carry() takes whole days
+// out of it, however many a DeltaT of days makes.
+[[nodiscard]] constexpr Ut1Time ut1FromTt(TtTime tt, DeltaT deltaT) noexcept {
+    return detail::Builder::make<TimeScale::Ut1>(detail::carry({
+        .mjd = tt.modifiedJulianDay(),
+        .picos = tt.picosecondOfDay() - deltaT.picoseconds(),
+    }));
+}
+
+// UT1 -> TT, the same arithmetic backwards, and exactly its inverse: both round
+// trips are the identity, bit for bit.
+[[nodiscard]] constexpr TtTime ttFromUt1(Ut1Time ut1, DeltaT deltaT) noexcept {
+    return detail::Builder::make<TimeScale::Tt>(detail::carry({
+        .mjd = ut1.modifiedJulianDay(),
+        .picos = ut1.picosecondOfDay() + deltaT.picoseconds(),
+    }));
+}
+
+// DeltaT from the leap-second table: TT - UT1 = (TT - TAI) + (TAI - UTC) -
+// (UT1 - UTC) = 32.184 s + DeltaAT - DeltaUT1, exact.
+//
+// **DeltaAT is the value in force during the UTC day the instant falls in** --
+// inside a leap second, still the day's old value. That is what makes UT1 from
+// this DeltaT land exactly where the UTC road lands, leap seconds included:
+// 23:59:60.5 UTC is 86 400.5 s into its day under the old DeltaAT, and
+// ut1FromUtc carries that into the next UT1 day by the same amount this
+// subtracts. Refused by name where the table has no DeltaAT to give, before
+// 1972-01-01 and from its expiry.
+[[nodiscard]] inline std::expected<DeltaT, TimeError>
+deltaTFromLeapSecondTable(TtTime tt, DeltaUt1 deltaUt1) noexcept {
+    const auto utc = utcFromTt(tt);
+    if (!utc) return std::unexpected(utc.error());
+    const std::int64_t deltaAt =
+        deltaAtSecondsForUtcDay(static_cast<std::int64_t>(utc->modifiedJulianDay()));
+    return DeltaT::fromPicoseconds(kTtMinusTaiPicoseconds + (deltaAt * kPicosecondsPerSecond) -
+                                   deltaUt1.picoseconds());
+}
+
 // --- compile-time proofs ----------------------------------------------------
 
 static_assert(sizeof(TtTime) == sizeof(f64) + sizeof(std::int64_t),
@@ -1319,6 +1477,41 @@ consteval bool theLeapSecondRunsIntoTheNextUt1Day() {
 }
 static_assert(theLeapSecondRunsIntoTheNextUt1Day(),
               "86 400.5 s into a day with a leap second is 0.5 s into the next UT1 day");
+
+// --- UT1 from TT, at compile time (M1-86) ---------------------------------------
+
+static_assert(
+    std::is_same_v<decltype(ut1FromTt(std::declval<TtTime>(), kDeltaTHeldAtTableExpiry)), Ut1Time>,
+    "TT to UT1 under a given DeltaT needs no table and cannot fail");
+static_assert(
+    std::is_same_v<decltype(ttFromUt1(std::declval<Ut1Time>(), kDeltaTHeldAtTableExpiry)), TtTime>);
+static_assert(
+    std::is_same_v<decltype(deltaTFromLeapSecondTable(std::declval<TtTime>(), kDeltaUt1Unmodelled)),
+                   std::expected<DeltaT, TimeError>>,
+    "the table's DeltaT has the table's two edges, so it reports");
+static_assert(!std::is_default_constructible_v<DeltaT> &&
+                  !std::is_constructible_v<DeltaT, Seconds> &&
+                  !std::is_constructible_v<DeltaT, std::int64_t>,
+              "a DeltaT comes from a factory, which validates, or is a constant with a name");
+static_assert(std::is_trivially_copyable_v<DeltaT>);
+static_assert(kDeltaTHeldAtTableExpiry.picoseconds() == 69'184'000'000'000,
+              "32.184 s + 37 s, the last published DeltaAT");
+static_assert(DeltaT::fromPicoseconds(kDeltaTLimitPicoseconds).has_value() &&
+                  !DeltaT::fromPicoseconds(kDeltaTLimitPicoseconds + 1).has_value() &&
+                  DeltaT::fromSeconds(Seconds{-1e6}).has_value(),
+              "10^6 s is inside the limit, and a picosecond past it is not");
+
+// The sign: UT1 = TT - DeltaT. 2017-01-01T12:00:00 TT less 69.184 s is
+// 11:58:50.816 UT1, and the way back is exact.
+consteval bool theDeltaTSignHolds() {
+    const TtTime noon =
+        TtTime::fromCalendar({.year = 2017, .month = 1, .day = 1, .hour = 12}).value();
+    const Ut1Time ut1 = ut1FromTt(noon, kDeltaTHeldAtTableExpiry);
+    return nearlyEqual(ut1.modifiedJulianDay(), 57'754.0, Tolerance{0.0}) &&
+           ut1.picosecondOfDay() == (43'200 * kPicosecondsPerSecond) - 69'184'000'000'000 &&
+           ttFromUt1(ut1, kDeltaTHeldAtTableExpiry) == noon;
+}
+static_assert(theDeltaTSignHolds(), "UT1 = TT - DeltaT");
 
 } // namespace orb
 

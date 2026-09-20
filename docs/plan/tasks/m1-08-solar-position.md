@@ -78,7 +78,9 @@ correction instead of the code.
   alone would not force. *(Amended: "within budget" would now be tighter than
   the figures themselves.)*
 - **The March equinox**: at the published instant, the Sun's declination,
-  referred to the true equator of date through M1-07's rotation, is within
+  referred to the true equator of date through M1-07's
+  `intermediateFromInertial(TtTime)` -- the rotation that needs no UT1, added
+  for this test and for M1-63 (register decision 77) -- is within
   0.01° of zero. Aberration, which this geometric position omits, accounts for
   0.002° of it. A sign error in the rotation fails this and passes several
   other tests, which is why it is here.

@@ -30,6 +30,11 @@
 //     reason; and TT -> TDB -> TT within the one picosecond each rounding
 //     allows, both ways, at any date the calendar holds -- ERFA underneath,
 //     across all of years 1 to 9999.
+//   * *(M1-86, register decision 74.)* A DeltaT accepted only inside 10^6 s;
+//     TT -> UT1 -> TT and UT1 -> TT -> UT1 bit for bit, under any DeltaT the
+//     factory accepts; and, wherever the leap-second table gives a DeltaT, UT1
+//     from it exactly where the UTC road puts UT1 -- the claim that lets the
+//     simulation's TT clock stop going through UTC at all.
 //
 // Build and run, on Windows, where the fuzzing happens (VERIFICATION.md rule
 // 13):
@@ -57,6 +62,7 @@
 namespace {
 
 using orb::CalendarDate;
+using orb::DeltaT;
 using orb::DeltaUt1;
 using orb::f64;
 using orb::JulianDate;
@@ -189,9 +195,46 @@ void requireTdbAndUt1(const CalendarDate& date, Seconds deltaUt1) {
     }
 }
 
+// The two offsets the fuzzer chooses, as one parameter: both are Seconds, and
+// transposed they would test a different claim in silence.
+struct Offsets {
+    Seconds deltaT;
+    Seconds deltaUt1;
+};
+
+// M1-86's claims (register decision 74), on the same date read as TT and as
+// UT1. A function of its own, for readability-function-size's sake, as M1-05's
+// are.
+void requireUt1FromTt(const CalendarDate& date, Offsets offsets) {
+    if (const auto held = DeltaT::fromSeconds(offsets.deltaT); held) {
+        require(held->picoseconds() <= orb::kDeltaTLimitPicoseconds);
+        require(held->picoseconds() >= -orb::kDeltaTLimitPicoseconds);
+        if (const auto tt = TtTime::fromCalendar(date); tt) {
+            const Ut1Time ut1 = orb::ut1FromTt(*tt, *held);
+            requireNormalised(ut1);
+            require(orb::ttFromUt1(ut1, *held) == *tt);
+        }
+        if (const auto ut1 = Ut1Time::fromCalendar(date); ut1) {
+            const TtTime tt = orb::ttFromUt1(*ut1, *held);
+            requireNormalised(tt);
+            require(orb::ut1FromTt(tt, *held) == *ut1);
+        }
+    }
+
+    // The table's DeltaT, wherever it has one, against the UTC road.
+    const auto delta = DeltaUt1::fromSeconds(offsets.deltaUt1);
+    const auto tt = TtTime::fromCalendar(date);
+    if (!delta || !tt) return;
+    const auto fromTable = orb::deltaTFromLeapSecondTable(*tt, *delta);
+    if (!fromTable) return; // outside the table, by name
+    const auto utc = orb::utcFromTt(*tt);
+    require(utc.has_value());
+    require(orb::ut1FromTt(*tt, *fromTable) == orb::ut1FromUtc(*utc, *delta));
+}
+
 // The whole input, as one trivially copyable layout: a calendar date, a
-// Julian date in two parts, and a DeltaUT1 in seconds. One memcpy from libFuzzer's buffer fills it,
-// which is how this harness reads its bytes without doing arithmetic on a raw pointer --
+// Julian date in two parts, a DeltaUT1 and a DeltaT in seconds. One memcpy from libFuzzer's buffer
+// fills it, which is how this harness reads its bytes without doing arithmetic on a raw pointer --
 // cppcoreguidelines-pro-bounds-pointer-arithmetic and clang's -Wunsafe-buffer-usage both object to
 // that, and both are right that a pointer walked by hand is how a fuzz harness gets its own buffer
 // overrun.
@@ -205,6 +248,7 @@ struct RawInput {
     double julianDay;
     double julianFraction;
     double deltaUt1;
+    double deltaT;
 };
 static_assert(std::is_trivially_copyable_v<RawInput>,
               "the input is filled by one memcpy, so it must be copyable that way");
@@ -285,5 +329,6 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     }
 
     requireTdbAndUt1(date, Seconds{raw.deltaUt1});
+    requireUt1FromTt(date, {.deltaT = Seconds{raw.deltaT}, .deltaUt1 = Seconds{raw.deltaUt1}});
     return 0;
 }

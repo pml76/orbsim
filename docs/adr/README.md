@@ -63,7 +63,9 @@ date -- and on 2026-09-19 with M1-05, which records the DeltaUT1 = 0 model
 error of at most 0.9 s, UT1's convention across a leap second, and the TDB
 budgets moving to 20 us and 1 ps on measurement. **0016 gained one** the same
 day, when ERFA was pinned: both validation programs in `check`, and Skyfield
-as the first independent reference.
+as the first independent reference. **And 0009 a third that day**, with M1-86:
+UT1 comes from TT and a DeltaT the caller names, so the Earth's orientation no
+longer needs the leap-second table, and the table still invents nothing.
 
 **0017 extends 0005, the same day**: clang builds with `-Weverything` and gcc
 with every warning it lists, as errors, less a few exceptions each written

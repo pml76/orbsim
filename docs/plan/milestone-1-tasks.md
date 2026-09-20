@@ -1,10 +1,11 @@
 # Milestone 1 — the task queue
 
-Status: **planned 2026-09-08.** 85 tasks, in one order. (84 until 2026-09-13,
+Status: **planned 2026-09-08.** 86 tasks, in one order. (84 until 2026-09-13,
 when an audit found phase F had no gate although the rule below says every
 phase ends with one. The new task is **M1-85**, sitting between 77 and 78:
 renumbering seven tasks to make it "78" would have broken the identifiers that
-commits and records cite -- decision 30.)
+commits and records cite -- decision 30. 85 until 2026-09-19, when UT1 from TT
+was split out of M1-07 as **M1-86**, sitting before it -- decision 73.)
 Which of them are done is in [`../STATUS.md`](../STATUS.md), not here.
 
 This is the working document for [milestone 1](milestone-1-earth.md): Earth, an
@@ -38,7 +39,7 @@ one starts.
 
 ### The standing rules, which every task inherits
 
-These are not repeated in the 85 documents. They apply to all of them.
+These are not repeated in the 86 documents. They apply to all of them.
 
 1. **The test is written first and seen to fail**, for the right reason
    ([`../VERIFICATION.md`](../VERIFICATION.md) rule 1). The failure message goes
@@ -121,7 +122,9 @@ unchanged. Inside the phases, three things drive the ordering:
 **06 runs before 05**, since 2026-09-11 (decision 30): M1-05 checks TDB
 against reference values that arrive through M1-06's fixture reader. The
 numbers are identifiers and were not changed, because commits, records and
-HISTORY already cite them.
+HISTORY already cite them. **86 runs before 07**, since 2026-09-19 (decision
+73): the Earth's orientation needs a UT1 from the simulation's TT clock, and
+M1-86 is the conversion that gives one without the leap-second table.
 
 | # | Task | Prerequisites | Ends with |
 |---|---|---|---|
@@ -129,7 +132,8 @@ HISTORY already cite them.
 | [04](tasks/m1-04-leap-seconds.md) | UTC, TAI and TT | 03 | Leap seconds, and an expiry that reports |
 | [06](tasks/m1-06-horizons-fixtures.md) | The Horizons fixture format | 01, 03 | External truth, committed and readable |
 | [05](tasks/m1-05-tdb-and-ut1.md) | TDB and UT1, and ERFA pinned | 04, 06 | All five scales, with ΔUT1 = 0 recorded as model error |
-| [07](tasks/m1-07-earth-orientation.md) | Precession, nutation and the Earth rotation angle | 05, 06 | A body-fixed frame, 0.1″ against an independent implementation |
+| [86](tasks/m1-86-ut1-from-tt.md) | UT1 from TT | 05 | The Earth's clock without the leap-second table |
+| [07](tasks/m1-07-earth-orientation.md) | Precession, nutation and the Earth rotation angle | 05, 06, 86 | A body-fixed frame, 0.1 mas against an independent implementation |
 | [08](tasks/m1-08-solar-position.md) | Solar position | 05, 06, 07 | Sun direction and distance, 0.1″ against Horizons |
 | [09](tasks/m1-09-orbsim-view.md) | The `orbsim_view` library and `Mat4` | 01 | A Vulkan-free render library the tests can link |
 | [10](tasks/m1-10-reverse-z-projection.md) | Reverse-Z with an infinite far plane | 09 | ADR 0003 made real, and tested |
@@ -145,7 +149,7 @@ HISTORY already cite them.
 | [20](tasks/m1-20-planetary-grid.md) | The planetary grid, and the jitter budget | 17, 19 | Phase A's stated acceptance: no jitter |
 | [21](tasks/m1-21-camera-controls.md) | Camera controls and scripted paths | 11 | You can fly it, and a script can repeat it |
 | [22](tasks/m1-22-benchmark-mode.md) | The benchmark mode | 21 | Frame time as a number |
-| [23](tasks/m1-23-phase-a-gate.md) | **Phase A gate** | 03–22 | Sanitizers, second compiler, coverage, recorded |
+| [23](tasks/m1-23-phase-a-gate.md) | **Phase A gate** | 03–22, 86 | Sanitizers, second compiler, coverage, recorded |
 
 ## Phase B — the tile pipeline
 

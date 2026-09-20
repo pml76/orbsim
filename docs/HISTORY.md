@@ -1270,6 +1270,54 @@ evaluations of an 800-term series.
 
 ---
 
+### M1-86, UT1 from TT, 2026-09-20
+
+`DeltaT`, `ut1FromTt`, `ttFromUt1`, `deltaTFromLeapSecondTable` and
+`kDeltaTHeldAtTableExpiry` in `src/core/Time.hpp`; eight cases in
+`test_time.cpp` and three claims in `fuzz_time.cpp`. Assertions went from
+914,546 in 104 cases to 1,060,791 in 112.
+
+**The task did not exist when the session began.** M1-05 left M1-07 one
+question (decision 66) -- where a `Ut1Time` comes from, when the clock runs on
+TT and TT reaches UT1 only through a table that expires on 2027-01-01, 104
+days later. Answering it properly was a conversion of its own, so it became a
+task of its own, numbered 86 as M1-85 was numbered, and committed ahead of the
+task that needed it (decisions 72 and 73).
+
+**What decided the answer was measurement, not preference.** The IERS EOP 20
+C04 series, 1962 to 2026-08-20, downloaded and summed two independent ways --
+the leap-second table against the series' own UT1 - UTC, and the integral of
+its excess length of day, agreeing to 3.7 ms -- says DeltaT drifts at worst
+1.15 s in a year (1972) and 10.4 s in ten; since 2000, 0.54 s and 3.5 s; and
+about +0.1 s a year now. Against that, refusing outright costs every scenario
+outside 1972-2026, Apollo included, and leaves the Earth stepping back 15" at
+the midnight after every leap second when DeltaUT1 is unmodelled. So UT1 = TT -
+DeltaT, with the size of the model written where the model is chosen.
+
+**The distinction the record turns on**, and the reason this is not the
+extrapolation ADR 0009 forbids: a UTC label is an integer a committee has not
+yet chosen, and the table still refuses to invent one; DeltaT is a physical
+quantity whose prediction is a model with a size -- exactly the footing
+DeltaUT1 = 0 has had since M1-05.
+
+**Seen failing first, against stubs with the approved interfaces**: seven of
+the eight new cases failed, the eighth being a round trip that an identity
+stub also satisfies -- the same shape M1-05 recorded, and the reason the
+mutation pass matters more than usual here.
+
+**The mutation pass: twelve valid mutants, twelve caught**, five at compile
+time by `static_assert`s and seven by tests. Each compile-time catch was
+re-run to check *which* assertion fired rather than trusting that one had:
+the sign flips both fail `theDeltaTSignHolds`, the two limit mutants fail the
+one that says 10^6 s is inside the limit, and reading the table's first step
+instead of its last fails the constant's own value.
+
+**And the fuzzer found something neither the tests nor the mutants could.**
+`fuzz_time`'s new claim hands an arbitrary TT instant to `utcFromTt`, which
+nothing had done before; 37,731 executions in, `utcFromTai`'s precondition
+aborted on 0001-01-01, whose TAI falls in year 0. That is the entry above,
+fixed in its own commit first. Afterwards the same input replays clean.
+
 ### A TAI instant outside the calendar, reported rather than asserted, 2026-09-20
 
 `utcFromTai` in `src/core/Time.hpp` asserted that its argument's day lay inside

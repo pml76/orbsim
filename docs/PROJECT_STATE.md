@@ -273,7 +273,7 @@ Part 4 records which of them a machine currently checks and which do not yet
 exist. `CLAUDE.md` points at both.
 
 **Milestone 1 has two documents of its own, and both are load-bearing.**
-[`plan/milestone-1-tasks.md`](plan/milestone-1-tasks.md) is the queue: 84 tasks
+[`plan/milestone-1-tasks.md`](plan/milestone-1-tasks.md) is the queue: 86 tasks
 in one order, each with its own document under `plan/tasks/`, and the standing
 rules every task inherits.
 [`plan/milestone-1-decisions.md`](plan/milestone-1-decisions.md) is the
@@ -635,6 +635,41 @@ asked for.
       has no route to UT1, because TT reaches UTC only through the leap-second
       table. It is in M1-07's document, to be put with measurements before its
       code.
+
+15. **M1-07's ten questions: all settled 2026-09-19, and three of them became
+    a task of their own.** They are decisions 72-83 of
+    [`plan/milestone-1-decisions.md`](plan/milestone-1-decisions.md) section 9,
+    each with a measurement behind it from a scratch spike. What to know
+    without opening the register:
+
+    - **UT1 comes from TT now** (decisions 72-74, and
+      [M1-86](plan/tasks/m1-86-ut1-from-tt.md)): UT1 = TT - DeltaT, where
+      DeltaT is a validated type the caller names. The leap-second table still
+      refuses to invent a UTC label, and the Earth's orientation no longer
+      waits on one -- which is what decision 66 left M1-07 to answer. Past the
+      table's expiry a caller takes `kDeltaTHeldAtTableExpiry` by name, and the
+      model error is the drift of a held value: at worst 1.15 s in a year of
+      the IERS EOP 20 C04 series since 1962, 0.54 s since 2000, about +0.1 s a
+      year now.
+    - **The frame's reference is Skyfield 1.55**, whose route is sidereal time
+      applied to the equinox-based matrix where ERFA's is CIO-based, and whose
+      nutation is a NOVAS port that shares IERS modules with SOFA's -- recorded
+      as the limit of its independence (decision 75). They agree to 54 µas over
+      1900-2100, of which 47 µas is s′, the TIO locator ERFA applies even with
+      polar motion zero.
+    - **The code budget is 0.1 mas over 1900-2100**, a thousandfold tighter
+      than the 0.1″ the plan carried, because at 0.1″ the test could not see an
+      omitted frame bias, the wrong nutation model, or UT1 wrong by six
+      milliseconds (decision 76).
+    - **A TT-only rotation is added**, `intermediateFromInertial`, so that
+      M1-63's J2 term and M1-08's equinox test can have the pole of date
+      without a UT1 (decision 77). At about 28 µs a call, M1-63 must not
+      evaluate it at every integrator stage, and its document now says so.
+    - **The fuzzer earned its keep again.** M1-86's new claims reached
+      `utcFromTt` with an arbitrary TT instant for the first time, and found
+      `utcFromTai` asserting a condition a caller can produce. Fixed on
+      2026-09-20 in its own commit, ahead of M1-86:
+      [`HISTORY.md`](HISTORY.md) has the account.
 
 ## 8. Gotchas worth not rediscovering
 

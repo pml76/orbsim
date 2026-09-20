@@ -257,3 +257,41 @@ no ERFA.
   defined everywhere, and at six sample epochs between year 1 and year 9999
   the whole term stayed within 1.76 ms; `astro/Tdb.hpp` states where each
   accuracy claim holds and where none is made.
+
+## Update, 2026-09-19: UT1 from TT, without the table
+
+Written with [M1-86](../plan/tasks/m1-86-ut1-from-tt.md), on the owner's
+rulings of the same day -- decisions 72 to 74 of
+[the register](../plan/milestone-1-decisions.md), put before any code with the
+measurements below. **The decision stands**, and the leap-second table still
+reports rather than extrapolates. What this changes is which conversions need
+the table at all.
+
+- **UT1 = TT - DeltaT**, where DeltaT = TT - UT1 is a model the caller chooses
+  and names. The simulation's clock runs on TT and the Earth turns on UT1, and
+  until now the only road between them went through UTC -- so the Earth's
+  orientation inherited the table's edges, before 1972-01-01 and from
+  2027-01-01, and with DeltaUT1 unmodelled it stepped back a second of
+  rotation, 15", at the midnight after every leap second. None of that is
+  physics: UT1 is an angle, continuous in TT; UTC is a labelling convention.
+- **This is not the extrapolation the record rules out.** A UTC label is an
+  integer a committee has not yet chosen, and the table still refuses to
+  invent one. DeltaT is a physical quantity whose prediction is a model with a
+  size -- the footing DeltaUT1 = 0 was already given in the update above.
+- **`DeltaT` is a validated type**, as `DeltaUt1` is: integer picoseconds, no
+  default, `NotFinite` and a new `DeltaTOutOfRange` beyond 10^6 s -- a limit of
+  the representation, not of the Earth. Where the table holds,
+  `deltaTFromLeapSecondTable` gives it exactly, 32.184 s + DeltaAT - DeltaUT1,
+  and UT1 from it is the UTC road's UT1 to the picosecond, which the suite
+  asserts; outside, it refuses by name, and a caller takes
+  `kDeltaTHeldAtTableExpiry`, 69.184 s, by name.
+- **The model error gains a time dependence.** At most 0.9 s where DeltaT comes
+  from the table, as before; held past that, plus however far DeltaT drifts.
+  Measured from the IERS EOP 20 C04 series, 1962 to 2026-08-20: at worst
+  1.15 s in a year (1972) and 10.4 s in ten; 0.54 s and 3.5 s since 2000; about
+  +0.1 s a year in 2026. A second of DeltaT is 15.04" of Earth rotation, about
+  465 m at the equator.
+- **Not taken, and why**: accepting the refusal and renewing the table every
+  six months, which leaves no Earth outside 1972-2026, Apollo included; and a
+  DeltaT model for every date, which is a body of reference data outside
+  milestone 1's fences. The signature admits the second later, unchanged.

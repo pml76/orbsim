@@ -203,7 +203,7 @@ and the conventions and the finishing checklist are in
 ## Current work
 
 [Milestone 1](docs/plan/milestone-1-earth.md): Earth, orbit track, Orbit MFD,
-broken into 85 tasks. Phases run **A → B → D → C → E → F → G** — atmosphere
+broken into 86 tasks. Phases run **A → B → D → C → E → F → G** — atmosphere
 deliberately before the quadtree, because it is what makes the image read as
 Earth and it gives a correct reference while debugging tile seams. **Which task
 is next is in [`docs/STATUS.md`](docs/STATUS.md)**, not here. The plan was

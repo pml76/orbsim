@@ -615,7 +615,7 @@ rules a machine checks and which depend on a person remembering.
 | 16 Determinism | `check` — `TEST_CASE("propagation is bit-identical across runs")`, over 100 steps | **done** |
 | 17 Dimensional analysis | The compiler — mp-units under `core/Units.hpp` and `Vec3<R>`, [ADR 0019](adr/0019-vectors-carry-their-unit.md) | **done** |
 | 18 Coverage | By hand, periodically. Orbit.cpp 99.2% lines | **done** |
-| 19 Mutation testing | By hand, periodically | exercised 2026-09-07, and again 2026-09-19 on M1-04, M1-06 and M1-05 |
+| 19 Mutation testing | By hand, periodically | exercised 2026-09-07, again 2026-09-19 on M1-04, M1-06 and M1-05, and 2026-09-20 on M1-86 -- twelve of twelve caught |
 | 20 WSL, UBSan, second compiler | By hand, before a milestone | **done** |
 | 21 `check` is the definition of done | The build, both trees | **done** |
 | 22–24 The human rules | A person | discipline |
@@ -658,7 +658,15 @@ compiles: five of the reader's first eight "failed at compile time" because
 nothing about the tests. Rewritten to compile, all eight were caught at run
 time ([`PROJECT_STATE.md`](PROJECT_STATE.md) section 8).
 
-And on M1-05, the same day: twenty valid mutants, sixteen caught -- three by
+**On M1-86, 2026-09-20: twelve valid mutants, twelve caught**, five of them
+by `static_assert`s before a test ran. Each compile-time catch was re-run to
+record *which* assertion fired, because "it did not compile" is not by itself
+a kill -- the harness classifies any other compile error as an invalid mutant.
+What the pass could not find is what the fuzzer then did: `utcFromTai`
+asserting a condition a caller can produce, which no mutation of M1-86's own
+code would have reached.
+
+And on M1-05, 2026-09-19: twenty valid mutants, sixteen caught -- three by
 `static_assert`s before a test ran, two by Debug-build assertions -- and four
 surviving. One is equivalent. The other three are gaps a budget cannot see: a
 dropped fixed-point step moves the TDB round trip by a picosecond, inside its
