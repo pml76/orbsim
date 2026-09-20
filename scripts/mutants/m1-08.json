@@ -1,0 +1,104 @@
+{
+  "task": "M1-08",
+  "tree": "build/relwithdebinfo",
+  "note": "Twelve valid mutants, twelve caught, 2026-09-20. Three are killed by a static_assert before a test runs, and one -- the transposed TT and UT1 -- is aimed at astro/EarthOrientation.cpp rather than at M1-08's own code, because decision 89 deleted TwoPartDate from it and something has to show that call site is still covered. Mutants 4 and 8 were invalid on the first attempt and are recorded here in the form that compiles.",
+  "mutants": [
+    {
+      "name": "the Sun is not negated",
+      "file": "src/astro/Sun.cpp",
+      "find": "Metres{-heliocentric[0][0] * ERFA_DAU}",
+      "replace": "Metres{heliocentric[0][0] * ERFA_DAU}",
+      "suites": ["test_sun"],
+      "expect": "caught"
+    },
+    {
+      "name": "barycentric instead of heliocentric",
+      "file": "src/astro/Sun.cpp",
+      "find": "Metres{-heliocentric[0][0] * ERFA_DAU}",
+      "replace": "Metres{-barycentric[0][0] * ERFA_DAU}",
+      "suites": ["test_sun"],
+      "expect": "caught"
+    },
+    {
+      "name": "the velocity row instead of the position row",
+      "file": "src/astro/Sun.cpp",
+      "find": "Metres{-heliocentric[0][0] * ERFA_DAU}",
+      "replace": "Metres{-heliocentric[1][0] * ERFA_DAU}",
+      "suites": ["test_sun"],
+      "expect": "caught"
+    },
+    {
+      "name": "the range status is not checked",
+      "file": "src/astro/Sun.cpp",
+      "find": "if (status != 0) return std::unexpected(EphemerisError::OutsideEphemerisRange);",
+      "replace": "(void)status;",
+      "suites": ["test_sun"],
+      "expect": "caught"
+    },
+    {
+      "name": "x and y transposed",
+      "file": "src/astro/Sun.cpp",
+      "find": "const Position sun{Metres{-heliocentric[0][0] * ERFA_DAU},",
+      "replace": "const Position sun{Metres{-heliocentric[0][1] * ERFA_DAU},",
+      "suites": ["test_sun"],
+      "expect": "caught"
+    },
+    {
+      "name": "kilometres, not metres",
+      "file": "src/astro/Sun.cpp",
+      "find": "Metres{-heliocentric[0][2] * ERFA_DAU}",
+      "replace": "Metres{-heliocentric[0][2] * (ERFA_DAU / 1000.0)}",
+      "suites": ["test_sun"],
+      "expect": "caught"
+    },
+    {
+      "name": "the time of day is dropped",
+      "file": "src/astro/Sun.cpp",
+      "find": "eraEpv00(date.day, date.fraction, heliocentric, barycentric)",
+      "replace": "eraEpv00(date.day, 0.0, heliocentric, barycentric)",
+      "suites": ["test_sun"],
+      "expect": "caught"
+    },
+    {
+      "name": "the date is 1.7 ms out, the size of TDB - TT",
+      "file": "src/astro/Sun.cpp",
+      "find": "eraEpv00(date.day, date.fraction, heliocentric, barycentric)",
+      "replace": "eraEpv00(date.day, date.fraction - (0.0017 / 86400.0), heliocentric, barycentric)",
+      "suites": ["test_sun"],
+      "expect": "caught",
+      "why": "Caught by the span cases alone, never by the accuracy budget: 1.7 ms of solar motion is 7e-5 arcsec against a 0.02 arcsec claim, and the shifted date crosses ERFA's boundary at the edge epochs. This mutant confirms what astro/Sun.hpp says the suite cannot see rather than contradicting it, and is kept for exactly that reason."
+    },
+    {
+      "name": "the solar constant is the pre-2011 1366",
+      "file": "src/astro/Sun.hpp",
+      "find": "inline constexpr Irradiance kSolarIrradianceAtOneAu{1361.0};",
+      "replace": "inline constexpr Irradiance kSolarIrradianceAtOneAu{1366.0};",
+      "suites": ["test_sun"],
+      "expect": "caught"
+    },
+    {
+      "name": "inverse-linear, not inverse-square",
+      "file": "src/astro/Sun.hpp",
+      "find": "return kSolarIrradianceAtOneAu * (ratio * ratio);",
+      "replace": "return kSolarIrradianceAtOneAu * ratio;",
+      "suites": ["test_sun"],
+      "expect": "caught"
+    },
+    {
+      "name": "the pre-2012 astronomical unit",
+      "file": "src/astro/Sun.hpp",
+      "find": "inline constexpr Metres kAstronomicalUnit{149'597'870'700.0};",
+      "replace": "inline constexpr Metres kAstronomicalUnit{149'597'870'691.0};",
+      "suites": ["test_sun"],
+      "expect": "caught"
+    },
+    {
+      "name": "the lift transposed TT and UT1",
+      "file": "src/astro/EarthOrientation.cpp",
+      "find": "eraC2t06a(terrestrial.day,\n              terrestrial.fraction,\n              universal.day,\n              universal.fraction,",
+      "replace": "eraC2t06a(universal.day,\n              universal.fraction,\n              terrestrial.day,\n              terrestrial.fraction,",
+      "suites": ["test_earth_orientation"],
+      "expect": "caught"
+    }
+  ]
+}

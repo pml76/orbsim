@@ -459,6 +459,32 @@ Expensive to automate, cheap to do by hand on the parts that matter most. Doing
 it once on `Orbit.cpp` would put a number on how much the two-body suite is
 actually worth.
 
+**The harness is [`scripts/mutate.py`](../scripts/mutate.py) since
+2026-09-20**, with one JSON file of mutants per task under
+[`scripts/mutants/`](../scripts/mutants/). It exists because the two traps in
+this rule are procedural rather than clever, and both have been walked into:
+
+- **a mutant that does not compile is not a kill.** The script separates a
+  `static_assert` firing -- a kill, and it prints *which* assertion -- from any
+  other compile error, which it calls INVALID and fails the run over. That is
+  M1-06's five `if (false)` mutants and M1-86's compile-time catches, mechanised;
+- **a kill can be for the wrong reason.** It prints the Catch2 case names that
+  failed, so a kill can be read rather than counted. M1-08's date-shift mutant
+  is the example: it is caught by the span cases and never by the budget it
+  looks like it tests.
+
+It restores the tree with `git checkout --` in a `finally`, and refuses to
+start if any file it will touch is dirty -- so an exception or a Ctrl-C cannot
+leave a mutant in the working tree. A declared `"expect": "survives"` is how an
+accepted survivor is recorded, as M1-05 has three; an undeclared survivor fails
+the run, so a mutant that starts surviving after a change is a result rather
+than a line nobody reads.
+
+**It is deliberately not part of `check`** -- a pass rebuilds once per mutant
+and takes minutes, and this rule is periodic by design. `mutate.py <file>
+--verify` is the cheap half, checking only that every anchor still matches its
+file exactly once, which is what rots as code moves.
+
 ### Rule 20. Run the other implementations — a second and third front end, and UBSan
 
 **A third implementation joined on 2026-09-14**, and its first run is the whole
