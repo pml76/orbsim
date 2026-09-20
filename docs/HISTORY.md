@@ -1549,6 +1549,66 @@ time-scale substitution. It does not. That pass is now
 [`scripts/mutate.py`](../scripts/mutate.py) with its mutants in
 `scripts/mutants/`, and `check` verifies the anchors still match.
 
+### The swappable-parameters blind spot, 2026-09-20
+
+`bugprone-easily-swappable-parameters` is the only mechanical half of
+non-negotiable 1, and it had been reporting nothing for a reason nobody had
+measured. Its `SuppressParametersUsedTogether` option defaults to true, which
+silences **any** pair of same-typed parameters that appear together in one
+expression -- and that is most of them. `at(row, column)` returning
+`e.at((column * 4) + row)` is silent. So is a date's three integers, a range's
+two bounds, and a layout transition's two ends.
+
+Found while designing M1-09's element accessor, where the question was whether
+the linter would catch a transposed index. It does not, and the probe that
+established it is the whole method: the same line reported once the option was
+set to false, and not before.
+
+Measured over the twenty linted translation units before anything changed:
+**22 findings on 22 distinct source lines in 11 files**, where the default
+reported 0. The first count put to the owner was 11 lines, which was wrong --
+Windows paths were cut on `:` and the drive letter made every file look like
+one line -- and the correction was made before the work started rather than
+after.
+
+Thirteen were real, and several are the shapes `CODING_GUIDELINES.md` section 2
+holds up as I.24's canonical defect: `tdbAtNoon(year, month, day)`,
+`makeElements` with four adjacent `Degrees`, `transitionImage(..., from, to)`,
+three inverted ranges, `relativeError(got, want)` where `want` is the
+denominator, `checkConserved(before, after)`, `timesTranspose` where
+`a * b^T` is not `b * a^T`, two signed time differences, `createBuffer`'s
+mutually convertible `VkDeviceSize` and `VkBufferUsageFlags`, and
+`quickTwoSum`, whose precondition is `|a| >= |b|`. Each was fixed by giving
+the pair a name, so the call site now says which is which:
+`makeElements({.sma = ..., .inc = ..., .lan = ...})` rather than six
+positional arguments.
+
+Nine are provably symmetric -- `a + b`, `a * b`, `|a - b|`, a dot product --
+and carry a `NOLINT` with that reason at the site, which is the wording
+`core/Scalar.hpp` already uses on `nearlyEqual`. `crossExact` is the
+exception and says so: it is antisymmetric and suppressed anyway, because
+`(a, b)` is the notation every reader of a cross product knows, which is the
+argument `.clang-tidy` already records for `Vec3`'s `(x_, y_, z_)`.
+
+**The evidence that none of it changed behaviour is the assertion count**:
+1,263,723 in 135 cases before and after, on every toolchain.
+
+Three things the verification caught that reading would not have:
+
+- a `NOLINTNEXTLINE` above `template <auto R>` covers the template line, not
+  the signature, so the finding on `distance` survived the first attempt. It
+  means exactly the next line;
+- `readability-redundant-member-init` on the new `ElementsInDegrees`: every
+  `Scalar` zeroes in its own default constructor, so `Metres sma{}` is
+  redundant. `Elements` in `orbit/Orbit.hpp` had always declared its six
+  without braces, which is the house pattern this had to match;
+- **gcc-14 rejected what clang accepted**, once more. Aggregate class template
+  argument deduction on `Interval{.from = a, .to = b}` draws
+  `-Wctad-maybe-unsupported`, whose point is to catch CTAD nobody designed
+  for; here it was designed for, and an explicit deduction guide says so.
+  clang reports nothing. One platform tells you about your code, two about
+  your assumptions.
+
 ## 4. The bug that justified the session
 
 `propagate()` returned `SolverDidNotConverge` for a plain circular orbit at

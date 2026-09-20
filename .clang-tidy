@@ -154,6 +154,31 @@ CheckOptions:
   - key: readability-braces-around-statements.ShortStatementLines
     value: '1'
 
+  # Non-negotiable 1 has exactly one mechanical half, and by default it was
+  # blind in a way nobody had measured. The check silences any pair of
+  # same-typed parameters that appear together in one expression, which is most
+  # of them: `at(row, column)` returning `e.at((column * 4) + row)` was silent,
+  # and so were a date's three integers, a range's two bounds and a layout
+  # transition's two ends. Switched off 2026-09-20, with the whole tree fixed
+  # rather than re-suppressed.
+  #
+  # Measured that day over the twenty linted translation units, before any
+  # change: 22 findings on 22 distinct source lines in 11 files, where the
+  # default reported 0. Of those, 13 were real -- a date, four adjacent
+  # Degrees, a layout transition, three inverted ranges, a denominator, a
+  # before/after pair, A*B^T, and two signed differences -- and each was fixed
+  # by giving the pair a name, so a call site now says which is which. The
+  # other 9 are provably symmetric (`a + b`, `a * b`, `|a - b|`, a dot product)
+  # and carry a NOLINT with that reason at the site, which is the wording
+  # core/Scalar.hpp already uses on nearlyEqual. crossExact is the one
+  # exception: it is antisymmetric and suppressed anyway, because (a, b) is the
+  # notation every reader of a cross product knows.
+  #
+  # NamePrefixSuffixSilenceDissimilarityThreshold, the *other* blind spot, is
+  # still at its default of 1; the note at the foot of this file has its count.
+  - key: bugprone-easily-swappable-parameters.SuppressParametersUsedTogether
+    value: 'false'
+
 # --- notes on the disabled checks -------------------------------------------
 #
 # This list was fourteen checks long until 2026-09-08, when it was emptied and
@@ -230,7 +255,13 @@ CheckOptions:
 #   for: those were real defects, and they were fixed by introducing Radians,
 #   Seconds, GravParam and Tolerance rather than by suppressing the check.
 #
-#   **It has a blind spot, measured 2026-09-13, and it is worth knowing because
+#   **It had two blind spots. The larger one is closed as of 2026-09-20**, by
+#   the SuppressParametersUsedTogether option above -- the check was silent on
+#   any pair used together in one expression, which hid 22 lines including a
+#   date, a layout transition and three inverted ranges. The counts and what
+#   happened to each are in the comment beside that option.
+#
+#   **The second is open, measured 2026-09-13, and it is worth knowing because
 #   this check is the only mechanical half of non-negotiable 1.** Parameter
 #   names that share a one-character prefix or suffix silence it. Reproduced on
 #   a standalone probe: `f(f64 psi, f64& c2, f64& c3)` is silent while

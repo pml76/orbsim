@@ -53,39 +53,47 @@ TEST_CASE("elements <-> state round trip", "[orbit]") {
     const std::array cases = std::to_array<Case>({
         {
             .name = "LEO, inclined, slightly eccentric",
-            .el = makeElements(Metres{kEarthRadius.value() + 500e3},
-                               Eccentricity{0.01},
-                               Degrees{51.6},
-                               Degrees{120.0},
-                               Degrees{45.0},
-                               Degrees{200.0}),
+            .el = makeElements({
+                .sma = Metres{kEarthRadius.value() + 500e3},
+                .ecc = Eccentricity{0.01},
+                .inc = Degrees{51.6},
+                .lan = Degrees{120.0},
+                .aop = Degrees{45.0},
+                .tra = Degrees{200.0},
+            }),
         },
         {
             .name = "GTO, highly eccentric",
-            .el = makeElements(Metres{24582e3},
-                               Eccentricity{0.7306},
-                               Degrees{28.5},
-                               Degrees{10.0},
-                               Degrees{178.0},
-                               Degrees{30.0}),
+            .el = makeElements({
+                .sma = Metres{24582e3},
+                .ecc = Eccentricity{0.7306},
+                .inc = Degrees{28.5},
+                .lan = Degrees{10.0},
+                .aop = Degrees{178.0},
+                .tra = Degrees{30.0},
+            }),
         },
         {
             .name = "Polar",
-            .el = makeElements(Metres{7200e3},
-                               Eccentricity{0.02},
-                               Degrees{90.0},
-                               Degrees{300.0},
-                               Degrees{90.0},
-                               Degrees{45.0}),
+            .el = makeElements({
+                .sma = Metres{7200e3},
+                .ecc = Eccentricity{0.02},
+                .inc = Degrees{90.0},
+                .lan = Degrees{300.0},
+                .aop = Degrees{90.0},
+                .tra = Degrees{45.0},
+            }),
         },
         {
             .name = "Retrograde",
-            .el = makeElements(Metres{8000e3},
-                               Eccentricity{0.15},
-                               Degrees{145.0},
-                               Degrees{200.0},
-                               Degrees{320.0},
-                               Degrees{275.0}),
+            .el = makeElements({
+                .sma = Metres{8000e3},
+                .ecc = Eccentricity{0.15},
+                .inc = Degrees{145.0},
+                .lan = Degrees{200.0},
+                .aop = Degrees{320.0},
+                .tra = Degrees{275.0},
+            }),
         },
     });
 
@@ -110,12 +118,14 @@ TEST_CASE("elements <-> state round trip", "[orbit]") {
 // true anomaly rather than producing NaN, and still reproduce the same state.
 TEST_CASE("degenerate orbits stay finite", "[orbit]") {
     SECTION("circular inclined") {
-        const Elements el = makeElements(Metres{7000e3},
-                                         Eccentricity{0.0},
-                                         Degrees{30.0},
-                                         Degrees{70.0},
-                                         Degrees{40.0},
-                                         Degrees{25.0});
+        const Elements el = makeElements({
+            .sma = Metres{7000e3},
+            .ecc = Eccentricity{0.0},
+            .inc = Degrees{30.0},
+            .lan = Degrees{70.0},
+            .aop = Degrees{40.0},
+            .tra = Degrees{25.0},
+        });
         const StateVector sv = stateOf(el, kMuEarth);
         const auto back = elementsFromState(sv, kMuEarth);
 
@@ -132,12 +142,14 @@ TEST_CASE("degenerate orbits stay finite", "[orbit]") {
     }
 
     SECTION("equatorial (geostationary)") {
-        const Elements el = makeElements(Metres{42164e3},
-                                         Eccentricity{0.001},
-                                         Degrees{0.0},
-                                         Degrees{0.0},
-                                         Degrees{60.0},
-                                         Degrees{15.0});
+        const Elements el = makeElements({
+            .sma = Metres{42164e3},
+            .ecc = Eccentricity{0.001},
+            .inc = Degrees{0.0},
+            .lan = Degrees{0.0},
+            .aop = Degrees{60.0},
+            .tra = Degrees{15.0},
+        });
         const StateVector sv = stateOf(el, kMuEarth);
         const auto back = elementsFromState(sv, kMuEarth);
 
@@ -175,12 +187,14 @@ TEST_CASE("known analytic values", "[orbit]") {
     REQUIRE_THAT(info.period.value(), WithinAbsOf(5554.0, Tolerance{5.0}));
 
     // Vis-viva on an eccentric orbit, checked at periapsis.
-    const Elements e2 = makeElements(Metres{10000e3},
-                                     Eccentricity{0.3},
-                                     Degrees{20.0},
-                                     Degrees{0.0},
-                                     Degrees{0.0},
-                                     Degrees{0.0});
+    const Elements e2 = makeElements({
+        .sma = Metres{10000e3},
+        .ecc = Eccentricity{0.3},
+        .inc = Degrees{20.0},
+        .lan = Degrees{0.0},
+        .aop = Degrees{0.0},
+        .tra = Degrees{0.0},
+    });
     const StateVector p = stateOf(e2, kMuEarth);
     const f64 rp = e2.sma.value() * (1.0 - e2.ecc.value());
     const f64 vp = std::sqrt(kMuEarth.value() * ((2.0 / rp) - (1.0 / e2.sma.value())));
@@ -201,30 +215,36 @@ TEST_CASE("universal-variable vs Kepler-element propagation", "[orbit]") {
     const std::array cases = std::to_array<Case>({
         {
             .name = "near-circular LEO",
-            .el = makeElements(Metres{6878e3},
-                               Eccentricity{0.001},
-                               Degrees{51.6},
-                               Degrees{30.0},
-                               Degrees{10.0},
-                               Degrees{0.0}),
+            .el = makeElements({
+                .sma = Metres{6878e3},
+                .ecc = Eccentricity{0.001},
+                .inc = Degrees{51.6},
+                .lan = Degrees{30.0},
+                .aop = Degrees{10.0},
+                .tra = Degrees{0.0},
+            }),
         },
         {
             .name = "GTO",
-            .el = makeElements(Metres{24582e3},
-                               Eccentricity{0.7306},
-                               Degrees{28.5},
-                               Degrees{10.0},
-                               Degrees{178.0},
-                               Degrees{5.0}),
+            .el = makeElements({
+                .sma = Metres{24582e3},
+                .ecc = Eccentricity{0.7306},
+                .inc = Degrees{28.5},
+                .lan = Degrees{10.0},
+                .aop = Degrees{178.0},
+                .tra = Degrees{5.0},
+            }),
         },
         {
             .name = "very eccentric",
-            .el = makeElements(Metres{100000e3},
-                               Eccentricity{0.95},
-                               Degrees{63.4},
-                               Degrees{90.0},
-                               Degrees{270.0},
-                               Degrees{120.0}),
+            .el = makeElements({
+                .sma = Metres{100000e3},
+                .ecc = Eccentricity{0.95},
+                .inc = Degrees{63.4},
+                .lan = Degrees{90.0},
+                .aop = Degrees{270.0},
+                .tra = Degrees{120.0},
+            }),
         },
     });
 
@@ -252,12 +272,14 @@ TEST_CASE("universal-variable vs Kepler-element propagation", "[orbit]") {
 
 // Propagation must be time-reversible and must conserve the orbit itself.
 TEST_CASE("propagation invariants", "[orbit]") {
-    const Elements el = makeElements(Metres{12000e3},
-                                     Eccentricity{0.4},
-                                     Degrees{35.0},
-                                     Degrees{140.0},
-                                     Degrees{25.0},
-                                     Degrees{80.0});
+    const Elements el = makeElements({
+        .sma = Metres{12000e3},
+        .ecc = Eccentricity{0.4},
+        .inc = Degrees{35.0},
+        .lan = Degrees{140.0},
+        .aop = Degrees{25.0},
+        .tra = Degrees{80.0},
+    });
     const StateVector sv0 = stateOf(el, kMuEarth);
     const OrbitInfo info = orbitInfo(el, kMuEarth);
 

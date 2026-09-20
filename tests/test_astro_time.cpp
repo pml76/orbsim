@@ -94,13 +94,27 @@ constexpr std::int64_t kRoundTripBudgetPicoseconds = 1;
            (tdb.picosecondOfDay() - tt.picosecondOfDay());
 }
 
+// An ordered pair of instants on one scale. A struct rather than two
+// parameters because the difference below is signed, and two adjacent
+// TimePoints of one scale transpose in silence -- which
+// bugprone-easily-swappable-parameters reports since
+// SuppressParametersUsedTogether was switched off on 2026-09-20.
+template <TimeScale Scale> struct Interval {
+    TimePoint<Scale> earlier;
+    TimePoint<Scale> later;
+};
+// An explicit deduction guide, because gcc's -Wctad-maybe-unsupported reports
+// class template argument deduction on a template that declares none: the
+// warning exists to catch CTAD nobody designed for, and here it was designed
+// for. clang does not report it, which is what the second compiler is for.
+template <TimeScale Scale> Interval(TimePoint<Scale>, TimePoint<Scale>) -> Interval<Scale>;
+
 // Two instants on one scale, a few picoseconds apart at most, exactly.
 template <TimeScale Scale>
-[[nodiscard]] std::int64_t picosecondsBetween(const TimePoint<Scale>& later,
-                                              const TimePoint<Scale>& earlier) {
-    const f64 days = later.modifiedJulianDay() - earlier.modifiedJulianDay();
+[[nodiscard]] std::int64_t picosecondsBetween(const Interval<Scale>& interval) {
+    const f64 days = interval.later.modifiedJulianDay() - interval.earlier.modifiedJulianDay();
     return (static_cast<std::int64_t>(days) * kDay) +
-           (later.picosecondOfDay() - earlier.picosecondOfDay());
+           (interval.later.picosecondOfDay() - interval.earlier.picosecondOfDay());
 }
 
 // TDB - TT at a TT instant, as the conversion under test applies it.
@@ -213,6 +227,10 @@ constexpr f64 kMeanAnomalyDegreesPerDay = 0.98560028;
 }
 
 // The angle from g to a target anomaly, the short way round.
+// The two are interchangeable: |g - target| folded onto the circle and then
+// the shorter arc, both symmetric, so transposing them cannot produce a wrong
+// answer.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 [[nodiscard]] f64 degreesFrom(f64 g, f64 target) {
     const f64 d = std::fmod(std::abs(g - target), 360.0);
     return std::min(d, 360.0 - d);
@@ -391,7 +409,7 @@ TEST_CASE("TT to TDB and back is within 1 ps both ways over a seeded sweep", "[a
         REQUIRE(tt.has_value());
         const TtTime ttBack = ttFromTdb(tdbFromTt(*tt));
         CAPTURE(*tt, ttBack);
-        const std::int64_t ttError = picosecondsBetween(ttBack, *tt);
+        const std::int64_t ttError = picosecondsBetween(Interval{.earlier = *tt, .later = ttBack});
         REQUIRE(std::abs(ttError) <= kRoundTripBudgetPicoseconds);
         if (ttError == 0) ++exactFromTt;
 
@@ -399,7 +417,8 @@ TEST_CASE("TT to TDB and back is within 1 ps both ways over a seeded sweep", "[a
         REQUIRE(tdb.has_value());
         const TdbTime tdbBack = tdbFromTt(ttFromTdb(*tdb));
         CAPTURE(*tdb, tdbBack);
-        const std::int64_t tdbError = picosecondsBetween(tdbBack, *tdb);
+        const std::int64_t tdbError =
+            picosecondsBetween(Interval{.earlier = *tdb, .later = tdbBack});
         REQUIRE(std::abs(tdbError) <= kRoundTripBudgetPicoseconds);
         if (tdbError == 0) ++exactFromTdb;
     }
@@ -427,6 +446,7 @@ TEST_CASE("TDB is converted, not refused, at both ends of the calendar", "[astro
         const f64 ahead = static_cast<f64>(picosecondsAhead(tdb, *tt)) * kSecondsPerPicosecond;
         CAPTURE(ahead);
         REQUIRE(absOf(ahead) < 2e-3);
-        REQUIRE(std::abs(picosecondsBetween(ttFromTdb(tdb), *tt)) <= kRoundTripBudgetPicoseconds);
+        REQUIRE(std::abs(picosecondsBetween(Interval{.earlier = *tt, .later = ttFromTdb(tdb)})) <=
+                kRoundTripBudgetPicoseconds);
     }
 }

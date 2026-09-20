@@ -81,7 +81,17 @@ struct ConicReference {
 // |got / want - 1|, with no floor under `want`: WithinRelTo's floor of 1e-30
 // would pass anything at the fuzzer's scale of 1e-159 m. An infinite or NaN
 // `got` fails any budget.
-[[nodiscard]] f64 relativeError(f64 got, f64 want) { return std::abs((got / want) - 1.0); }
+// A measured value and the reference it is judged against. A struct rather
+// than two f64 parameters because `want` is the denominator, so the two do not
+// transpose -- which bugprone-easily-swappable-parameters reports since
+// SuppressParametersUsedTogether was switched off on 2026-09-20. The field
+// names are the ones the case tables in this file already use.
+struct Comparison {
+    f64 got{};
+    f64 want{};
+};
+
+[[nodiscard]] f64 relativeError(const Comparison& c) { return std::abs((c.got / c.want) - 1.0); }
 
 // The budget for the nearly radial cases. Their energies' two terms never come
 // within a factor of 2.4 of each other, so the subtraction amplifies rounding
@@ -390,8 +400,14 @@ TEST_CASE("states with no orbital plane", "[orbit][scales]") {
     REQUIRE(underflowedSlrRefused);
 
     // But a genuinely eccentric orbit is not rectilinear, however thin it is.
-    const Elements thin =
-        makeElements(Metres{2.0e7}, Eccentricity{0.9999}, 45.0_deg, 0.0_deg, 0.0_deg, 90.0_deg);
+    const Elements thin = makeElements({
+        .sma = Metres{2.0e7},
+        .ecc = Eccentricity{0.9999},
+        .inc = 45.0_deg,
+        .lan = 0.0_deg,
+        .aop = 0.0_deg,
+        .tra = 90.0_deg,
+    });
     const auto stillAnOrbit = elementsFromState(stateOf(thin, kMuEarth), kMuEarth);
     INFO("e = 0.9999 is still an orbit -> " << errorName(stillAnOrbit));
     REQUIRE(stillAnOrbit.has_value());
@@ -488,8 +504,10 @@ TEST_CASE("a nearly radial hyperbola at a tiny scale is not reported as closed",
                      want.sma.value(),
                      info.energy.value(),
                      want.energy.value()));
-    REQUIRE(relativeError(el->sma.value(), want.sma.value()) <= kConicBudget.value());
-    REQUIRE(relativeError(info.energy.value(), want.energy.value()) <= kConicBudget.value());
+    REQUIRE(relativeError({.got = el->sma.value(), .want = want.sma.value()}) <=
+            kConicBudget.value());
+    REQUIRE(relativeError({.got = info.energy.value(), .want = want.energy.value()}) <=
+            kConicBudget.value());
 }
 
 // Nearly radial orbits at an ordinary scale: the conic is the energy's to
@@ -525,17 +543,20 @@ TEST_CASE("a nearly radial ellipse is closed, with its period", "[orbit][scales]
     INFO("the energy is negative: an ellipse, so e < 1 and the orbit is closed");
     REQUIRE(el->ecc.value() < 1.0);
     REQUIRE(info.closed);
-    REQUIRE(relativeError(el->sma.value(), a) <= kConicBudget.value());
-    REQUIRE(relativeError(info.energy.value(), want.energy.value()) <= kConicBudget.value());
-    REQUIRE(relativeError(info.period.value(), period) <= kConicBudget.value());
-    REQUIRE(relativeError(info.meanMotion.value(), kTau / period) <= kConicBudget.value());
+    REQUIRE(relativeError({.got = el->sma.value(), .want = a}) <= kConicBudget.value());
+    REQUIRE(relativeError({.got = info.energy.value(), .want = want.energy.value()}) <=
+            kConicBudget.value());
+    REQUIRE(relativeError({.got = info.period.value(), .want = period}) <= kConicBudget.value());
+    REQUIRE(relativeError({.got = info.meanMotion.value(), .want = kTau / period}) <=
+            kConicBudget.value());
 
     // The velocity is square to the position and slower than circular, so the
     // probe is at apoapsis: the apoapsis is where it is. p / (1 - e) divided by
     // a 1 - e known only to its last bits; a(1 + e) does not.
     INFO(std::format(
         "apoapsis {:.17g} m, want {:.17g}", info.apoapsis.value(), want.radius.value()));
-    REQUIRE(relativeError(info.apoapsis.value(), want.radius.value()) <= kConicBudget.value());
+    REQUIRE(relativeError({.got = info.apoapsis.value(), .want = want.radius.value()}) <=
+            kConicBudget.value());
 }
 
 // Closer still to radial, the eccentricity is 1 as a double. A probe falling at
@@ -554,7 +575,8 @@ TEST_CASE("an eccentricity that rounds to 1 keeps the side of 1 its energy says"
     INFO(std::format("its eccentricity {:.17g}", ellipse->ecc.value()));
     REQUIRE(ellipse->ecc.value() < 1.0);
     REQUIRE(orbitInfo(*ellipse, kMuEarth).closed);
-    REQUIRE(relativeError(ellipse->sma.value(), conicReference(falling, kMuEarth).sma.value()) <=
+    REQUIRE(relativeError({.got = ellipse->sma.value(),
+                           .want = conicReference(falling, kMuEarth).sma.value()}) <=
             kConicBudget.value());
 
     const StateVector leaving{.pos = {7000e3, 0.0, 0.0}, .vel = {20.0e3, 1.0e-6, 0.0}};
@@ -564,7 +586,8 @@ TEST_CASE("an eccentricity that rounds to 1 keeps the side of 1 its energy says"
     INFO(std::format("its eccentricity {:.17g}", hyperbola->ecc.value()));
     REQUIRE(hyperbola->ecc.value() > 1.0);
     REQUIRE_FALSE(orbitInfo(*hyperbola, kMuEarth).closed);
-    REQUIRE(relativeError(hyperbola->sma.value(), conicReference(leaving, kMuEarth).sma.value()) <=
+    REQUIRE(relativeError({.got = hyperbola->sma.value(),
+                           .want = conicReference(leaving, kMuEarth).sma.value()}) <=
             kConicBudget.value());
 }
 
@@ -639,8 +662,10 @@ TEST_CASE("orbitInfo's radius and speed hold near the radial limit", "[orbit][sc
                          want.radius.value(),
                          info.speed.value(),
                          want.speed.value()));
-        REQUIRE(relativeError(info.radius.value(), want.radius.value()) <= c.radius.value());
-        REQUIRE(relativeError(info.speed.value(), want.speed.value()) <= c.speed.value());
+        REQUIRE(relativeError({.got = info.radius.value(), .want = want.radius.value()}) <=
+                c.radius.value());
+        REQUIRE(relativeError({.got = info.speed.value(), .want = want.speed.value()}) <=
+                c.speed.value());
     }
 }
 
@@ -699,9 +724,9 @@ TEST_CASE("an underflowing semi-major axis is not a NaN radius", "[orbit][scales
 
     const ConicReference want = conicReference(state, mu);
     INFO("the speed still means something");
-    REQUIRE(relativeError(info.speed.value(), want.speed.value()) <= 1e-6);
+    REQUIRE(relativeError({.got = info.speed.value(), .want = want.speed.value()}) <= 1e-6);
     INFO("and so does the radius, which is what changed");
-    REQUIRE(relativeError(info.radius.value(), want.radius.value()) <= 1e-6);
+    REQUIRE(relativeError({.got = info.radius.value(), .want = want.radius.value()}) <= 1e-6);
 }
 
 // Five orbits through the same periapsis, 7000 km up, differing by at most
@@ -891,8 +916,10 @@ TEST_CASE("a nearly radial hyperbola is open, with its energy", "[orbit][scales]
     REQUIRE(el->ecc.value() > 1.0);
     REQUIRE_FALSE(info.closed);
     REQUIRE(std::isinf(info.period.value()));
-    REQUIRE(relativeError(el->sma.value(), want.sma.value()) <= kConicBudget.value());
-    REQUIRE(relativeError(info.energy.value(), want.energy.value()) <= kConicBudget.value());
+    REQUIRE(relativeError({.got = el->sma.value(), .want = want.sma.value()}) <=
+            kConicBudget.value());
+    REQUIRE(relativeError({.got = info.energy.value(), .want = want.energy.value()}) <=
+            kConicBudget.value());
 }
 
 // A zero time step is the identity, on every conic and not just on the one the
@@ -1095,7 +1122,17 @@ namespace {
 // measured ratio. Both are around six orders *tighter* than the fixed 1e-9
 // they replace, everywhere below e = 0.9999 -- so this is a stricter test than
 // it was, not a relaxed one.
-void checkConserved(const StateVector& before, const StateVector& after, f64 e) {
+// The state before a propagation and the state after it. A struct because the
+// two are the same type and the comparison is not symmetric -- reversed, the
+// test would report the drift of the wrong one as the reference.
+struct PropagationPair {
+    StateVector before;
+    StateVector after;
+};
+
+void checkConserved(const PropagationPair& states, f64 e) {
+    const StateVector& before = states.before;
+    const StateVector& after = states.after;
     const Tolerance energyBudget{2e-15 / (1.0 - e)};
     const Tolerance momentumBudget{5e-14 / (1.0 - e)};
 
@@ -1110,8 +1147,14 @@ void checkConserved(const StateVector& before, const StateVector& after, f64 e) 
 void checkOneEccentricity(f64 e) {
     CAPTURE(e);
     constexpr Metres kSemiMajor{2.0e7};
-    const Elements el =
-        makeElements(kSemiMajor, Eccentricity{e}, 45.0_deg, 30.0_deg, 60.0_deg, 10.0_deg);
+    const Elements el = makeElements({
+        .sma = kSemiMajor,
+        .ecc = Eccentricity{e},
+        .inc = 45.0_deg,
+        .lan = 30.0_deg,
+        .aop = 60.0_deg,
+        .tra = 10.0_deg,
+    });
     const StateVector sv = stateOf(el, kMuEarth);
     const OrbitInfo info = orbitInfo(el, kMuEarth);
 
@@ -1122,7 +1165,7 @@ void checkOneEccentricity(f64 e) {
     INFO("propagate near-rectilinear -> " << errorName(moved));
     REQUIRE(moved.has_value());
 
-    checkConserved(sv, *moved, e);
+    checkConserved({.before = sv, .after = *moved}, e);
 
     // The round trip crosses periapsis, where a near-rectilinear orbit is
     // worst conditioned, so a fixed tolerance would either pass everything
@@ -1533,8 +1576,10 @@ void checkRadiusAndSpeed(const StateVector& sv, GravParam mu) {
                      info.speed.value(),
                      want.speed.value(),
                      budget.speed.value()));
-    REQUIRE(relativeError(info.radius.value(), want.radius.value()) <= budget.radius.value());
-    REQUIRE(relativeError(info.speed.value(), want.speed.value()) <= budget.speed.value());
+    REQUIRE(relativeError({.got = info.radius.value(), .want = want.radius.value()}) <=
+            budget.radius.value());
+    REQUIRE(relativeError({.got = info.speed.value(), .want = want.speed.value()}) <=
+            budget.speed.value());
 
     // And the whole state, not just the radius and the speed read back through
     // orbitInfo. This is the blind spot that let stateFromElements return a NaN
@@ -1932,6 +1977,10 @@ constexpr f64 kElementFactor = 40.0;
 constexpr f64 kElementBudget = kElementFactor * kUnitRoundoff;
 
 // Shortest way round the circle, so 0 and tau are the same angle.
+// The two are interchangeable: this is |got - want| folded onto the circle and
+// then the shorter of the two arcs, both of which are symmetric, so
+// transposing them cannot produce a wrong answer.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 [[nodiscard]] f64 angularError(Radians got, Radians want) {
     const f64 wrapped = std::fmod(std::abs(got.value() - want.value()), kTau);
     return std::min(wrapped, kTau - wrapped);
@@ -1959,8 +2008,8 @@ void checkEveryElement(const ElementCase& test) {
                          m.name,
                          m.got,
                          m.want,
-                         relativeError(m.got, m.want)));
-        REQUIRE(relativeError(m.got, m.want) <= kElementBudget);
+                         relativeError({.got = m.got, .want = m.want})));
+        REQUIRE(relativeError({.got = m.got, .want = m.want}) <= kElementBudget);
     }
 
     struct Angle {
@@ -2274,11 +2323,22 @@ namespace {
 
 // A double from those bits: a sign, a 52-bit mantissa and an exponent,
 // assembled with scalbn, which is exact.
-[[nodiscard]] f64 exactlyScaledDouble(std::uint64_t& state, int lowest, int highest) {
+// A range of binary exponents, so that the two bounds cannot transpose: with
+// them reversed the subtraction below is negative and the cast to an unsigned
+// modulus is nonsense. Local to this suite, as its twin in
+// tests/test_double_double.cpp is to that one -- the two suites share no
+// header, and adding one for four lines would cost more than it saves.
+struct ExponentRange {
+    int lowest{};
+    int highest{};
+};
+
+[[nodiscard]] f64 exactlyScaledDouble(std::uint64_t& state, const ExponentRange& range) {
     const std::uint64_t bits = mixedBits(state);
     const f64 mantissa = 1.0 + (static_cast<f64>(bits >> 12U) * 0x1p-52);
     const int exponent =
-        lowest + static_cast<int>((bits >> 1U) % static_cast<std::uint64_t>(highest - lowest));
+        range.lowest +
+        static_cast<int>((bits >> 1U) % static_cast<std::uint64_t>(range.highest - range.lowest));
     const f64 withSign = ((bits & 1U) != 0U) ? -mantissa : mantissa;
     return std::scalbn(withSign, exponent);
 }
@@ -2330,18 +2390,18 @@ TEST_CASE("the conversion's magnitudes are identical on every toolchain", "[orbi
         const StateVector sv{
             .pos =
                 {
-                    exactlyScaledDouble(engine, -60, 60),
-                    exactlyScaledDouble(engine, -60, 60),
-                    exactlyScaledDouble(engine, -60, 60),
+                    exactlyScaledDouble(engine, {.lowest = -60, .highest = 60}),
+                    exactlyScaledDouble(engine, {.lowest = -60, .highest = 60}),
+                    exactlyScaledDouble(engine, {.lowest = -60, .highest = 60}),
                 },
             .vel =
                 {
-                    exactlyScaledDouble(engine, -40, 40),
-                    exactlyScaledDouble(engine, -40, 40),
-                    exactlyScaledDouble(engine, -40, 40),
+                    exactlyScaledDouble(engine, {.lowest = -40, .highest = 40}),
+                    exactlyScaledDouble(engine, {.lowest = -40, .highest = 40}),
+                    exactlyScaledDouble(engine, {.lowest = -40, .highest = 40}),
                 },
         };
-        const GravParam mu{std::abs(exactlyScaledDouble(engine, -20, 60))};
+        const GravParam mu{std::abs(exactlyScaledDouble(engine, {.lowest = -20, .highest = 60}))};
         const auto el = elementsFromState(sv, mu);
         if (!el) continue;
         ++accepted;
@@ -2471,8 +2531,8 @@ TEST_CASE("a nearly radial hyperbola's state is not a NaN position", "[orbit][sc
                      kExpectedRadius,
                      length(sv->vel).value(),
                      kExpectedSpeed));
-    REQUIRE(relativeError(length(sv->pos).value(), kExpectedRadius) <= 1e-12);
-    REQUIRE(relativeError(length(sv->vel).value(), kExpectedSpeed) <= 1e-12);
+    REQUIRE(relativeError({.got = length(sv->pos).value(), .want = kExpectedRadius}) <= 1e-12);
+    REQUIRE(relativeError({.got = length(sv->vel).value(), .want = kExpectedSpeed}) <= 1e-12);
 }
 
 // The same cancellation without the NaN, which is the worse failure of the two
@@ -2506,8 +2566,8 @@ TEST_CASE("an eccentricity that rounds to 1 does not halve the radius", "[orbit]
     INFO(std::format("radius {:.17g} m, want {:.17g}, out by {:.3g}",
                      length(sv->pos).value(),
                      kExpectedRadius,
-                     relativeError(length(sv->pos).value(), kExpectedRadius)));
-    REQUIRE(relativeError(length(sv->pos).value(), kExpectedRadius) <= 1e-12);
+                     relativeError({.got = length(sv->pos).value(), .want = kExpectedRadius})));
+    REQUIRE(relativeError({.got = length(sv->pos).value(), .want = kExpectedRadius}) <= 1e-12);
 }
 
 // An anomaly the conic never reaches is refused rather than answered.

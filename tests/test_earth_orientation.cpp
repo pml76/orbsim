@@ -130,12 +130,27 @@ template <TimeScale Scale> [[nodiscard]] TimePoint<Scale> instantAt(Stamp stamp)
     return *instant;
 }
 
-// b - a in picoseconds, for two instants on the same scale a few days apart.
+// An ordered pair of instants. A struct rather than two parameters because the
+// difference below is signed, and two adjacent TimePoints of one scale
+// transpose in silence -- which bugprone-easily-swappable-parameters reports
+// since SuppressParametersUsedTogether was switched off on 2026-09-20.
+template <TimeScale Scale> struct Interval {
+    TimePoint<Scale> from;
+    TimePoint<Scale> to;
+};
+// An explicit deduction guide, because gcc's -Wctad-maybe-unsupported reports
+// class template argument deduction on a template that declares none: the
+// warning exists to catch CTAD nobody designed for, and here it was designed
+// for. clang does not report it, which is what the second compiler is for.
+template <TimeScale Scale> Interval(TimePoint<Scale>, TimePoint<Scale>) -> Interval<Scale>;
+
+// to - from in picoseconds, for two instants on the same scale a few days apart.
 template <TimeScale Scale>
-[[nodiscard]] std::int64_t picosecondsBetween(const TimePoint<Scale>& a,
-                                              const TimePoint<Scale>& b) {
-    const auto days = static_cast<std::int64_t>(b.modifiedJulianDay() - a.modifiedJulianDay());
-    return (days * kPicosecondsPerDayHere) + (b.picosecondOfDay() - a.picosecondOfDay());
+[[nodiscard]] std::int64_t picosecondsBetween(const Interval<Scale>& interval) {
+    const auto days = static_cast<std::int64_t>(interval.to.modifiedJulianDay() -
+                                                interval.from.modifiedJulianDay());
+    return (days * kPicosecondsPerDayHere) +
+           (interval.to.picosecondOfDay() - interval.from.picosecondOfDay());
 }
 
 // The angle between two rotations, applied to the three axes: the claim M1-07
@@ -159,9 +174,20 @@ template <TimeScale Scale>
     return worst;
 }
 
-// a * b^T: the rotation that takes what b produces to what a produces. Its
-// axis and angle are how far apart the two rotations are, and in which sense.
-[[nodiscard]] RotationMatrix timesTranspose(const RotationMatrix& a, const RotationMatrix& b) {
+// Two rotations, in the order the product below reads them. A struct because
+// a * b^T is not b * a^T, and two adjacent RotationMatrix parameters transpose
+// in silence (see the note on Interval above).
+struct RotationPair {
+    RotationMatrix left;
+    RotationMatrix right;
+};
+
+// left * right^T: the rotation that takes what `right` produces to what `left`
+// produces. Its axis and angle are how far apart the two rotations are, and in
+// which sense.
+[[nodiscard]] RotationMatrix timesTranspose(const RotationPair& pair) {
+    const RotationMatrix& a = pair.left;
+    const RotationMatrix& b = pair.right;
     RotationMatrix product{};
     for (std::size_t i = 0; i < 3; ++i) {
         for (std::size_t j = 0; j < 3; ++j) {
@@ -188,11 +214,19 @@ constexpr std::size_t kSweepCases = 2'000;
 constexpr std::int64_t kFirstMjd = 15'020;
 constexpr std::int64_t kLastMjd = 88'069;
 
+// An inclusive range, so that the two bounds cannot transpose at a call site:
+// reversed, `hi - lo + 1` is non-positive and the modulus below is undefined
+// (see the note on Interval above).
+struct InclusiveRange {
+    std::int64_t lo{};
+    std::int64_t hi{};
+};
+
 class Sampler {
 public:
-    [[nodiscard]] std::int64_t between(std::int64_t lo, std::int64_t hi) {
-        const auto width = static_cast<std::uint64_t>(hi - lo + 1);
-        return lo + static_cast<std::int64_t>(rng_() % width);
+    [[nodiscard]] std::int64_t between(const InclusiveRange& range) {
+        const auto width = static_cast<std::uint64_t>((range.hi - range.lo) + 1);
+        return range.lo + static_cast<std::int64_t>(rng_() % width);
     }
 
 private:
@@ -252,7 +286,8 @@ TEST_CASE("one turn of the Earth rotation angle takes the stellar day", "[earth]
         // What was actually built, in picoseconds, rather than what was asked
         // for: the Julian-date factory rounds, and this test does not care.
         const f64 elapsed =
-            static_cast<f64>(picosecondsBetween(first, second)) / 1e12; // seconds of UT1
+            static_cast<f64>(picosecondsBetween(Interval{.from = first, .to = second})) /
+            1e12; // seconds of UT1
         const f64 turned = earthRotationAngle(second).value() - earthRotationAngle(first).value();
         // Almost a whole turn: unwrap the remainder into (-pi, pi].
         const f64 remainder = turned - (kTwoPi * std::round(turned / kTwoPi));
@@ -309,7 +344,8 @@ TEST_CASE("the composition is CIO-consistent", "[earth][budget]") {
         const RotationMatrix ours = earthFixedFromInertialMatrix(row.tt, row.ut1);
         // The rotation from Skyfield's answer to ours. Its axis says which
         // part of the frame the two disagree about.
-        const RotationMatrix relative = timesTranspose(ours, row.celestialToTerrestrial);
+        const RotationMatrix relative =
+            timesTranspose({.left = ours, .right = row.celestialToTerrestrial});
         const Quat q = quaternionFrom(relative);
         // For an angle this small the rotation vector is 2 * the vector part,
         // and its z-component is the turn about the pole.
@@ -332,18 +368,18 @@ TEST_CASE("the composition is CIO-consistent", "[earth][budget]") {
 TEST_CASE("only UT1 turns the Earth", "[earth][structure]") {
     Sampler sampler;
     for (std::size_t i = 0; i < 200; ++i) {
-        const auto mjd = sampler.between(kFirstMjd, kLastMjd);
+        const auto mjd = sampler.between({.lo = kFirstMjd, .hi = kLastMjd});
         const TtTime tt = instantAt<TimeScale::Tt>({
             .mjd = mjd,
-            .picosecondOfDay = sampler.between(0, kPicosecondsPerDayHere - 1),
+            .picosecondOfDay = sampler.between({.lo = 0, .hi = kPicosecondsPerDayHere - 1}),
         });
         const Ut1Time first = instantAt<TimeScale::Ut1>({
             .mjd = mjd,
-            .picosecondOfDay = sampler.between(0, kPicosecondsPerDayHere - 1),
+            .picosecondOfDay = sampler.between({.lo = 0, .hi = kPicosecondsPerDayHere - 1}),
         });
         const Ut1Time second = instantAt<TimeScale::Ut1>({
             .mjd = mjd,
-            .picosecondOfDay = sampler.between(0, kPicosecondsPerDayHere - 1),
+            .picosecondOfDay = sampler.between({.lo = 0, .hi = kPicosecondsPerDayHere - 1}),
         });
         CAPTURE(kSweepSeed, i, tt, first, second);
 
@@ -357,7 +393,7 @@ TEST_CASE("only UT1 turns the Earth", "[earth][structure]") {
         // And the frame has turned about it by exactly the change in ERA. The
         // relative rotation's vector part is along the pole, and twice its
         // length is the angle.
-        const Quat q = quaternionFrom(timesTranspose(b, a));
+        const Quat q = quaternionFrom(timesTranspose({.left = b, .right = a}));
         const f64 turned =
             2.0 * std::atan2(std::hypot(q.x, q.y, q.z), q.w) * (q.z < 0.0 ? -1.0 : 1.0);
         const f64 deltaEra = earthRotationAngle(second).value() - earthRotationAngle(first).value();
@@ -379,14 +415,14 @@ TEST_CASE("the pole of date is the same with and without the Earth's rotation",
           "[earth][structure]") {
     Sampler sampler;
     for (std::size_t i = 0; i < 200; ++i) {
-        const auto mjd = sampler.between(kFirstMjd, kLastMjd);
+        const auto mjd = sampler.between({.lo = kFirstMjd, .hi = kLastMjd});
         const TtTime tt = instantAt<TimeScale::Tt>({
             .mjd = mjd,
-            .picosecondOfDay = sampler.between(0, kPicosecondsPerDayHere - 1),
+            .picosecondOfDay = sampler.between({.lo = 0, .hi = kPicosecondsPerDayHere - 1}),
         });
         const Ut1Time ut1 = instantAt<TimeScale::Ut1>({
             .mjd = mjd,
-            .picosecondOfDay = sampler.between(0, kPicosecondsPerDayHere - 1),
+            .picosecondOfDay = sampler.between({.lo = 0, .hi = kPicosecondsPerDayHere - 1}),
         });
         CAPTURE(kSweepSeed, i, tt, ut1);
 
@@ -420,14 +456,14 @@ TEST_CASE("the intermediate frame is the full rotation less the Earth's turn",
           "[earth][structure]") {
     Sampler sampler;
     for (std::size_t i = 0; i < 200; ++i) {
-        const auto mjd = sampler.between(kFirstMjd, kLastMjd);
+        const auto mjd = sampler.between({.lo = kFirstMjd, .hi = kLastMjd});
         const TtTime tt = instantAt<TimeScale::Tt>({
             .mjd = mjd,
-            .picosecondOfDay = sampler.between(0, kPicosecondsPerDayHere - 1),
+            .picosecondOfDay = sampler.between({.lo = 0, .hi = kPicosecondsPerDayHere - 1}),
         });
         const Ut1Time ut1 = instantAt<TimeScale::Ut1>({
             .mjd = mjd,
-            .picosecondOfDay = sampler.between(0, kPicosecondsPerDayHere - 1),
+            .picosecondOfDay = sampler.between({.lo = 0, .hi = kPicosecondsPerDayHere - 1}),
         });
         CAPTURE(kSweepSeed, i, tt, ut1);
 
@@ -448,8 +484,8 @@ TEST_CASE("the intermediate frame is the full rotation less the Earth's turn",
             }
         }
 
-        const Quat left =
-            quaternionFrom(timesTranspose(earthFixedFromInertialMatrix(tt, ut1), composed));
+        const Quat left = quaternionFrom(
+            timesTranspose({.left = earthFixedFromInertialMatrix(tt, ut1), .right = composed}));
         const Radians spin{2.0 * std::abs(left.z)};
         const Radians tilt{2.0 * std::hypot(left.x, left.y)};
         CAPTURE(spin.value(), tilt.value());
@@ -473,17 +509,17 @@ TEST_CASE("the quaternion is a unit one and reproduces the matrix", "[earth][str
     std::size_t nearHalfTurns = 0;
 
     for (std::size_t i = 0; i < kSweepCases; ++i) {
-        const auto mjd = sampler.between(kFirstMjd, kLastMjd);
+        const auto mjd = sampler.between({.lo = kFirstMjd, .hi = kLastMjd});
         const TtTime tt = instantAt<TimeScale::Tt>({
             .mjd = mjd,
-            .picosecondOfDay = sampler.between(0, kPicosecondsPerDayHere - 1),
+            .picosecondOfDay = sampler.between({.lo = 0, .hi = kPicosecondsPerDayHere - 1}),
         });
         // Half of the cases at an arbitrary UT1, and half where the Earth
         // rotation angle is within a milliradian of pi -- the fraction of the
         // day that puts it there comes from the defining formula, not from the
         // code under test.
         const bool nearHalfTurn = i % 2 == 1;
-        std::int64_t picos = sampler.between(0, kPicosecondsPerDayHere - 1);
+        std::int64_t picos = sampler.between({.lo = 0, .hi = kPicosecondsPerDayHere - 1});
         if (nearHalfTurn) {
             const f64 turnsAtMidnight =
                 kEraAtJ2000Turns +

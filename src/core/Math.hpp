@@ -228,7 +228,13 @@ template <auto R> [[nodiscard]] inline Direction directionOf(const Vec3<R>& v) n
     return Direction{n.x.value(), n.y.value(), n.z.value()};
 }
 
+// The two are interchangeable -- |a - b| is symmetric -- so transposing them
+// cannot produce a wrong answer, the reason core/Scalar.hpp gives on
+// nearlyEqual. The suppression sits on the signature and not above the
+// `template` line: NOLINTNEXTLINE covers exactly the next line, and the
+// finding is reported where the parameters are.
 template <auto R>
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 [[nodiscard]] inline Scalar<R> distance(const Vec3<R>& a, const Vec3<R>& b) noexcept {
     return length(a - b);
 }

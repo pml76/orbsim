@@ -97,7 +97,7 @@ struct DoubleDouble {
 // precondition by construction". They do not. Asserting it produced, from the
 // compiler, during constant evaluation:
 //
-//     quickTwoSum(0.0, 8.673617e-19)   from (1 + 2^-60) - 1
+//     quickTwoSum({.larger = 0.0, .smaller = 8.673617e-19})   from (1 + 2^-60) - 1
 //
 // |a| = 0 is smaller than |b| = 2^-60. It happens whenever the high parts
 // cancel: `sum.hi` is then tiny, or exactly zero, while the low terms being
@@ -114,7 +114,21 @@ struct DoubleDouble {
 // It is kept, asserted, and exercised by its own test, because it is a correct
 // published algorithm and the next caller should get the check rather than the
 // belief.
-[[nodiscard]] constexpr DoubleDouble quickTwoSum(f64 a, f64 b) noexcept {
+// Two doubles in the order quickTwoSum requires, |larger| >= |smaller|. A
+// struct rather than two f64 parameters because that precondition is the whole
+// reason the function exists, and two adjacent doubles transpose in silence --
+// which bugprone-easily-swappable-parameters reports since
+// SuppressParametersUsedTogether was switched off on 2026-09-20. The
+// assertion below stays: naming the fields says which is which, it does not
+// check that the caller was right.
+struct OrderedPair {
+    f64 larger{};
+    f64 smaller{};
+};
+
+[[nodiscard]] constexpr DoubleDouble quickTwoSum(const OrderedPair& pair) noexcept {
+    const f64 a = pair.larger;
+    const f64 b = pair.smaller;
     // Negated, because this header handles non-finite values deliberately and
     // `absOf(a) >= absOf(b)` is false for a NaN -- the direct form would abort a
     // Debug build on input the code is designed to accept, which is the defect
@@ -127,6 +141,12 @@ struct DoubleDouble {
 
 // The exact sum of any two doubles: hi is their rounded sum and lo is exactly
 // the rounding error it made (Knuth's two-sum).
+//
+// The two are interchangeable -- addition is commutative and so is the error
+// term it leaves -- so transposing them cannot produce a wrong answer. That is
+// the same reason core/Scalar.hpp gives on nearlyEqual, and it is why this is
+// a suppression rather than a fix.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 [[nodiscard]] constexpr DoubleDouble twoSum(f64 a, f64 b) noexcept {
     const f64 sum = a + b;
     if (!isFinite(sum)) return {.hi = sum, .lo = 0.0};
@@ -159,6 +179,10 @@ struct DoubleDouble {
 // The exact product of two doubles: hi is their rounded product and lo is
 // exactly the rounding error, reconstructed from the four partial products of
 // the split halves.
+//
+// Interchangeable, for the same reason as twoSum above: multiplication is
+// commutative and so is the error term.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 [[nodiscard]] constexpr DoubleDouble twoProduct(f64 a, f64 b) noexcept {
     const f64 product = a * b;
     if (!isFinite(product)) return {.hi = product, .lo = 0.0};

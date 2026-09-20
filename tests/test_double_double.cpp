@@ -56,6 +56,10 @@ using orb::twoSum;
 // file: an exactness property is not "close", it is equal. nearlyEqual with a
 // zero tolerance is how this codebase spells that (core/Scalar.hpp), and it
 // reports false for a NaN on either side, which the tests below want.
+// The two are interchangeable -- nearlyEqual is |a - b| against a tolerance,
+// which is commutative -- so transposing them cannot produce a wrong answer.
+// The same reason core/Scalar.hpp gives on nearlyEqual itself.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 [[nodiscard]] bool identical(f64 got, f64 want) { return nearlyEqual(got, want, Tolerance{0.0}); }
 
 // Written down so a failure can be reproduced, as VERIFICATION.md requires.
@@ -74,14 +78,25 @@ constexpr int kSplitCases = 5000;
 constexpr int kNewtonCases = 10000;
 constexpr int kQuickSumCases = 10000;
 
+// A range of binary exponents. A struct rather than two int parameters,
+// because reversed they draw from an empty range and the scale being swept is
+// silently wrong -- which bugprone-easily-swappable-parameters reports since
+// SuppressParametersUsedTogether was switched off on 2026-09-20.
+struct ExponentRange {
+    int lowest{};
+    int highest{};
+};
+
 class Sampler {
 public:
     // A double with a uniformly random 52-bit mantissa and an exponent drawn
     // uniformly from a range, which is what covers "every scale" rather than
     // "every value between 0 and 1".
-    [[nodiscard]] f64 atExponent(int lo, int hi) {
+    [[nodiscard]] f64 atExponent(const ExponentRange& range) {
         const f64 mantissa = 1.0 + (unit_(rng_) * 0.5);
-        const int exponent = lo + static_cast<int>(unit_(rng_) * static_cast<f64>(hi - lo));
+        const int exponent =
+            range.lowest +
+            static_cast<int>(unit_(rng_) * static_cast<f64>(range.highest - range.lowest));
         const f64 sign = (unit_(rng_) < 0.5) ? -1.0 : 1.0;
         return sign * std::scalbn(mantissa, exponent);
     }
@@ -106,8 +121,8 @@ private:
 TEST_CASE("the error term of a product is exactly what an fma reports", "[core][dd]") {
     Sampler sampler;
     for (int i = 0; i < kProductCases; ++i) {
-        const f64 a = sampler.atExponent(-400, 400);
-        const f64 b = sampler.atExponent(-400, 400);
+        const f64 a = sampler.atExponent({.lowest = -400, .highest = 400});
+        const f64 b = sampler.atExponent({.lowest = -400, .highest = 400});
         const f64 product = a * b;
         if (!isFinite(product) || std::abs(product) < 0x1p-900) continue;
 
@@ -133,8 +148,8 @@ TEST_CASE("splitting survives the top of the range", "[core][dd]") {
     for (int i = 0; i < kSplitCases; ++i) {
         // One operand above the ceiling, the other small enough to keep the
         // product finite.
-        const f64 big = sampler.atExponent(997, 1023);
-        const f64 small = sampler.atExponent(-200, -20);
+        const f64 big = sampler.atExponent({.lowest = 997, .highest = 1023});
+        const f64 small = sampler.atExponent({.lowest = -200, .highest = -20});
         const f64 product = big * small;
         if (!isFinite(product) || std::abs(product) < 0x1p-900) continue;
 
@@ -225,8 +240,8 @@ TEST_CASE("the quotient and the square root are correct beyond a double", "[core
     Sampler sampler;
     constexpr f64 kDoubleDoubleEpsilon = 0x1p-100; // about 4 ulp of 2^-106
     for (int i = 0; i < kNewtonCases; ++i) {
-        const f64 a = sampler.atExponent(-200, 200);
-        const f64 b = sampler.atExponent(-200, 200);
+        const f64 a = sampler.atExponent({.lowest = -200, .highest = 200});
+        const f64 b = sampler.atExponent({.lowest = -200, .highest = 200});
 
         const DoubleDouble quotient = exact(a) / exact(b);
         const DoubleDouble reconstructed = quotient * exact(b);
@@ -331,11 +346,11 @@ TEST_CASE("the scalar predicates agree about NaN", "[core][scalar]") {
 TEST_CASE("quickTwoSum is exact when its precondition holds", "[core][dd]") {
     Sampler sampler;
     for (int i = 0; i < kQuickSumCases; ++i) {
-        const f64 a = sampler.atExponent(-200, 200);
-        const f64 b = sampler.atExponent(-260, -60) * std::abs(a);
+        const f64 a = sampler.atExponent({.lowest = -200, .highest = 200});
+        const f64 b = sampler.atExponent({.lowest = -260, .highest = -60}) * std::abs(a);
         if (!isFinite(b) || std::abs(b) > std::abs(a)) continue;
 
-        const DoubleDouble got = quickTwoSum(a, b);
+        const DoubleDouble got = quickTwoSum({.larger = a, .smaller = b});
         const DoubleDouble reference = twoSum(a, b);
         CAPTURE(kSeed, i, a, b);
         INFO(std::format("quick {:.17g} + {:.17g}, general {:.17g} + {:.17g}",

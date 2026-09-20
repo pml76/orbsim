@@ -348,9 +348,10 @@ struct DeviceBundle {
 
 void transitionImage(VkCommandBuffer cmd,
                      VkImage image,
-                     VkImageLayout from,
-                     VkImageLayout to,
+                     const LayoutTransition& layouts,
                      VkImageAspectFlags aspect) {
+    const VkImageLayout from = layouts.from;
+    const VkImageLayout to = layouts.to;
     const VkImageMemoryBarrier2 barrier{
         .sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
         // ALL_COMMANDS is heavier than necessary, but this renderer makes only
@@ -672,12 +673,16 @@ std::expected<std::optional<FrameContext>, RenderError> VulkanContext::beginFram
 
     transitionImage(cmd,
                     swapchainImages_.at(imageIndex),
-                    VK_IMAGE_LAYOUT_UNDEFINED,
-                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL);
+                    {
+                        .from = VK_IMAGE_LAYOUT_UNDEFINED,
+                        .to = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                    });
     transitionImage(cmd,
                     depthImage_.get(),
-                    VK_IMAGE_LAYOUT_UNDEFINED,
-                    VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+                    {
+                        .from = VK_IMAGE_LAYOUT_UNDEFINED,
+                        .to = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+                    },
                     VK_IMAGE_ASPECT_DEPTH_BIT);
 
     beginRendering(cmd, imageIndex);
@@ -743,8 +748,10 @@ std::expected<void, RenderError> VulkanContext::endFrame(const FrameContext& fra
 
     transitionImage(frame.cmd,
                     swapchainImages_.at(frame.imageIndex),
-                    VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                    VK_IMAGE_LAYOUT_PRESENT_SRC_KHR);
+                    {
+                        .from = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                        .to = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                    });
     if (auto ok = vkCheck(vkEndCommandBuffer(frame.cmd), "vkEndCommandBuffer"); !ok) return ok;
 
     const VkSemaphoreSubmitInfo waitInfo{
@@ -808,8 +815,10 @@ std::expected<void, RenderError> VulkanContext::waitIdle() const {
 
 // --- resources -------------------------------------------------------------
 
-std::expected<UniqueBuffer, RenderError>
-VulkanContext::createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory) {
+std::expected<UniqueBuffer, RenderError> VulkanContext::createBuffer(const BufferRequest& request) {
+    const VkDeviceSize size = request.size;
+    const VkBufferUsageFlags usage = request.usage;
+    const Memory memory = request.memory;
     const VkBufferCreateInfo bufferInfo{
         .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
         .size = size,
@@ -861,7 +870,11 @@ std::expected<void, RenderError> VulkanContext::uploadBuffer(UniqueBuffer& dst,
         return {};
     }
 
-    auto staging = createBuffer(data.size(), VK_BUFFER_USAGE_TRANSFER_SRC_BIT, Memory::HostVisible);
+    auto staging = createBuffer({
+        .size = data.size(),
+        .usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        .memory = Memory::HostVisible,
+    });
     if (!staging) return std::unexpected(staging.error());
     if (staging->mapped() == nullptr) return fail("Staging buffer was not mapped");
 #ifdef __clang__

@@ -155,6 +155,9 @@ void requireUt1RoundTrip(Ut1Time ut1, DeltaUt1 delta) {
 
 // |a - b| in picoseconds, for two instants a picosecond or so apart.
 template <TimeScale Scale>
+// The two are interchangeable: this returns |a - b|, whose sign is taken off
+// at the end, so transposing them cannot produce a wrong answer.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 [[nodiscard]] std::int64_t picosecondsApart(const TimePoint<Scale>& a, const TimePoint<Scale>& b) {
     const f64 days = a.modifiedJulianDay() - b.modifiedJulianDay();
     const std::int64_t apart = (static_cast<std::int64_t>(days) * orb::kPicosecondsPerDay) +

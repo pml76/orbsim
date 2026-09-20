@@ -47,16 +47,37 @@ inline constexpr Metres kEarthRadius{6378137.0};
 // it turns the test into "must also be zero", which is the intended meaning.
 inline constexpr f64 kRelativeScaleFloor = 1e-30;
 
-[[nodiscard]] inline Elements
-makeElements(Metres sma, Eccentricity ecc, Degrees inc, Degrees lan, Degrees aop, Degrees tra) {
+// The elements a test case states, with its angles in degrees.
+//
+// A struct rather than six parameters: four of them were adjacent `Degrees`,
+// which is I.24's canonical defect and what
+// bugprone-easily-swappable-parameters reports since
+// SuppressParametersUsedTogether was switched off on 2026-09-20. It is also
+// I.23 -- six arguments were a struct that wanted to exist -- and the call
+// sites read better for it, because a table of orbits now names which angle
+// is which instead of relying on their order.
+// No `{}` on the members: every Scalar zeroes in its own default constructor
+// (core/Units.hpp), so an initialiser here is redundant and
+// readability-redundant-member-init says so. `Elements` in orbit/Orbit.hpp
+// declares its six the same way.
+struct ElementsInDegrees {
+    Metres sma;
+    Eccentricity ecc;
+    Degrees inc;
+    Degrees lan;
+    Degrees aop;
+    Degrees tra;
+};
+
+[[nodiscard]] inline Elements makeElements(const ElementsInDegrees& e) {
     return Elements{
-        .sma = sma,
-        .ecc = ecc,
-        .inc = toRadians(inc),
-        .lan = toRadians(lan),
-        .aop = toRadians(aop),
-        .tra = toRadians(tra),
-        .slr = Metres{sma.value() * (1.0 - (ecc.value() * ecc.value()))},
+        .sma = e.sma,
+        .ecc = e.ecc,
+        .inc = toRadians(e.inc),
+        .lan = toRadians(e.lan),
+        .aop = toRadians(e.aop),
+        .tra = toRadians(e.tra),
+        .slr = Metres{e.sma.value() * (1.0 - (e.ecc.value() * e.ecc.value()))},
     };
 }
 

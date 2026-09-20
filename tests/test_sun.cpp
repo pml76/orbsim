@@ -144,9 +144,16 @@ constexpr Seconds kJustOutside{1e-3};
     return *instant;
 }
 
-[[nodiscard]] TdbTime tdbAtNoon(std::int32_t year, std::int32_t month, std::int32_t day) {
-    const auto instant =
-        TdbTime::fromCalendar({.year = year, .month = month, .day = day, .hour = 12});
+// The date arrives as a CalendarDate rather than as three integers, so that a
+// call site cannot transpose them: three adjacent std::int32_t parameters are
+// exactly what bugprone-easily-swappable-parameters is for, and it reports
+// them since SuppressParametersUsedTogether was switched off on 2026-09-20.
+// CalendarDate rather than a local three-field struct, because a field-for-
+// field copy of an existing type is what register decision 89 deleted.
+// The time of day in it is not read; this is noon, which is what the name says.
+[[nodiscard]] TdbTime tdbAtNoon(const CalendarDate& date) {
+    const auto instant = TdbTime::fromCalendar(
+        {.year = date.year, .month = date.month, .day = date.day, .hour = 12});
     INFO(errorName(instant));
     REQUIRE(instant.has_value());
     return *instant;
@@ -285,9 +292,17 @@ TEST_CASE("the apsides are where the published figures put them", "[sun]") {
         CAPTURE(year);
 
         const Apsis perihelion = apsisWithin(
-            {.from = tdbAtNoon(year - 1, 10, 1), .to = tdbAtNoon(year, 3, 31)}, Extreme::Nearest);
+            {
+                .from = tdbAtNoon({.year = year - 1, .month = 10, .day = 1}),
+                .to = tdbAtNoon({.year = year, .month = 3, .day = 31}),
+            },
+            Extreme::Nearest);
         const Apsis aphelion = apsisWithin(
-            {.from = tdbAtNoon(year, 4, 1), .to = tdbAtNoon(year, 9, 30)}, Extreme::Farthest);
+            {
+                .from = tdbAtNoon({.year = year, .month = 4, .day = 1}),
+                .to = tdbAtNoon({.year = year, .month = 9, .day = 30}),
+            },
+            Extreme::Farthest);
 
         CAPTURE(perihelion.distanceAu, perihelion.month, perihelion.day);
         CAPTURE(aphelion.distanceAu, aphelion.month, aphelion.day);
@@ -315,7 +330,7 @@ TEST_CASE("the apsides are where the published figures put them", "[sun]") {
 TEST_CASE("the Sun's motion is continuous across fifty years", "[sun]") {
     // A wrapped angle handled wrongly shows up here as a discontinuity, and
     // the bound is two-sided so that it fails in either direction.
-    const TdbTime start = tdbAtNoon(2000, 1, 1);
+    const TdbTime start = tdbAtNoon({.year = 2000, .month = 1, .day = 1});
     Position previous = positionAt(start);
     Radians worstStep{0.0};
     Radians smallestStep{std::numbers::pi_v<f64>};
@@ -446,7 +461,7 @@ TEST_CASE("a date outside ERFA's span is reported by name", "[sun]") {
 TEST_CASE("a date in mid-2100 is outside the span", "[sun]") {
     // Asked for because "1900-2100" invites the opposite assumption: the span
     // ends on 1 January 2100, not at the end of it.
-    const TdbTime midCentury = tdbAtNoon(2100, 7, 1);
+    const TdbTime midCentury = tdbAtNoon({.year = 2100, .month = 7, .day = 1});
     const auto position = geocentricSunPosition(midCentury);
     REQUIRE_FALSE(position.has_value());
     REQUIRE(position.error() == EphemerisError::OutsideEphemerisRange);

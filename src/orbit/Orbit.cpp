@@ -594,11 +594,22 @@ struct Vec3Exact {
 // where the whole benefit comes from: r x v cancels to nothing when the
 // velocity is nearly parallel to the position, and a plain cross product has
 // already thrown the answer away by the time anything else sees it.
+// Interchangeable: the dot product is commutative, and each term's exact
+// product is too, so transposing them cannot produce a wrong answer.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 [[nodiscard]] constexpr DoubleDouble dotExact(const Direction& a, const Direction& b) noexcept {
     return (twoProduct(a.x.value(), b.x.value()) + twoProduct(a.y.value(), b.y.value())) +
            twoProduct(a.z.value(), b.z.value());
 }
 
+// **Not** interchangeable -- a x b is -(b x a) -- and suppressed anyway,
+// because (a, b) is the notation every reader of a cross product already
+// knows and a call site shows it plainly. That is the argument .clang-tidy
+// already records for Vec3's (x_, y_, z_) constructor, and the alternative --
+// a named pair -- would make the one expression here read worse than the
+// mathematics it is transcribing. Math.hpp's own cross() is not reported at
+// all: its two parameters have different template types.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 [[nodiscard]] constexpr Vec3Exact crossExact(const Direction& a, const Direction& b) noexcept {
     return {
         .x = twoProduct(a.y.value(), b.z.value()) - twoProduct(a.z.value(), b.y.value()),

@@ -73,6 +73,20 @@ struct FrameContext {
 // this class declares no destructor, no copy and no move: the compiler writes
 // them, destruction happens in reverse declaration order because the language
 // says so, and there is no shutdown() to keep in step with the member list.
+// What a buffer allocation asks for. A struct rather than three parameters
+// because VkDeviceSize and VkBufferUsageFlags are both unsigned integers and
+// convert into one another, so `createBuffer(usage, size, ...)` compiled --
+// which bugprone-easily-swappable-parameters reports since
+// SuppressParametersUsedTogether was switched off on 2026-09-20. A strong
+// `Bytes` type would be the other answer and is deliberately not taken here:
+// register decision 19 puts an integral Count<Derived> in core/Scalar.hpp, and
+// inventing a size type in the renderer would pre-empt it in the wrong layer.
+struct BufferRequest {
+    VkDeviceSize size{};
+    VkBufferUsageFlags usage{};
+    Memory memory{Memory::DeviceLocal};
+};
+
 class VulkanContext {
 public:
     // A factory, not a constructor followed by init(). Either you hold a fully
@@ -111,7 +125,7 @@ public:
     // --- resources ---------------------------------------------------------
 
     [[nodiscard]] std::expected<UniqueBuffer, RenderError>
-    createBuffer(VkDeviceSize size, VkBufferUsageFlags usage, Memory memory);
+    createBuffer(const BufferRequest& request);
 
     // Uploads through a host-visible staging buffer, or directly when the
     // destination is host-visible itself. Synchronous: intended for load-time
@@ -205,12 +219,22 @@ private:
 
 // --- small helpers shared by the render code -------------------------------
 
+// Where a layout transition starts and where it ends. A struct rather than two
+// VkImageLayout parameters because reversed they describe the opposite
+// transition, and Vulkan accepts it -- the validation layers complain about the
+// image's actual layout three calls later, if at all.
+// bugprone-easily-swappable-parameters reports the pair since
+// SuppressParametersUsedTogether was switched off on 2026-09-20.
+struct LayoutTransition {
+    VkImageLayout from{VK_IMAGE_LAYOUT_UNDEFINED};
+    VkImageLayout to{VK_IMAGE_LAYOUT_UNDEFINED};
+};
+
 // Records a synchronization2 image layout transition with conservative stage
 // and access masks. Fine for the handful of transitions this renderer makes.
 void transitionImage(VkCommandBuffer cmd,
                      VkImage image,
-                     VkImageLayout from,
-                     VkImageLayout to,
+                     const LayoutTransition& layouts,
                      VkImageAspectFlags aspect = VK_IMAGE_ASPECT_COLOR_BIT);
 
 } // namespace orb::gfx
