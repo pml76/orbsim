@@ -166,6 +166,22 @@ struct CalendarDate {
 // `day` is the Julian date of the midnight that begins the day, which ends in
 // .5, and `fraction` is the part of the day since, in [0, 1): the split that
 // leaves the most resolution in the fraction.
+//
+// **What that split is worth, measured** (register decision 83, moved here by
+// decision 89 when astro/EarthOrientation.cpp's near-copy of this type was
+// deleted). Handed 2 400 000.5 and the Modified Julian Day plus a fraction --
+// the "MJD method" -- ERFA resolves the Earth rotation angle to 9.5 uas;
+// handed the day and the fraction apart, as julianDate() gives them, to
+// 0.04 uas. Measured against the defining formula evaluated in 60 digits,
+// over 20,000 instants spanning 1900-2100.
+//
+// So this is the split src/astro/ hands to ERFA, and the two places that want
+// a different one say why where they build it: astro/Tdb.cpp uses the MJD
+// method, because eraDtdb collapses the two parts into Julian millennia at
+// once and the difference is at most 3e-4 ps; astro/Sun.cpp uses this one,
+// because eraEpv00 likewise cannot resolve the difference and there is no
+// reason to be inconsistent. For a quantity that moves by microseconds a day
+// the split cannot matter; for an angle that turns once a day it can.
 struct JulianDate {
     f64 day{};
     f64 fraction{};

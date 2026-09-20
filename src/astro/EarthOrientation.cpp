@@ -1,7 +1,6 @@
 #include "astro/EarthOrientation.hpp"
 
 #include "core/Math.hpp"
-#include "core/Scalar.hpp"
 #include "core/Time.hpp"
 #include "core/Units.hpp"
 
@@ -21,26 +20,6 @@
 namespace orb {
 
 namespace {
-
-// The two-part Julian date ERFA takes, in the split that keeps the most of an
-// instant: the Julian day of the midnight, and the fraction of the day.
-//
-// **Not the "MJD method"** astro/Tdb.cpp uses, and the difference is measured
-// (register decision 83). Handed 2 400 000.5 and the Modified Julian Day plus
-// a fraction, ERFA resolves the Earth rotation angle to 9.5 uas; handed the
-// day and the fraction apart, to 0.04 uas -- against the defining formula
-// evaluated in 60 digits, over 20,000 instants spanning 1900-2100. For
-// TDB - TT, which moves by microseconds a day, the split cannot matter; for an
-// angle that turns once a day it can.
-struct TwoPartDate {
-    f64 day{};
-    f64 fraction{};
-};
-
-template <TimeScale Scale> [[nodiscard]] TwoPartDate twoPartDate(TimePoint<Scale> at) noexcept {
-    const JulianDate date = at.julianDate();
-    return {.day = date.day, .fraction = date.fraction};
-}
 
 // ERFA's matrix, as this project's type. The parameter is a reference to a C
 // array rather than a pointer, so the size is part of the type and nothing
@@ -95,13 +74,17 @@ constexpr double kNoPolarMotion = 0.0;
 } // namespace
 
 Radians earthRotationAngle(Ut1Time ut1) noexcept {
-    const TwoPartDate date = twoPartDate(ut1);
+    // The Julian day of the midnight and the fraction of the day, as
+    // core/Time.hpp hands them out -- the split this angle needs, and why, is
+    // on JulianDate there (register decisions 83 and 89).
+    const JulianDate date = ut1.julianDate();
     return Radians{eraEra00(date.day, date.fraction)};
 }
 
 RotationMatrix earthFixedFromInertialMatrix(TtTime tt, Ut1Time ut1) noexcept {
-    const TwoPartDate terrestrial = twoPartDate(tt);
-    const TwoPartDate universal = twoPartDate(ut1);
+    // The day-and-fraction split, as on JulianDate in core/Time.hpp.
+    const JulianDate terrestrial = tt.julianDate();
+    const JulianDate universal = ut1.julianDate();
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
     double rc2t[3][3]{};
     eraC2t06a(terrestrial.day,
@@ -121,7 +104,8 @@ Quat earthFixedFromInertial(TtTime tt, Ut1Time ut1) noexcept {
 }
 
 RotationMatrix intermediateFromInertialMatrix(TtTime tt) noexcept {
-    const TwoPartDate date = twoPartDate(tt);
+    // The day-and-fraction split, as on JulianDate in core/Time.hpp.
+    const JulianDate date = tt.julianDate();
     // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays,modernize-avoid-c-arrays)
     double rc2i[3][3]{};
     // ERFA's out-parameter, as above.
