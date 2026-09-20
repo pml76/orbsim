@@ -467,6 +467,34 @@ target_link_libraries(orbsim_core
 )
 
 # ---------------------------------------------------------------------------
+# orbsim_view -- the render-side maths that Vulkan never touches (ADR 0012).
+#
+# It links orbsim_core and nothing else. orbsim_render and the application
+# link it; orbsim_core does not, and cannot, which is what makes "nothing
+# under tests/ includes a Vulkan or SDL header" a property of the link graph
+# rather than of anyone's memory.
+#
+# INTERFACE rather than STATIC, because M1-09 leaves it header-only and a
+# sourceless static library does not configure at all -- CMake stops with "No
+# SOURCES given to target" (measured 2026-09-20). It becomes STATIC the moment
+# M1-11 adds Camera.cpp; nothing else about it changes.
+# ---------------------------------------------------------------------------
+add_library(orbsim_view INTERFACE)
+target_link_libraries(orbsim_view INTERFACE orbsim_core)
+
+# The structural claim, checked rather than remembered (ADR 0012, and
+# VERIFICATION.md rule 21: a check not reachable from the build is an
+# intention). Costs microseconds, runs at configure time in every tree. The
+# other half -- that -DORBSIM_BUILD_APP=OFF still builds the core and its
+# tests -- is a second configure and stays a manual step, in M1-09's document.
+get_target_property(orbsim_core_links orbsim_core LINK_LIBRARIES)
+if(orbsim_core_links MATCHES "orbsim_view")
+    message(FATAL_ERROR
+            "orbsim_core links orbsim_view. The dependency is one-way: the physics "
+            "must not see the renderer's maths (ADR 0012, CODING_GUIDELINES section 12).")
+endif()
+
+# ---------------------------------------------------------------------------
 # Tests
 #
 # Catch2 replaced a hand-rolled harness on 2026-09-09. The harness was the
@@ -545,6 +573,7 @@ set(ORBSIM_TESTS
         test_orbit_scales
         test_sun
         test_time
+        test_view_math
 )
 foreach(test_name IN LISTS ORBSIM_TESTS)
     add_executable(${test_name} tests/${test_name}.cpp)
@@ -553,6 +582,11 @@ foreach(test_name IN LISTS ORBSIM_TESTS)
     # a failure names the case rather than the executable.
     catch_discover_tests(${test_name})
 endforeach()
+
+# The one suite that links orbsim_view. Named here rather than added to
+# orbsim_test_support, so that the other suites still cannot see the
+# render-side maths and the link graph keeps saying so.
+target_link_libraries(test_view_math PRIVATE orbsim_view)
 
 # The generated reference data is the data the error budgets were measured
 # against, or `check` says otherwise (M1-06, register decision 44). Horizons
@@ -867,11 +901,15 @@ orbsim_add_header_selfcheck(orbsim_header_selfcheck orbsim_core
         core/Time.hpp
         orbit/Orbit.hpp
 )
+orbsim_add_header_selfcheck(orbsim_view_header_selfcheck orbsim_view
+        view/Mat4.hpp
+)
 orbsim_add_header_selfcheck(orbsim_test_header_selfcheck orbsim_test_support
         tests/FixtureFile.hpp
         tests/OrbitTestSupport.hpp
 )
 add_dependencies(test_orbit orbsim_header_selfcheck orbsim_test_header_selfcheck)
+add_dependencies(test_view_math orbsim_view_header_selfcheck)
 
 if(ORBSIM_BUILD_APP)
     orbsim_add_header_selfcheck(orbsim_render_header_selfcheck orbsim_render_deps
@@ -1103,6 +1141,7 @@ add_dependencies(check
         t_erfa_c_extra
         orbsim_header_selfcheck
         orbsim_test_header_selfcheck
+        orbsim_view_header_selfcheck
         # The fuzz sources, compiled under the full warning set. Not in this
         # list until 2026-09-13, so a warning there failed `ninja` and passed
         # `check` -- see the comment beside the object library above.

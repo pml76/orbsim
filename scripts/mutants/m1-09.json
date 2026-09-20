@@ -1,0 +1,128 @@
+{
+  "task": "M1-09",
+  "tree": "build/relwithdebinfo",
+  "note": "Mat4 and the units it carries. Run 2026-09-20: twelve mutants, eleven caught, one declared survivor, none invalid. Three of these are the row/column-major transpositions the file exists to prevent, and one -- the rigid inverse computing -R t instead of -R^T t -- is not hypothetical: it is the defect this task actually shipped into the working tree and the round-trip test caught, 1.9 m out at a scale of 1 m. Six of the eleven die at compile time, which is the most any pass in this project has had. Two kills are for a different reason than their name suggests, and HISTORY.md says which.",
+  "mutants": [
+    {
+      "name": "the rigid inverse turns the translation by R instead of R transposed",
+      "file": "src/view/Mat4.hpp",
+      "find": "        result.at(12 + row) =\n            -((e.at((row * 4) + 0) * e.at(12)) + (e.at((row * 4) + 1) * e.at(13)) +\n              (e.at((row * 4) + 2) * e.at(14)));",
+      "replace": "        result.at(12 + row) =\n            -((e.at(row) * e.at(12)) + (e.at(4 + row) * e.at(13)) + (e.at(8 + row) * e.at(14)));",
+      "suites": [
+        "test_view_math"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the rigid inverse does not negate the translation",
+      "file": "src/view/Mat4.hpp",
+      "find": "        result.at(12 + row) =\n            -((e.at((row * 4) + 0) * e.at(12))",
+      "replace": "        result.at(12 + row) =\n            ((e.at((row * 4) + 0) * e.at(12))",
+      "suites": [
+        "test_view_math"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the rigid inverse copies the rotation block instead of transposing it",
+      "file": "src/view/Mat4.hpp",
+      "find": "    for (std::size_t column = 0; column < 3; ++column) {\n        for (std::size_t row = 0; row < 3; ++row) {\n            result.at((column * 4) + row) = e.at((row * 4) + column);\n        }\n    }",
+      "replace": "    for (std::size_t column = 0; column < 3; ++column) {\n        for (std::size_t row = 0; row < 3; ++row) {\n            result.at((column * 4) + row) = e.at((column * 4) + row);\n        }\n    }",
+      "suites": [
+        "test_view_math"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "multiplication reads the left operand transposed",
+      "file": "src/view/Mat4.hpp",
+      "find": "sum += a.at((k * 4) + row) * b.at((column * 4) + k);",
+      "replace": "sum += a.at((row * 4) + k) * b.at((column * 4) + k);",
+      "suites": [
+        "test_view_math"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "multiplication reads the right operand transposed",
+      "file": "src/view/Mat4.hpp",
+      "find": "sum += a.at((k * 4) + row) * b.at((column * 4) + k);",
+      "replace": "sum += a.at((k * 4) + row) * b.at((k * 4) + column);",
+      "suites": [
+        "test_view_math"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "transpose copies instead of transposing",
+      "file": "src/view/Mat4.hpp",
+      "find": "            result.at((column * 4) + row) = e.at((row * 4) + column);\n        }\n    }\n    return TransposeOf<kInXyz, kInW, kOutXyz, kOutW>::fromColumnMajor(result);",
+      "replace": "            result.at((column * 4) + row) = e.at((column * 4) + row);\n        }\n    }\n    return TransposeOf<kInXyz, kInW, kOutXyz, kOutW>::fromColumnMajor(result);",
+      "suites": [
+        "test_view_math"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "transformPoint drops the translation",
+      "file": "src/view/Mat4.hpp",
+      "find": "        out.at(row) = (e.at(row) * p.x.value()) + (e.at(4 + row) * p.y.value()) +\n                      (e.at(8 + row) * p.z.value()) + e.at(12 + row);",
+      "replace": "        out.at(row) = (e.at(row) * p.x.value()) + (e.at(4 + row) * p.y.value()) +\n                      (e.at(8 + row) * p.z.value());",
+      "suites": [
+        "test_view_math"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "transformDirection applies the translation",
+      "file": "src/view/Mat4.hpp",
+      "find": "        out.at(row) = (e.at(row) * d.x.value()) + (e.at(4 + row) * d.y.value()) +\n                      (e.at(8 + row) * d.z.value());",
+      "replace": "        out.at(row) = (e.at(row) * d.x.value()) + (e.at(4 + row) * d.y.value()) +\n                      (e.at(8 + row) * d.z.value()) + e.at(12 + row);",
+      "suites": [
+        "test_view_math"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the identity's corner is zero",
+      "file": "src/view/Mat4.hpp",
+      "find": "        m.set(Row{d}, Column{d}, 1.0);",
+      "replace": "        m.set(Row{d}, Column{d}, d < 3 ? 1.0 : 0.0);",
+      "suites": [
+        "test_view_math"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "a translation writes its components into the wrong row",
+      "file": "src/view/Mat4.hpp",
+      "find": "    m.set(Row{0}, Column{3}, t.x.value());\n    m.set(Row{1}, Column{3}, t.y.value());",
+      "replace": "    m.set(Row{0}, Column{3}, t.y.value());\n    m.set(Row{1}, Column{3}, t.x.value());",
+      "suites": [
+        "test_view_math"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "isAffine accepts anything",
+      "file": "src/view/Mat4.hpp",
+      "find": "    return bitsOf(e.at(3)) == bitsOf(0.0) && bitsOf(e.at(7)) == bitsOf(0.0) &&\n           bitsOf(e.at(11)) == bitsOf(0.0) && bitsOf(e.at(15)) == bitsOf(1.0);",
+      "replace": "    return e.size() == 16;",
+      "suites": [
+        "test_view_math"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the perspective divide multiplies by w",
+      "file": "src/view/Mat4.hpp",
+      "find": "        p.xyz.x.value() / p.w.value(),\n        p.xyz.y.value() / p.w.value(),\n        p.xyz.z.value() / p.w.value(),",
+      "replace": "        p.xyz.x.value() * p.w.value(),\n        p.xyz.y.value() * p.w.value(),\n        p.xyz.z.value() * p.w.value(),",
+      "suites": [
+        "test_view_math"
+      ],
+      "expect": "survives",
+      "why": "Nothing in M1-09 evaluates the divide numerically: its only assertion about perspectiveDivide is the static_assert on the reference it returns, which a sign or an operator does not change. The numerical claim belongs to M1-10, whose near-plane test reads depth through this function -- so this mutant is declared surviving here and is expected to be caught there. Recorded rather than closed by a test invented for it (VERIFICATION.md rule 19)."
+    }
+  ]
+}

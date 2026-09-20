@@ -59,7 +59,8 @@ place, bit for bit. The mechanism is a `RenderQuality` struct living in
 src/core/     maths, units, time, contracts — no dependencies
 src/orbit/    orbital mechanics             — depends on core only
 src/astro/    astronomy, through ERFA       — depends on core; ERFA's C headers in its .cpp files only
-src/render/   Vulkan renderer               — depends on core; never the reverse
+src/view/     render-side maths, no Vulkan  — depends on core only; the tests link this, never orbsim_render
+src/render/   Vulkan renderer               — depends on core and view; never the reverse
 src/app/      window and main loop
 tests/        CTest suites
 ```

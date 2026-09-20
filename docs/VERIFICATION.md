@@ -650,7 +650,7 @@ rules a machine checks and which depend on a person remembering.
 | 16 Determinism | `check` — `TEST_CASE("propagation is bit-identical across runs")`, over 100 steps | **done** |
 | 17 Dimensional analysis | The compiler — mp-units under `core/Units.hpp` and `Vec3<R>`, [ADR 0019](adr/0019-vectors-carry-their-unit.md) | **done** |
 | 18 Coverage | By hand, periodically. Orbit.cpp 99.2% lines | **done** |
-| 19 Mutation testing | By hand, periodically | exercised 2026-09-07, again 2026-09-19 on M1-04, M1-06 and M1-05, and 2026-09-20 on M1-86 and M1-07 -- twelve of twelve caught each time |
+| 19 Mutation testing | By hand, periodically; the **anchors** are in `check` | exercised 2026-09-07, again 2026-09-19 on M1-04, M1-06 and M1-05, and 2026-09-20 on M1-86, M1-07, M1-08 and M1-09. Twelve of twelve on the first three of those; **eleven of twelve on M1-09, with the twelfth a declared survivor that belongs to M1-10** |
 | 20 WSL, UBSan, second compiler | By hand, before a milestone | **done** |
 | 21 `check` is the definition of done | The build, both trees | **done** |
 | 22–24 The human rules | A person | discipline |
@@ -757,6 +757,30 @@ now tests -- the round trip exact on at least 99% of its sweep, and TDB - TT's
 change within a day against the Kepler problem's -- each seen catching its
 mutant; the third is accepted as held by the code. A passing budget is not a
 test of everything beneath it, which is the reason this rule exists.
+
+**On M1-09, 2026-09-20: twelve mutants, eleven caught, one declared
+survivor, none invalid** -- and **six of the eleven die at compile time**,
+which is the highest proportion any pass here has had, because a matrix
+identity is the kind of claim a `static_assert` can hold.
+
+Two of the kills are recorded for what they *were* rather than for what their
+names suggest, which is the habit M1-08's date-shift mutant established. "The
+identity's corner is zero" is caught by `isAffine(kShiftForAssertions)`, not
+by an identity test: every factory is built from `identityMatrix()`, so a
+broken corner makes every transform non-affine, and the precondition catches
+it first. And "a translation writes its components into the wrong row" dies on
+the assertion that two shifts compose by adding, not on a translation test.
+Both are real kills; neither is evidence that the test its name points at
+would have caught it.
+
+The declared survivor is **the perspective divide multiplying by w**. Nothing
+in M1-09 evaluates that divide numerically -- its only assertion is the
+`static_assert` on the reference the function returns, which an operator does
+not change. The numerical claim belongs to
+[M1-10](plan/tasks/m1-10-reverse-z-projection.md), whose near-plane case reads
+depth through it, and the mutant file says so rather than closing the gap with
+a test invented for the mutant. That is the shape M1-05's three accepted
+survivors set.
 
 Two things follow from this table, and they are the reason it exists.
 

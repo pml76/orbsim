@@ -135,7 +135,7 @@ M1-86 is the conversion that gives one without the leap-second table.
 | [86](tasks/m1-86-ut1-from-tt.md) | UT1 from TT | 05 | The Earth's clock without the leap-second table |
 | [07](tasks/m1-07-earth-orientation.md) | Precession, nutation and the Earth rotation angle | 05, 06, 86 | A body-fixed frame, 0.1 mas against an independent implementation |
 | [08](tasks/m1-08-solar-position.md) | Solar position | 05, 06, 07 | Sun direction and distance, 0.02″ against Horizons |
-| [09](tasks/m1-09-orbsim-view.md) | The `orbsim_view` library and `Mat4` | 01 | A Vulkan-free render library the tests can link |
+| [09](tasks/m1-09-orbsim-view.md) | The `orbsim_view` library and `Mat4` | 01 | **Done 2026-09-20.** A Vulkan-free render library the tests can link, and a `Mat4` that carries the units of both spaces it maps between ([ADR 0020](../adr/0020-transforms-carry-their-units.md)) |
 | [10](tasks/m1-10-reverse-z-projection.md) | Reverse-Z with an infinite far plane | 09 | ADR 0003 made real, and tested |
 | [11](tasks/m1-11-camera.md) | The camera, and the f64 → f32 boundary | 10 | One named narrowing function |
 | [12](tasks/m1-12-render-quality.md) | `Count<Derived>` and `RenderQuality` | 09 | An empty quality struct, and the path it travels |

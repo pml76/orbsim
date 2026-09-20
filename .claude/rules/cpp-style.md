@@ -56,8 +56,13 @@ cmake -S coding-guidelines-example -B coding-guidelines-example/build -G Ninja \
   `LineEnding: LF` in `.clang-format`). An older Windows checkout may still
   hold CRLF in files nobody has touched; leave those alone rather than
   producing a diff in which every line changed.
-- The physics test suites are under `tests/` and link only `orbsim_core`.
-  Nothing in `tests/` may include a Vulkan or SDL header.
+- The physics test suites are under `tests/` and link only `orbsim_core`;
+  `tests/test_view_math.cpp` additionally links `orbsim_view`, which links
+  `orbsim_core` and nothing else. **Nothing in `tests/` may include a Vulkan or
+  SDL header**, and since M1-09 that is the link graph's doing rather than
+  anyone's memory: no target a suite links carries a graphics include
+  directory ([ADR 0012](../../docs/adr/0012-orbsim-view.md)). Render-side
+  maths goes in `src/view/`, never in `src/core/`.
 
 ## Before you finish
 

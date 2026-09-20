@@ -1549,6 +1549,93 @@ time-scale substitution. It does not. That pass is now
 [`scripts/mutate.py`](../scripts/mutate.py) with its mutants in
 `scripts/mutants/`, and `check` verifies the anchors still match.
 
+### M1-09, `orbsim_view` and a `Mat4` that carries its units, 2026-09-20
+
+The first render-side code, and the first library the physics cannot link.
+`orbsim_view` links `orbsim_core` and nothing else, so the rule that nothing
+under `tests/` includes a Vulkan or SDL header stopped being a convention:
+`tests/test_view_math.cpp` cannot reach a graphics header because no target it
+links carries one. A configure-time assertion reads `orbsim_core`'s
+`LINK_LIBRARIES` and fails if `orbsim_view` ever appears there, and the
+`-DORBSIM_BUILD_APP=OFF` tree was configured and run -- 410 targets, 148 CTest
+entries, all passing.
+
+**The task said "a 4x4 `f64` matrix", and that did not survive the question.**
+It was written on 2026-09-08, nine days before ADR 0019 made `Vec3` carry its
+unit, and non-negotiable 1 forbids a bare `f64` across an interface. Four
+options were costed and the owner chose the most thorough: a `Mat4` carrying
+the units of **both** spaces it maps between (ADR 0020).
+
+The fact that shapes it is that **a homogeneous 4x4 has no single unit**. Its
+linear block is dimensionless while a projection's near-plane entry is metres,
+and forcing w dimensionless does not rescue it -- clip z would then need
+dividing by an arbitrary reference length. Parameterising on the two spaces
+instead gives four blocks in four derived references, and that assignment is
+closed under multiplication. Which is the whole prize: `projection * view`
+compiles, `view * projection` does not, and `transformPoint(projection, p)`
+does not either, because a projection must go through the divide.
+
+**The spike was built before the record was written**, which is why ADR 0020
+is accepted rather than proposed. It compiles and agrees to the digit on
+clang 23.1.0 under `-Weverything`, gcc-14 and MSVC 19.51; every negative
+assertion was inverted and watched failing before being believed; and it costs
++0.27 s per translation unit, about 7%.
+
+Three things the toolchain taught the design, none of them foreseeable by
+reading:
+
+- a deduced `auto` return type defeats NRVO and `-Wnrvo` is an error here, so
+  the transpose's type is an alias template rather than deduced;
+- `Eccentricity` is **not** `Scalar<one>` -- it is its own kind and converts
+  to nothing -- so the homogeneous coordinate of an ordinary point needed
+  `Dimensionless`, a name of its own;
+- `clang-format` splits a sixteen-element braced list one value per line,
+  which destroys a matrix. The factories build from `identityMatrix()` and
+  `set()` instead, which reads better than the literal did and needs no
+  formatting escape.
+
+**Two of the task's three tolerances were wrong, and the measurements say so.**
+Associativity's "1e-12 relative" is unsatisfiable read elementwise -- worst
+7.5e-10, because an element can cancel to near zero -- and is now the
+conditioning law `2*gamma_8` = 1.78e-15 against `|A||B||C|`, where the measured
+worst is 6.54e-16. `inverseRigid`'s "identity to 1e-14" is **dimensionally
+wrong**: the translation column of `M * inverse(M)` is in metres and its
+residual is a cancellation of two quantities of size `|t|`, reaching 1.2e-8 m
+at Earth radius and 3.1e-4 m at 1 AU, so 1e-14 holds only below about 5 m.
+Relative to `|t|` it is flat at 8.5 to 9.2 ulp from 1 m to 30 AU, which is what
+says the law is the right one. That is rule 9 -- ask "in what?" of every bare
+number -- arriving in a file that had not been written yet.
+
+Two further claims turned out **exact** rather than approximate, and are
+asserted bit for bit: the identity is exactly the multiplicative identity, and
+`transpose(AB)` is bit-identical to `transpose(B)transpose(A)`, because both
+sides sum the same four products in the same order. 200,000 of 200,000 each,
+measured before being claimed.
+
+**The fail-first step earned its place twice.** Written against a stubbed
+header, six of the nine cases failed -- including the guard that the two
+groupings of the triple product must actually differ, which caught that a stub
+returning zero makes associativity pass vacuously. Three cases *did* pass
+against the stub, for exactly that reason, and each gained a non-vacuity guard.
+Then, with the real implementation in, the round trip came out **1.9 m off at a
+scale of 1 m**: `inverseRigid` was computing `-R t` where it needed
+`-R^T t`, because the spike's hand-written indices had been generalised into a
+loop wrongly. A transposed index, caught by the test written for transposed
+indices, in the file whose stated purpose is to prevent them.
+
+**The mutation pass: twelve mutants, eleven caught, one declared survivor,
+none invalid** -- and six of the eleven die at compile time, the highest
+proportion of any pass here, because a matrix identity is the kind of claim a
+`static_assert` can hold. Two kills are recorded for what they were rather
+than for what their names suggest: "the identity's corner is zero" dies on
+`isAffine`, because every factory is built from `identityMatrix()` and a
+broken corner makes every transform non-affine, and "a translation writes its
+components into the wrong row" dies on the assertion that two shifts compose
+by adding. The survivor is the perspective divide multiplying by `w`, which no
+M1-09 test can see -- nothing here evaluates that divide numerically -- so it
+is declared rather than closed by a test invented for it, and M1-10's
+near-plane case is where it should die.
+
 ### The swappable-parameters blind spot, 2026-09-20
 
 `bugprone-easily-swappable-parameters` is the only mechanical half of

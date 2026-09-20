@@ -4,6 +4,9 @@ Phase: A | Status: not started
 Prerequisites: M1-09
 Decided by: [ADR 0003](../../adr/0003-reverse-z-depth.md), [ADR 0012](../../adr/0012-orbsim-view.md)
 
+**Corrected 2026-09-20, with M1-09**, which built the type this task returns.
+Nothing about the decision changes; two things about the wording do.
+
 ## Purpose
 
 ADR 0003 has been accepted since 2026-09-05 and exists so far only as a depth
@@ -19,9 +22,14 @@ rather than assumed.
 
 `src/view/Projection.hpp`.
 
-- `[[nodiscard]] constexpr Mat4 infiniteReverseZPerspective(Radians verticalFov,
-  f64 aspect, Metres nearPlane)`, mapping the near plane to depth **1.0** and
-  infinity to **0.0**, with no far plane at all.
+- `[[nodiscard]] constexpr Projection infiniteReverseZPerspective(Radians
+  verticalFov, f64 aspect, Metres nearPlane)`, mapping the near plane to depth
+  **1.0** and infinity to **0.0**, with no far plane at all. **`Projection`,
+  not `Mat4`**: since [ADR 0020](../../adr/0020-transforms-carry-their-units.md)
+  a `Mat4` carries the units of both spaces, and this one maps
+  `Vec4<metre, one>` to `Vec4<metre, metre>` -- which is why the divide lands
+  in dimensionless normalised device coordinates and why `transformPoint` will
+  not accept it.
 - **The clip-space convention stated in the header**: right-handed view space
   looking down −z, Vulkan clip space with y downward and depth in [0, 1]. The
   y flip is in the matrix, once, where it can be seen — not scattered through
@@ -42,7 +50,9 @@ that reads the matrix.
 `tests/test_projection.cpp`.
 
 - **The near plane maps to exactly 1.0**, and a point at ten times the near
-  distance maps to 0.1 — analytic values, computed by hand in the test.
+  distance maps to 0.1 — analytic values, computed by hand in the test. The
+  depth comes out through `transform()` and `perspectiveDivide()`, both of
+  which M1-09 built for this.
 - **Infinity maps to 0**: a point at 1e13 m gives a depth under 1e-12.
 - **Monotonic**: depth strictly decreases with distance across a sweep from
   0.1 m to 1e13 m. A reversed comparison or a sign slip fails here.

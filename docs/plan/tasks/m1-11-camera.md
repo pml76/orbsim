@@ -4,6 +4,11 @@ Phase: A | Status: not started
 Prerequisites: M1-10
 Decided by: [ADR 0012](../../adr/0012-orbsim-view.md)
 
+**Corrected 2026-09-20, with M1-09.** This document was written on 2026-09-08,
+nine days before [ADR 0019](../../adr/0019-vectors-carry-their-unit.md) made
+`Vec3` a template: a world position is a `Position`, and a bare `Vec3` no
+longer names a type. The signature below is corrected; the task is unchanged.
+
 ## Purpose
 
 This is the task phase A's acceptance criterion is actually about. A vertex on
@@ -21,7 +26,7 @@ named, greppable place.
 - `struct Camera` with an `f64` world position in metres, a `Quat` orientation,
   a vertical field of view and a near plane. Rule of Zero, trivially copyable,
   every member default-initialised.
-- `[[nodiscard]] Mat4 viewMatrix(const Camera&)` — **camera-relative**: the
+- `[[nodiscard]] Transform viewMatrix(const Camera&)` — **camera-relative**: the
   rotation only, with the translation identically zero, because the translation
   has already been applied by the subtraction below. A comment says that, since
   a view matrix with no translation looks like a bug to anyone who has written
@@ -29,7 +34,7 @@ named, greppable place.
 - **The boundary, and it is the only one**:
   ```cpp
   // The one place f64 becomes f32. Subtract in f64, then narrow.
-  [[nodiscard]] Vec3f toRenderSpace(const Vec3& worldMetres, const Camera& camera) noexcept;
+  [[nodiscard]] Vec3f toRenderSpace(const Position& worldMetres, const Camera& camera) noexcept;
   ```
   with `struct Vec3f { f32 x, y, z; }` in the same header. Three
   `static_cast<f32>` in one function, exactly as
@@ -58,7 +63,8 @@ between simulation states, which is M1-71. Any Vulkan.
   the same threshold by a wide margin. Without this, the budget could be met by
   a test that cannot fail (`VERIFICATION.md` rule 23, and rule 19 by hand).
 - **The view matrix is a pure rotation**: orthonormal to 1e-15, determinant +1,
-  translation exactly zero.
+  translation exactly zero. M1-09's `isAffine` and the block accessors are how
+  the last of those is asserted without reaching into the storage.
 - **Round trip**: a direction transformed into view space and back is recovered
   to 1e-14 over a seeded sweep of orientations.
 - **Scale sweep**: the jitter budget holds at lunar distance and at 1 AU too,
@@ -79,5 +85,7 @@ demonstrate it, and M1-20 does the demonstrating.
 
 - [ ] `check` green in both trees.
 - [ ] `grep static_cast<f32>` over `src/` finds them in exactly one function.
+- [ ] `orbsim_view` becomes a STATIC library when `Camera.cpp` arrives; M1-09
+      left it INTERFACE because a sourceless static library does not configure.
 - [ ] The naive-path comparison is in the suite and fails as expected.
 - [ ] The budget is in the header, the test and the commit message.

@@ -35,6 +35,7 @@ usually enough.
 | [0017](0017-every-warning-is-an-error.md) | Every warning the compiler has, as an error; a library's interface is answered at the site | accepted | 2026-09-11 |
 | [0018](0018-state-from-elements-reports.md) | `stateFromElements` reports, like every other conversion in `orbit/` | accepted | 2026-09-13 |
 | [0019](0019-vectors-carry-their-unit.md) | Vectors carry their unit, which forces compile-time dimensional analysis | accepted | 2026-09-17 |
+| [0020](0020-transforms-carry-their-units.md) | A transform carries the units of both spaces it maps between | accepted | 2026-09-20 |
 
 **0008 to 0015 record the decisions taken on 2026-09-08**, before milestone 1
 started. All twenty-six of those decisions are in
@@ -83,6 +84,14 @@ since the file was written. An accepted record is immutable; a proposed one is
 a draft and may be rewritten until it is accepted or rejected, which is what
 happened here -- its recommendation changed once between draft and acceptance,
 and its step 2 was re-opened and then closed again in the space of a day.
+
+**0020 extends 0019 from vectors to transforms**, on 2026-09-20 with M1-09,
+and it is accepted rather than proposed because the spike was built first: the
+four-parameter `Mat4` compiles on all three front ends, rejects
+`view * projection` at compile time, and costs 7% of a translation unit. It
+supersedes nothing -- 0012 says where the render-side maths lives, 0020 says
+what its principal type is -- and it records what it does not decide, which is
+frames.
 
 The worked example keeps its own three records under
 [`../../coding-guidelines-example/docs/adr/`](../../coding-guidelines-example/docs/adr/).
