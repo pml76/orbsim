@@ -671,12 +671,69 @@ asked for.
       2026-09-20 in its own commit, ahead of M1-86:
       [`HISTORY.md`](HISTORY.md) has the account.
 
-16. **M1-09's questions: all settled 2026-09-20**, decisions 92-98 of
+16. **M1-08's nine questions: all settled 2026-09-20**, decisions 85-91 of
+    [`plan/milestone-1-decisions.md`](plan/milestone-1-decisions.md) section 9.
+    All nine went up before any code was written, and one of them reversed a
+    first instruction of the owner's once the alternatives were costed; a
+    seventh ruling, 91, came later, from the linter, while the code was being
+    written. Written up here on 2026-09-20, after the fact, because the entry
+    was missed when the task landed. What to know without opening the
+    register:
+
+    - **The Sun is `eraEpv00`'s, negated**: `src/astro/Sun.hpp` gives the
+      geocentric Sun, geometric and in ICRF, reporting
+      `OutsideEphemerisRange` past the span ERFA vouches for.
+    - **Both budgets were tightened because both were measured first**
+      (decision 85): 0.02" of direction and 5e-8 au of distance, where the
+      plan carried 0.1" and 1e-6 au, against measured worsts of 0.0085" and
+      2.14e-8 au. **The span the budget is asserted over is the fixture's,
+      2000-2050**, and that is written into the claim: ERFA's own worst over
+      the wider 1900-2100 is 0.016", looser than the budget, so widening the
+      span means re-measuring rather than pointing the test at more epochs.
+      Recorded honestly: no *named* defect lives between 0.02" and 0.1" --
+      the reason to tighten is that a budget with twelvefold headroom absorbs
+      a regression in silence.
+    - **The calendar year is the wrong window for an apsis** (decision 87),
+      and that was found by measuring rather than assumed: perihelion sits
+      astride the turn of the year, so a calendar year contains two of them
+      and the deeper wins, which puts the "annual minimum" on 31 December in
+      2003 and 2047. The sweep runs 1 October to 31 March and 1 April to
+      30 September, each window holding exactly one apsis.
+    - **The equinox test claims the residual rather than bounding it**
+      (decision 86): the declination is asserted within 1e-3 deg of the
+      +0.002265 deg the *omitted aberration* predicts, at three USNO
+      instants, so a declination of zero fails. The tolerance was proposed at
+      2e-4 deg and measured to be wrong before it was written -- the
+      published instants are rounded to the minute, and the Earth's monthly
+      wobble about the Earth-Moon barycentre reaches about 7e-4 deg.
+    - **`TwoPartDate` was deleted, not lifted** (decision 89), reversing the
+      owner's first instruction once the pros and cons were put up: it was a
+      field-for-field copy of `core/Time.hpp`'s `JulianDate`, so `JulianDate`
+      goes to ERFA directly, at `astro/EarthOrientation.cpp`'s call sites as
+      well. `astro/Tdb.cpp` is untouched, because it wants ERFA's MJD split
+      and builds it inline -- which is the evidence that a shared "the date
+      ERFA takes" type would not in fact have been one.
+    - **The solar constant is Kopp & Lean (2011)**, 1360.8 +/- 0.5 W/m^2, and
+      the code carries 1361 with the rounding justified; the ~0.1% solar-cycle
+      variation is **named as unmodelled** rather than left silent, because it
+      is a fifth of M1-18's radiometric budget and better known there than
+      discovered there (decision 88).
+    - **`kAstronomicalUnit` cannot drift from ERFA's**: a `static_assert` in
+      `Sun.cpp` holds it bit-identical to `ERFA_DAU`, and `sunDistance` is
+      `length(geocentricSunPosition(...))`, one series evaluation rather than
+      a second call that could disagree with the first (decision 90).
+    - **The mutation pass was twelve of twelve**, three killed by
+      `static_assert`s -- and **one kill is recorded for what it actually
+      was**: handing `eraEpv00` a date 1.7 ms out, the size of TDB - TT, is
+      caught only by the span cases, never by the accuracy budget it appears
+      to test, because 1.7 ms of solar motion is 7e-5" against a 0.02" claim.
+      A bare "twelve of twelve" would have implied a budget that catches a
+      time-scale substitution. It does not.
+
+17. **M1-09's questions: all settled 2026-09-20**, decisions 92-98 of
     [`plan/milestone-1-decisions.md`](plan/milestone-1-decisions.md) section 9.
     Six were put before any code and one, the frames, reversed an earlier
-    ruling the same day. *(M1-08 has no item of its own here; its rulings are
-    decisions 85-91 and its account is in [`HISTORY.md`](HISTORY.md). The gap
-    predates this entry.)* What to know without opening the register:
+    ruling the same day. What to know without opening the register:
 
     - **`orbsim_view` exists, and `orbsim_core` cannot link it.** A
       configure-time assertion in `CMakeLists.txt` reads `orbsim_core`'s
