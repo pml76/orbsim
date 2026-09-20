@@ -1,41 +1,44 @@
 #ifndef ORBSIM_VIEW_MAT4_HPP
 #define ORBSIM_VIEW_MAT4_HPP
 //
-// The 4x4 homogeneous transform, with its units in the type system (M1-09,
-// ADR 0012 for where it lives and ADR 0020 for the parameterisation).
+// The 4x4 homogeneous transform, carrying both the frames it maps between and
+// the units of both spaces (M1-09; ADR 0012 for where it lives, ADR 0020 for
+// the units, ADR 0021 for the frames).
 //
-// **A homogeneous 4x4 has no single unit**, which is why this type takes four
-// template parameters rather than none. A projective point is a Vec4 whose xyz
-// carry one reference and whose w carries another; the affine point it denotes
-// is xyz / w, so the *ratio* is what is geometrically meaningful and the pair
-// is what fixes the matrix entries. A Mat4 therefore maps
+// **A homogeneous 4x4 has no single unit.** A projective point is a Vec4
+// whose xyz carry one reference and whose w carries another; the affine point
+// it denotes is xyz / w, so the *ratio* is what is geometrically meaningful
+// and the *pair* is what fixes the matrix entries. With the frames, a Mat4
+// maps
 //
-//     Vec4<kInXyz, kInW>  ->  Vec4<kOutXyz, kOutW>
+//     Vec4<kFrom, kInXyz, kInW>  ->  Vec4<kTo, kOutXyz, kOutW>
 //
-// and its four blocks have four different references, every one of them
-// derived from those four rather than declared:
+// and its four blocks have four different references, every one derived
+// rather than declared:
 //
 //     linear      rows 0-2, columns 0-2    kOutXyz / kInXyz
 //     translation rows 0-2, column 3       kOutXyz / kInW
 //     bottomRow   row 3,    columns 0-2    kOutW   / kInXyz
 //     corner      row 3,    column 3       kOutW   / kInW
 //
-// That assignment is closed under multiplication -- each block of a product
-// comes out in its own reference from both of its terms -- which is what lets
-// `projection * view` compile and `view * projection` not.
+// That assignment is closed under multiplication, and the frames unify on the
+// middle: `projection * view` compiles and `view * projection` does not, a
+// world point cannot be handed to a matrix that starts in view space, and
+// `inverseRigid` of an A-to-B transform is a B-to-A one, which the compiler
+// now knows rather than the reader.
 //
-// **Column-major**, as GLSL and Vulkan want, so that narrowing at the GPU
+// **Column-major**, as GLSL and Vulkan want, so the narrowing at the GPU
 // boundary (M1-11) is a copy rather than a transpose.
 //
-// What this does NOT distinguish is *frames*: world and view are both metres,
-// so a model matrix and a view matrix are one type here. ADR 0019 left frames
-// open deliberately and milestone 1's scope fence keeps them out; the
-// signature admits them later. ADR 0020 says so.
+// **The transpose is a dual map**, which is what makes its law general: if M
+// maps a to b then transpose(M) maps b* to a*, so the frames swap and
+// dualise and every reference inverts. See TransposeOf below.
 //
 #include "core/Contract.hpp"
 #include "core/Math.hpp"
 #include "core/Scalar.hpp"
 #include "core/Units.hpp"
+#include "view/Frame.hpp"
 
 #include <array>
 #include <cstddef>
@@ -64,27 +67,65 @@ struct Column {
     std::size_t value{};
 };
 
-// A projective point: xyz in one reference, w in another.
-template <auto kXyz, auto kW> struct Vec4 {
+// An affine point or direction, in a frame. `core/Math.hpp`'s Vec3 carries a
+// unit but no frame, and it stays that way: framing it would mean framing
+// `Position`, which the whole physics uses, and milestone 1's scope fence
+// keeps the core frame-free. So the frame is added here, where only the
+// renderer sees it.
+template <FrameTag kFrame, auto kR> struct FramedVec3 {
+    Vec3<kR> v;
+};
+
+// Free rather than a member, because a member function would stop
+// misc-non-private-member-variables-in-classes ignoring FramedVec3's public
+// member -- measured 2026-09-20, the check ignores an all-public class only
+// while it declares no member function. The two arguments are
+// interchangeable, bit equality being symmetric, so transposing them cannot
+// produce a wrong answer: the reason core/Scalar.hpp gives on nearlyEqual.
+// The suppression sits on the signature, not above the `template` line:
+// NOLINTNEXTLINE covers exactly the next line and the finding is reported
+// where the parameters are.
+template <FrameTag kFrame, auto kR>
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+[[nodiscard]] constexpr bool bitIdentical(const FramedVec3<kFrame, kR>& left,
+                                          const FramedVec3<kFrame, kR>& right) noexcept {
+    return left.v.bitIdentical(right.v);
+}
+
+// A projective point: xyz in one reference, w in another, both in one frame.
+template <FrameTag kFrame, auto kXyz, auto kW> struct Vec4 {
     Vec3<kXyz> xyz;
     Scalar<kW> w;
 };
 
 // xyz / w: the affine point a projective one denotes, and the only way out of
-// homogeneous coordinates. Its reference is the ratio, so clip space -- metres
-// over metres -- divides to the dimensionless normalised device coordinates
-// the GPU wants.
-template <auto kXyz, auto kW>
-[[nodiscard]] constexpr Vec3<kXyz / kW> perspectiveDivide(const Vec4<kXyz, kW>& p) noexcept {
-    return Vec3<kXyz / kW>{
-        p.xyz.x.value() / p.w.value(),
-        p.xyz.y.value() / p.w.value(),
-        p.xyz.z.value() / p.w.value(),
+// homogeneous coordinates.
+//
+// **The frame does not change here, and that is deliberate.** The divide is a
+// change of representation, not of space: a clip point and its normalised
+// device coordinates are the same point. What distinguishes them is already
+// in the type without a fourth frame -- clip xyz and w are both metres, so
+// the quotient is dimensionless, which is exactly what normalised device
+// coordinates are. A `Frame::Ndc` was planned and then not added, because
+// building it showed the unit already says it.
+template <FrameTag kFrame, auto kXyz, auto kW>
+[[nodiscard]] constexpr FramedVec3<kFrame, kXyz / kW>
+perspectiveDivide(const Vec4<kFrame, kXyz, kW>& p) noexcept {
+    return FramedVec3<kFrame, kXyz / kW>{
+        .v =
+            Vec3<kXyz / kW>{
+                p.xyz.x.value() / p.w.value(),
+                p.xyz.y.value() / p.w.value(),
+                p.xyz.z.value() / p.w.value(),
+            },
     };
 }
 
-template <auto kInXyz, auto kInW, auto kOutXyz, auto kOutW> class Mat4 {
+template <FrameTag kFrom, FrameTag kTo, auto kInXyz, auto kInW, auto kOutXyz, auto kOutW>
+class Mat4 {
 public:
+    static constexpr FrameTag kFromFrame = kFrom;
+    static constexpr FrameTag kToFrame = kTo;
     static constexpr auto kLinearRef = kOutXyz / kInXyz;
     static constexpr auto kTranslationRef = kOutXyz / kInW;
     static constexpr auto kBottomRowRef = kOutW / kInXyz;
@@ -160,22 +201,30 @@ private:
 // isRotation. Exact rather than approximate, and bit-wise rather than `==`:
 // an affine matrix's bottom row is set, never computed, so anything else is a
 // different kind of matrix and not a rounding of this one.
-template <auto kInXyz, auto kInW, auto kOutXyz, auto kOutW>
-[[nodiscard]] constexpr bool isAffine(const Mat4<kInXyz, kInW, kOutXyz, kOutW>& m) noexcept {
+template <FrameTag kFrom, FrameTag kTo, auto kInXyz, auto kInW, auto kOutXyz, auto kOutW>
+[[nodiscard]] constexpr bool
+isAffine(const Mat4<kFrom, kTo, kInXyz, kInW, kOutXyz, kOutW>& m) noexcept {
     const std::array<f64, 16> e = m.columnMajor();
     return bitsOf(e.at(3)) == bitsOf(0.0) && bitsOf(e.at(7)) == bitsOf(0.0) &&
            bitsOf(e.at(11)) == bitsOf(0.0) && bitsOf(e.at(15)) == bitsOf(1.0);
 }
 
 // Composition: `outer * inner` applies `inner` first, as the mathematics
-// reads. The middle space has to match, and that is the whole point of the
-// parameterisation -- it is what makes `projection * view` compile and
-// `view * projection` not, because a projection's output w is metres where a
-// transform's input w is dimensionless.
-template <auto kAXyz, auto kAW, auto kBXyz, auto kBW, auto kCXyz, auto kCW>
-[[nodiscard]] constexpr Mat4<kAXyz, kAW, kCXyz, kCW>
-operator*(const Mat4<kBXyz, kBW, kCXyz, kCW>& outer,
-          const Mat4<kAXyz, kAW, kBXyz, kBW>& inner) noexcept {
+// reads. **The middle frame and the middle references both unify**, which is
+// the whole point: `projection * view` compiles, `view * projection` does
+// not, and neither does composing two transforms that do not meet.
+template <FrameTag kA,
+          FrameTag kB,
+          FrameTag kC,
+          auto kAXyz,
+          auto kAW,
+          auto kBXyz,
+          auto kBW,
+          auto kCXyz,
+          auto kCW>
+[[nodiscard]] constexpr Mat4<kA, kC, kAXyz, kAW, kCXyz, kCW>
+operator*(const Mat4<kB, kC, kBXyz, kBW, kCXyz, kCW>& outer,
+          const Mat4<kA, kB, kAXyz, kAW, kBXyz, kBW>& inner) noexcept {
     const std::array<f64, 16> a = outer.columnMajor();
     const std::array<f64, 16> b = inner.columnMajor();
     std::array<f64, 16> result{};
@@ -188,25 +237,37 @@ operator*(const Mat4<kBXyz, kBW, kCXyz, kCW>& outer,
             result.at((column * 4) + row) = sum;
         }
     }
-    return Mat4<kAXyz, kAW, kCXyz, kCW>::fromColumnMajor(result);
+    return Mat4<kA, kC, kAXyz, kAW, kCXyz, kCW>::fromColumnMajor(result);
 }
 
-// The transpose's type, derived rather than declared. T[i][j] = M[j][i], and
-// solving the four block rules for the result gives
+// The transpose's type, as the **dual map** it is. If M maps a to b, then
+// transpose(M) maps b* to a*: the frames swap and dualise, and every
+// reference inverts, because a covector on a space measured in R is measured
+// in 1/R.
 //
-//     transpose(Mat4<a, b, c, d>) : Mat4<a, c * a / d, c, c * a / b>
+// That formulation is what makes the law general. Written the other way --
+// forcing the result back into a matrix between the same two spaces --
+// `transpose(A B) == transpose(B) transpose(A)` typechecks only where the
+// operands' units happen to line up, which excludes every chain containing a
+// projection. As a dual map it composes for all of them: M1 from a to b and
+// M2 from b to c give transpose(M1) after transpose(M2), c* to a*, which is
+// transpose(M2 M1). Dualising twice is the identity and 1/(1/R) is R, so
+// transpose(transpose(M)) is M's own type -- measured on clang 23.1.0,
+// gcc-14 and MSVC 19.51 before this was chosen.
 //
-// which round-trips -- transpose(transpose(M)) is M's own type -- and, for
-// the affine matrices the row/column-major test uses, composes as the
-// transpose law requires. Spelled as an alias rather than deduced with
-// `auto`, because a deduced return type defeats NRVO and clang's -Wnrvo is an
-// error here (measured 2026-09-20).
-template <auto kInXyz, auto kInW, auto kOutXyz, auto kOutW>
-using TransposeOf = Mat4<kInXyz, kOutXyz * kInXyz / kOutW, kOutXyz, kOutXyz * kInXyz / kInW>;
+// Spelled as an alias rather than deduced with `auto`, because a deduced
+// return type defeats NRVO and clang's -Wnrvo is an error here.
+template <FrameTag kFrom, FrameTag kTo, auto kInXyz, auto kInW, auto kOutXyz, auto kOutW>
+using TransposeOf = Mat4<dualOf(kTo),
+                         dualOf(kFrom),
+                         mp_units::one / kOutXyz,
+                         mp_units::one / kOutW,
+                         mp_units::one / kInXyz,
+                         mp_units::one / kInW>;
 
-template <auto kInXyz, auto kInW, auto kOutXyz, auto kOutW>
-[[nodiscard]] constexpr TransposeOf<kInXyz, kInW, kOutXyz, kOutW>
-transpose(const Mat4<kInXyz, kInW, kOutXyz, kOutW>& m) noexcept {
+template <FrameTag kFrom, FrameTag kTo, auto kInXyz, auto kInW, auto kOutXyz, auto kOutW>
+[[nodiscard]] constexpr TransposeOf<kFrom, kTo, kInXyz, kInW, kOutXyz, kOutW>
+transpose(const Mat4<kFrom, kTo, kInXyz, kInW, kOutXyz, kOutW>& m) noexcept {
     const std::array<f64, 16> e = m.columnMajor();
     std::array<f64, 16> result{};
     for (std::size_t column = 0; column < 4; ++column) {
@@ -214,18 +275,20 @@ transpose(const Mat4<kInXyz, kInW, kOutXyz, kOutW>& m) noexcept {
             result.at((column * 4) + row) = e.at((row * 4) + column);
         }
     }
-    return TransposeOf<kInXyz, kInW, kOutXyz, kOutW>::fromColumnMajor(result);
+    return TransposeOf<kFrom, kTo, kInXyz, kInW, kOutXyz, kOutW>::fromColumnMajor(result);
 }
 
 // The inverse of a rigid transform: the rotation transposed, and the
 // translation turned round by it and negated. Cheaper than a general inverse,
 // and exact where one is neither.
 //
-// Only defined where the two spaces are parameterised alike, so a projection
-// has no rigid inverse and the type says so rather than a comment.
-template <auto kXyz, auto kW>
-[[nodiscard]] constexpr Mat4<kXyz, kW, kXyz, kW>
-inverseRigid(const Mat4<kXyz, kW, kXyz, kW>& m) noexcept {
+// **Its type says what it is**: the inverse of an A-to-B transform is a
+// B-to-A one. Defined only where the two spaces are parameterised alike, so a
+// projection has no rigid inverse and the type refuses it rather than a
+// comment asking the reader not to.
+template <FrameTag kFrom, FrameTag kTo, auto kXyz, auto kW>
+[[nodiscard]] constexpr Mat4<kTo, kFrom, kXyz, kW, kXyz, kW>
+inverseRigid(const Mat4<kFrom, kTo, kXyz, kW, kXyz, kW>& m) noexcept {
     ORBSIM_EXPECTS(isAffine(m));
     const std::array<f64, 16> e = m.columnMajor();
     std::array<f64, 16> result{};
@@ -246,17 +309,16 @@ inverseRigid(const Mat4<kXyz, kW, kXyz, kW>& m) noexcept {
               (e.at((row * 4) + 2) * e.at(14)));
     }
     result.at(15) = 1.0;
-    return Mat4<kXyz, kW, kXyz, kW>::fromColumnMajor(result);
+    return Mat4<kTo, kFrom, kXyz, kW, kXyz, kW>::fromColumnMajor(result);
 }
 
 // The homogeneous transform: the only way a projection may be applied, and
 // the reason transformPoint below can refuse one.
-template <auto kInXyz, auto kInW, auto kOutXyz, auto kOutW>
-[[nodiscard]] constexpr Vec4<kOutXyz, kOutW> transform(const Mat4<kInXyz, kInW, kOutXyz, kOutW>& m,
-                                                       const Vec4<kInXyz, kInW>& p) noexcept {
+template <FrameTag kFrom, FrameTag kTo, auto kInXyz, auto kInW, auto kOutXyz, auto kOutW>
+[[nodiscard]] constexpr Vec4<kTo, kOutXyz, kOutW>
+transform(const Mat4<kFrom, kTo, kInXyz, kInW, kOutXyz, kOutW>& m,
+          const Vec4<kFrom, kInXyz, kInW>& p) noexcept {
     const std::array<f64, 16> e = m.columnMajor();
-    // Doubly braced: gcc's -Wmissing-braces wants the inner one for a
-    // std::array, where clang and MSVC accept the single form.
     const std::array<f64, 4> in{{p.xyz.x.value(), p.xyz.y.value(), p.xyz.z.value(), p.w.value()}};
     std::array<f64, 4> out{};
     for (std::size_t row = 0; row < 4; ++row) {
@@ -266,70 +328,111 @@ template <auto kInXyz, auto kInW, auto kOutXyz, auto kOutW>
         }
         out.at(row) = sum;
     }
-    return Vec4<kOutXyz, kOutW>{
-        Vec3<kOutXyz>{out.at(0), out.at(1), out.at(2)},
-        Scalar<kOutW>{out.at(3)},
+    return Vec4<kTo, kOutXyz, kOutW>{
+        .xyz = Vec3<kOutXyz>{out.at(0), out.at(1), out.at(2)},
+        .w = Scalar<kOutW>{out.at(3)},
     };
 }
 
 // A point: the translation applies. Affine only, and the type says so -- kInW
 // and kOutW must be one reference, which rules out a projection at compile
-// time. That the bottom row is (0, 0, 0, 1) in *value* is the precondition
-// below, because only a bug can break it.
-template <auto kInXyz, auto kInW, auto kOutXyz, auto kOutW>
+// time. The point must already be in the matrix's source frame, which is the
+// other half of what the types check here.
+template <FrameTag kFrom, FrameTag kTo, auto kInXyz, auto kInW, auto kOutXyz, auto kOutW>
     requires(std::is_same_v<Scalar<kInW>, Scalar<kOutW>>)
-[[nodiscard]] constexpr Vec3<kOutXyz> transformPoint(const Mat4<kInXyz, kInW, kOutXyz, kOutW>& m,
-                                                     const Vec3<kInXyz>& p) noexcept {
+[[nodiscard]] constexpr FramedVec3<kTo, kOutXyz>
+transformPoint(const Mat4<kFrom, kTo, kInXyz, kInW, kOutXyz, kOutW>& m,
+               const FramedVec3<kFrom, kInXyz>& p) noexcept {
     ORBSIM_EXPECTS(isAffine(m));
     const std::array<f64, 16> e = m.columnMajor();
     std::array<f64, 3> out{};
     for (std::size_t row = 0; row < 3; ++row) {
-        out.at(row) = (e.at(row) * p.x.value()) + (e.at(4 + row) * p.y.value()) +
-                      (e.at(8 + row) * p.z.value()) + e.at(12 + row);
+        out.at(row) = (e.at(row) * p.v.x.value()) + (e.at(4 + row) * p.v.y.value()) +
+                      (e.at(8 + row) * p.v.z.value()) + e.at(12 + row);
     }
-    return Vec3<kOutXyz>{out.at(0), out.at(1), out.at(2)};
+    return FramedVec3<kTo, kOutXyz>{.v = Vec3<kOutXyz>{out.at(0), out.at(1), out.at(2)}};
 }
 
 // A direction: the translation does not apply. Two names rather than one
 // because a point and a direction transform differently, and nothing else in
 // the signature would say which was meant.
-template <auto kInXyz, auto kInW, auto kOutXyz, auto kOutW>
+template <FrameTag kFrom, FrameTag kTo, auto kInXyz, auto kInW, auto kOutXyz, auto kOutW>
     requires(std::is_same_v<Scalar<kInW>, Scalar<kOutW>>)
-[[nodiscard]] constexpr Vec3<kOutXyz>
-transformDirection(const Mat4<kInXyz, kInW, kOutXyz, kOutW>& m, const Vec3<kInXyz>& d) noexcept {
+[[nodiscard]] constexpr FramedVec3<kTo, kOutXyz>
+transformDirection(const Mat4<kFrom, kTo, kInXyz, kInW, kOutXyz, kOutW>& m,
+                   const FramedVec3<kFrom, kInXyz>& d) noexcept {
     ORBSIM_EXPECTS(isAffine(m));
     const std::array<f64, 16> e = m.columnMajor();
     std::array<f64, 3> out{};
     for (std::size_t row = 0; row < 3; ++row) {
-        out.at(row) = (e.at(row) * d.x.value()) + (e.at(4 + row) * d.y.value()) +
-                      (e.at(8 + row) * d.z.value());
+        out.at(row) = (e.at(row) * d.v.x.value()) + (e.at(4 + row) * d.v.y.value()) +
+                      (e.at(8 + row) * d.v.z.value());
     }
-    return Vec3<kOutXyz>{out.at(0), out.at(1), out.at(2)};
+    return FramedVec3<kTo, kOutXyz>{.v = Vec3<kOutXyz>{out.at(0), out.at(1), out.at(2)}};
 }
 
-template <auto kXyz, auto kW>
-[[nodiscard]] constexpr Mat4<kXyz, kW, kXyz, kW> identityMatrix() noexcept {
-    Mat4<kXyz, kW, kXyz, kW> m{};
+// **The one place a frame change is declared rather than derived.**
+//
+// A rotation and a translation are each within a frame -- neither changes
+// what space you are in -- so the factories below produce F-to-F transforms.
+// A camera's view matrix is their composition, and what makes it
+// world-to-view is the camera's definition of view space, not any property of
+// the arithmetic. That declaration happens here, once, by name, and it is
+// **unchecked**: nothing verifies that the matrix really maps world to view.
+// It is an assertion the caller makes, which is why it has a name of its own
+// rather than being spelled as an ordinary conversion, and why it does not
+// route through `fromColumnMajor` -- that one is for building a matrix from
+// data, and the two uses should be greppable apart.
+//
+// `grep retargetFrame` is the audit. M1-11's camera is expected to be the
+// only caller.
+template <FrameTag kNewTo,
+          FrameTag kFrom,
+          FrameTag kTo,
+          auto kInXyz,
+          auto kInW,
+          auto kOutXyz,
+          auto kOutW>
+[[nodiscard]] constexpr Mat4<kFrom, kNewTo, kInXyz, kInW, kOutXyz, kOutW>
+retargetFrame(const Mat4<kFrom, kTo, kInXyz, kInW, kOutXyz, kOutW>& m) noexcept {
+    return Mat4<kFrom, kNewTo, kInXyz, kInW, kOutXyz, kOutW>::fromColumnMajor(m.columnMajor());
+}
+
+template <FrameTag kFrame, auto kXyz, auto kW>
+[[nodiscard]] constexpr Mat4<kFrame, kFrame, kXyz, kW, kXyz, kW> identityMatrix() noexcept {
+    Mat4<kFrame, kFrame, kXyz, kW, kXyz, kW> m{};
     for (std::size_t d = 0; d < 4; ++d) {
         m.set(Row{d}, Column{d}, 1.0);
     }
     return m;
 }
 
-// The names the renderer uses. A Transform moves a point about within one
-// parameterisation; a Projection takes a world point to clip space, where w
-// is metres and the divide therefore lands in dimensionless coordinates.
-using Transform = Mat4<units::kMetre, mp_units::one, units::kMetre, mp_units::one>;
-using Projection = Mat4<units::kMetre, mp_units::one, units::kMetre, units::kMetre>;
-using WorldPoint = Vec4<units::kMetre, mp_units::one>;
-using ClipPoint = Vec4<units::kMetre, units::kMetre>;
+// The names the renderer uses. A Transform moves a point about; a Projection
+// takes a view point to clip space, where w is metres and the divide
+// therefore lands in dimensionless coordinates.
+template <FrameTag kFrom, FrameTag kTo>
+using Transform = Mat4<kFrom, kTo, units::kMetre, mp_units::one, units::kMetre, mp_units::one>;
+using Projection = Mat4<kView, kClip, units::kMetre, mp_units::one, units::kMetre, units::kMetre>;
 
-[[nodiscard]] constexpr Transform identityTransform() noexcept {
-    return identityMatrix<units::kMetre, mp_units::one>();
+using WorldTransform = Transform<kWorld, kWorld>;
+using WorldToView = Transform<kWorld, kView>;
+
+template <FrameTag kFrame> using FramedPosition = FramedVec3<kFrame, units::kMetre>;
+using WorldPosition = FramedPosition<kWorld>;
+using ViewPosition = FramedPosition<kView>;
+
+template <FrameTag kFrame> using HomogeneousPoint = Vec4<kFrame, units::kMetre, mp_units::one>;
+using WorldPoint = HomogeneousPoint<kWorld>;
+using ViewPoint = HomogeneousPoint<kView>;
+using ClipPoint = Vec4<kClip, units::kMetre, units::kMetre>;
+
+[[nodiscard]] constexpr WorldTransform identityTransform() noexcept {
+    return identityMatrix<kWorld, units::kMetre, mp_units::one>();
 }
 
-[[nodiscard]] constexpr Transform translationOf(const Position& t) noexcept {
-    Transform m = identityTransform();
+template <FrameTag kFrame>
+[[nodiscard]] constexpr Transform<kFrame, kFrame> translationOf(const Position& t) noexcept {
+    Transform<kFrame, kFrame> m = identityMatrix<kFrame, units::kMetre, mp_units::one>();
     m.set(Row{0}, Column{3}, t.x.value());
     m.set(Row{1}, Column{3}, t.y.value());
     m.set(Row{2}, Column{3}, t.z.value());
@@ -342,7 +445,8 @@ using ClipPoint = Vec4<units::kMetre, units::kMetre>;
 // enough, and the one with a suite of its own is the one to reuse
 // (VERIFICATION.md rule 2 -- a second copy would agree with the first for
 // reasons that have nothing to do with either being right).
-[[nodiscard]] inline Transform rotationOf(const Quat& q) noexcept {
+template <FrameTag kFrame>
+[[nodiscard]] inline Transform<kFrame, kFrame> rotationOf(const Quat& q) noexcept {
     const std::array<Direction, 3> turned{
         {
             q.rotate(Direction{1.0, 0.0, 0.0}),
@@ -350,7 +454,7 @@ using ClipPoint = Vec4<units::kMetre, units::kMetre>;
             q.rotate(Direction{0.0, 0.0, 1.0}),
         },
     };
-    Transform m = identityTransform();
+    Transform<kFrame, kFrame> m = identityMatrix<kFrame, units::kMetre, mp_units::one>();
     for (std::size_t column = 0; column < 3; ++column) {
         m.set(Row{0}, Column{column}, turned.at(column).x.value());
         m.set(Row{1}, Column{column}, turned.at(column).y.value());
@@ -363,9 +467,8 @@ using ClipPoint = Vec4<units::kMetre, units::kMetre>;
 // runtime, runs on every build whether or not the suite is invoked, and
 // cannot rot (CODING_GUIDELINES section 3).
 
-// Multiplication and the identity are usable in a constant expression, which
-// is what the task asks to be proved.
-inline constexpr Transform kShiftForAssertions = translationOf(Position{1.0, 2.0, 3.0});
+inline constexpr WorldTransform kShiftForAssertions =
+    translationOf<kWorld>(Position{1.0, 2.0, 3.0});
 static_assert(isAffine(kShiftForAssertions));
 static_assert(isAffine(identityTransform()));
 static_assert((kShiftForAssertions * identityTransform()).bitIdentical(kShiftForAssertions),
@@ -376,20 +479,35 @@ static_assert(nearlyEqual((kShiftForAssertions * kShiftForAssertions).translatio
                           2.0,
                           Tolerance{0.0}),
               "two shifts compose by adding");
+
+// The transpose, as a dual map.
 static_assert(transpose(transpose(kShiftForAssertions)).bitIdentical(kShiftForAssertions),
               "transposing twice returns the original, exactly");
-static_assert(nearlyEqual(transformPoint(kShiftForAssertions, Position{10.0, 20.0, 30.0}).x.value(),
+static_assert(std::is_same_v<decltype(transpose(transpose(kShiftForAssertions))), WorldTransform>,
+              "and with the original's type: dualising twice is the identity, and 1/(1/R) is R");
+static_assert(std::is_same_v<decltype(transpose(std::declval<Projection>())),
+                             Mat4<dualOf(kClip),
+                                  dualOf(kView),
+                                  mp_units::one / units::kMetre,
+                                  mp_units::one / units::kMetre,
+                                  mp_units::one / units::kMetre,
+                                  mp_units::one>>,
+              "a projection's transpose runs from the dual of clip to the dual of view");
+static_assert(
+    std::is_same_v<decltype(transpose(transpose(std::declval<Projection>()))), Projection>,
+    "and it round-trips too, which the same-direction formulation could not");
+
+inline constexpr WorldPosition kPointForAssertions{.v = Position{10.0, 20.0, 30.0}};
+static_assert(nearlyEqual(transformPoint(kShiftForAssertions, kPointForAssertions).v.x.value(),
                           11.0,
                           Tolerance{0.0}),
               "a translation moves a point");
-static_assert(
-    nearlyEqual(transformDirection(kShiftForAssertions, Position{10.0, 20.0, 30.0}).x.value(),
-                10.0,
-                Tolerance{0.0}),
-    "and leaves a direction alone");
+static_assert(nearlyEqual(transformDirection(kShiftForAssertions, kPointForAssertions).v.x.value(),
+                          10.0,
+                          Tolerance{0.0}),
+              "and leaves a direction alone");
 
-// What the units buy, asserted rather than described. The blocks carry the
-// four references the parameterisation claims.
+// What the units buy, asserted rather than described.
 static_assert(std::is_same_v<decltype(kShiftForAssertions.translation(Row{0})), Metres>,
               "an affine transform's translation column is metres");
 static_assert(std::is_same_v<decltype(std::declval<Projection>().translation(Row{2})), Metres>,
@@ -397,12 +515,21 @@ static_assert(std::is_same_v<decltype(std::declval<Projection>().translation(Row
 static_assert(std::is_same_v<decltype(std::declval<Projection>().corner()),
                              Scalar<units::kMetre / mp_units::one>>,
               "a projection's corner is metres, which is why one Mat4 cannot span the chain");
-static_assert(
-    std::is_same_v<decltype(std::declval<Projection>() * std::declval<Transform>()), Projection>,
-    "projection * view is a world-to-clip projection");
 static_assert(std::is_same_v<decltype(perspectiveDivide(std::declval<ClipPoint>())),
-                             Vec3<units::kMetre / units::kMetre>>,
-              "and clip over w is dimensionless, which is what normalised device coordinates are");
+                             FramedVec3<kClip, units::kMetre / units::kMetre>>,
+              "clip over w is dimensionless, which is what normalised device coordinates are");
+
+// What the frames buy.
+static_assert(
+    std::is_same_v<decltype(std::declval<Projection>() * std::declval<WorldToView>()),
+                   Mat4<kWorld, kClip, units::kMetre, mp_units::one, units::kMetre, units::kMetre>>,
+    "projection after world-to-view is a world-to-clip projection");
+static_assert(
+    std::is_same_v<decltype(inverseRigid(std::declval<WorldToView>())), Transform<kView, kWorld>>,
+    "the rigid inverse of a world-to-view transform is a view-to-world one");
+static_assert(
+    std::is_same_v<decltype(retargetFrame<kView>(std::declval<WorldTransform>())), WorldToView>,
+    "and retargetFrame is how a world-to-world transform becomes world-to-view");
 
 // The errors, refused. Concepts rather than bare requires-expressions,
 // because a requires-expression on non-dependent operands is diagnosed rather
@@ -416,28 +543,45 @@ concept homogeneousTransformable = requires(const M& m, const V& v) { transform(
 template <typename M>
 concept rigidInvertible = requires(const M& m) { inverseRigid(m); };
 
-static_assert(composable<Projection, Transform>, "projection * view is the pipeline");
-static_assert(!composable<Transform, Projection>,
+static_assert(composable<Projection, WorldToView>, "projection * view is the pipeline");
+static_assert(!composable<WorldToView, Projection>,
               "view * projection is the classic bug and must not compile");
-static_assert(composable<Transform, Transform>, "two affine transforms compose either way");
-static_assert(pointTransformable<Transform, Position>, "a transform moves a point");
-static_assert(!pointTransformable<Projection, Position>,
+static_assert(composable<WorldTransform, WorldTransform>,
+              "two transforms within one frame compose either way");
+static_assert(composable<WorldToView, WorldTransform>,
+              "and a world-to-view after a world-to-world does compose");
+static_assert(!composable<WorldTransform, WorldToView>,
+              "while a world-to-world after a world-to-view does not: the frames do not meet");
+
+static_assert(pointTransformable<WorldToView, WorldPosition>,
+              "a world-to-view transform moves a world point");
+static_assert(!pointTransformable<WorldToView, ViewPosition>,
+              "and refuses a point that is already in view space");
+static_assert(!pointTransformable<Projection, ViewPosition>,
               "a projection goes through transform() and the divide, never transformPoint()");
-static_assert(homogeneousTransformable<Projection, WorldPoint>);
+
+static_assert(homogeneousTransformable<Projection, ViewPoint>);
 static_assert(!homogeneousTransformable<Projection, ClipPoint>,
               "a clip point must not be projected a second time");
-static_assert(rigidInvertible<Transform>);
+static_assert(!homogeneousTransformable<Projection, WorldPoint>,
+              "nor may a world point skip the view transform");
+
+static_assert(rigidInvertible<WorldToView>);
 static_assert(!rigidInvertible<Projection>, "a projection has no rigid inverse");
 
 // One level up from ADR 0019: a transform of velocities is not a transform of
 // positions, and neither will touch the other's vectors.
-using VelocityTransform = Mat4<units::kMetre / units::kSecond,
+using VelocityTransform = Mat4<kWorld,
+                               kWorld,
+                               units::kMetre / units::kSecond,
                                mp_units::one,
                                units::kMetre / units::kSecond,
                                mp_units::one>;
-static_assert(!composable<VelocityTransform, Transform>,
+static_assert(!composable<VelocityTransform, WorldTransform>,
               "a transform of velocities does not compose with one of positions");
-static_assert(!pointTransformable<Transform, Velocity>, "nor does one move a velocity");
+static_assert(
+    !pointTransformable<WorldTransform, FramedVec3<kWorld, units::kMetre / units::kSecond>>,
+    "nor does one move a velocity");
 
 } // namespace orb::view
 

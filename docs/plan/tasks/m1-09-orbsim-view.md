@@ -3,7 +3,9 @@
 Phase: A | Status: **done, 2026-09-20**
 Prerequisites: M1-01
 Decided by: [ADR 0012](../../adr/0012-orbsim-view.md), and
-[ADR 0020](../../adr/0020-transforms-carry-their-units.md) for what `Mat4` is
+[ADR 0020](../../adr/0020-transforms-carry-their-units.md) for what `Mat4` is,
+and [ADR 0021](../../adr/0021-transforms-carry-their-frames.md) for the frames
+it maps between, added the same day at the owner's request
 
 **Amended 2026-09-20, before the code**, by register decisions 92-97. Three of
 this document's numbers did not survive measurement and are corrected in place
@@ -31,11 +33,12 @@ So: a second render-side target that Vulkan never enters.
   dependencies, and the directory map in `CLAUDE.md`.
 - **`src/view/Mat4.hpp`** — a 4×4 matrix, column-major to match what Vulkan and
   GLSL expect, so the narrowing at the boundary is a copy rather than a
-  transpose. **Not `f64`**: `Mat4<kInXyz, kInW, kOutXyz, kOutW>` carries the
-  units of both spaces it maps between, with the four block references derived
-  from them (ADR 0020, decision 92). A homogeneous 4×4 has no single unit, and
-  the parameterisation is what makes `projection * view` compile and
-  `view * projection` not:
+  transpose. **Not `f64`**:
+  `Mat4<kFrom, kTo, kInXyz, kInW, kOutXyz, kOutW>` carries the units of both
+  spaces it maps between, with the four block references derived from them
+  (ADR 0020, decision 92), **and the frames as well** (ADR 0021, decision 98).
+  A homogeneous 4×4 has no single unit, and the parameterisation is what makes
+  `projection * view` compile and `view * projection` not:
   - multiplication, `transformPoint`, `transformDirection`, `transpose`,
     `identity`, and `inverseRigid` for the view matrix's own inverse (rotation
     transposed, translation negated — cheaper and exact, where a general inverse
@@ -51,7 +54,16 @@ So: a second render-side target that Vulkan never enters.
     `isAffine` is public so that its runtime precondition can be tested;
   - **element access by named block**, with strong `Row` and `Column` indices
     (decision 95). A single `at(row, column)` cannot have one return type here,
-    and clang-tidy cannot catch a transposed index anyway.
+    and clang-tidy cannot catch a transposed index anyway;
+  - **the frames, added the same day by decision 98**, in
+    [`src/view/Frame.hpp`](../../../src/view/Frame.hpp): a `FrameTag` carrying
+    a **dual** flag, because `transpose` is a dual map -- b* to a* -- which is
+    what makes its composition law hold for a chain containing a projection
+    rather than only for affine matrices. Points carry frames too, through a
+    view-local `FramedVec3`, so `core` stays frame-free; the factories are
+    same-frame, because a rotation does not change what space you are in; and
+    `retargetFrame` is the one declared, unchecked, greppable frame change,
+    whose only caller should be M1-11's camera.
 
 ## Out of scope
 
@@ -112,4 +124,8 @@ link `orbsim_view` in any generated build file.
       `orbsim_core`'s `LINK_LIBRARIES` and fails if `orbsim_view` appears, and
       every mention of `orbsim_view` in the generated `build.ninja` belongs to
       `test_view_math` or the view self-check.
-- [x] `view/Mat4.hpp` is in the header self-check list.
+- [x] `view/Mat4.hpp` and `view/Frame.hpp` are both in the header self-check
+      list.
+- [x] The mutation pass ran: fifteen mutants, fourteen caught, one declared
+      survivor that belongs to M1-10, none invalid. One of them found a hole
+      in a *test* rather than in the code.

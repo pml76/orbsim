@@ -26,7 +26,7 @@ named, greppable place.
 - `struct Camera` with an `f64` world position in metres, a `Quat` orientation,
   a vertical field of view and a near plane. Rule of Zero, trivially copyable,
   every member default-initialised.
-- `[[nodiscard]] Transform viewMatrix(const Camera&)` — **camera-relative**: the
+- `[[nodiscard]] WorldToView viewMatrix(const Camera&)` — **camera-relative**: the
   rotation only, with the translation identically zero, because the translation
   has already been applied by the subtraction below. A comment says that, since
   a view matrix with no translation looks like a bug to anyone who has written
@@ -87,5 +87,9 @@ demonstrate it, and M1-20 does the demonstrating.
 - [ ] `grep static_cast<f32>` over `src/` finds them in exactly one function.
 - [ ] `orbsim_view` becomes a STATIC library when `Camera.cpp` arrives; M1-09
       left it INTERFACE because a sourceless static library does not configure.
+- [ ] `grep retargetFrame` over `src/` finds it in exactly one place. Since
+      [ADR 0021](../../adr/0021-transforms-carry-their-frames.md) a rotation
+      and a translation are within a frame, so the camera is what declares
+      world-to-view, and it is the only thing that should.
 - [ ] The naive-path comparison is in the suite and fails as expected.
 - [ ] The budget is in the header, the test and the commit message.

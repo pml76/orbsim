@@ -902,6 +902,7 @@ orbsim_add_header_selfcheck(orbsim_header_selfcheck orbsim_core
         orbit/Orbit.hpp
 )
 orbsim_add_header_selfcheck(orbsim_view_header_selfcheck orbsim_view
+        view/Frame.hpp
         view/Mat4.hpp
 )
 orbsim_add_header_selfcheck(orbsim_test_header_selfcheck orbsim_test_support

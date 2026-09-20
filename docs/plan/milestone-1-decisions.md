@@ -5,7 +5,7 @@ queue in [`milestone-1-tasks.md`](milestone-1-tasks.md) is built on those and
 would have to be rebuilt if any of them changed. **27 onwards were taken
 later** -- 27–31 on 2026-09-11, 32–41 with M1-04, 42–52 with M1-06, 53–71
 with M1-05, 72–84 with M1-07, three of which made M1-86, and 85–91 with
-M1-08, and 92-97 with M1-09 -- and section 9 holds them. *(This said "27–31 were taken later" until 2026-09-19, three tasks
+M1-08, and 92-98 with M1-09 -- and section 9 holds them. *(This said "27–31 were taken later" until 2026-09-19, three tasks
 after it stopped being the whole list.)*
 
 *(This was titled "the decisions taken before it started" and dated
@@ -180,7 +180,11 @@ Written down because a fence nobody recorded is a fence somebody walks through.
 - The propagated state is **Cartesian**. Equinoctial elements are deferred.
 - **No DE440.** The analytic Sun lights the scene; it does not pull on anything.
 - **`Vec3` stays unit-free and frame-free.** `PROJECT_STATE.md` section 7.6 stays
-  open.
+  open. *(Amended twice. The unit half fell on 2026-09-17 with
+  [ADR 0019](../adr/0019-vectors-carry-their-unit.md): `Vec3` carries its unit.
+  The frame half **still stands for `core`** after decision 98 on 2026-09-20 --
+  frames were added to the render-side `Mat4` and to a view-local
+  `FramedVec3`, and `core`'s `Vec3`, `Quat` and `Position` carry no frame.)*
 - **`RenderQuality` presets only.** No configuration file, no adaptive
   controller.
 - **Night lights** land in phase B; the **specular water mask** is deferred until
@@ -250,6 +254,7 @@ claims to outlive the conversation.
 | 84 | The lint at ERFA's C interface, ruled while M1-07 was being written | The six sites in [`src/astro/EarthOrientation.cpp`](../../src/astro/EarthOrientation.cpp), each with its reason |
 | 85–91 | The seven M1-08 rulings, below: nine questions put before its code, one recommendation overturned, and one lint ruling taken while it was being written | [M1-08](tasks/m1-08-solar-position.md), amended the same day, and the header of [`src/astro/Sun.hpp`](../../src/astro/Sun.hpp) |
 | 92-97 | The six M1-09 rulings, below: four put before its code and two that followed from the first | [ADR 0020](../adr/0020-transforms-carry-their-units.md), [M1-09](tasks/m1-09-orbsim-view.md), and the header of [`src/view/Mat4.hpp`](../../src/view/Mat4.hpp) |
+| 98 | Frames, reversing 94 | [ADR 0021](../adr/0021-transforms-carry-their-frames.md), [`src/view/Frame.hpp`](../../src/view/Frame.hpp) and the header of [`src/view/Mat4.hpp`](../../src/view/Mat4.hpp) |
 
 Two further amendments were made in the same pass and belong to no decision in
 the table: [ADR 0005](../adr/0005-correctness-is-enforced-by-tools.md) gained a
@@ -357,6 +362,7 @@ Numbered on from 26 so that a reference to a decision number stays unambiguous.
 | 95 | Element access | **Named blocks, with strong `Row` and `Column` indices.** Under decision 92 a single `at(row, column)` cannot have one return type, and neither can `column(i)` -- columns 0-2 and column 3 differ -- so the accessors are `linear`, `translation`, `bottomRow` and `corner`. The indices are strong types because clang-tidy cannot catch a transposition here: measured 2026-09-20, `bugprone-easily-swappable-parameters` silences any pair used together in one expression. Ruled 2026-09-20 |
 | 96 | The swappable-parameters blind spot | **Closed project-wide, in its own commit before M1-09.** `SuppressParametersUsedTogether` is off in `.clang-tidy`. Measured first: 22 findings on 22 source lines in 11 files, where the default reported 0; 13 were real and are fixed by naming the pair, 9 are provably symmetric and carry a NOLINT with that reason at the site. The assertion count is 1,263,723 in 135 cases before and after, which is what says nothing changed behaviour. Considered: documenting the blind spot instead, which was the fallback if removing it had proved impractical. Ruled 2026-09-20 |
 | 97 | M1-09's tolerances | **Two of the three the task carried are replaced by laws.** Associativity's "1e-12 relative" is unsatisfiable read elementwise -- measured worst 7.5e-10, because an element can cancel -- and is now the conditioning bound 2*gamma_8 = 1.78e-15 against |A||B||C|, measured 6.54e-16. `inverseRigid`'s "identity to 1e-14" is dimensionally wrong: the translation column is in metres and its residual scales with |t|, reaching 3.1e-4 m at 1 AU, so the claim splits into 1e-14 on the dimensionless rotation block and 20 ulp of |t| on the translation, asserted at 1 m, Earth radius, lunar distance and 1 AU. Two further claims turn out **exact** and are asserted bit for bit rather than to a tolerance: the identity, and transpose(AB) = transpose(B)transpose(A). Ruled 2026-09-20 |
+| 98 | Frames on `Mat4` after all, reversing decision 94 | **Added**, four days' worth of argument later the same day. Decision 94 left frames out on the grounds that nothing needed them yet; the owner asked for them, and for points to carry them too, which decision 94's lighter variant would not have done. What landed: `Mat4<kFrom, kTo, ...>` with the frames as template parameters; a `FrameTag` carrying a **dual** flag, because the transpose is a dual map -- **the owner's formulation, and better than this project's**: forced back into a matrix between the same two spaces, `transpose(AB) = transpose(B)transpose(A)` typechecks only where the operands' units line up, which excludes every chain containing a projection, while as a dual map it composes for all of them; a view-local `FramedVec3` so `core` stays frame-free; same-frame factories with `retargetFrame` as the one declared, greppable, unchecked frame change; and no `Frame::Ndc`, because clip and normalised device coordinates are already told apart by the unit. Measured before deciding: **no runtime cost** -- 35 instructions against 35, instruction-for-instruction identical at -O2, `sizeof` unchanged, and the wrapper absent from the emitted assembly, on the stricter of the two candidate designs -- and feasible on all three front ends, both `FrameTag` as a non-type template parameter and `one / (one / metre)` coming back as `metre`. Considered: framing matrices but not points; factories taking both frames, which lets the type system state a falsehood; and relabelling through `fromColumnMajor`, which round-trips a typed value through a bare array and cannot be grepped apart from construction from data -- this project recommended that one first and was wrong. Ruled 2026-09-20 |
 
 The M1-03 rulings of 2026-09-10 — the storage of an instant, the day boundary,
 the arithmetic contract, one error per calendar field, years 1–9999, the

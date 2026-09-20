@@ -671,7 +671,70 @@ asked for.
       2026-09-20 in its own commit, ahead of M1-86:
       [`HISTORY.md`](HISTORY.md) has the account.
 
+16. **M1-09's questions: all settled 2026-09-20**, decisions 92-98 of
+    [`plan/milestone-1-decisions.md`](plan/milestone-1-decisions.md) section 9.
+    Six were put before any code and one, the frames, reversed an earlier
+    ruling the same day. *(M1-08 has no item of its own here; its rulings are
+    decisions 85-91 and its account is in [`HISTORY.md`](HISTORY.md). The gap
+    predates this entry.)* What to know without opening the register:
+
+    - **`orbsim_view` exists, and `orbsim_core` cannot link it.** A
+      configure-time assertion in `CMakeLists.txt` reads `orbsim_core`'s
+      `LINK_LIBRARIES` and fails if it ever appears. It is an INTERFACE
+      library until M1-11 adds `Camera.cpp`, because a static library with no
+      sources does not configure at all.
+    - **`Mat4` carries the units of both spaces *and* the frames** (ADRs 0020
+      and 0021). A homogeneous 4x4 has no single unit, so it takes the two
+      spaces' references and derives its four block references; the frames
+      then unify on the middle of a composition. `core` stays frame-free:
+      points are framed by a view-local `FramedVec3`.
+    - **The transpose is a dual map**, b* to a*, which is the owner's
+      formulation and the reason its composition law holds for a chain
+      containing a projection. It depends on `one / (one / metre)` coming back
+      as *the same* reference as `metre`, which was measured on all three
+      front ends before the design was chosen.
+    - **A frame change is declared, once, by `retargetFrame`.** Rotations and
+      translations are within a frame. `grep retargetFrame` is the audit and
+      M1-11's camera should be its only caller.
+    - **Frame-awareness costs nothing at runtime**: 35 instructions against
+      35, identical at -O2, measured on the stricter of the two candidate
+      designs.
+    - **Two tolerances the task document carried were wrong**, and the
+      measurements are in the suite's header comment: associativity read
+      elementwise is unsatisfiable, and `inverseRigid`'s "identity to 1e-14"
+      is dimensionally wrong because the translation column is in metres.
+
 ## 8. Gotchas worth not rediscovering
+
+**Six small ones from 2026-09-20, each measured rather than reasoned about.**
+They cost an hour between them and would cost it again:
+
+- **`NOLINTNEXTLINE` above a `template` line covers the template line**, not
+  the signature, and the finding is reported where the parameters are. Two
+  suppressions in that session looked applied and were not.
+- **`misc-non-private-member-variables-in-classes` ignores an all-public class
+  only while it declares no member *function*.** Confirmed on a three-struct
+  probe: the same two public members are reported when `operator==` is a
+  defaulted member and silent when it is a free function. That matters for any
+  type whose members must stay public because it is used as a non-type
+  template parameter, which needs a structural type -- `view/Frame.hpp`'s
+  `FrameTag` is the first.
+- **`bugprone-easily-swappable-parameters` was blind to most of the tree**
+  until that day: `SuppressParametersUsedTogether` defaults to true and
+  silences any pair used together in one expression. It is off now;
+  `.clang-tidy` carries the counts and what each of the 22 findings became.
+- **`clang-format` splits a sixteen-element braced list one value per line**,
+  which destroys a matrix literal. `view/Mat4.hpp` builds its matrices from
+  `identityMatrix()` and `set()` instead, which reads better than the literal
+  did and needs no `// clang-format off`.
+- **A deduced `auto` return type defeats NRVO**, and clang's `-Wnrvo` is an
+  error here, so a function returning a local names its return type -- an
+  alias template where the type is awkward.
+- **gcc rejects two things clang accepts on new aggregate code**:
+  `-Wctad-maybe-unsupported` on class template argument deduction for a
+  template that declares no deduction guide, and `-Wmissing-braces` on a
+  singly-braced `std::array`. Both were found by the `linux-gcc` preset after
+  Windows was green, which is what the second compiler is for.
 
 **`readability-trailing-comma` reports a comma that is not there.** A call with
 two or more arguments, each an empty braced-init of an *aggregate whose members

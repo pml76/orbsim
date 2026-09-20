@@ -1,12 +1,18 @@
 //
-// Tests for view/Mat4.hpp: the 4x4 homogeneous transform and the units it
-// carries (M1-09, ADR 0012 for where it lives and ADR 0020 for the
-// parameterisation).
+// Tests for view/Mat4.hpp and view/Frame.hpp: the 4x4 homogeneous transform,
+// the units it carries and the frames it maps between (M1-09; ADR 0012 for
+// where it lives, ADR 0020 for the units, ADR 0021 for the frames).
 //
 // **Nothing here includes a Vulkan or SDL header**, and that is not
 // discipline: this suite links orbsim_view, which links orbsim_core and
 // nothing else, so a graphics header is not reachable from it. That is the
 // whole point of ADR 0012.
+//
+// Most of what the frames buy cannot be tested at run time, because the
+// point of them is that the wrong thing does not compile. Those claims are
+// static_asserts in the header, next to the functions they constrain, and
+// each was inverted and watched failing before being believed. What is left
+// for this file is the arithmetic.
 //
 // Where the tolerances come from. Two of the three the task document carried
 // did not survive measurement, and each is replaced by a law rather than by a
@@ -26,16 +32,17 @@
 //     claim is therefore split, and the translation half is relative to |t|,
 //     which is flat at about 9 ulp at every scale from 1 m to 30 AU.
 //
-// And two of the task's claims turn out to be *exact* rather than approximate,
-// so they are asserted with bitIdentical() rather than a tolerance: the
-// identity is exactly the multiplicative identity, and transpose(AB) is
-// bit-identical to transpose(B)transpose(A) -- the same four products summed
-// in the same order. Measured 200,000 of 200,000 each way before being
-// claimed.
+// And two of the task's claims turn out to be *exact* rather than
+// approximate, so they are asserted with bit identity rather than a
+// tolerance: the identity is exactly the multiplicative identity, and
+// transpose(AB) is bit-identical to transpose(B)transpose(A) -- the same four
+// products summed in the same order. Measured 200,000 of 200,000 each way
+// before being claimed.
 //
 #include "core/Math.hpp"
 #include "core/Scalar.hpp"
 #include "core/Units.hpp"
+#include "view/Frame.hpp"
 #include "view/Mat4.hpp"
 
 #include <catch2/catch_message.hpp>
@@ -48,7 +55,6 @@
 #include <cstdint>
 #include <limits>
 #include <random>
-#include <type_traits>
 
 using namespace orb;
 using namespace orb::view;
@@ -135,8 +141,17 @@ private:
     std::uniform_real_distribution<f64> uniform_{-1.0, 1.0};
 };
 
-[[nodiscard]] Transform rigidTransform(Sampler& sampler, f64 magnitude) {
-    return translationOf(sampler.translation(magnitude)) * rotationOf(sampler.rotation());
+// A rigid transform within the world frame. Rotations and translations do not
+// change frames -- only a camera's definition of view space does, and that is
+// `retargetFrame`'s job -- so these compose freely here.
+[[nodiscard]] WorldTransform rigidTransform(Sampler& sampler, f64 magnitude) {
+    return translationOf<kWorld>(sampler.translation(magnitude)) *
+           rotationOf<kWorld>(sampler.rotation());
+}
+
+// The same thing declared to land in view space, which is what a camera does.
+[[nodiscard]] WorldToView worldToView(Sampler& sampler, f64 magnitude) {
+    return retargetFrame<kView>(rigidTransform(sampler, magnitude));
 }
 
 // The two operands of a magnitude product, in order. A struct rather than two
@@ -178,8 +193,11 @@ struct InverseResidual {
 [[nodiscard]] InverseResidual measureInverseResidual(Sampler& sampler, f64 magnitude) {
     InverseResidual worst{};
     for (std::size_t i = 0; i < kScaleCases; ++i) {
-        const Transform m = rigidTransform(sampler, magnitude);
-        const Transform product = m * inverseRigid(m);
+        const WorldToView m = worldToView(sampler, magnitude);
+        // m is world-to-view and its inverse is view-to-world, so this
+        // product is the identity **of view space** -- a fact the types now
+        // carry rather than a comment.
+        const Transform<kView, kView> product = m * inverseRigid(m);
         for (std::size_t column = 0; column < 3; ++column) {
             for (std::size_t row = 0; row < 3; ++row) {
                 const f64 want = column == row ? 1.0 : 0.0;
@@ -200,12 +218,18 @@ struct InverseResidual {
 [[nodiscard]] f64 measureRoundTripUlps(Sampler& sampler, f64 magnitude) {
     f64 worstUlps = 0.0;
     for (std::size_t i = 0; i < kScaleCases; ++i) {
-        const Transform m = rigidTransform(sampler, magnitude);
-        const Position p{
-            sampler.unit() * magnitude, sampler.unit() * magnitude, sampler.unit() * magnitude};
-        const Position back = transformPoint(inverseRigid(m), transformPoint(m, p));
-        const std::array<f64, 3> before{{p.x.value(), p.y.value(), p.z.value()}};
-        const std::array<f64, 3> after{{back.x.value(), back.y.value(), back.z.value()}};
+        const WorldToView m = worldToView(sampler, magnitude);
+        const WorldPosition p{
+            .v = Position{sampler.unit() * magnitude,
+                          sampler.unit() * magnitude,
+                          sampler.unit() * magnitude},
+        };
+        // World to view and back. Each step's frame is checked by the
+        // compiler; what this measures is the arithmetic.
+        const ViewPosition inView = transformPoint(m, p);
+        const WorldPosition back = transformPoint(inverseRigid(m), inView);
+        const std::array<f64, 3> before{{p.v.x.value(), p.v.y.value(), p.v.z.value()}};
+        const std::array<f64, 3> after{{back.v.x.value(), back.v.y.value(), back.v.z.value()}};
         for (std::size_t k = 0; k < 3; ++k) {
             const f64 residual = std::abs(after.at(k) - before.at(k));
             worstUlps =
@@ -221,12 +245,12 @@ TEST_CASE("matrix multiplication is associative to the conditioning of the produ
     Sampler sampler;
     f64 worstRatio = 0.0;
     for (std::size_t i = 0; i < kSweepCases; ++i) {
-        const Transform a = rigidTransform(sampler, 1.0);
-        const Transform b = rigidTransform(sampler, 1.0);
-        const Transform c = rigidTransform(sampler, 6.371e6);
+        const WorldTransform a = rigidTransform(sampler, 1.0);
+        const WorldTransform b = rigidTransform(sampler, 1.0);
+        const WorldTransform c = rigidTransform(sampler, 6.371e6);
 
-        const Transform left = (a * b) * c;
-        const Transform right = a * (b * c);
+        const WorldTransform left = (a * b) * c;
+        const WorldTransform right = a * (b * c);
         const std::array<f64, 16> conditioning = magnitudeProduct({
             .left = magnitudeProduct({.left = a.columnMajor(), .right = b.columnMajor()}),
             .right = c.columnMajor(),
@@ -253,23 +277,36 @@ TEST_CASE("matrix multiplication is associative to the conditioning of the produ
 
 TEST_CASE("the identity is exactly the multiplicative identity") {
     Sampler sampler;
-    const Transform identity = identityTransform();
+    const WorldTransform identity = identityTransform();
     for (std::size_t i = 0; i < 1000; ++i) {
-        const Transform m = rigidTransform(sampler, 6.371e6);
+        const WorldTransform m = rigidTransform(sampler, 6.371e6);
         CAPTURE(i);
         REQUIRE((m * identity).bitIdentical(m));
         REQUIRE((identity * m).bitIdentical(m));
+        // Not vacuous: m is not itself the identity, so a multiplication that
+        // returned its argument unchanged would still pass above, and a
+        // multiplication that returned nothing would not get this far.
+        REQUIRE_FALSE(m.bitIdentical(identity));
     }
 }
 
 TEST_CASE("transposing twice returns the original, bit for bit") {
     Sampler sampler;
     for (std::size_t i = 0; i < 1000; ++i) {
-        const Transform m = rigidTransform(sampler, 6.371e6);
+        const WorldTransform m = rigidTransform(sampler, 6.371e6);
         CAPTURE(i);
-        static_assert(std::is_same_v<decltype(transpose(transpose(m))), Transform>,
-                      "the transpose of a transpose has the original's type");
         REQUIRE(transpose(transpose(m)).bitIdentical(m));
+        // Not vacuous: one transposition really does change the matrix, so a
+        // transpose that handed its argument back would pass the line above
+        // and fail this one. Compared through bitsOf rather than `==`, which
+        // -Wfloat-equal forbids on a double.
+        const std::array<f64, 16> straight = m.columnMajor();
+        const std::array<f64, 16> turned = transpose(m).columnMajor();
+        bool anyElementMoved = false;
+        for (std::size_t j = 0; j < 16; ++j) {
+            if (bitsOf(straight.at(j)) != bitsOf(turned.at(j))) anyElementMoved = true;
+        }
+        REQUIRE(anyElementMoved);
     }
 }
 
@@ -278,10 +315,15 @@ TEST_CASE("transpose(AB) is transpose(B) transpose(A), bit for bit") {
     // this file exists to avoid. Bit-identical rather than close: both sides
     // sum the same four products in the same order, so anything else means
     // the indexing differs.
+    //
+    // It typechecks at all because the transpose is typed as a **dual** map:
+    // both sides live in the dual of the world frame, with every reference
+    // inverted. Forced back into a matrix between the same two spaces, the
+    // law only typechecks where the operands' units line up.
     Sampler sampler;
     for (std::size_t i = 0; i < 1000; ++i) {
-        const Transform a = rigidTransform(sampler, 1.0);
-        const Transform b = rigidTransform(sampler, 6.371e6);
+        const WorldTransform a = rigidTransform(sampler, 1.0);
+        const WorldTransform b = rigidTransform(sampler, 6.371e6);
         CAPTURE(i);
         REQUIRE(transpose(a * b).bitIdentical(transpose(b) * transpose(a)));
     }
@@ -312,39 +354,39 @@ TEST_CASE("a point survives the round trip through a transform and its inverse")
 TEST_CASE("a translation moves a point and leaves a direction alone") {
     // The whole reason transformPoint and transformDirection are two names.
     const Position offset{1.0e6, -2.0e6, 3.0e6};
-    const Transform shift = translationOf(offset);
-    const Position point{10.0, 20.0, 30.0};
+    const WorldTransform shift = translationOf<kWorld>(offset);
+    const WorldPosition point{.v = Position{10.0, 20.0, 30.0}};
 
-    const Position moved = transformPoint(shift, point);
-    REQUIRE(nearlyEqual(moved.x.value(), 1.0e6 + 10.0, Tolerance{0.0}));
-    REQUIRE(nearlyEqual(moved.y.value(), -2.0e6 + 20.0, Tolerance{0.0}));
-    REQUIRE(nearlyEqual(moved.z.value(), 3.0e6 + 30.0, Tolerance{0.0}));
+    const WorldPosition moved = transformPoint(shift, point);
+    REQUIRE(nearlyEqual(moved.v.x.value(), 1.0e6 + 10.0, Tolerance{0.0}));
+    REQUIRE(nearlyEqual(moved.v.y.value(), -2.0e6 + 20.0, Tolerance{0.0}));
+    REQUIRE(nearlyEqual(moved.v.z.value(), 3.0e6 + 30.0, Tolerance{0.0}));
 
-    const Position direction = transformDirection(shift, point);
-    REQUIRE(direction.bitIdentical(point));
+    const WorldPosition direction = transformDirection(shift, point);
+    REQUIRE(bitIdentical(direction, point));
 }
 
 TEST_CASE("a rotation moves a point and a direction the same way") {
     Sampler sampler;
     for (std::size_t i = 0; i < 1000; ++i) {
         const Quat q = sampler.rotation();
-        const Transform r = rotationOf(q);
-        const Position p{sampler.unit(), sampler.unit(), sampler.unit()};
+        const WorldTransform r = rotationOf<kWorld>(q);
+        const WorldPosition p{.v = Position{sampler.unit(), sampler.unit(), sampler.unit()}};
         CAPTURE(i);
         // No translation, so the two must agree exactly, and both must agree
         // with the quaternion the matrix was built from.
-        REQUIRE(transformPoint(r, p).bitIdentical(transformDirection(r, p)));
-        const Position turned = q.rotate(p);
-        REQUIRE(distance(transformPoint(r, p), turned).value() <=
-                8.0 * std::numeric_limits<f64>::epsilon() * length(p).value());
+        REQUIRE(bitIdentical(transformPoint(r, p), transformDirection(r, p)));
+        const Position turned = q.rotate(p.v);
+        REQUIRE(distance(transformPoint(r, p).v, turned).value() <=
+                8.0 * std::numeric_limits<f64>::epsilon() * length(p.v).value());
     }
 }
 
 TEST_CASE("isAffine says which matrices transformPoint may be handed") {
     REQUIRE(isAffine(identityTransform()));
-    REQUIRE(isAffine(translationOf(Position{1.0, 2.0, 3.0})));
+    REQUIRE(isAffine(translationOf<kWorld>(Position{1.0, 2.0, 3.0})));
 
-    Transform bent = identityTransform();
+    WorldTransform bent = identityTransform();
     bent.set(Row{3}, Column{0}, 1e-300);
     REQUIRE_FALSE(isAffine(bent));
 
@@ -353,7 +395,33 @@ TEST_CASE("isAffine says which matrices transformPoint may be handed") {
     // to reject a matrix that really was affine, and isAffine was right.
     // std::nextafter is the smallest change that is a change, which is the
     // point -- isAffine compares bits, not magnitudes.
-    Transform scaled = identityTransform();
+    WorldTransform scaled = identityTransform();
     scaled.set(Row{3}, Column{3}, std::nextafter(1.0, 2.0));
     REQUIRE_FALSE(isAffine(scaled));
+}
+
+TEST_CASE("a frame change is declared once, and the arithmetic is untouched by it") {
+    // retargetFrame is an assertion, not a computation: the elements must be
+    // the same afterwards, or it is doing something it must not.
+    Sampler sampler;
+    for (std::size_t i = 0; i < 1000; ++i) {
+        const WorldTransform inWorld = rigidTransform(sampler, 6.371e6);
+        const WorldToView declared = retargetFrame<kView>(inWorld);
+        CAPTURE(i);
+        // Element by element, through bitsOf -- `==` on doubles is what
+        // -Wfloat-equal forbids, and the two matrices have different types so
+        // bitIdentical cannot be reached.
+        //
+        // **Not by retargeting back and comparing**, which was the first
+        // version and which the mutation pass defeated: applying a faulty
+        // retargetFrame twice cancels its fault, so a retargetFrame that
+        // transposed its argument passed. The round trip tested the round
+        // trip, not the operation.
+        const std::array<f64, 16> before = inWorld.columnMajor();
+        const std::array<f64, 16> after = declared.columnMajor();
+        for (std::size_t j = 0; j < 16; ++j) {
+            CAPTURE(j);
+            REQUIRE(bitsOf(before.at(j)) == bitsOf(after.at(j)));
+        }
+    }
 }

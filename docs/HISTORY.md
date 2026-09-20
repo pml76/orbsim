@@ -1623,8 +1623,9 @@ scale of 1 m**: `inverseRigid` was computing `-R t` where it needed
 loop wrongly. A transposed index, caught by the test written for transposed
 indices, in the file whose stated purpose is to prevent them.
 
-**The mutation pass: twelve mutants, eleven caught, one declared survivor,
-none invalid** -- and six of the eleven die at compile time, the highest
+**The mutation pass: fifteen mutants, fourteen caught, one declared
+survivor, none invalid** -- twelve of them before the frames landed, three
+added with them -- and seven of the fourteen die at compile time, the highest
 proportion of any pass here, because a matrix identity is the kind of claim a
 `static_assert` can hold. Two kills are recorded for what they were rather
 than for what their names suggest: "the identity's corner is zero" dies on
@@ -1635,6 +1636,67 @@ by adding. The survivor is the perspective divide multiplying by `w`, which no
 M1-09 test can see -- nothing here evaluates that divide numerically -- so it
 is declared rather than closed by a test invented for it, and M1-10's
 near-plane case is where it should die.
+
+### Frames on Mat4, and the transpose as a dual map, 2026-09-20
+
+M1-09 shipped without frames, deliberately: decision 94 left them out because
+world and view are both metre-to-metre affine, nothing needed the distinction
+yet, and ADR 0019 had left the question open. The owner asked two questions
+that changed both halves of that.
+
+The first was whether frame-awareness costs anything at runtime. It does not,
+and the answer is a measurement rather than an expectation: the *stricter* of
+the two candidate designs -- a wrapper struct, not template parameters that
+cannot add storage at all -- compiles to **35 instructions against 35,
+identical**, with `sizeof` unchanged and the wrapper absent from the emitted
+assembly. At `-O0` the two differ in which symbol they call, which affects the
+Debug tree's run time and no shipped build.
+
+The second was better than a question. This project had typed `transpose` by
+forcing the result back into a matrix between the same two spaces, solving the
+block rules for whatever references made that work -- which produced an
+awkward type and a law that held only for affine matrices. The owner pointed
+out that the transpose is a **dual** map: if A maps a to b, then A^T maps b*
+to a*. Working it through, every one of the four blocks falls out matching the
+transposed entries with no derived references at all, and
+`transpose(AB) = transpose(B)transpose(A)` composes **in general**, projection
+chains included. It is the better formulation and it came from outside this
+project.
+
+Both risks were measured before the design was accepted, because both are
+where front ends differ and MSVC has bitten this project twice: a `FrameTag`
+struct works as a non-type template parameter, and `one / (one / metre)` comes
+back as *the same* reference as `metre` -- on clang 23.1.0, gcc-14 and MSVC
+19.51 alike. Without the second, `transpose(transpose(M))` would not have M's
+type and the round trip would be lost.
+
+What landed: frames as two more parameters on `Mat4`; points framed too, at
+the owner's choice, through a view-local `FramedVec3` so that `core`'s `Vec3`,
+`Quat` and `Position` stay frame-free and section 6's fence survives in the
+half that matters; same-frame factories, because a rotation does not change
+what space you are in; and `retargetFrame` as the one declared, unchecked,
+greppable place a frame change is asserted. No `Frame::Ndc`: it was planned
+and then not added, because building it showed that clip and normalised device
+coordinates are already told apart by the unit.
+
+**The mutation pass found a hole in a test, not in the code**, which is the
+first time it has done that here. `retargetFrame` was checked by retargeting
+back and comparing -- and applying a faulty operation twice cancels its
+fault, so a `retargetFrame` that transposed its argument passed. The round
+trip was testing the round trip. It compares elements directly now, and the
+mutant dies. The first version of that same mutant was also **invalid** --
+replacing the body with `return Mat4{};` leaves the parameter unused, which
+`-Wunused-parameter` rejects -- so it was rewritten to compile, because an
+invalid mutant is not a kill. Final: fifteen mutants, fourteen caught, one
+declared survivor, none invalid.
+
+**One recommendation of this project's was overturned by its own analysis
+before the owner had to.** Asked to compare the three ways of declaring a
+frame change, the answer that came back was not the one recommended: the
+original case for reusing `fromColumnMajor` was "one door", and that was
+wrong, because `fromColumnMajor` is a door whether or not it is named one.
+`retargetFrame` keeps the value typed and can be grepped apart from ordinary
+construction from data.
 
 ### The swappable-parameters blind spot, 2026-09-20
 

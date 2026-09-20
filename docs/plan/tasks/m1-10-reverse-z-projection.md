@@ -27,9 +27,11 @@ rather than assumed.
   **1.0** and infinity to **0.0**, with no far plane at all. **`Projection`,
   not `Mat4`**: since [ADR 0020](../../adr/0020-transforms-carry-their-units.md)
   a `Mat4` carries the units of both spaces, and this one maps
-  `Vec4<metre, one>` to `Vec4<metre, metre>` -- which is why the divide lands
-  in dimensionless normalised device coordinates and why `transformPoint` will
-  not accept it.
+  `Vec4<kView, metre, one>` to `Vec4<kClip, metre, metre>` -- which is why the
+  divide lands in dimensionless normalised device coordinates, why
+  `transformPoint` will not accept it, and why it composes only with a
+  transform that *ends* in view space
+  ([ADR 0021](../../adr/0021-transforms-carry-their-frames.md)).
 - **The clip-space convention stated in the header**: right-handed view space
   looking down −z, Vulkan clip space with y downward and depth in [0, 1]. The
   y flip is in the matrix, once, where it can be seen — not scattered through

@@ -650,7 +650,7 @@ rules a machine checks and which depend on a person remembering.
 | 16 Determinism | `check` — `TEST_CASE("propagation is bit-identical across runs")`, over 100 steps | **done** |
 | 17 Dimensional analysis | The compiler — mp-units under `core/Units.hpp` and `Vec3<R>`, [ADR 0019](adr/0019-vectors-carry-their-unit.md) | **done** |
 | 18 Coverage | By hand, periodically. Orbit.cpp 99.2% lines | **done** |
-| 19 Mutation testing | By hand, periodically; the **anchors** are in `check` | exercised 2026-09-07, again 2026-09-19 on M1-04, M1-06 and M1-05, and 2026-09-20 on M1-86, M1-07, M1-08 and M1-09. Twelve of twelve on the first three of those; **eleven of twelve on M1-09, with the twelfth a declared survivor that belongs to M1-10** |
+| 19 Mutation testing | By hand, periodically; the **anchors** are in `check` | exercised 2026-09-07, again 2026-09-19 on M1-04, M1-06 and M1-05, and 2026-09-20 on M1-86, M1-07, M1-08 and M1-09. Twelve of twelve on the first three of those; **fourteen of fifteen on M1-09, with the fifteenth a declared survivor that belongs to M1-10** |
 | 20 WSL, UBSan, second compiler | By hand, before a milestone | **done** |
 | 21 `check` is the definition of done | The build, both trees | **done** |
 | 22–24 The human rules | A person | discipline |
@@ -758,8 +758,8 @@ change within a day against the Kepler problem's -- each seen catching its
 mutant; the third is accepted as held by the code. A passing budget is not a
 test of everything beneath it, which is the reason this rule exists.
 
-**On M1-09, 2026-09-20: twelve mutants, eleven caught, one declared
-survivor, none invalid** -- and **six of the eleven die at compile time**,
+**On M1-09, 2026-09-20: fifteen mutants, fourteen caught, one declared
+survivor, none invalid** -- and **seven of the fourteen die at compile time**,
 which is the highest proportion any pass here has had, because a matrix
 identity is the kind of claim a `static_assert` can hold.
 
@@ -772,6 +772,16 @@ it first. And "a translation writes its components into the wrong row" dies on
 the assertion that two shifts compose by adding, not on a translation test.
 Both are real kills; neither is evidence that the test its name points at
 would have caught it.
+
+**One of the three mutants added with the frames found a hole in a test
+rather than in the code**, which had not happened here before.
+`retargetFrame` was checked by retargeting back and comparing -- and applying
+a faulty operation twice cancels its fault, so a `retargetFrame` that
+transposed its argument passed. The round trip was testing the round trip.
+The test compares elements directly now. That same mutant was **invalid** on
+its first attempt, because replacing the body with `return Mat4{};` leaves
+the parameter unused and `-Wunused-parameter` is an error: M1-06's lesson,
+arriving for the third time, and the reason this harness separates the two.
 
 The declared survivor is **the perspective divide multiplying by w**. Nothing
 in M1-09 evaluates that divide numerically -- its only assertion is the
