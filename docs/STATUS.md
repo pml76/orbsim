@@ -83,9 +83,12 @@ opens a window and paces frames.** Nothing is drawn yet.
 | `orbsim_smoke` | — | Runs the app under the Vulkan validation layers for 2 s; fails on any validation error. Labelled `gpu`. |
 
 Totals: **1,369,392 assertions in 155 test cases**, and the same 1,369,392 under
-both Windows trees; `asan`, `windows-msvc` and both Linux presets are due a
-re-run before the phase A gate and were last confirmed at M1-09's 1,347,749.
-They read the same generated fixture through `/mnt/c`. On a machine without it, `test_fixture_file`
+both Windows trees, under `asan`, under `windows-msvc`, and under both Linux
+presets, which read the same generated fixture through `/mnt/c`. All six were
+re-run on 2026-09-21 with M1-10, and `test_projection` reports the same
+**21,643 assertions in 10 cases** under clang-on-Windows, clang-on-Linux under
+UndefinedBehaviorSanitizer, gcc-14 and MSVC alike. On a machine without the
+fixture, `test_fixture_file`
 and `test_sun` each skip a case. Catch2 **v3.16.0**.
 
 **Three implementations now agree to the digit**, which is what `windows-msvc`
