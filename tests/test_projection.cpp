@@ -194,13 +194,28 @@ conventionalPerspective(Dimensionless focalLength, Aspect aspect, const DepthRan
 } // namespace
 
 TEST_CASE("the near plane maps to exactly one, and to the right two numbers") {
-    // **Three assertions, not one**, and that is the whole point of this case.
+    // **Three assertions, not one, and it is worth being exact about what the
+    // extra two buy -- because the first answer written here was wrong.**
+    //
     // At the near plane the depth numerator and denominator are the same
-    // number, so the quotient is 1 for a great many wrong implementations:
-    // dividing the operands the wrong way round, returning a hard-coded 1, and
-    // squaring the ratio all pass a check on the quotient alone. Checking the
-    // two numbers that go into the division pins the matrix down separately
-    // from the divide, and catches all of them.
+    // number, so the quotient is 1 for a whole family of wrong divides:
+    // taking the operands the wrong way round, returning a hard-coded 1, and
+    // squaring the ratio all give 1 when handed two equal numbers. **No
+    // near-plane check can ever see those**, whatever it asserts, because
+    // "the near plane maps to 1" *is* the statement that the two numbers are
+    // equal. The mutation pass confirms it: those three die in the
+    // ten-times-near and monotonic cases, never here.
+    //
+    // What the extra two assertions do catch is a wrong **matrix**, at run
+    // time and through the real entry point -- the near plane in the wrong
+    // slot, a bottom row that is not -z, a depth row that is not constant.
+    // The static_asserts beside the builder check the same layout, but on a
+    // hand-made instance; these check what infiniteReverseZPerspective
+    // actually returns after computing a focal length from an angle.
+    //
+    // The near plane must still not be 1 m. There, `n*n` and `n/n` are both
+    // 1, so even the multiplying divide -- M1-09's survivor, handed to this
+    // task by name -- would pass.
     for (const f64 nearPlane : kNearPlanes) {
         const Projection projection =
             projectionOrFail(kOrdinaryFov, kOrdinaryAspect, Metres{nearPlane});

@@ -122,7 +122,7 @@
         "test_view_math"
       ],
       "expect": "survives",
-      "why": "Nothing in M1-09 evaluates the divide numerically: its only assertion about perspectiveDivide is the static_assert on the reference it returns, which a sign or an operator does not change. The numerical claim belongs to M1-10, whose near-plane test reads depth through this function -- so this mutant is declared surviving here and is expected to be caught there. Recorded rather than closed by a test invented for it (VERIFICATION.md rule 19)."
+      "why": "Nothing in M1-09 evaluates the divide numerically: its only assertion about perspectiveDivide is the static_assert on the reference it returns, which a sign or an operator does not change. The numerical claim belongs to M1-10, and this mutant is declared surviving here rather than closed by a test invented for it (VERIFICATION.md rule 19). **Caught by M1-10 on 2026-09-21, and this entry was wrong about where.** It said M1-10's near-plane test would catch it. Measured before M1-10's tests were written: at a near plane of 1 m the depth numerator and denominator are the same number, so `n/n` and `n*n` are both 1 and the near-plane case accepts every wrong divide constructible. M1-10 therefore runs that case at five near planes, none of them 1 m, and the kill is shared by the near-plane, ten-times-near, monotonic and depth-precision cases. The lesson is this file's own: **a prediction about which test will catch a mutant is not a measurement**, and writing one down unverified is how a mutation record decays into a claim nobody checked."
     },
     {
       "name": "the transpose forgets that it is a dual map",

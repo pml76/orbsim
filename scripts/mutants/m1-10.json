@@ -1,0 +1,156 @@
+{
+  "task": "M1-10",
+  "tree": "build/relwithdebinfo",
+  "note": "The reversed perspective projection with no far plane. The headline mutant is the one M1-09 could not kill and handed here by name -- the perspective divide multiplying by w. M1-09 predicted the near-plane case would catch it; measured 2026-09-21, it would not have, because at a near plane of 1 m the depth numerator and denominator are the same number and dividing and multiplying agree. That is why this task's near-plane case runs at five near planes, none of them 1 m, and checks the two numbers behind the quotient as well as the quotient (register decision 101). Several mutants here die at compile time, because the matrix layout is asserted beside the function that builds it rather than only tested.",
+  "mutants": [
+    {
+      "name": "the perspective divide multiplies by w -- M1-09's declared survivor",
+      "file": "src/view/Mat4.hpp",
+      "find": "                p.xyz.x.value() / p.w.value(),\n                p.xyz.y.value() / p.w.value(),\n                p.xyz.z.value() / p.w.value(),",
+      "replace": "                p.xyz.x.value() * p.w.value(),\n                p.xyz.y.value() * p.w.value(),\n                p.xyz.z.value() * p.w.value(),",
+      "suites": [
+        "test_projection",
+        "test_view_math"
+      ],
+      "expect": "caught",
+      "note": "Handed over by scripts/mutants/m1-09.json as a declared survivor. M1-09's file names the near-plane case as its executioner; that prediction was wrong and this pass is what proves the replacement right."
+    },
+    {
+      "name": "the perspective divide takes the operands the wrong way round",
+      "file": "src/view/Mat4.hpp",
+      "find": "                p.xyz.z.value() / p.w.value(),",
+      "replace": "                p.w.value() / p.xyz.z.value(),",
+      "suites": [
+        "test_projection"
+      ],
+      "expect": "caught",
+      "note": "**Not caught by the near-plane case, and that is the point.** Dividing two equal numbers either way round gives 1, so no near-plane check can see this one -- not even with the numerator and denominator asserted, because those read transform()'s output, before the divide. An earlier draft of this file and of the test's comment claimed otherwise; the pass is what corrected it. It dies in the ten-times-near and monotonic cases."
+    },
+    {
+      "name": "the perspective divide returns a hard-coded one",
+      "file": "src/view/Mat4.hpp",
+      "find": "                p.xyz.x.value() / p.w.value(),\n                p.xyz.y.value() / p.w.value(),\n                p.xyz.z.value() / p.w.value(),",
+      "replace": "                p.xyz.x.value() / p.w.value(),\n                p.xyz.y.value() / p.w.value(),\n                1.0,",
+      "suites": [
+        "test_projection"
+      ],
+      "expect": "caught",
+      "note": "The degenerate case the near-plane check cannot distinguish from a correct divide, since a correct divide also returns 1 there. Planted because the near-plane case was claimed to catch it and does not."
+    },
+    {
+      "name": "the perspective divide squares the ratio",
+      "file": "src/view/Mat4.hpp",
+      "find": "                p.xyz.z.value() / p.w.value(),",
+      "replace": "                (p.xyz.z.value() / p.w.value()) * (p.xyz.z.value() / p.w.value()),",
+      "suites": [
+        "test_projection"
+      ],
+      "expect": "caught",
+      "note": "Also invisible at the near plane -- one squared is one -- and also planted because it was claimed and not measured."
+    },
+    {
+      "name": "the y flip is missing",
+      "file": "src/view/Projection.hpp",
+      "find": "    m.set(Row{1}, Column{1}, -focalLength.value());",
+      "replace": "    m.set(Row{1}, Column{1}, focalLength.value());",
+      "suites": [
+        "test_projection"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the aspect ratio multiplies instead of dividing",
+      "file": "src/view/Projection.hpp",
+      "find": "    m.set(Row{0}, Column{0}, focalLength.value() / aspect.value());",
+      "replace": "    m.set(Row{0}, Column{0}, focalLength.value() * aspect.value());",
+      "suites": [
+        "test_projection"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the depth numerator is not the near plane but a constant one",
+      "file": "src/view/Projection.hpp",
+      "find": "    m.set(Row{2}, Column{3}, nearPlane.value());",
+      "replace": "    m.set(Row{2}, Column{3}, 1.0);",
+      "suites": [
+        "test_projection"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the depth row is not constant: it reads the point's z",
+      "file": "src/view/Projection.hpp",
+      "find": "    m.set(Row{3}, Column{2}, -1.0);",
+      "replace": "    m.set(Row{3}, Column{2}, -1.0);\n    m.set(Row{2}, Column{2}, 1.0);",
+      "suites": [
+        "test_projection"
+      ],
+      "expect": "caught",
+      "note": "This is what a conventional projection looks like from here: a depth row that depends on the point. It must not pass as a reverse-Z one."
+    },
+    {
+      "name": "the depth denominator is +z rather than -z",
+      "file": "src/view/Projection.hpp",
+      "find": "    m.set(Row{3}, Column{2}, -1.0);\n    return m;",
+      "replace": "    m.set(Row{3}, Column{2}, 1.0);\n    return m;",
+      "suites": [
+        "test_projection"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the near plane goes into the translation row above its own",
+      "file": "src/view/Projection.hpp",
+      "find": "    m.set(Row{2}, Column{3}, nearPlane.value());",
+      "replace": "    m.set(Row{1}, Column{3}, nearPlane.value());",
+      "suites": [
+        "test_projection"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the focal length is the tangent rather than its reciprocal",
+      "file": "src/view/Projection.hpp",
+      "find": "    const Dimensionless focalLength{1.0 / std::tan(verticalFov.value() / 2.0)};",
+      "replace": "    const Dimensionless focalLength{std::tan(verticalFov.value() / 2.0)};",
+      "suites": [
+        "test_projection"
+      ],
+      "expect": "caught",
+      "note": "The conversion the sweep cannot see, because the test's own tangent cancels it. It dies on the two anchors, whose half-angle tangent comes from std::numbers rather than from std::tan -- which is the reason those anchors exist."
+    },
+    {
+      "name": "the near plane's finiteness is not checked, only its sign",
+      "file": "src/view/Projection.hpp",
+      "find": "    return std::isfinite(value) && value > 0.0;",
+      "replace": "    return value > 0.0;",
+      "suites": [
+        "test_projection"
+      ],
+      "expect": "caught",
+      "note": "Infinity is greater than zero, so this accepts an infinite near plane and builds a matrix of infinities."
+    },
+    {
+      "name": "the field of view admits a half turn",
+      "file": "src/view/Projection.hpp",
+      "find": "    return radians > 0.0 && radians < kPi;",
+      "replace": "    return radians > 0.0 && radians <= kPi;",
+      "suites": [
+        "test_projection"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "a bad aspect ratio is reported as a bad near plane",
+      "file": "src/view/Projection.hpp",
+      "find": "        return std::unexpected(ProjectionError::InvalidAspect);",
+      "replace": "        return std::unexpected(ProjectionError::InvalidNearPlane);",
+      "suites": [
+        "test_projection"
+      ],
+      "expect": "caught",
+      "note": "A refusal by the wrong name sends the caller to fix the wrong argument."
+    }
+  ]
+}
