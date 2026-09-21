@@ -168,6 +168,18 @@ finds what the Windows build cannot. See `docs/VERIFICATION.md` rule 20.
 `bugprone-*`, `performance-*`, and `readability-*`, and add
 `cppcoreguidelines-*` when you are feeling strong.
 
+**Done, and further than that.** `.clang-tidy` enables those families and
+`cppcoreguidelines-*`, `modernize-*`, `misc-*`, `portability-*` and
+`clang-analyzer-*` at `WarningsAsErrors: '*'`, over every translation unit
+with headers included, as the `lint` target inside `check`. The suppression
+list is four entries, each with a written reason and a measured cost, and it
+is meant to shrink. Two things learned the hard way are worth knowing before
+touching it: the header filter must accept both path separators, or every
+header in the tree goes unlinted while the `.cpp` files report clean -- which
+it did for sixteen commits; and `clang-tidy --verify-config` runs first,
+because a check name the tool does not recognise is ignored in silence.
+[`.claude/rules/lint-config.md`](.claude/rules/lint-config.md) has the rest.
+
 **Tests.** You already have hundreds of thousands of assertions on the two-body
 core — `docs/STATUS.md` has the count — and the part worth highlighting is
 *what they are checked against*. A test that only checks the code against
@@ -783,7 +795,17 @@ minutes two years from now.
 - **SF.11: header files should be self-contained.** Every header must compile on
   its own, without the caller having remembered to include something first. The
   test is mechanical: for every `Foo.hpp`, compile a translation unit containing
-  nothing but `#include "Foo.hpp"`. Put it in CI and it stays true forever.
+  nothing but `#include "Foo.hpp"`.
+
+  **Done**, and not in CI, because this project deliberately has none
+  ([`docs/adr/0005`](docs/adr/0005-correctness-is-enforced-by-tools.md) — see
+  the note in [the Toolbox](#appendix-a-the-toolbox)). CMake generates one
+  translation unit per header and builds them as four targets —
+  `orbsim_header_selfcheck`, `orbsim_view_header_selfcheck`,
+  `orbsim_test_header_selfcheck` and `orbsim_render_header_selfcheck` — each
+  a dependency of `check`, so a header that stops standing on its own fails
+  the definition of done. The worked example does the same, as
+  `orbex_header_selfcheck`.
 - **SF.5: a `.cpp` file must include the header that specifies its interface**,
   and include it *first*. `Orbit.cpp` includes `Orbit.hpp` on line 1, which
   means `Orbit.hpp` is continuously proving SF.11 for free. That is not an
@@ -1209,7 +1231,7 @@ Items marked ✅ are already on this machine.
 | **CMake** ✅ | Use the copy CLion bundles, not the older one on `PATH` — the build trees were configured with it. Versions: [`docs/STATUS.md`](docs/STATUS.md) |
 | **Ninja** ✅ | Fast, and the only generator worth using here |
 | **CMakePresets** ✅ | Already pinning clang. This is how you stop arguing about build flags |
-| **FetchContent** ✅ | Currently pulling SDL3, vk-bootstrap, VMA, Vulkan-Headers |
+| **FetchContent** ✅ | Pulling all eight dependencies at a pinned tag: SDL3, vk-bootstrap, VMA, Vulkan-Headers, Vulkan-Utility-Libraries, Catch2, mp-units and ERFA. [`THIRD_PARTY.md`](THIRD_PARTY.md) has every pin and its licence |
 | **ccache** / **sccache** | Compile caching. You are rebuilding SDL3 from source; you will want this |
 | **CPM.cmake** | A nicer wrapper over FetchContent if dependency handling gets busy |
 
@@ -1237,7 +1259,7 @@ Items marked ✅ are already on this machine.
 
 | Tool | Notes |
 |---|---|
-| **AddressSanitizer** | `-fsanitize=address`. Works with clang on this toolchain. Set up a build config for it *today* |
+| **AddressSanitizer** ✅ | `-fsanitize=address`. **Done**, as the `asan` preset — RelWithDebInfo with `-DNDEBUG` removed rather than Debug, because ASan and the MSVC debug heap cannot share one (`docs/PROJECT_STATE.md` 6.3). Run before a milestone lands |
 | **UndefinedBehaviorSanitizer** ✅ | Only partial support on Windows. Full value arrives under WSL, where the `linux-sanitize` preset runs it |
 | **ThreadSanitizer** | Not yet — but the moment you thread the physics off the render loop, this is mandatory |
 | **Application Verifier** | Ships with the Windows SDK. Catches handle and heap misuse ASan does not |
@@ -1249,7 +1271,7 @@ Items marked ✅ are already on this machine.
 |---|---|
 | **CTest** ✅ | Already wired up |
 | **Catch2** ✅ / **doctest** | The harness was hand-rolled, which was the right call for one file. At three or four files you want real failure output, test filtering and tagging — switch then, not before. **That moment arrived**: both suites moved to Catch2 in task M1-01, before the suites milestone 1 adds — counted on 2026-09-13, its task documents name 51 distinct `tests/test_*.cpp` files, so about 48 new ones, where M1-01 itself guessed at eight. The assertion count was the evidence the move changed nothing |
-| **libFuzzer** | `-fsanitize=fuzzer`. Underused by almost everybody, and **a superb fit for this project**: throw random state vectors at `elementsFromState`, round-trip them, assert the invariants hold. The fuzzer will find the degenerate orbit you did not think of. It always does |
+| **libFuzzer** ✅ | `-fsanitize=fuzzer`. Underused by almost everybody, and **a superb fit for this project**. **Done**, as `fuzz_orbit` (2026-09-07) and `fuzz_time` (2026-09-18), run deliberately with a time budget rather than as CTest tests, since a fuzzer has no natural exit. This paragraph used to predict it would find the degenerate orbit nobody thought of; it found **six**, each in a few thousand executions, and `docs/VERIFICATION.md` rule 13 names every one |
 | **llvm-cov** / **llvm-profdata** ✅ | Ships with clang. Coverage is a map of what you have *not* tested |
 | **OpenCppCoverage** | Windows-native alternative if the llvm route annoys you |
 
@@ -1283,7 +1305,7 @@ Items marked ✅ are already on this machine.
 |---|---|
 | **clang-format** ✅ | Ships with clang. Write the config, check it in, stop discussing formatting forever |
 | **clangd** ✅ | Already configured against your compile database |
-| **pre-commit** | Runs format and lint before the bad commit exists rather than after |
+| **pre-commit** ✅ | **Done**, as `scripts/git-hooks/pre-commit`: it refuses a commit whose staged C++ does not match `.clang-format`. Enabled once per clone with `git config core.hooksPath scripts/git-hooks`. Deliberately only the cheap half — a hook that takes minutes gets bypassed and then forgotten |
 | **GitHub Actions** | **Declined for this project — see `docs/adr/0005`.** A workflow existed briefly and was deleted. Do not add one |
 
 ---

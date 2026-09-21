@@ -4,9 +4,10 @@ A space flight simulator in the spirit of [Orbiter](https://github.com/orbitersi
 real orbital mechanics, 6-DOF vessels, and MFD-style instrumentation. Written
 from scratch in C++23 with Vulkan.
 
-**Status: early.** The two-body core and the time scales are complete and
-tested, and the first external reference data can be read; the renderer opens
-a window, creates a device and paces frames. Nothing is drawn yet. See
+**Status: early.** The two-body core, the five time scales, the Earth's
+orientation and the Sun's position are complete and tested against data this
+project did not produce; the render-side maths has begun. The renderer opens a
+window, creates a device and paces frames. **Nothing is drawn yet.** See
 [the milestone 1 plan](docs/plan/milestone-1-earth.md) for what comes next.
 
 ---
@@ -23,17 +24,35 @@ a window, creates a device and paces frames. Nothing is drawn yet. See
   the IERS leap-second table, and refuse by name before 1972 and past the last
   bulletin rather than extrapolating. UT1 converts from UTC exactly, with a
   UT1 - UTC that is validated and, until an IERS series is read, zero -- a
-  stated model error of at most 0.9 s. TDB converts through
+  stated model error of at most 0.9 s. **UT1 also converts from TT directly**,
+  under a delta-T the caller names, so the Earth's orientation does not depend
+  on the leap-second table and does not stop at its expiry. TDB converts
+  through
   [ERFA](https://github.com/liberfa/erfa), within 20 us of an implementation
   written independently of it, and back to the picosecond.
+- **The Earth's orientation, and the Sun's position** — the celestial-to-
+  terrestrial rotation through ERFA's IAU 2006/2000A chain, within **0.1
+  milliarcseconds** of an independent implementation over 1900-2100, with the
+  omitted polar motion and delta-UT1 stated as model errors rather than left
+  silent; and the geocentric Sun, geometric and in ICRF, within **0.02
+  arcseconds of direction and 5e-8 AU of distance** of JPL Horizons over
+  2000-2050. Both budgets are about twice a measurement taken before the number
+  was chosen, which is the rule the project applies to every accuracy claim.
+- **Render-side maths, with no Vulkan in it** — a 4x4 transform that carries
+  the units *and* the frames of both spaces it maps between, so
+  `projection * view` compiles and `view * projection` does not, and a point
+  handed to a matrix that does not start in its frame is a compile error. The
+  reversed perspective projection with no far plane lives there too. The tests
+  link it; they cannot link the renderer.
 - **Reference data this project did not produce** — JPL Horizons state vectors,
   read in metres and TDB with their provenance attached. Horizons output is
   queried, not redistributed: `data/horizons/README.md` has the recipe and the
   build checks what it generates against a committed hash. TDB - TT from
   Skyfield is committed, with the script that wrote it, and every clone checks
   against it.
-- **Six Catch2 test suites, several hundred thousand checks**
-  (`docs/STATUS.md` has the count), the useful ones crossing the code
+- **Eleven Catch2 test suites, over a million checks**
+  (`docs/STATUS.md` has the count, and it is the only place it lives), the
+  useful ones crossing the code
   against something it did not produce: elements and anomalies against
   references computed in 60-digit decimal arithmetic, state→elements against
   elements→state, energy and angular momentum before and after, the exact
@@ -127,9 +146,10 @@ The project has an opinionated, enforced house style:
   the error strategy, reverse-Z, pinned dependencies, how correctness is
   enforced, simulation-not-sandbox, scalable render quality, eight more taken
   before milestone 1 began, from how the renderer is verified to how the
-  integrator is put together, and four since — ERFA computes the astronomy,
-  every warning is an error, every conversion in `orbit/` reports, and vectors
-  carry their unit.
+  integrator is put together, and six since — ERFA computes the astronomy,
+  every warning is an error, every conversion in `orbit/` reports, vectors
+  carry their unit, and a transform carries the units and the frames of both
+  spaces it maps between.
   [The index](docs/adr/README.md) is the list, and the count is in
   [`docs/STATUS.md`](docs/STATUS.md)
 - [`docs/VERIFICATION.md`](docs/VERIFICATION.md) — how the project knows the
@@ -167,4 +187,5 @@ Dependencies: [SDL3](https://github.com/libsdl-org/SDL) (zlib),
 [VulkanMemoryAllocator](https://github.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator) (MIT),
 [Vulkan-Utility-Libraries](https://github.com/KhronosGroup/Vulkan-Utility-Libraries) (Apache-2.0),
 [Catch2](https://github.com/catchorg/Catch2) (BSL-1.0),
-[mp-units](https://github.com/mpusz/mp-units) (MIT).
+[mp-units](https://github.com/mpusz/mp-units) (MIT),
+[ERFA](https://github.com/liberfa/erfa) (BSD-3-Clause).
