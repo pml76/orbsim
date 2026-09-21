@@ -172,11 +172,22 @@ public:
     }
 
     // Column-major: the element at (row, column) is at column * 4 + row.
+    //
+    // Both of these assert their bounds, as the four typed accessors above do.
+    // `Row` and `Column` are structural types with no validation of their own
+    // -- they exist to stop a transposition, not to stop an overrun -- so a
+    // caller is the only thing that can be wrong here, and ADR 0002 says that
+    // is asserted. Without the assertion the `.at()` below throws inside a
+    // `noexcept` function, which terminates the process with no diagnostic:
+    // the one failure mode worse than an assertion, in the one place a Debug
+    // build cannot help.
     [[nodiscard]] static constexpr std::size_t index(Row row, Column column) noexcept {
+        ORBSIM_EXPECTS(row.value < 4 && column.value < 4);
         return (column.value * 4) + row.value;
     }
 
     constexpr void set(Row row, Column column, f64 value) noexcept {
+        ORBSIM_EXPECTS(row.value < 4 && column.value < 4);
         elements_.at(index(row, column)) = value;
     }
 
