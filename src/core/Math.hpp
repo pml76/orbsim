@@ -58,11 +58,23 @@ template <auto kReference> struct Vec3 {
     // NOLINTEND(misc-non-private-member-variables-in-classes)
 
     constexpr Vec3() noexcept = default;
+
+    // x, y and z are transposable and the check is right to say so. They are
+    // the canonical ordering of a Cartesian triple -- the one ordering every
+    // reader already knows, and the one a call site shows plainly -- so there
+    // is no name that would read better and no defect for the check to find.
+    // Suppressed at the site rather than by an IgnoredParameterNames entry,
+    // which would exempt every future parameter called x_ rather than these.
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
     constexpr Vec3(Component x_, Component y_, Component z_) noexcept : x(x_), y(y_), z(z_) {}
 
     // "these many of my unit", which is the spelling every existing call site
     // uses. Safe where `Scalar(f64)` would not be, because three components
     // cannot be mistaken for a conversion from a single number.
+    //
+    // Transposable for the same reason as the overload above, and suppressed
+    // the same way.
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
     constexpr Vec3(f64 x_, f64 y_, f64 z_) noexcept
         : x(Component{x_}), y(Component{y_}), z(Component{z_}) {}
 
@@ -346,6 +358,11 @@ struct Quat {
     // NOLINTEND(misc-non-private-member-variables-in-classes)
 
     constexpr Quat() noexcept = default;
+
+    // w, x, y, z in that order, which is this project's convention and is
+    // stated in the class comment above. Canonical and transposable, like
+    // Vec3's components, and suppressed at the site for the same reason.
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
     constexpr Quat(f64 w_, f64 x_, f64 y_, f64 z_) noexcept : w(w_), x(x_), y(y_), z(z_) {}
 
     // The axis may be in any unit: it is normalised here and only its

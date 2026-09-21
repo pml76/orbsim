@@ -214,6 +214,11 @@ private:
 // name rather than through a vtable.
 class WithinRelVecBase : public Catch::Matchers::MatcherGenericBase {
 public:
+    // The three components, transposable and canonical, as Vec3's own
+    // constructors are. This base has exactly one caller -- WithinRelVec's
+    // constructor below, which unpacks a Vec3 in order -- so a transposition
+    // would have to be written into that one line, in plain sight.
+    // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
     WithinRelVecBase(f64 wantX, f64 wantY, f64 wantZ, Tolerance relTol) noexcept
         : wantX_{wantX}, wantY_{wantY}, wantZ_{wantZ}, relTol_{relTol} {}
 

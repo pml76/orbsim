@@ -186,10 +186,28 @@ CheckOptions:
   # exception: it is antisymmetric and suppressed anyway, because (a, b) is the
   # notation every reader of a cross product knows.
   #
-  # NamePrefixSuffixSilenceDissimilarityThreshold, the *other* blind spot, is
-  # still at its default of 1; the note at the foot of this file has its count.
   - key: bugprone-easily-swappable-parameters.SuppressParametersUsedTogether
     value: 'false'
+  # The *other* blind spot, closed 2026-09-21. At the default of 1 the check is
+  # silent on any pair whose names share a one-character prefix or suffix, so
+  # `V(f64 x_, f64 y_, f64 z_)` is silent while `V(f64 alpha, f64 beta, f64
+  # gamma)` fires -- identical signatures, only the names differ. At 0 the whole
+  # tree reports **four** sites, each now carrying a NOLINT with its reason at
+  # the site: Vec3's two constructors and Quat's in core/Math.hpp, and
+  # WithinRelVecBase in tests/OrbitTestSupport.hpp. All four are canonical
+  # orderings, so nothing was a defect -- what the option buys is that the
+  # *fifth* one breaks the build instead of going unnoticed.
+  #
+  # It was left at the default until now on a measurement of 2026-09-13 that
+  # found three sites. Re-measured 2026-09-21: four. Two had appeared with
+  # ADR 0019 on 2026-09-17 -- Vec3's Component constructor and
+  # WithinRelVecBase -- and Orbit.cpp's stumpff, the one real finding of the
+  # three, had been fixed. The old note ended "if a fourth site ever appears,
+  # the option is how to find it"; a fourth appeared four days later and
+  # nothing ran it, which is the argument for turning the option on rather than
+  # keeping a number that has to be re-measured by hand.
+  - key: bugprone-easily-swappable-parameters.NamePrefixSuffixSilenceDissimilarityThreshold
+    value: '0'
 
 # --- notes on the disabled checks -------------------------------------------
 #
@@ -273,20 +291,27 @@ CheckOptions:
 #   date, a layout transition and three inverted ranges. The counts and what
 #   happened to each are in the comment beside that option.
 #
-#   **The second is open, measured 2026-09-13, and it is worth knowing because
-#   this check is the only mechanical half of non-negotiable 1.** Parameter
-#   names that share a one-character prefix or suffix silence it. Reproduced on
-#   a standalone probe: `f(f64 psi, f64& c2, f64& c3)` is silent while
+#   **The second is closed as of 2026-09-21**, and the way it was found is
+#   worth more than the finding. Parameter names that share a one-character
+#   prefix or suffix silence the check. Reproduced on a standalone probe:
+#   `f(f64 psi, f64& c2, f64& c3)` is silent while
 #   `f(f64 psi, f64& alpha, f64& beta)` fires, and `V(f64 x_, f64 y_, f64 z_)`
 #   is silent while `V(f64 alpha, f64 beta, f64 gamma)` fires -- identical
 #   signatures, only the names differ. The lever is this check's
-#   NamePrefixSuffixSilenceDissimilarityThreshold, which defaults to 1; at 0 the
-#   whole tree reports exactly **3 lines**: Math.hpp's Vec3 and Quat
-#   constructors, and Orbit.cpp's stumpff.
+#   NamePrefixSuffixSilenceDissimilarityThreshold, set to 0 above.
 #
-#   The threshold is left at its default, deliberately. stumpff was the one
-#   real finding and it has been fixed by hand -- it returns a pair now. Vec3's
-#   (x_, y_, z_) and Quat's (w_, x_, y_, z_) are canonical orderings that every
-#   reader knows and that a call site shows plainly, so turning the option on
-#   would buy two NOLINTs or an allow-list entry and no defect. If a fourth
-#   site ever appears, the option is how to find it.
+#   It was left at its default until then, on a measurement of 2026-09-13 that
+#   found **3 lines**: Math.hpp's Vec3 and Quat constructors, and Orbit.cpp's
+#   stumpff. The note ended: "if a fourth site ever appears, the option is how
+#   to find it." **A fourth appeared four days later and nothing ran it.**
+#   Re-measured 2026-09-21: four sites. stumpff, the one real finding of the
+#   three, had been fixed by hand and returns a pair now; two new ones had
+#   arrived with ADR 0019 on 2026-09-17, Vec3's Component constructor and
+#   tests/OrbitTestSupport.hpp's WithinRelVecBase.
+#
+#   All four are canonical orderings that a call site shows plainly, so none is
+#   a defect and each carries a NOLINT with that reason at the site rather than
+#   an IgnoredParameterNames entry, which would exempt every future parameter
+#   of that name instead of these four lines. What the option buys is that the
+#   fifth site fails the build instead of waiting for somebody to remember a
+#   number -- which is the whole argument of ADR 0005, applied to this file.
