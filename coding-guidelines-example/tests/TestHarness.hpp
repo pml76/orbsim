@@ -37,6 +37,13 @@ inline void check(Run& run, bool condition, std::string_view what) {
 
 // [S11] Approximate comparison goes through nearlyEqual, and the tolerance is a
 // strong type, so `checkNear(run, got, tolerance, want)` will not compile.
+//
+// [S2] got and want are adjacent and transposable, and the check is right to
+// say so. They go straight to nearlyEqual, which is |a - b| and commutative,
+// so a transposition cannot change the verdict -- only which way round the
+// line below prints. Suppressed at the site with that reason, as the parent
+// project's core/Scalar.hpp does on nearlyEqual itself.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 inline void checkNear(Run& run, f64 got, f64 want, Tolerance tolerance, std::string_view what) {
     const bool ok = nearlyEqual(got, want, tolerance);
     if (!ok) {

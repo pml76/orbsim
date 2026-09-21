@@ -27,14 +27,22 @@ keeping:
 
 - **Prefer configuring to disabling.** A check that takes an option
   expressing the house style exactly stays live where it has value, instead of
-  going silent everywhere. `ShortStatementLines: 1` is the one in force here:
-  it permits the single-line guard clause and still demands braces on a body
-  that runs onto its own line. *(This also named
-  `IgnoreClassesWithAllMemberVariablesBeingPublic` until 2026-09-21. That
-  option is not set in either `.clang-tidy`, and `PROJECT_STATE.md` section 8
-  records that the behaviour it names is conditional anyway -- the check
-  ignores an all-public class only while it declares no member function -- so
-  it was a poor illustration as well as an inaccurate one.)*
+  going silent everywhere. Three are in force. `ShortStatementLines: 1`, in
+  both configs, permits the single-line guard clause and still demands braces
+  on a body that runs onto its own line.
+  `IgnoreClassesWithAllMemberVariablesBeingPublic`, in the **worked example's**
+  config only, exempts a class whose data is entirely public and keeps the
+  check live for one that has an invariant and leaks part of it -- and
+  `PROJECT_STATE.md` section 8 records the trap in it, that the check ignores
+  such a class only while it declares no member *function*. And since
+  2026-09-21 `NamePrefixSuffixSilenceDissimilarityThreshold: 0`, in both, which
+  closes the blind spot described below.
+
+  *(Corrected 2026-09-21, the same day it was got wrong: an earlier version of
+  this bullet said `IgnoreClassesWithAllMemberVariablesBeingPublic` "is not set
+  in either `.clang-tidy`". It is set in the example's. The root's was the only
+  one checked -- a one-file measurement reported as a two-file claim, which is
+  the mistake this file exists to make harder.)*
 - **Prefer the site to the file.** A `NOLINT` covers one line; an entry in
   `.clang-tidy` covers whatever anybody writes next.
 - **But not always.** For `readability-identifier-length` the config

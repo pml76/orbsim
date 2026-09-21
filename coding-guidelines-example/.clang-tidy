@@ -123,6 +123,25 @@ CheckOptions:
   - key: misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic
     value: 'true'
 
+  # [S2] bugprone-easily-swappable-parameters has two blind spots, and this
+  # config had both until 2026-09-21 while the parent project had closed one of
+  # them on 2026-09-20. An example that is missing a check the house it
+  # illustrates has is worse than no example, so both are closed here too, on
+  # the same day and for the same reasons -- the parent's .clang-tidy carries
+  # the measurements.
+  #
+  # SuppressParametersUsedTogether silences any pair used together in one
+  # expression. Off. It reveals exactly one site here: checkNear's (got, want),
+  # which is genuinely commutative and carries a NOLINT saying so.
+  #
+  # NamePrefixSuffixSilenceDissimilarityThreshold silences a pair whose names
+  # share a one-character prefix or suffix. At 0 it reveals nothing further in
+  # this example, measured before it was set.
+  - key: bugprone-easily-swappable-parameters.SuppressParametersUsedTogether
+    value: 'false'
+  - key: bugprone-easily-swappable-parameters.NamePrefixSuffixSilenceDissimilarityThreshold
+    value: '0'
+
 # --- why each disabled check is disabled ------------------------------------
 #
 # This list was ten checks long until 2026-09-08, when it was emptied and every
@@ -168,6 +187,10 @@ CheckOptions:
 # bugprone-easily-swappable-parameters
 #   The mechanical enforcement of I.24 and section 2. It found a real defect in
 #   this example -- nearlyEqual(f64, f64, f64) -- which was fixed by introducing
-#   the Tolerance type rather than by suppressing the check. The one place it is
-#   silenced is on nearlyEqual's remaining two parameters, which are genuinely
-#   commutative, and the NOLINT there says so.
+#   the Tolerance type rather than by suppressing the check. There are two
+#   places it is silenced, both on genuinely commutative pairs with the reason
+#   written at the site: nearlyEqual's remaining two parameters, and checkNear's
+#   (got, want), which it passes straight to nearlyEqual -- transposing them
+#   changes which way round the diagnostic prints and nothing else. The second
+#   only became visible on 2026-09-21, when SuppressParametersUsedTogether was
+#   switched off here as the parent project had done the day before.
