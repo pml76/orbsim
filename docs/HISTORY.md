@@ -26,7 +26,14 @@ decisions themselves are in [`adr/`](adr/).
 
 ## 3. Change history
 
-All of it on `review-fixes-2026-09`, branched from `master`, which is untouched.
+**The sessions of 2026-09-05 to 09-08 were on branches**, beginning with
+`review-fixes-2026-09` off `master`, which was untouched at the time.
+**Everything from M1-01 onwards is on `master` itself**, and so is every
+session below from 2026-09-09. *(Rewritten 2026-09-21. This read "All of it on
+`review-fixes-2026-09`, branched from `master`, which is untouched" -- in the
+present tense, directly under this heading, so it governed the whole section
+and described about 1,700 lines of it wrongly. The branches are listed in
+[`STATUS.md`](STATUS.md) as merged and deletable.)*
 
 ### The review-and-fix session, 2026-09-05
 

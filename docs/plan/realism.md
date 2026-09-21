@@ -1,7 +1,10 @@
 # Realism — what it means here, and what stands in the way
 
 Status: the goal is **settled** — see [`../adr/0006`](../adr/0006-simulation-not-sandbox.md).
-The technical choices in section 4 are still open.
+**One of the six technical choices in section 4 is still open**: question 5,
+DE440 against VSOP87 and ELP2000 for the ephemeris. The other five were settled
+between 2026-09-06 and 2026-09-17 and are struck through there. *(This said
+"the technical choices in section 4 are still open" until 2026-09-21.)*
 Written: 2026-09-06
 
 The project owner set the goal plainly: **realism is the acceptance criterion,
@@ -155,11 +158,21 @@ refinement for close approaches, not a prerequisite.
 
 ### 1.3 Ephemeris and reference frames — **[S]**
 
-**Today: a notion of *when*, and nothing else.** Since M1-03 (2026-09-10) an
-instant is a `TimePoint` on one of five scales; converting between them is
-M1-04 and M1-05. There is still no notion of where any body is, and no frame
-other than "the central body's inertial frame". Multi-body gravity is
-impossible without this, which is why it is structural.
+**Today: *when*, one body's *where*, and the Earth's orientation.** *(Rewritten
+2026-09-21. It said "a notion of *when*, and nothing else", which stopped being
+true on 2026-09-20.)* An instant is a `TimePoint` on one of five scales, and
+all five convert — M1-03 to M1-05 and M1-86, the last of which reaches UT1 from
+TT without the leap-second table. `src/astro/Sun.hpp` puts the **Sun** where
+JPL Horizons says it is, geometric and in ICRF, within 0.02″ and 5e-8 AU over
+2000–2050 (M1-08). `src/astro/EarthOrientation.hpp` gives the **celestial-to-
+terrestrial rotation** and a TT-only intermediate one, within 0.1 mas of
+Skyfield over 1900–2100 (M1-07).
+
+**What is still missing is every other body, and a frame that is not the
+Earth's.** There is no ephemeris, so no Moon and no planets; the analytic Sun
+lights the scene and does not pull on anything (milestone 1's scope fence).
+Multi-body gravity is impossible without an ephemeris, which is why item 4
+below is still structural.
 
 - **Body positions over time.** JPL DE440 (via SPICE, or a direct Chebyshev
   reader) is ground truth. VSOP87 for planets plus ELP2000 for the Moon is the
@@ -179,12 +192,27 @@ impossible without this, which is why it is structural.
   launch azimuths and landing sites are all wrong without this, and wrong in a
   way that looks plausible.
 
+  ***Done for the Earth, 2026-09-20 (M1-07)**, and two things about how are
+  worth carrying forward to the next body. The composition is **not** the four
+  ingredients above applied in that order: "IAU 2006 precession with the Earth
+  rotation angle" does not compose as written, because the Fukushima-Williams
+  matrix is equinox-based and ERA is measured from the celestial intermediate
+  origin — measured 0.342° out, about 38 km at the equator. It is ERFA's
+  CIO-based `eraC2t06a` instead
+  ([ADR 0016](../adr/0016-the-astronomy-is-erfa.md)). And **polar motion is
+  still omitted**, at a stated ≤ 0.6″, with ΔUT1 = 0 at ≤ 13.5″; those are the
+  model errors the register's budget table records rather than a gap.*
+
 ### 1.4 Rigid-body dynamics (6-DOF)
 
-**Today:** `Quat` and `integrateAngularVelocity` exist in `core/Math.hpp` and
-are *never called* — the only `Quat` use in the whole project is the
-perifocal-to-inertial rotation inside `stateFromElements`, in
-`src/orbit/Orbit.cpp`. Attitude is unmodelled.
+**Today:** `integrateAngularVelocity` exists in `core/Math.hpp` and is *never
+called*. `Quat` itself is no longer unused: besides the perifocal-to-inertial
+rotation inside `stateFromElements`, it is what `src/astro/EarthOrientation.hpp`
+returns from both entry points, it gained a `RotationMatrix` conversion and a
+suite of its own with M1-07, and `view/Mat4.hpp`'s `rotationOf` builds a
+transform from one. **Attitude is still unmodelled** — none of that integrates
+anything. *(Corrected 2026-09-21: this said `Quat` had exactly one call site,
+which stopped being true on 2026-09-20.)*
 
 Needed: an inertia tensor, torque accumulation, the gyroscopic term
 (`omega x (I omega)`, which is what makes a tumbling body tumble interestingly
@@ -264,6 +292,13 @@ Jupiter.
 
 ### 2.3 Terrain and elevation
 
+*(This section is kept as it was written on 2026-09-06, **before** the ruling
+it asked for. Its recommendation was taken the next day: elevation is in phase
+C, section 4 item 4 and section 5 both say so, and the dataset is ETOPO 2022.
+Marked 2026-09-21, because until then the section read as a live disagreement
+with a settled decision — section 1.2 already carried a marker of this kind and
+this one did not.)*
+
 The quadtree is planned (phase C). **Elevation is currently deferred to
 milestone 2**, and for the stated goal that is the wrong call: mountains have
 visible relief from orbit at the terminator, where long shadows are most of what
@@ -309,22 +344,29 @@ right requirement and it is worth holding to.
 Sorted by *structural risk first* — the things that are cheap now and expensive
 later — then by realism delivered per unit of effort.
 
-| # | Item | Why now | Effort |
-|---|---|---|---|
-| 1 | **Linear HDR + exposure + tonemap pipeline** (2.1) | Every shader written before this must be rewritten after it | S |
-| 2 | **Time system: `TimePoint` with an explicit scale** (1.3) | Touches every signature that takes a `Seconds`. Cheapest today, at zero call sites | S |
-| 3 | **Integrator: Cowell then Encke, with a determinism story** (1.2) | Nothing in the force model is reachable without it | M |
-| 4 | **Ephemeris (DE440)** (1.3) | Prerequisite for multi-body, and it is also the validation source | M |
-| 5 | **Multi-body point-mass gravity** (1.1) | The owner's stated requirement. Small, once 3 and 4 exist | S |
-| 6 | **J2 (then J3, J4)** (1.1) | Largest single accuracy gain per line of code in the whole document | S |
-| 7 | **Thrust and variable mass** (1.1) | Without it there is no flying, only watching | S |
-| 8 | **6-DOF attitude dynamics** (1.4) | The maths is already written and unused | M |
-| 9 | **Sun as a disc; shadows and eclipse geometry** (2.2, 2.4) | Shared with SRP; cheap alongside the HDR work | S |
-| 10 | **Drag + NRLMSISE-00** (1.1, 1.6) | Unlocks decay and reentry | M |
-| 11 | **Elevation folded into the quadtree** (2.3) | Much cheaper inside phase C than bolted on after | M |
-| 12 | **Ocean glint, cloud shadows, star catalogue** (2.5, 2.6) | High realism per unit effort once 1 exists | M |
-| 13 | **Frames: precession, nutation, Earth rotation** (1.3) | Needed before ground tracks or launch sites mean anything | M |
-| 14 | **Full spherical-harmonic gravity** (1.1) | Diminishing returns; do it when something demands it | M |
+**The State column was added on 2026-09-21**, because two rows had been
+delivered — item 2 by M1-03 to M1-05 and M1-86, item 13 by M1-07 — and a table
+with no way to say so reads as fourteen outstanding gaps. The authority on what
+is done is [`../STATUS.md`](../STATUS.md); this column exists so that a reader
+of the priority list is not misled before reaching it. "Open (phase X)" means
+milestone 1 does it; "open, after milestone 1" means no task exists yet.
+
+| # | Item | Why now | Effort | State |
+|---|---|---|---|---|
+| 1 | **Linear HDR + exposure + tonemap pipeline** (2.1) | Every shader written before this must be rewritten after it | S | open (phase A) |
+| 2 | **Time system: `TimePoint` with an explicit scale** (1.3) | Touches every signature that takes a `Seconds`. Cheapest today, at zero call sites | S | **done** (M1-03 to M1-05, M1-86) |
+| 3 | **Integrator: Cowell then Encke, with a determinism story** (1.2) | Nothing in the force model is reachable without it | M | open (phase E) |
+| 4 | **Ephemeris (DE440)** (1.3) | Prerequisite for multi-body, and it is also the validation source | M | open, after milestone 1 |
+| 5 | **Multi-body point-mass gravity** (1.1) | The owner's stated requirement. Small, once 3 and 4 exist | S | open, after milestone 1 |
+| 6 | **J2 (then J3, J4)** (1.1) | Largest single accuracy gain per line of code in the whole document | S | open (phase E, J2 only) |
+| 7 | **Thrust and variable mass** (1.1) | Without it there is no flying, only watching | S | open, after milestone 1 |
+| 8 | **6-DOF attitude dynamics** (1.4) | The maths is already written and unused | M | open, after milestone 1 |
+| 9 | **Sun as a disc; shadows and eclipse geometry** (2.2, 2.4) | Shared with SRP; cheap alongside the HDR work | S | open (phase D, the disc) |
+| 10 | **Drag + NRLMSISE-00** (1.1, 1.6) | Unlocks decay and reentry | M | open, after milestone 1 |
+| 11 | **Elevation folded into the quadtree** (2.3) | Much cheaper inside phase C than bolted on after | M | open (phase C) |
+| 12 | **Ocean glint, cloud shadows, star catalogue** (2.5, 2.6) | High realism per unit effort once 1 exists | M | open, after milestone 1 |
+| 13 | **Frames: precession, nutation, Earth rotation** (1.3) | Needed before ground tracks or launch sites mean anything | M | **done** (M1-07) |
+| 14 | **Full spherical-harmonic gravity** (1.1) | Diminishing returns; do it when something demands it | M | open, after milestone 1 |
 
 ---
 
@@ -344,10 +386,18 @@ later — then by realism delivered per unit of effort.
 4. ~~**Does elevation move into phase C?** (2.3)~~ **Settled 2026-09-07: yes**,
    and the dataset is ETOPO 2022 (decision 23).
 5. **DE440 directly, or VSOP87/ELP2000?** (1.3) Recommendation: DE440.
-6. **Is `Vec3` staying unit-free?** Carried over from `PROJECT_STATE.md` section
-   7. Multi-body physics with several frames makes this question sharper, not
-   softer: a `Vec3` that knows it is barycentric metres would prevent a class of
-   bug that is otherwise invisible.
+6. ~~**Is `Vec3` staying unit-free?**~~ **Settled 2026-09-17: no.**
+   [ADR 0019](../adr/0019-vectors-carry-their-unit.md) is accepted and both its
+   steps are done: `Vec3<R>` is templated on an mp-units reference, so
+   `cross(r, v)` is m²/s and `Position + Velocity` does not compile. The
+   *frame* half of the question was answered separately on 2026-09-20 by
+   [ADR 0021](../adr/0021-transforms-carry-their-frames.md), and answered
+   **only for the render side**: `Mat4` and a view-local `FramedVec3` carry
+   frames, and `core`'s `Vec3` deliberately does not, which is milestone 1's
+   scope fence. So the sharper version of this question — a `Vec3` that knows
+   it is barycentric metres — is still open for `core`, and is worth
+   re-opening when the ephemeris arrives. *(Struck 2026-09-21; it had stood
+   unmarked beside four struck questions since ADR 0019 was accepted.)*
 
 ---
 
@@ -356,8 +406,10 @@ later — then by realism delivered per unit of effort.
 Milestone 1 as written (A → B → D → C → E → F → G) remains sound, with the five
 amendments below. (This said "three" until 2026-09-13 while listing five, which
 is what a count written beside the list it counts does eventually.
-[`../HISTORY.md`](../HISTORY.md) section 5 carries four of the five — it leaves
-out phase G's — and says so; this document is the source.)
+[`../HISTORY.md`](../HISTORY.md) section 5 carries four of the five, leaving
+out phase G's; it states its own count as four but does not say which one it
+omits, so this document is the source. *(Corrected 2026-09-21: this claimed
+HISTORY "says so", and it does not.)*)
 
 - **Phase A absorbs the HDR pipeline** (item 1), the `RenderQuality` plumbing
   (section 6.6) and the time system (item 2). It is a render foundation, and
