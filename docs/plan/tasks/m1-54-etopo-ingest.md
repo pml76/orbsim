@@ -37,7 +37,7 @@ Either way:
 - The reader **reports by name**: bad magic, unexpected byte order, unsupported
   compression, dimensions that disagree with the sidecar, a strip offset outside
   the file, and a truncated file.
-- **`tests/fuzz_elevation.cpp`**, the project's fourth fuzz target. This parser
+- **`tests/fuzz_elevation.cpp`**, the project's fifth fuzz target. This parser
   consumes a 444 MB file from the internet, which is the definition of untrusted
   input.
 - `data/textures/README.md` gains the download URL, the file size, the licence,

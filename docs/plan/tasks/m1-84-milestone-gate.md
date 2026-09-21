@@ -2,7 +2,10 @@
 
 Phase: G | Status: not started
 Prerequisites: M1-01 … M1-83, and M1-85, the phase F gate, which runs between
-M1-77 and M1-78 despite its number
+M1-77 and M1-78 despite its number, **and M1-86**, UT1 from TT, which runs in
+phase A despite its number *(added 2026-09-21: M1-85 was named here when it
+took an out-of-sequence number and M1-86 was not, although this is the last
+task in the milestone and its job is everything in it)*
 Decided by: [ADR 0005](../../adr/0005-correctness-is-enforced-by-tools.md)
 
 ## Purpose
@@ -19,7 +22,7 @@ that makes the next machine, or the next month, cheap.
 - The `asan` preset, all suites.
 - `linux-sanitize` (ASan + UBSan), `linux-gcc` (the second compiler),
   `linux-tsan` (the threaded code).
-- **Five fuzz targets**, ten minutes each rather than four, since this is the
+- **Six fuzz targets**, ten minutes each rather than four, since this is the
   last run before the milestone is called done.
 - GPU-assisted validation and synchronization validation, by hand.
 - Coverage across the whole tree, with the uncovered lines read.

@@ -32,8 +32,9 @@ Vulkan format number, but a number is not a header.
 - `enum class Ktx2Error` with one value per refusal above and a `describe()`.
   Nine named errors is not verbose — it is the difference between "the tile is
   corrupt" and knowing which field.
-- **`tests/fuzz_ktx2.cpp`**, built by the existing `ORBSIM_BUILD_FUZZERS` option
-  alongside `fuzz_orbit`, asserting what a fuzzer can know: the parser either
+- **`tests/fuzz_ktx2.cpp`**, the project's **third** fuzz target, built by the
+  existing `ORBSIM_BUILD_FUZZERS` option alongside `fuzz_orbit` and
+  `fuzz_time`, asserting what a fuzzer can know: the parser either
   reports or returns a view **entirely inside the input buffer**, never reads
   outside it, and never leaves an offset or length uninitialised.
 

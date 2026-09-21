@@ -57,8 +57,11 @@ cmake -S coding-guidelines-example -B coding-guidelines-example/build -G Ninja \
   hold CRLF in files nobody has touched; leave those alone rather than
   producing a diff in which every line changed.
 - The physics test suites are under `tests/` and link only `orbsim_core`;
-  `tests/test_view_math.cpp` additionally links `orbsim_view`, which links
-  `orbsim_core` and nothing else. **Nothing in `tests/` may include a Vulkan or
+  `tests/test_view_math.cpp` and `tests/test_projection.cpp` additionally link
+  `orbsim_view`, which links `orbsim_core` and nothing else. They are named one
+  by one in `CMakeLists.txt` rather than given the link through
+  `orbsim_test_support`, so the exception set is visible and the other suites
+  still cannot see the render-side maths. **Nothing in `tests/` may include a Vulkan or
   SDL header**, and since M1-09 that is the link graph's doing rather than
   anyone's memory: no target a suite links carries a graphics include
   directory ([ADR 0012](../../docs/adr/0012-orbsim-view.md)). Render-side

@@ -20,8 +20,14 @@ would let somebody else diagnose the problem.
 Every new function in `src/orbit/` gets, in `tests/`:
 
 - a check against something that does not come from the code: an analytic
-  value, a constant of motion (energy, angular momentum), or the other
-  propagator;
+  value, a constant of motion (energy, angular momentum), or an external
+  reference -- 60-digit arithmetic, a published worked example, a committed
+  fixture. **Not "the other propagator" on its own**: the two shared a solver
+  from 2026-09-12, so they no longer testify independently, and
+  [`docs/VERIFICATION.md`](../../docs/VERIFICATION.md) rule 2 has what that
+  merge cost and rule 14 is marked *weakened* because of it. Diffing them
+  still catches a change made to one path and not the other, which is worth
+  having and is not the same claim;
 - a case at every scale the simulator flies -- the Moon, Earth, Jupiter, the
   Sun as central bodies -- because a suite that only flew Earth orbits passed
   732 checks while `propagate()` failed at 1 AU;
@@ -33,8 +39,10 @@ Every new function in `src/orbit/` gets, in `tests/`:
   with the seed written down so a failure can be reproduced.
 
 **Anything claiming accuracy states its error budget first**, as a number, and
-validates it against something external -- JPL Horizons vectors, a published
-worked example, the other implementation. A constant of motion proves the code
+validates it against something external -- JPL Horizons vectors, a Skyfield
+fixture, a published worked example, 60-digit reference values. A genuinely
+independent second implementation counts; the project's own two propagators no
+longer are one, for the reason above. A constant of motion proves the code
 is self-consistent, not that it is right: a wrong `mu` conserves energy
 perfectly. The budget goes in the test and in the commit message.
 

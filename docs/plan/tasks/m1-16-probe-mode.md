@@ -1,7 +1,10 @@
 # M1-16 — Probe mode: deterministic frames
 
 Phase: A | Status: not started
-Prerequisites: M1-13, M1-15
+Prerequisites: M1-03, M1-11, M1-12, M1-13, M1-15 *(Corrected 2026-09-21: the queue says each task lists its true
+prerequisites so that a reordering can be reasoned about, and this task pins a
+fixed epoch as a `TimePoint` (M1-03), a fixed camera pose (M1-11) and a fixed
+`RenderQuality` preset (M1-12). None of the three changes the running order.)*
 Decided by: [ADR 0008](../../adr/0008-renderer-verification.md), [ADR 0014](../../adr/0014-radiometric-chain.md)
 
 ## Purpose

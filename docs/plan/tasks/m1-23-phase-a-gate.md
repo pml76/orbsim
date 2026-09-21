@@ -1,7 +1,10 @@
 # M1-23 — Phase A gate
 
 Phase: A | Status: not started
-Prerequisites: M1-03 … M1-22
+Prerequisites: M1-03 … M1-22, **and M1-86** *(added 2026-09-21: M1-86 is a
+phase A task, split out of M1-07 on 2026-09-19 by decision 73 and numbered
+outside the range because task numbers are identifiers. The queue row for this
+gate has said "03–22, 86" since then; this line had not caught up.)*
 Decided by: [ADR 0005](../../adr/0005-correctness-is-enforced-by-tools.md)
 
 ## Purpose
@@ -28,7 +31,16 @@ wsl -d Ubuntu -u root -- bash -c "cd /mnt/c/Users/U439644/Projects/untitled && \
 wsl -d Ubuntu -u root -- bash -c "… --preset linux-gcc … && ctest --test-dir build/linux-gcc …"
 
 wsl -d Ubuntu -u root -- bash -c "… --preset linux-fuzz … && ./build/linux-fuzz/fuzz_orbit -max_total_time=240"
+wsl -d Ubuntu -u root -- bash -c "… --preset linux-fuzz … && ./build/linux-fuzz/fuzz_time  -max_total_time=240"
 ```
+
+**Both fuzz targets, not one.** `fuzz_time` was added on 2026-09-18 with M1-04
+(decision 41) and gained claims again with M1-05 and M1-86; it is the only
+fuzzer that reaches `core/Time.hpp`, which is the largest thing phase A adds,
+and it has already found a real defect there — `utcFromTai` asserting a
+condition a caller can produce. It was missing from this list until
+2026-09-21, so under the queue's own rule that "each gate task names exactly
+what it must run" it was run by no gate at all.
 
 Then the coverage run from `VERIFICATION.md` rule 18, and **read the uncovered
 lines** — that list is the map of what no test has executed, and phase A added a
@@ -70,7 +82,7 @@ now reaches both the physics and the renderer.
 ## Done when
 
 - [ ] All six configurations pass, with matching assertion counts.
-- [ ] The fuzzer runs four minutes clean.
+- [ ] Both fuzzers — `fuzz_orbit` and `fuzz_time` — run four minutes clean.
 - [ ] Coverage is measured and the uncovered lines have been read, not just
       counted.
 - [ ] `PROJECT_STATE.md` describes the tree as it now is.

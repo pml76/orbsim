@@ -21,8 +21,9 @@ worth keeping a number for.)*
 The full sweep from M1-48 — ASan, Linux clang with ASan and UBSan, gcc-14, TSan,
 GPU-assisted validation, synchronization validation — plus:
 
-- **Four fuzz targets** now: `fuzz_orbit`, `fuzz_ktx2`, `fuzz_ztree` (which
-  reaches the DDS and `.elv` parsers) and `fuzz_elevation`. Four minutes each,
+- **Five fuzz targets** now: `fuzz_orbit`, `fuzz_time`, `fuzz_ktx2`,
+  `fuzz_ztree` (which reaches the DDS and `.elv` parsers) and
+  `fuzz_elevation`. Four minutes each,
   clean, and any crash found becomes a committed corpus entry and a named test.
 - **The streaming suites under TSan**, since the loader, the cache and the
   eviction policy now run together under a moving camera.

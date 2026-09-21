@@ -61,10 +61,14 @@ What that changes for this task is below, marked.
   key (decision 43): the git history of `checksums.sha256` records when a
   fixture was generated and by whom.
 
-  *(Amended 2026-09-11.)* **Geometric**, with neither light-time nor aberration
-  applied: M1-08 now asserts 0.1″ against these vectors, and aberration alone
-  is 20.5″, so a corrected fixture would measure the correction rather than the
-  code. The query records it so a reader can see it was asked for.
+  *(Amended 2026-09-11, and again 2026-09-21 for the budget.)* **Geometric**,
+  with neither light-time nor aberration applied: M1-08 asserts 0.02″ against
+  these vectors, and aberration alone is 20.5″, so a corrected fixture would
+  measure the correction rather than the code. The query records it so a reader
+  can see it was asked for. *(This said 0.1″ until 2026-09-21; decision 85
+  tightened the budget to 0.02″ and 5e-8 AU on 2026-09-20, and the sentence was
+  not updated with it. The argument is unaffected -- 20.5″ dwarfs either
+  number.)*
 
   Then whitespace-separated rows, `#` for comments. Text rather than binary so
   a diff is readable and a wrong number is visible in review.
@@ -141,7 +145,10 @@ Fixtures for anything but the Sun; the GMAT trajectory fixture has its own task
   text of 10,000 seeded doubles instead, and the conversion to metres against
   exact rational arithmetic. The fixture's 16 digits are good to half a unit in
   the last of them -- 0.05 mm on a component of 1.3e8 km -- against M1-08's
-  budgets of 72 km of direction and 150 km of distance.
+  budgets of **14.5 km of direction and 7.5 km of distance**. *(Was "72 km and
+  150 km" until 2026-09-21, which is the same two budgets before decision 85
+  tightened them on 2026-09-20. The margin is smaller by a factor of ten and
+  still eleven orders of magnitude wide, so the conclusion is unchanged.)*
 
 ## Notes
 

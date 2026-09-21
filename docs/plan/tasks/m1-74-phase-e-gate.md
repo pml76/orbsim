@@ -15,7 +15,7 @@ gate is where that is confirmed with everything the toolbox has.
 The full sweep from M1-61 — ASan, MSVC, Linux clang with ASan and UBSan, gcc-14,
 TSan, GPU validation layers — plus:
 
-- **Five fuzz targets**: `fuzz_orbit`, `fuzz_ktx2`, `fuzz_ztree`,
+- **Six fuzz targets**: `fuzz_orbit`, `fuzz_time`, `fuzz_ktx2`, `fuzz_ztree`,
   `fuzz_elevation` and `fuzz_integrator`. The last gets ten minutes.
 - **A long-arc run**: 30 days of simulated time at high acceleration, with the
   monitors live in a Debug build, watching for a drift the 24-hour tests cannot

@@ -85,7 +85,7 @@ one fact in two places, which is the failure
 | 16 | Radiometric chain | **Manual photographic exposure (aperture, shutter, ISO) and the AgX tonemap.** Auto-exposure deferred, and when it lands it must be pinned in probe mode |
 | 17 | Where render-side CPU maths lives | **A new Vulkan-free library, `orbsim_view`**: camera, projection, `RenderQuality`, tile identity, screen-space error, and the atmosphere CPU reference. The rule that nothing under `tests/` includes a Vulkan or SDL header stays enforced by the link graph rather than by discipline |
 | 18 | Quadtree LOD | **Skirts plus vertex morphing.** Skirts close cracks without neighbour bookkeeping; morphing removes the pop |
-| 19 | Count-like units | **An integral `Count<Derived>` beside `Quantity<Derived>`** in `core/Scalar.hpp`. `Texels` and `Mebibytes` are counts; `Pixels` stays on the f64 base, because a screen-space error threshold of 2.5 px is a real quantity. This closes the question ADR 0007 left open |
+| 19 | Count-like units | **An integral `Count<Derived>` beside `Quantity<Derived>`** in `core/Scalar.hpp`. `Texels` and `Mebibytes` are counts; `Pixels` stays on the f64 base, because a screen-space error threshold of 2.5 px is a real quantity. This closes the question ADR 0007 left open. *(The **reason** stands and the **mechanism** does not, since 2026-09-17: [ADR 0019](../adr/0019-vectors-carry-their-unit.md) moved every type in `core/Units.hpp` onto mp-units, and `Quantity<Derived>` now carries only `Tolerance`, which takes no part in dimensional analysis. A `Pixels` written on the f64 base would be the one dimensional unit in that header outside the dimension system, so it is a `Scalar<>` like the rest. [M1-12](tasks/m1-12-render-quality.md) is corrected to match. Noted 2026-09-21.)* |
 
 ## 4. Data and tools
 
@@ -119,7 +119,7 @@ it is never mistaken for a bug.
 | A | Precession, nutation + ERA, as implemented | **0.1 mas** (code), over 1900–2100. Was 0.1″ until 2026-09-19 (decision 76) | Skyfield 1.55, whose rotation is Greenwich apparent sidereal time applied to the equinox-based matrix -- an independent formulation of the same IAU models, not ERFA, which computes it (ADR 0016, decision 75). Measured 54 µas worst, 47 of it the TIO locator s′ |
 | A | Precession, nutation + ERA, as modelled | **≤ 14.1″, about 440 m** on the ground where ΔT comes from the leap-second table: ΔUT1 = 0 (≤ 13.5″) and polar motion omitted (≤ 0.6″). **Past the table, plus the drift of a held ΔT**: at worst 17.3″ a year on record, 8.1″ a year since 2000 (decision 72) (model) | Recorded, not asserted |
 | A | UT1 from TT (M1-86) | **exact**: both round trips the identity, and UT1 from the table's ΔT the UTC road's UT1 to the picosecond (decision 72) | The definitions, and the suite's own transcription of the published steps |
-| A | Solar direction and distance | **0.1″**, **1e-6 AU** | JPL Horizons fixtures, geometric |
+| A | Solar direction and distance | **0.02″**, **5e-8 AU**, over the fixture's span 2000–2050. Was 0.1″ and 1e-6 AU until 2026-09-20 (decision 85) | JPL Horizons fixtures, geometric. Measured worst 0.0085″ and 2.14e-8 AU |
 | A | Radiometric chain | **0.5 %** of the analytic 130 W·m⁻²·sr⁻¹ for a Lambertian patch, albedo 0.3, normal to the Sun at 1 AU | Analytic value, read back from the HDR target before tonemapping. RGBA16F quantisation is 0.05 % |
 | A | Camera-relative precision | a fixed world point at Earth radius moves **≤ 0.05 px** at 1920×1080 between consecutive frames | Computed on the CPU with the same maths |
 | B | BC7 compression | **≥ 40 dB PSNR** against the source | The uncompressed source image |
@@ -161,7 +161,15 @@ independent implementation rather than ERFA. **The Sun** moved from 0.01° and
 DE405 over 1900–2100 by its own comparison, which is 0.016″ of direction and
 7.5e-8 AU of distance, so the budgets keep sixfold and thirteenfold headroom
 over the implementation's stated worst case. The fixture must be geometric —
-no light-time, no aberration — because aberration alone is 20.5″. **TDB − TT**
+no light-time, no aberration — because aberration alone is 20.5″.
+*(2026-09-20: moved again, to **0.02″ and 5e-8 AU**, once M1-08 measured
+`eraEpv00` against the fixture rather than quoting ERFA's note -- worst 0.0085″
+and 2.14e-8 AU at the forty epochs, so each budget is about twice its
+measurement. The headroom argument above is exactly what decision 85 rejected:
+a budget with twelvefold headroom absorbs a regression in silence. The span the
+budget is asserted over is the fixture's, 2000–2050; ERFA's own worst over the
+wider 1900–2100 is 0.016″, looser than the budget, so widening the span means
+re-measuring. Decision 85.)* **TDB − TT**
 keeps its 100 µs: ERFA claims 3 ns, but a budget can be no tighter than the
 independent reference it is checked against, and that reference is chosen in
 M1-05. *(2026-09-19: chosen -- Skyfield's evaluation of USNO Circular 179 eq.

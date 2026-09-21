@@ -26,7 +26,7 @@ break — that **drawing** the physics did not **change** it.
 
 The full sweep the earlier gates run — `asan`, `windows-msvc`,
 `linux-sanitize`, `linux-gcc`, `linux-tsan`, the GPU validation layers, and the
-five fuzz targets — plus:
+six fuzz targets — plus:
 
 - **The precession budget from M1-77, re-measured**, because M1-76 and anything
   after it touch the path that produces it. The claim is
@@ -69,7 +69,7 @@ the stated preset, and the coverage table.
 
 - [ ] Every configuration passes, with matching assertion counts, and the two
       compilers agree on the precession rate.
-- [ ] Five fuzzers clean.
+- [ ] Six fuzzers clean.
 - [ ] The track precesses at the analytic secular rate, inside M1-77's budget,
       re-measured after M1-76.
 - [ ] Two `RenderQuality` presets leave the simulation state bit-identical.

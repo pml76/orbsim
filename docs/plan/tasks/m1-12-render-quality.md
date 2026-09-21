@@ -23,9 +23,21 @@ HDR pipeline itself, and it is nearly free while there is one draw call.
   truncate — if a ratio of counts is wanted, it is a named function returning
   `f64`. The same CRTP shape and the same `friend Derived` trick, so
   `struct Other : Count<Texels>` does not compile.
-- **`core/Units.hpp` gains `Pixels`** on the existing f64 `Quantity`, because a
-  screen-space error threshold of 2.5 px is a real quantity rather than a
-  count.
+- **`core/Units.hpp` gains `Pixels`** as a `Scalar<>` on its own mp-units
+  *kind*, like `Eccentricity`, because a screen-space error threshold of 2.5 px
+  is a real quantity rather than a count — and a kind of its own is what stops
+  it converting into any other dimensionless ratio.
+
+  **Corrected 2026-09-21.** This read "on the existing f64 `Quantity`", which
+  is register decision 19 as it was written on 2026-09-08. The *reason* stands;
+  the *mechanism* does not. [ADR 0019](../../adr/0019-vectors-carry-their-unit.md)
+  moved every type in `core/Units.hpp` onto mp-units on 2026-09-17, and
+  `Quantity<Derived>` in `core/Scalar.hpp` now carries only `Tolerance`, which
+  takes no part in dimensional analysis. A `Pixels` on the f64 base would be
+  the one dimensional unit in that header outside the dimension system.
+  Whether a pixel *coordinate* wants a type of its own is a separate question
+  and is not settled here — register decision 105 says the screen frame and
+  the pixel unit the MFD needs are M1-80's to shape.
 - **`src/view/RenderQuality.hpp`**: the struct, empty of fields for now, with
   `constexpr` factories `low()`, `medium()`, `high()` and `ultra()` that all
   currently return the same empty value — and a comment saying that is expected,

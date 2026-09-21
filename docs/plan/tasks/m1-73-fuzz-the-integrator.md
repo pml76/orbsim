@@ -14,7 +14,7 @@ consume states that a scenario, a burn or a previous step can produce.
 
 ## What to implement
 
-`tests/fuzz_integrator.cpp`, the project's fifth fuzz target.
+`tests/fuzz_integrator.cpp`, the project's sixth fuzz target.
 
 - Arbitrary bytes are mapped to: an initial state, a `mu`, a step size, a number
   of steps, a J2 value, and a choice of stepper and propagator. The mapping is

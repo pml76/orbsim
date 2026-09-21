@@ -1,7 +1,9 @@
 # M1-19 — The line renderer
 
 Phase: A | Status: not started
-Prerequisites: M1-11, M1-13
+Prerequisites: M1-11, M1-12, M1-13 *(Corrected 2026-09-21: the queue says each task lists its true
+prerequisites so that a reordering can be reasoned about, and draw takes a
+`RenderQuality` by value, which M1-12 creates.)*
 Decided by: [ADR 0012](../../adr/0012-orbsim-view.md)
 
 ## Purpose

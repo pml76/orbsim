@@ -1,7 +1,10 @@
 # M1-13 — Graphics pipelines and shader modules
 
 Phase: A | Status: not started
-Prerequisites: M1-01
+Prerequisites: M1-01, M1-09 *(Corrected 2026-09-21: the queue says each task lists its true
+prerequisites so that a reordering can be reasoned about, and this task tests its pure
+functions -- the vertex input description and the push-constant range -- in
+`orbsim_view`, which M1-09 creates.)*
 
 ## Purpose
 

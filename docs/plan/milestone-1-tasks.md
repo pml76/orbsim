@@ -85,9 +85,13 @@ exists to produce.
 The list grows as the milestone does: `windows-msvc` joined it on 2026-09-14 --
 the third implementation, and the only one that builds the renderer against a
 second compiler -- `linux-tsan` arrives with the first thread
-in M1-33 and runs at every gate after it, and the fuzz targets go from one to
-five — `fuzz_orbit`, `fuzz_ktx2`, `fuzz_ztree`, `fuzz_elevation` and
-`fuzz_integrator`. Each gate task names exactly what it must run.
+in M1-33 and runs at every gate after it, and the fuzz targets go from **two to
+six** — `fuzz_orbit`, `fuzz_time`, `fuzz_ktx2`, `fuzz_ztree`, `fuzz_elevation`
+and `fuzz_integrator`. Each gate task names exactly what it must run.
+*(This said "one to five" and omitted `fuzz_time` until 2026-09-21. That
+target was added on 2026-09-18 with M1-04, decision 41, and under the sentence
+above — which makes the enumeration the thing that decides what runs — it was
+run by no gate at all. Every gate task's count moved up by one with this.)*
 
 ---
 
@@ -139,13 +143,13 @@ M1-86 is the conversion that gives one without the leap-second table.
 | [10](tasks/m1-10-reverse-z-projection.md) | Reverse-Z with an infinite far plane | 09 | ADR 0003 made real, and tested |
 | [11](tasks/m1-11-camera.md) | The camera, and the f64 → f32 boundary | 10 | One named narrowing function |
 | [12](tasks/m1-12-render-quality.md) | `Count<Derived>` and `RenderQuality` | 09 | An empty quality struct, and the path it travels |
-| [13](tasks/m1-13-pipelines.md) | Graphics pipelines and shader modules | 01 | The renderer can create a pipeline |
+| [13](tasks/m1-13-pipelines.md) | Graphics pipelines and shader modules | 01, 09 | The renderer can create a pipeline |
 | [14](tasks/m1-14-hdr-target.md) | The HDR render target | 13 | Shaders stop writing display-ready colour |
 | [15](tasks/m1-15-exposure-and-agx.md) | Exposure and the AgX tonemap | 14 | Radiance in, sRGB out, once, at the end |
-| [16](tasks/m1-16-probe-mode.md) | Probe mode: deterministic frames | 13, 15 | A frame you can look at, every run |
+| [16](tasks/m1-16-probe-mode.md) | Probe mode: deterministic frames | 03, 11, 12, 13, 15 | A frame you can look at, every run |
 | [17](tasks/m1-17-golden-images.md) | Golden-image comparison | 16 | An approved frame becomes a test |
 | [18](tasks/m1-18-radiometry-probe.md) | Numeric probes, and the radiometry budget | 15, 16 | 0.5 % of an analytic radiance |
-| [19](tasks/m1-19-line-renderer.md) | The line renderer | 11, 13 | Lines, camera-relative |
+| [19](tasks/m1-19-line-renderer.md) | The line renderer | 11, 12, 13 | Lines, camera-relative |
 | [20](tasks/m1-20-planetary-grid.md) | The planetary grid, and the jitter budget | 17, 19 | Phase A's stated acceptance: no jitter |
 | [21](tasks/m1-21-camera-controls.md) | Camera controls and scripted paths | 11 | You can fly it, and a script can repeat it |
 | [22](tasks/m1-22-benchmark-mode.md) | The benchmark mode | 21 | Frame time as a number |
@@ -241,7 +245,7 @@ M1-86 is the conversion that gives one without the leap-second table.
 | [81](tasks/m1-81-readout-formatting.md) | The readout, formatted and tested | 03, 80 | Numbers, tested without a GPU |
 | [82](tasks/m1-82-live-mfd.md) | The live MFD, and the clock | 69, 71, 81 | Osculating elements that drift |
 | [83](tasks/m1-83-milestone-acceptance.md) | Milestone acceptance | 22, 60, 82 | Every stated criterion, checked |
-| [84](tasks/m1-84-milestone-gate.md) | **Milestone gate and the record** | 01–83, 85 | `PROJECT_STATE.md` tells the truth again |
+| [84](tasks/m1-84-milestone-gate.md) | **Milestone gate and the record** | 01–83, 85, 86 | `PROJECT_STATE.md` tells the truth again |
 
 ---
 

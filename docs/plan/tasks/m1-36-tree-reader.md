@@ -42,7 +42,7 @@ contract, the source is the clarification.
   child graph**, which a hand-edited archive can contain and which would
   otherwise be bounded only by the level limit.
 - `TreeArchiveSource` joins the `TileSource` variant.
-- **`tests/fuzz_ztree.cpp`**, the project's third fuzz target: arbitrary bytes
+- **`tests/fuzz_ztree.cpp`**, the project's fourth fuzz target: arbitrary bytes
   in, and the invariant that every returned blob lies inside its own allocation,
   no read goes outside the input, and no inflate is asked for a size the header
   did not declare.

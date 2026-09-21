@@ -20,13 +20,13 @@ cmake --preset asan && cmake --build build/asan && ctest --test-dir build/asan -
 wsl … --preset linux-sanitize   # ASan + UBSan
 wsl … --preset linux-gcc        # the second compiler
 wsl … --preset linux-tsan       # the first thread, new in M1-33
-wsl … --preset linux-fuzz && for t in fuzz_orbit fuzz_ktx2 fuzz_ztree; do
+wsl … --preset linux-fuzz && for t in fuzz_orbit fuzz_time fuzz_ktx2 fuzz_ztree; do
     ./build/linux-fuzz/$t -max_total_time=240; done
 ```
 
 ## What to check, beyond "it passed"
 
-- **Three fuzz targets, four minutes each, clean.** Any crash found on the way
+- **Four fuzz targets, four minutes each, clean.** Any crash found on the way
   becomes a committed regression corpus entry and a named test, per rule 6.
 - **ThreadSanitizer is live**, not merely configured, and the loader and cache
   suites run under it.
@@ -55,7 +55,7 @@ committed with its approval date.
 
 - [ ] Six toolchains pass — Windows RelWithDebInfo and Debug, ASan, MSVC, Linux
       clang+ASan+UBSan, Linux gcc-14 — plus TSan on the threaded code.
-- [ ] Three fuzzers clean.
+- [ ] Four fuzzers clean.
 - [ ] `THIRD_PARTY.md` is complete and accurate, file lists included.
 - [ ] `PROJECT_STATE.md` describes the tree as it now is.
 - [ ] Nothing is carried into phase D on the promise of fixing it later.

@@ -3,6 +3,12 @@
 Phase: F | Status: not started
 Prerequisites: M1-01
 
+**Corrected 2026-09-21.** This document was written on 2026-09-08, nine days
+before [ADR 0019](../../adr/0019-vectors-carry-their-unit.md) made `Vec3` a
+template: a sampled point is a `Position`, and a bare `Vec3` no longer names a
+type. The list below is corrected; the task is unchanged. This is the same
+correction [M1-11](m1-11-camera.md) was given on 2026-09-20.
+
 ## Purpose
 
 The algorithm already exists, written and tested, in
@@ -23,7 +29,10 @@ one adapts to the project's types.
   enums and a count rather than three booleans, which is why the example exists.
 - **Adapted to this project's types**: `orb` rather than `orbex`, the project's
   `Elements` — which carries `slr` explicitly, so a parabolic set stays
-  representable — `GravParam`, `Seconds`, and `Vec3` from `core/Math.hpp`.
+  representable — `GravParam`, `Seconds`, and `Position` from
+  `core/Math.hpp`, which is `Vec3<kMetre>`. The example's own `Vec3` moved to
+  the same mechanism on 2026-09-17 (the example's ADR 0003), so this is a
+  rename at the port rather than a change of design.
 - **One error representation per layer** (ADR 0002): the example's `PathError`
   folds into `OrbitError`, gaining `NotAClosedOrbit` and `TooFewSamples`, each
   with a `describe()` string. The orbit layer reports one enum, not two.
