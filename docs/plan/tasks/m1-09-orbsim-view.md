@@ -116,7 +116,11 @@ link `orbsim_view` in any generated build file.
 ## Done when
 
 - [x] `check` green in both trees; `test_view_math` in the CTest list, which
-      is 149 entries now.
+      is 149 entries now. *(150 by the end of the day: the frames commit that
+      afternoon added `test_view_math`'s tenth case, `retargetFrame` compared
+      element by element. Both numbers are right at their moment, which is why
+      neither was changed -- [M1-10](m1-10-reverse-z-projection.md) reads "160,
+      up from 150". Noted 2026-09-21, measured from the two commits.)*
 - [x] `-DORBSIM_BUILD_APP=OFF` still builds core and tests: 410 targets, 148
       CTest entries, all passing.
 - [x] `orbsim_view` links `orbsim_core`, and nothing links back the other way.

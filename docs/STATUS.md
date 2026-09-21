@@ -94,9 +94,12 @@ and `test_sun` each skip a case. Catch2 **v3.16.0**.
 **Three implementations now agree to the digit**, which is what `windows-msvc`
 was added on 2026-09-14 to find out. It builds the whole tree, renderer
 included — the only configuration that does, since both Linux presets are core
-only — with **zero warnings under `/Wall /WX /permissive-`**, and passes all 140
+only — with **zero warnings under `/Wall /WX /permissive-`**, and passes all 160
 CTest entries including the GPU smoke test and ERFA's two validation programs,
-which MSVC compiles as C.
+which MSVC compiles as C. *(This said 140 until 2026-09-21, which was right
+until M1-09 and M1-10 added twenty cases between them -- and this file said 160
+eighteen lines further down at the same time. One number, two places, exactly
+what the note at the top of this file is about.)*
 
 The seeds for the random sweeps are written into the suites: `20260905` in
 `tests/test_orbit_scales.cpp`, `20260910` in `tests/test_time.cpp` and

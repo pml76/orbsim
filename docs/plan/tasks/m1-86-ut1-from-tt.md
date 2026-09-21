@@ -1,6 +1,10 @@
 # M1-86 — UT1 from TT
 
-Phase: A | Status: **done, 2026-09-19**
+Phase: A | Status: **done, 2026-09-20** *(corrected 2026-09-21: this said
+2026-09-19, which is the day decisions 72-74 were ruled and this document was
+written. The code landed the next day -- commit `2a82e37`, and
+[`HISTORY.md`](../../HISTORY.md) and [`STATUS.md`](../../STATUS.md) both say
+2026-09-20.)*
 Prerequisites: M1-05. Runs **before M1-07**, which needs it (decision 73)
 Decided by: [ADR 0009](../../adr/0009-time-is-a-type-with-a-scale.md); register decisions 72–74
 

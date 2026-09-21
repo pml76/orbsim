@@ -16,7 +16,7 @@ usually enough.
 
 | # | Decision | Status | Date |
 |---|---|---|---|
-| [0001](0001-units-in-the-type-system.md) | Physical quantities are types, not doubles | accepted | 2026-09-05 |
+| [0001](0001-units-in-the-type-system.md) | Physical quantities are types, not doubles | accepted; mechanism superseded by 0019 | 2026-09-05 |
 | [0002](0002-error-handling-strategy.md) | `std::expected` for expected failures, assertions for impossible ones | accepted | 2026-09-05 |
 | [0003](0003-reverse-z-depth.md) | Reverse-Z depth with an infinite far plane | accepted | 2026-09-05 |
 | [0004](0004-pinned-vulkan-headers.md) | The Vulkan headers are pinned; the SDK supplies only the loader and glslc | accepted | 2026-09-05 |
@@ -35,7 +35,7 @@ usually enough.
 | [0017](0017-every-warning-is-an-error.md) | Every warning the compiler has, as an error; a library's interface is answered at the site | accepted | 2026-09-11 |
 | [0018](0018-state-from-elements-reports.md) | `stateFromElements` reports, like every other conversion in `orbit/` | accepted | 2026-09-13 |
 | [0019](0019-vectors-carry-their-unit.md) | Vectors carry their unit, which forces compile-time dimensional analysis | accepted | 2026-09-17 |
-| [0020](0020-transforms-carry-their-units.md) | A transform carries the units of both spaces it maps between | accepted | 2026-09-20 |
+| [0020](0020-transforms-carry-their-units.md) | A transform carries the units of both spaces it maps between | accepted; frames clause superseded by 0021 | 2026-09-20 |
 | [0021](0021-transforms-carry-their-frames.md) | A transform carries the frames it maps between, and the transpose is a dual map | accepted | 2026-09-20 |
 
 **0008 to 0015 record the decisions taken on 2026-09-08**, before milestone 1

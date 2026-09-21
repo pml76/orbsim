@@ -139,3 +139,27 @@ milestone ends.
 - **The projection matrix itself**, which is [M1-10](../plan/tasks/m1-10-reverse-z-projection.md),
   and the camera, which is [M1-11](../plan/tasks/m1-11-camera.md). This record
   fixes the container they live in.
+
+## The frames clause is superseded by 0021, 2026-09-20
+
+The first bullet above did not survive the day it was written.
+**[`0021`](0021-transforms-carry-their-frames.md) supersedes it**: the owner
+asked for frames, and for points to carry them too, so `Mat4` took the two
+further template parameters this record said its signature admitted, and
+nothing here had to be unpicked. Everything else in this record stands — the
+four unit parameters, the derived block references, and the compositions they
+accept and refuse.
+
+0021 also replaced this project's formulation of the transpose with the
+owner's, as a **dual** map, which is what makes
+`transpose(AB) = transpose(B)transpose(A)` typecheck for a chain containing a
+projection rather than only for affine matrices. Runtime cost was measured at
+nil before the design was chosen: 35 instructions against 35, identical at
+`-O2`.
+
+*(Appended 2026-09-21. 0021 named this record from the day it was accepted;
+this record did not name 0021 back, and the index recorded it as plain
+"accepted" — against the rule in [`README.md`](README.md) that a superseding
+record and the one it supersedes both link to each other. 0009 and 0016 are
+the worked example of that rule: 0009 carries its own "Partly superseded by
+0016" section **and** the index says so. Nothing decided here has changed.)*

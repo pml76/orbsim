@@ -198,18 +198,36 @@ The standing rules.
 
 ## Done when
 
-- [ ] `check` green in both trees.
-- [ ] Both budgets asserted against the Horizons fixture, not against a claim,
+- [x] `check` green in both trees.
+- [x] Both budgets asserted against the Horizons fixture, not against a claim,
       and the span they cover stated with them.
-- [ ] The frame the result is expressed in, and that it is geometric, are stated
+- [x] The frame the result is expressed in, and that it is geometric, are stated
       in the header.
-- [ ] The solar constant carries its source.
-- [ ] A date outside ERFA's span is reported as `OutsideEphemerisRange`, with
+- [x] The solar constant carries its source.
+- [x] A date outside ERFA's span is reported as `OutsideEphemerisRange`, with
       a test at each boundary.
-- [ ] What the suite cannot see is written in the header, not left implied.
-- [ ] `TwoPartDate` is gone and `astro/EarthOrientation.cpp` still passes its
+- [x] What the suite cannot see is written in the header, not left implied.
+- [x] `TwoPartDate` is gone and `astro/EarthOrientation.cpp` still passes its
       own suite unchanged (decision 89).
-- [ ] A mutation pass, with any survivor taken to the owner rather than closed
+- [x] A mutation pass, with any survivor taken to the owner rather than closed
       by a test nobody ruled on (VERIFICATION.md rule 19).
 - [ ] All six toolchains before the commit: both Windows trees, `asan`,
       `windows-msvc`, `linux-sanitize`, `linux-gcc`.
+
+*(Ticked 2026-09-21, and this is the only completed task whose boxes had been
+left blank -- M1-01 to M1-07, M1-09, M1-10 and M1-86 are all fully ticked, so
+under the house convention this one read as unfinished. Eight were confirmed
+against the tree rather than against the fact that the task is recorded as
+done: `TwoPartDate` appears nowhere in `src/` or `tests/`; both budgets, their
+span and the fixture are in `tests/test_sun.cpp`; the ICRF frame, "geometric",
+Kopp & Lean and "what the suite cannot see" are all in `src/astro/Sun.hpp`;
+there are two boundary cases; `check` is green in both trees; and the pass is
+`scripts/mutants/m1-08.json`, twelve mutants, whose anchors still match.*
+
+*The ninth is left as it is. The six-toolchain run is recorded in neither
+`HISTORY.md`'s M1-08 section nor anywhere else I could find, and a box ticked
+on the strength of the task being done is exactly the checklist that records
+intent and notices nothing, which [ADR 0005](../../adr/0005-correctness-is-enforced-by-tools.md)
+is about. All six were re-run on 2026-09-21 with M1-10 and agree, so the tree
+is in the state the box describes -- but that is a different claim from the
+one the box makes.)*
