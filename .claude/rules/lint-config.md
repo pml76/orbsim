@@ -25,10 +25,16 @@ four on 2026-09-08 by being emptied and the 1,476 findings that fell out being
 fixed rather than re-suppressed. Three rules came out of that and are worth
 keeping:
 
-- **Prefer configuring to disabling.** Several checks take an option that
-  expresses the house style exactly -- `ShortStatementLines: 1` for the
-  single-line guard clause, `IgnoreClassesWithAllMemberVariablesBeingPublic`
-  for aggregates. That keeps the check live where it has value.
+- **Prefer configuring to disabling.** A check that takes an option
+  expressing the house style exactly stays live where it has value, instead of
+  going silent everywhere. `ShortStatementLines: 1` is the one in force here:
+  it permits the single-line guard clause and still demands braces on a body
+  that runs onto its own line. *(This also named
+  `IgnoreClassesWithAllMemberVariablesBeingPublic` until 2026-09-21. That
+  option is not set in either `.clang-tidy`, and `PROJECT_STATE.md` section 8
+  records that the behaviour it names is conditional anyway -- the check
+  ignores an all-public class only while it declares no member function -- so
+  it was a poor illustration as well as an inaccurate one.)*
 - **Prefer the site to the file.** A `NOLINT` covers one line; an entry in
   `.clang-tidy` covers whatever anybody writes next.
 - **But not always.** For `readability-identifier-length` the config
@@ -39,10 +45,13 @@ keeping:
 
 Every suppression that survives carries its reason and a count of what turning
 the check back on would cost. A bare list of suppressions is how a lint config
-quietly becomes meaningless. Both are in a comment block immediately above
-`Checks:`, dated, because the counts move: the three open entries were
-408/357/277 on 2026-09-08 and 414/365/276 on 2026-09-10, with no change to the
-checks at all.
+quietly becomes meaningless. Both are in a dated comment block immediately
+above `Checks:` in `.clang-tidy`, **and that block is the only place the
+numbers are written down** -- they move with every suite added, so a second
+copy is one fact with two chances to rot. *(This file carried its own copy of
+them until 2026-09-21, from two measurements before the one `.clang-tidy` now
+holds. It is the failure the config file's own comment block describes, one
+level out.)*
 
 **The reasons cannot sit next to the entries**, and finding out why is worth
 one line here. `Checks:` is a YAML *folded block scalar*, so a `#` inside it is

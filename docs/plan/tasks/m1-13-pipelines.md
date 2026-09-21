@@ -18,7 +18,7 @@ the task that makes the renderer able to draw anything at all.
 
 - `UniquePipeline` and `UniquePipelineLayout` **already exist** in
   `src/render/VulkanHandle.hpp`, beside `UniqueShaderModule`, in the move-only
-  shape the nineteen handles there use — they were written ahead of their first
+  shape the fifteen handles there use — they were written ahead of their first
   caller. This task uses them; it does not add them. No hand-written destructor
   anywhere else. *(Until 2026-09-13 this said to add two handles, which would
   have meant writing code that was already in the tree.)*

@@ -461,7 +461,8 @@ actually worth.
 
 **The harness is [`scripts/mutate.py`](../scripts/mutate.py) since
 2026-09-20**, with one JSON file of mutants per task under
-[`scripts/mutants/`](../scripts/mutants/). It exists because the two traps in
+[`scripts/mutants/`](../scripts/mutants/) **for every task from M1-08
+onwards**. It exists because the two traps in
 this rule are procedural rather than clever, and both have been walked into:
 
 - **a mutant that does not compile is not a kill.** The script separates a
@@ -476,9 +477,21 @@ this rule are procedural rather than clever, and both have been walked into:
 It restores the tree with `git checkout --` in a `finally`, and refuses to
 start if any file it will touch is dirty -- so an exception or a Ctrl-C cannot
 leave a mutant in the working tree. A declared `"expect": "survives"` is how an
-accepted survivor is recorded, as M1-05 has three; an undeclared survivor fails
-the run, so a mutant that starts surviving after a change is a result rather
-than a line nobody reads.
+accepted survivor is recorded, as M1-09 has one -- the perspective divide
+multiplying by w, handed to M1-10 by name and killed there; an undeclared
+survivor fails the run, so a mutant that starts surviving after a change is a
+result rather than a line nobody reads.
+
+**Five earlier passes have no file, and cannot be re-run.** M1-04, M1-06,
+M1-05, M1-86 and M1-07 were mutated by hand before the harness existed or on
+the day it landed, so what survives of them is the prose in Part 4 below --
+including M1-05's three accepted survivors, which are described there and
+nowhere a machine can read. `mutant-anchors` therefore checks three tasks and
+41 anchors, not eight tasks; it cannot report a stale anchor for a pass that
+left none. That is a real gap and it is recorded rather than closed:
+reconstructing five passes from prose would be inventing mutants and claiming
+they had been run, which is the shape rule 23 is about. Every pass from M1-08
+onwards leaves its file. *(Noted 2026-09-21.)*
 
 **A pass is deliberately not part of `check`** -- it rebuilds once per mutant
 and takes minutes, and this rule is periodic by design. **The anchors are,

@@ -44,14 +44,23 @@ $ ./build/bench_orbit_path
 
 ```
 src/core/Contract.hpp     ORBEX_EXPECTS / ORBEX_ENSURES
-src/core/Vec3.hpp         vector maths, Tolerance, compile-time tests
-src/core/Units.hpp        Radians, Degrees, Metres, Seconds, Eccentricity, GravParam
+src/core/Scalar.hpp       f32/f64, the circle constants, Tolerance, nearlyEqual
+src/core/Vec3.hpp         vector maths, compile-time tests
+src/core/Units.hpp        the Scalar<kReference> template over mp-units, and the
+                          six strong types: Radians, Degrees, Metres, Seconds,
+                          Eccentricity, GravParam
 src/orbit/Kepler.hpp/.cpp the solver that reports non-convergence
 src/orbit/OrbitPath.hpp/.cpp  the sampler; OrbitPath is the Rule-of-Zero owner
 src/render/PathUpload.hpp/.cpp  the f64 -> f32 boundary, and nothing else
 tests/                    three suites, a shared harness, and a benchmark
-docs/adr/                 the two decisions that span files
+docs/adr/                 the three decisions that span files
 ```
+
+*(Corrected 2026-09-21. This listing omitted `src/core/Scalar.hpp` and put
+`Tolerance` in `Vec3.hpp`, both left over from before the 2026-09-17 split
+that moved the scalar foundations below `Units.hpp`; and it said "the two
+decisions that span files" where there are three, as the coverage map's own
+row 17 says.)*
 
 The dependency direction is `core -> orbit -> render`, and it is enforced by
 CMake rather than by convention: `orbex_core` does not link `orbex_render`, so

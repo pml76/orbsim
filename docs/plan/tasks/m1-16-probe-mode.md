@@ -45,8 +45,12 @@ run, pass or fail.**
   is written **on every run, whether or not anything passes**. That is the
   requirement, not a convenience.
 - **`stb_image_write` is pinned here** (`stb`, dual MIT/Unlicense), SYSTEM, as
-  the seventh FetchContent dependency — Catch2 was the fifth (M1-01) and ERFA
-  is the sixth (M1-05); `THIRD_PARTY.md` gains its row. M1-28 later
+  the **ninth** FetchContent dependency; `THIRD_PARTY.md` gains its row.
+  *(Corrected 2026-09-21. This said "the seventh -- Catch2 was the fifth
+  (M1-01) and ERFA is the sixth (M1-05)". Catch2 was indeed the fifth, on
+  2026-09-09, but two more were pinned before ERFA: Vulkan-Utility-Libraries
+  on 2026-09-16 and mp-units on 2026-09-18, so ERFA is the eighth. An ordinal
+  counted from "the original four" goes stale every time one is added.)* M1-28 later
   uses `stb_image` from the same pin for JPEG decoding, and M1-78 uses
   `stb_truetype`.
 - **The first probe: `clear`.** It draws the clear colour and a full-screen

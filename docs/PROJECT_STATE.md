@@ -227,6 +227,15 @@ run from a terminal. `windows-msvc` in particular would need a **Visual Studio**
 toolchain in CLion to supply `INCLUDE` and `LIB`, which is the only toolchain
 this project would ever need CLion to define.
 
+The sixth is **`release`** — plain clang Release, no sanitizer and no live
+assertions — and nothing in this project's process uses it: the definition of
+done is `debug` and `relwithdebinfo`, and decision 5's benchmarks are
+RelWithDebInfo too. It is there for a shipping build and has no build tree on
+this machine. *(Named here 2026-09-21. This paragraph accounted for five of
+the six, and `release` appeared in no document at all — which is how a preset
+that nobody has run since it was written stays that way without anyone
+deciding it should.)*
+
 **No custom toolchain is required for the other five**, which was checked rather
 than assumed: CLion had already resolved clang 23.1.0 and Ninja with no
 `toolchains.xml` at all, and its `cmake-build-debug/CMakeCache.txt` named the
@@ -323,6 +332,16 @@ suppressions to the sites that actually need them: three `SDL_Log` varargs, two
 Catch2-macro complexity scores on individual test cases. Every one carries its
 reason, which is the property that matters; the count is not a number to keep
 down for its own sake.
+
+**Recounted 2026-09-21: 32 directives across 11 files in `src/`, 85 across 13
+in `tests/`, and 4 in the worked example** — counting `NOLINT(`,
+`NOLINTNEXTLINE(`, `NOLINTBEGIN(` and `NOLINTEND(` over tracked files only.
+Nine of the 22 that register decision 96 turned up on 2026-09-20 are in that
+total, each on a provably symmetric parameter pair with the reason at the site.
+The growth is still the 2026-09-08 ruling working as intended and not a
+regression, but a number written down once and left for eight days of task
+work is worth re-reading before it is quoted: **if you need the current
+figure, run the count rather than reading either of these.**
 
 ### 6.2 `EXAMPLE.md` was deleted — RULED: leave it deleted
 
@@ -933,12 +952,17 @@ catch this class of thing. Run all six before pushing a change to `core/`.
   all until the cached clone is checked out at the new tag by hand. Both
   caches hold Catch2 at `v3.16.0`, matching the pin.
 
-  **mp-units is not in either cache yet** (added 2026-09-17). No
-  `FETCHCONTENT_SOURCE_DIR_MP_UNITS` is set, so each of the six trees clones it
-  separately -- which costs six clones and, unlike the others, means its
-  `GIT_TAG v2.5.0` is the thing that actually decides the version. Point the
-  caches at it when the re-cloning becomes annoying; until then the pin being
-  live is worth more than the disk.
+  **Three of the eight are not in either cache**, and for those the `GIT_TAG`
+  in `CMakeLists.txt` is the thing that actually decides the version -- which
+  is the right way round, at the cost of a clone per tree. They are
+  **Vulkan-Utility-Libraries** (added 2026-09-16), **mp-units** (2026-09-17)
+  and **ERFA** (2026-09-19); the five cached ones are SDL3, vk-bootstrap, VMA,
+  Vulkan-Headers and Catch2. Read off the `FETCHCONTENT_SOURCE_DIR_*` entries
+  in a tree's `CMakeCache.txt` rather than from here, since the setting is
+  per-tree. *(This named only mp-units and ERFA until 2026-09-21;
+  Vulkan-Utility-Libraries was pinned the day before mp-units and was never
+  added to the list.)* Point the caches at them when the re-cloning becomes
+  annoying; until then the pin being live is worth more than the disk.
 
   **Nor is ERFA** (added 2026-09-19), and it has a safeguard mp-units lacks:
   the configure step reads the version out of ERFA's own `meson.build` and
