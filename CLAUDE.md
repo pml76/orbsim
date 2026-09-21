@@ -100,6 +100,16 @@ note that exists only on one of them is a note that does not exist.
    answer. Where a decision could be wrong, verify it -- a spike, a primary
    source, a second implementation -- before proposing it, and say what was
    checked.
+
+   A fourth, added 2026-09-21, about how all of that is written: **simple,
+   well-formed, professional language, and no jargon without an explanation.**
+   Prefer the ordinary word to the technical one. Where a technical term is
+   genuinely the right one -- *mutation testing*, *ulp*, *quasi-Julian date*,
+   *dual map* -- give it a short gloss the first time it appears in a reply,
+   then use it freely. This binds questions put to the owner as much as
+   answers given, and it is the reason the questions in this repository's
+   records read as they do. It is here rather than in any assistant's memory
+   for the reason the preamble to these agreements gives.
 2. **A failing test means fix the code.** If the test itself is genuinely
    wrong, say so and ask -- do not quietly edit it. A test that passes under
    one compiler and fails under another is evidence of an unstable algorithm,
