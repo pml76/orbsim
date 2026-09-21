@@ -1,6 +1,6 @@
 # M1-10 — Reverse-Z with an infinite far plane
 
-Phase: A | Status: not started
+Phase: A | Status: **done, 2026-09-21**
 Prerequisites: M1-09
 Decided by: [ADR 0003](../../adr/0003-reverse-z-depth.md), [ADR 0012](../../adr/0012-orbsim-view.md)
 
@@ -74,10 +74,46 @@ that reads the matrix.
 The standing rules. No GPU yet — every claim here is arithmetic and is checked
 on the CPU.
 
+## What the numbers turned out to be
+
+**Amended 2026-09-21, after the work**, by register decisions 99-105. Four of
+this document's statements did not survive measurement, and they are left
+above as written with the corrections here, because what a plan assumed is
+worth keeping beside what turned out to be true.
+
+- **`constexpr` is not achievable** (decision 99). clang and MSVC both refuse
+  `std::tan` in a constant expression; gcc-14 accepts it. The entry point is
+  `inline`, and a `constexpr` helper takes the already-computed focal length so
+  the *layout* carries seven `static_assert`s. Six of fourteen mutants then die
+  at compile time.
+- **`f64 aspect` became `Aspect`** (decision 100), a dimensionless *kind* of
+  its own, because a bare `f64` across an interface is non-negotiable 1 and the
+  document predates ADR 0019.
+- **"ten times the near plane maps to 0.1" is not exact** (decision 103):
+  measured worst 1 ulp over 200,000 near planes, so the budget is 2 ulp. The
+  frustum edge is 4 ulp, from a measured 2.0.
+- **"a point at 1e13 m gives a depth under 1e-12" holds only below a 10 m near
+  plane** (decision 102) -- the figure is 10/1e13. What is asserted is the rule
+  the projection implements, `depth == nearPlane / distance` bit for bit, with
+  the document's instance kept beside it at a stated near plane.
+- **The near-plane case must not run at 1 m** (decision 101), where `n/n` and
+  `n*n` agree, so it would accept the very mutant M1-09 handed this task.
+
 ## Done when
 
-- [ ] `check` green in both trees.
-- [ ] The depth-precision comparison against conventional depth is in the suite.
-- [ ] The clip convention is stated once, in the header, and the y flip lives
-      only in this matrix.
-- [ ] ADR 0003 is referenced from the code and updated to say the check exists.
+- [x] `check` green in both trees. 160 CTest entries, up from 150;
+      **1,369,392 assertions in 155 cases**, of which `test_projection`
+      contributes 21,643 in 10.
+- [x] The depth-precision comparison against conventional depth is in the
+      suite, with both sides measured: 9-14 f32 ulp of separation for
+      reverse-Z against **bit-identical** for the conventional control.
+- [x] The clip convention is stated once, in the header, and the y flip lives
+      only in this matrix -- asserted **signed**, since a magnitude check
+      cannot tell a missing flip from a doubled one.
+- [x] ADR 0003 is referenced from the code and carries a dated update saying
+      the arithmetic half is checked and the GPU grid test is not.
+- [x] The mutation pass ran: **fourteen mutants, fourteen caught, none
+      surviving, none invalid**, six at compile time. It killed M1-09's
+      declared survivor and corrected two claims that had been written down
+      without being measured -- one in M1-09's record and one in this task's
+      own test.

@@ -650,7 +650,7 @@ rules a machine checks and which depend on a person remembering.
 | 16 Determinism | `check` — `TEST_CASE("propagation is bit-identical across runs")`, over 100 steps | **done** |
 | 17 Dimensional analysis | The compiler — mp-units under `core/Units.hpp` and `Vec3<R>`, [ADR 0019](adr/0019-vectors-carry-their-unit.md) | **done** |
 | 18 Coverage | By hand, periodically. Orbit.cpp 99.2% lines | **done** |
-| 19 Mutation testing | By hand, periodically; the **anchors** are in `check` | exercised 2026-09-07, again 2026-09-19 on M1-04, M1-06 and M1-05, and 2026-09-20 on M1-86, M1-07, M1-08 and M1-09. Twelve of twelve on the first three of those; **fourteen of fifteen on M1-09, with the fifteenth a declared survivor that belongs to M1-10** |
+| 19 Mutation testing | By hand, periodically; the **anchors** are in `check` | exercised 2026-09-07, again 2026-09-19 on M1-04, M1-06 and M1-05, 2026-09-20 on M1-86, M1-07, M1-08 and M1-09, and **2026-09-21 on M1-10: fourteen of fourteen, none surviving, none invalid**, six of them at compile time. M1-09's declared survivor died there -- and the pass found that *two written-down claims about which test would catch what* had never been run, one of them in M1-09's own mutant file |
 | 20 WSL, UBSan, second compiler | By hand, before a milestone | **done** |
 | 21 `check` is the definition of done | The build, both trees | **done** |
 | 22–24 The human rules | A person | discipline |
@@ -787,10 +787,38 @@ The declared survivor is **the perspective divide multiplying by w**. Nothing
 in M1-09 evaluates that divide numerically -- its only assertion is the
 `static_assert` on the reference the function returns, which an operator does
 not change. The numerical claim belongs to
-[M1-10](plan/tasks/m1-10-reverse-z-projection.md), whose near-plane case reads
-depth through it, and the mutant file says so rather than closing the gap with
-a test invented for the mutant. That is the shape M1-05's three accepted
-survivors set.
+[M1-10](plan/tasks/m1-10-reverse-z-projection.md), and the mutant file says so
+rather than closing the gap with a test invented for the mutant. That is the
+shape M1-05's three accepted survivors set.
+
+**On M1-10, 2026-09-21: fourteen mutants, fourteen caught, none surviving and
+none invalid** -- six at compile time, because the projection's *layout* is
+asserted beside the function that builds it while only its arithmetic is
+tested. M1-09's survivor above is dead.
+
+**And this is the pass that found the trap in the other direction.** M1-09's
+entry named M1-10's near-plane case as the executioner, and that sentence had
+never been run. It is false: at a near plane of 1 m the depth numerator and
+denominator are the same number, so `n/n` and `n*n` are both 1 and the case
+accepts every wrong divide that can be written. M1-10's near-plane case
+therefore runs at five near planes, none of them 1 m.
+
+Then the same thing happened again, one level in, and it is the more
+instructive half. M1-10's near-plane case was given two extra assertions -- on
+the numerator and the denominator -- and its comment claimed they were what
+caught a reversed or hard-coded divide. **They are not.** They read
+`transform()`'s output, *before* the divide, so they cannot see a fault inside
+it; and no near-plane check ever can, because "the near plane maps to 1" is
+precisely the statement that the two numbers are equal. Two further mutants
+were planted to settle it rather than argue it, and both die elsewhere. What
+the extra assertions genuinely buy is a wrong *matrix* caught at run time
+through the real entry point, which is worth having and is not what was
+claimed.
+
+Rule 23 is usually read as distrusting two implementations that agree. This is
+the same rule applied to a sentence: **a prediction about which test will
+catch a mutant is not a measurement**, and a mutant file full of them decays
+into a record of a pass nobody ran.
 
 Two things follow from this table, and they are the reason it exists.
 

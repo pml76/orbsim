@@ -44,3 +44,36 @@ The mechanism is easy to break by accident -- a pipeline created with
 is written down here, named in the constants, and will be checked by the phase
 A grid test: a grid drawn at planetary radius must show no jitter and no
 fighting as the camera moves.
+
+## Update, 2026-09-21: the matrix exists, and half the check is done
+
+The decision above is unchanged. What follows is what has since been built,
+recorded here rather than edited in, because an accepted record says what was
+decided and when rather than tracking the code.
+
+[M1-10](../plan/tasks/m1-10-reverse-z-projection.md) added
+[`src/view/Projection.hpp`](../../src/view/Projection.hpp), which is the
+projection this record describes: the near plane at depth 1.0, infinity at
+0.0, no far plane, and the Vulkan y flip in one entry of one matrix. The
+conventions are stated in that header.
+
+**The arithmetic half is now asserted**, on the processor, in
+`tests/test_projection.cpp`. In particular the precision claim this record
+rests on is measured rather than asserted by hand: two points one metre apart
+at 1000 km from the camera land 9 to 14 ulp apart in a 32-bit float depth
+buffer, across near planes from 1 cm to 100 m, while a conventional 0-to-1
+projection with a far plane at 1e9 m puts them on **bit-identical** values --
+not merely closer, but indistinguishable. That comparison is in the suite, so
+the argument in "Why" above is a test result rather than a claim.
+
+**The grid test named above is still outstanding**, and it is a different
+thing: it runs on the GPU, it belongs to phase A's drawing tasks, and what it
+checks is that the depth *state* of a real pipeline matches this convention.
+Nothing in M1-10 touches a pipeline.
+
+**This binds every projection this project adds**, not only the perspective
+one. A flat projection for the instrument panels was considered for M1-10 and
+deliberately deferred (register decision 105); whenever it arrives it must map
+its near plane to 1, because the depth buffer is cleared to 0.0 and every
+pipeline compares with `GREATER`. A projection built the conventional way
+round draws nothing, and the symptom points nowhere near the cause.
