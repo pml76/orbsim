@@ -571,6 +571,7 @@ set(ORBSIM_TESTS
         test_math
         test_orbit
         test_orbit_scales
+        test_projection
         test_sun
         test_time
         test_view_math
@@ -583,10 +584,11 @@ foreach(test_name IN LISTS ORBSIM_TESTS)
     catch_discover_tests(${test_name})
 endforeach()
 
-# The one suite that links orbsim_view. Named here rather than added to
+# The suites that link orbsim_view. Named here rather than added to
 # orbsim_test_support, so that the other suites still cannot see the
 # render-side maths and the link graph keeps saying so.
 target_link_libraries(test_view_math PRIVATE orbsim_view)
+target_link_libraries(test_projection PRIVATE orbsim_view)
 
 # The generated reference data is the data the error budgets were measured
 # against, or `check` says otherwise (M1-06, register decision 44). Horizons
@@ -904,6 +906,7 @@ orbsim_add_header_selfcheck(orbsim_header_selfcheck orbsim_core
 orbsim_add_header_selfcheck(orbsim_view_header_selfcheck orbsim_view
         view/Frame.hpp
         view/Mat4.hpp
+        view/Projection.hpp
 )
 orbsim_add_header_selfcheck(orbsim_test_header_selfcheck orbsim_test_support
         tests/FixtureFile.hpp
@@ -911,6 +914,7 @@ orbsim_add_header_selfcheck(orbsim_test_header_selfcheck orbsim_test_support
 )
 add_dependencies(test_orbit orbsim_header_selfcheck orbsim_test_header_selfcheck)
 add_dependencies(test_view_math orbsim_view_header_selfcheck)
+add_dependencies(test_projection orbsim_view_header_selfcheck)
 
 if(ORBSIM_BUILD_APP)
     orbsim_add_header_selfcheck(orbsim_render_header_selfcheck orbsim_render_deps
