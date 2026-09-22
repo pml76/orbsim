@@ -106,3 +106,30 @@ Decision 96's commit is the precedent for reading the count that way.
 - **How M1-62 types its accelerations.** `quantity()` gives it what 0019
   promised; whether the force model wants a named `Acceleration` alias as well
   is that task's to settle.
+
+## Update, 2026-09-22: the first composite type
+
+Added the same day this record was accepted, with
+[M1-11](../plan/tasks/m1-11-camera.md). `view::Camera` is the first type to
+take this shape that is **not a scalar**: four members, of which three have a
+physical bound, behind a private constructor and a `from()` returning
+`std::expected<Camera, CameraError>`.
+
+Two things it establishes, neither of which the record decided:
+
+- **Trivial copyability survives the shape.** Measured before it was chosen: a
+  class with a private constructor and no public default is still trivially
+  copyable, so a validated aggregate costs nothing structurally against the
+  plain one it replaces.
+- **The validating predicate can belong to another header.** `Camera::from`
+  calls `view/Projection.hpp`'s own `isUsableFieldOfView` and
+  `isFinitePositive` rather than writing a second pair. That is what makes "a
+  validated camera's projection can only fail on its aspect ratio" true by
+  construction instead of by two functions agreeing for as long as somebody
+  keeps them in step (`VERIFICATION.md` rule 2).
+
+And one cost it names, which the scalar cases did not have: a validated value
+that a control loop **rebuilds every frame** must be rebuilt through the
+factory, so M1-21's camera controls handle a reported error where an aggregate
+would have taken an assignment. That was put up before the ruling and accepted
+([register decision 116](../plan/milestone-1-decisions.md)).

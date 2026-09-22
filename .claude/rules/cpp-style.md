@@ -58,6 +58,16 @@ cmake -S coding-guidelines-example -B coding-guidelines-example/build -G Ninja \
   unit algebra, which is why the force model can still write
   `mu.quantity() / (r * r)`. Adding a unit with a physical bound? Give it the
   same shape ([ADR 0022](../../docs/adr/0022-a-bounded-scalar-validates-itself.md)).
+  **Since M1-11 a composite type may take it too**: `view::Camera` has a private
+  constructor and a `Camera::from(...)` returning
+  `std::expected<Camera, CameraError>`, and is still trivially copyable. A type
+  whose members have physical bounds gets the same treatment as a scalar whose
+  value does.
+- **`f64` becomes `f32` in exactly one function**, `toRenderSpace` in
+  `src/view/Camera.cpp`. `grep static_cast<f32> src/` is the audit and it should
+  find three casts in one place; a fourth anywhere else is a jitter bug waiting
+  to be filed. Narrowing needs a camera-relative subtraction in `f64` before it,
+  which is the whole point of the function.
 - Decisions that span files go in [`docs/adr/`](../../docs/adr/) as short
   records: what was decided, what was considered, why. Read the relevant one
   before changing anything it covers.
@@ -66,8 +76,9 @@ cmake -S coding-guidelines-example -B coding-guidelines-example/build -G Ninja \
   hold CRLF in files nobody has touched; leave those alone rather than
   producing a diff in which every line changed.
 - The physics test suites are under `tests/` and link only `orbsim_core`;
-  `tests/test_view_math.cpp` and `tests/test_projection.cpp` additionally link
-  `orbsim_view`, which links `orbsim_core` and nothing else. They are named one
+  `tests/test_view_math.cpp`, `tests/test_projection.cpp` and
+  `tests/test_camera.cpp` additionally link `orbsim_view`, which links
+  `orbsim_core` and nothing else. They are named one
   by one in `CMakeLists.txt` rather than given the link through
   `orbsim_test_support`, so the exception set is visible and the other suites
   still cannot see the render-side maths. **Nothing in `tests/` may include a Vulkan or

@@ -31,8 +31,20 @@ at, which is the other half of how this project verifies rendering.
     with a golden.
   - **`grid-jitter`**: five frames written as
     `grid-jitter.0.png` … `grid-jitter.4.png`, with the camera translating by
-    0.25 m between frames — a distance that quantises visibly under naive `f32`
-    narrowing and must be invisible with the subtraction done first.
+    0.25 m between frames.
+
+    **Amended 2026-09-22 with M1-11** ([register decision 120](../milestone-1-decisions.md)).
+    This bullet said 0.25 m was "a distance that quantises visibly under naive
+    `f32` narrowing". It is not, at this altitude: measured, the naive path
+    lands at **5.8e-4 px** with the camera 400 km above the point and **7.9e-5
+    px** at the limb, where the budget is 0.05 px — inside it by 86 times, and
+    at the limb indistinguishable from doing it properly. Half a metre at a
+    range of 400 km is 1.25 microradians. The probe and the budget are
+    unchanged, because this is still the end-to-end confirmation of M1-11's
+    number through the real GPU path; what was wrong was the claim that the
+    wrong method would visibly fail here. **Where it does fail is at 1 AU (95
+    times over) and at short range (8.6 times over at 1 km),** which is where
+    `tests/test_camera.cpp` puts its teeth.
 
 ## Out of scope
 

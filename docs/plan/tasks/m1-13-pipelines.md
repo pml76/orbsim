@@ -80,3 +80,11 @@ least once, with the log read rather than skimmed.
 - [ ] No new hand-written destructor outside `VulkanHandle.hpp`.
 - [ ] Every `VkResult` in the new code goes through `vkCheck`.
 - [ ] The depth comparison constant is named, commented and used once.
+- [ ] **`projectionOf` is deleted from `view/Camera.hpp` and `view/Camera.cpp`**,
+      with its test case in `tests/test_camera.cpp`. M1-11 added it as an
+      explicitly temporary entry point so that its own suite could drive the
+      whole chain and so that the camera's field of view and near plane were
+      not carried unread for two tasks; this task owns the projection from
+      here on. [Register decision 117](../milestone-1-decisions.md), ruled
+      2026-09-22. The obligation is on this list rather than only in a
+      comment because a comment nobody opens is not a plan.
