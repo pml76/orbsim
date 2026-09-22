@@ -461,3 +461,41 @@ TEST_CASE("the admissible extremes are accepted, and each error says something d
             describe(ProjectionError::InvalidFieldOfView));
     REQUIRE(!describe(ProjectionError::InvalidNearPlane).empty());
 }
+
+TEST_CASE("a point behind the camera lands back on screen, and is told apart by name") {
+    // **The hazard `isInFrontOfCamera` exists for** (M1-11, register decision
+    // 122), and the measurement that earned it its place. A negative w is the
+    // distance in front of the camera come out negative, and dividing by it
+    // flips both signs -- so the point does not vanish, it reappears mirrored.
+    const Projection projection = projectionOrFail(kOrdinaryFov, kOrdinaryAspect, kOrdinaryNear);
+
+    const ViewPoint inFront{.xyz = Position{0.5, 0.4, -10.0}, .w = Dimensionless{1.0}};
+    const ViewPoint behind{.xyz = Position{-0.5, -0.4, 10.0}, .w = Dimensionless{1.0}};
+
+    const ClipPoint frontClip = transform(projection, inFront);
+    const ClipPoint behindClip = transform(projection, behind);
+
+    // The names say it, which is the whole point of the function.
+    REQUIRE(isInFrontOfCamera(frontClip));
+    REQUIRE(!isInFrontOfCamera(behindClip));
+
+    // And the arithmetic does not: x and y are **bit-identical**, not merely
+    // close. Nothing downstream of the divide could tell these apart.
+    const auto frontNdc = perspectiveDivide(frontClip);
+    const auto behindNdc = perspectiveDivide(behindClip);
+    REQUIRE(frontNdc.v.x.bitIdentical(behindNdc.v.x));
+    REQUIRE(frontNdc.v.y.bitIdentical(behindNdc.v.y));
+
+    // The depth is what differs, and it leaves the unit interval -- which is
+    // the signal a caller would have to know to look for, and the reason the
+    // predicate above is better than expecting them to.
+    REQUIRE(frontNdc.v.z.value() > 0.0);
+    REQUIRE(behindNdc.v.z.value() < 0.0);
+
+    // A point on the camera plane is the loud case, and it is now a
+    // precondition rather than an infinity. Asserted in Debug; here the claim
+    // is only that the predicate refuses it, since w is not greater than zero.
+    const ClipPoint onThePlane =
+        transform(projection, ViewPoint{.xyz = Position{0.5, 0.4, 0.0}, .w = Dimensionless{1.0}});
+    REQUIRE(!isInFrontOfCamera(onThePlane));
+}

@@ -108,9 +108,35 @@ template <FrameTag kFrame, auto kXyz, auto kW> struct Vec4 {
 // the quotient is dimensionless, which is exactly what normalised device
 // coordinates are. A `Frame::Ndc` was planned and then not added, because
 // building it showed the unit already says it.
+//
+// **w must not be zero, and that is asserted rather than reported** (M1-11,
+// register decision 122). A Vec4 whose w is zero is not an affine point at
+// all: it is a point at infinity -- a direction -- and the quotient it
+// denotes does not exist. Measured before the guard was added: it returned
+// **infinity**, and a **not-a-number** when the numerator was zero too, which
+// is a point sitting exactly at the camera. That is the "silently coping"
+// third option ADR 0002 separates from reporting and asserting.
+//
+// Asserted and not reported because the caller is the only thing that can be
+// wrong: a graphics card never reaches this state -- clipping removes those
+// points before the divide -- and a caller projecting points on the processor
+// has to clip for the same reason. `absOf(w) > 0.0` rather than `w != 0.0`,
+// which is the comparison `-Wfloat-equal` refuses: it rejects both signed
+// zeros, and a NaN as well, since every comparison against one is false.
+//
+// **What it deliberately does not check is the sign**, and the reason is
+// worth knowing because the alternative is tempting. Homogeneous coordinates
+// are scale-invariant -- (x, y, z, w) and (-x, -y, -z, -w) denote the same
+// point -- so a negative w is perfectly valid for a Vec4 in general. It means
+// something only under *this project's clip convention*, where w is the
+// distance in front of the camera, and there it means the point is behind the
+// camera. That is a clip-space concern and belongs to whatever clips, not to
+// a generic divide. `isInFrontOfCamera` below is the name for it, and its
+// comment carries the measurement that makes it worth having.
 template <FrameTag kFrame, auto kXyz, auto kW>
 [[nodiscard]] constexpr FramedVec3<kFrame, kXyz / kW>
 perspectiveDivide(const Vec4<kFrame, kXyz, kW>& p) noexcept {
+    ORBSIM_EXPECTS(absOf(p.w.value()) > 0.0);
     return FramedVec3<kFrame, kXyz / kW>{
         .v =
             Vec3<kXyz / kW>{
@@ -436,6 +462,37 @@ template <FrameTag kFrame> using HomogeneousPoint = Vec4<kFrame, units::kMetre, 
 using WorldPoint = HomogeneousPoint<kWorld>;
 using ViewPoint = HomogeneousPoint<kView>;
 using ClipPoint = Vec4<kClip, units::kMetre, units::kMetre>;
+
+// Is this clip point in front of the camera?
+//
+// **A name for a hazard that measurement showed is worse than the one it sits
+// beside** (M1-11, register decision 122). `perspectiveDivide` above refuses a
+// zero w, which is loud: infinity, or a not-a-number. A *negative* w is the
+// quiet one. Under this project's convention w is the distance in front of the
+// camera, so a negative w is a point behind it -- and the divide by a negative
+// number flips both signs, so the point lands back **on screen, mirrored**.
+//
+// Measured, and this is the number that earned this function its place: a
+// point 10 m behind the camera at view-space (-0.5, -0.4) produces x and y
+// **bit-identical** to a point 10 m in front at (+0.5, +0.4). Not close --
+// identical. The only thing that tells them apart is the depth, which comes
+// out negative and therefore outside [0, 1]; a caller who does not think to
+// check it sees a plausible position and no warning at all. That is the
+// "finite, plausible, wrong" shape ADR 0022 exists to remove, and here it is
+// in the render maths.
+//
+// It is **not** folded into `perspectiveDivide`, because a negative w is
+// legitimate for a Vec4 in general: homogeneous coordinates are
+// scale-invariant. It is only wrong in clip space, so the check lives on the
+// clip-space type and nowhere else.
+//
+// Nothing clips on the processor yet, so nothing calls this in `src/`. It
+// exists so that the first thing that does has a name to reach for rather than
+// a sign test somebody has to think of, and so that the measurement above is
+// attached to code rather than to a comment in a status file.
+[[nodiscard]] constexpr bool isInFrontOfCamera(const ClipPoint& p) noexcept {
+    return p.w.value() > 0.0;
+}
 
 [[nodiscard]] constexpr WorldTransform identityTransform() noexcept {
     return identityMatrix<kWorld, units::kMetre, mp_units::one>();
