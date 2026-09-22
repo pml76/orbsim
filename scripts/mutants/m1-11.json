@@ -1,0 +1,159 @@
+{
+  "task": "M1-11",
+  "tree": "build/relwithdebinfo",
+  "note": "The camera, the view matrix and the f64 -> f32 boundary. Two of these are the defect the whole task exists to prevent -- narrowing before the subtraction, and not subtracting at all -- and one is the error no other claim in the suite can see: a view matrix that forgets to conjugate. A rotation and its inverse are both rotations, both have determinant +1, and each round-trips perfectly against the other, so orthonormality, the determinant and the round trip are all blind to it; only the case that checks where the camera's own axes land can kill it, and the run confirmed that is what kills it first. The tolerance mutant is the one that proves the coupled budget does work: kUnitQuaternionTolerance is read by the suite's own boundary probes, so loosening it moves the probes with it and the refusal cases still pass -- what kills it is the view matrix's 270 ulp orthonormality budget, which the looser tolerance blows through. **Run twice, 2026-09-22.** The first run was 10 caught, 1 survived, 4 invalid. The survivor was real and is the reason two assertions now exist: a bitIdentical that compared only x passed every case in the suite, because every Vec3f compared there differs from its expected value in x or not at all. The four invalid mutants were all the same mistake in the mutants rather than in the code -- `&& false` on a guard makes its `return` unreachable, which -Wunreachable-code-return rejects under -Werror, and dropping the subtraction left `camera` unused. Rewritten so that each compiles and therefore says something.",
+  "mutants": [
+    {
+      "name": "the narrowing happens before the subtraction",
+      "file": "src/view/Camera.cpp",
+      "find": "    const Position relative = worldMetres - camera.position();",
+      "replace": "    const Position relative = Position{static_cast<f64>(static_cast<f32>(worldMetres.x.value()) - static_cast<f32>(camera.position().x.value())), static_cast<f64>(static_cast<f32>(worldMetres.y.value()) - static_cast<f32>(camera.position().y.value())), static_cast<f64>(static_cast<f32>(worldMetres.z.value()) - static_cast<f32>(camera.position().z.value()))};",
+      "suites": [
+        "test_camera"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the camera position is not subtracted at all",
+      "file": "src/view/Camera.cpp",
+      "find": "    const Position relative = worldMetres - camera.position();",
+      "replace": "    const Position relative = worldMetres + (camera.position() * 0.0);",
+      "suites": [
+        "test_camera"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the subtraction runs the wrong way round",
+      "file": "src/view/Camera.cpp",
+      "find": "    const Position relative = worldMetres - camera.position();",
+      "replace": "    const Position relative = camera.position() - worldMetres;",
+      "suites": [
+        "test_camera"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "x and y are transposed at the GPU boundary",
+      "file": "src/view/Camera.cpp",
+      "find": "        .x = static_cast<f32>(relative.x.value()),",
+      "replace": "        .x = static_cast<f32>(relative.y.value()),",
+      "suites": [
+        "test_camera"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the view matrix does not conjugate the orientation",
+      "file": "src/view/Camera.cpp",
+      "find": "    return retargetFrame<kView>(rotationOf<kWorld>(camera.orientation().conjugate()));",
+      "replace": "    return retargetFrame<kView>(rotationOf<kWorld>(camera.orientation()));",
+      "suites": [
+        "test_camera"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the view matrix carries a translation as well as the rotation",
+      "file": "src/view/Camera.cpp",
+      "find": "    return retargetFrame<kView>(rotationOf<kWorld>(camera.orientation().conjugate()));",
+      "replace": "    return retargetFrame<kView>(rotationOf<kWorld>(camera.orientation().conjugate()) * translationOf<kWorld>(camera.position()));",
+      "suites": [
+        "test_camera"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the factory does not check the position",
+      "file": "src/view/Camera.cpp",
+      "find": "    if (!isFinite(position.x.value()) || !isFinite(position.y.value()) ||\n        !isFinite(position.z.value())) {\n        return std::unexpected(CameraError::NotFinitePosition);\n    }",
+      "replace": "    // mutant: the position is not checked",
+      "suites": [
+        "test_camera"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the factory does not check the orientation",
+      "file": "src/view/Camera.cpp",
+      "find": "    if (!isUnitQuaternion(orientation, kUnitQuaternionTolerance)) {\n        return std::unexpected(CameraError::NotUnitOrientation);\n    }",
+      "replace": "    // mutant: the orientation is not checked",
+      "suites": [
+        "test_camera"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the factory does not check the field of view",
+      "file": "src/view/Camera.cpp",
+      "find": "    if (!detail::isUsableFieldOfView(verticalFov.value())) {\n        return std::unexpected(CameraError::InvalidFieldOfView);\n    }",
+      "replace": "    // mutant: the field of view is not checked",
+      "suites": [
+        "test_camera"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the factory does not check the near plane",
+      "file": "src/view/Camera.cpp",
+      "find": "    if (!detail::isFinitePositive(nearPlane.value())) {\n        return std::unexpected(CameraError::InvalidNearPlane);\n    }",
+      "replace": "    // mutant: the near plane is not checked",
+      "suites": [
+        "test_camera"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the projection ignores the camera's near plane",
+      "file": "src/view/Camera.cpp",
+      "find": "    return infiniteReverseZPerspective(camera.verticalFov(), aspect, camera.nearPlane());",
+      "replace": "    return infiniteReverseZPerspective(camera.verticalFov(), aspect, Metres{1.0});",
+      "suites": [
+        "test_camera"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "bit identity looks only at x",
+      "file": "src/view/Camera.hpp",
+      "find": "    return bitsOf(left.x) == bitsOf(right.x) && bitsOf(left.y) == bitsOf(right.y) &&\n           bitsOf(left.z) == bitsOf(right.z);",
+      "replace": "    return bitsOf(left.x) == bitsOf(right.x);",
+      "suites": [
+        "test_camera"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "a value past 32-bit range is called narrowable",
+      "file": "src/view/Camera.hpp",
+      "find": "    return isFinite(value) && absOf(value) <= static_cast<f64>(std::numeric_limits<f32>::max());",
+      "replace": "    return isFinite(value);",
+      "suites": [
+        "test_camera"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the unit-quaternion test uses the squared norm",
+      "file": "src/core/Math.hpp",
+      "find": "    const f64 n = std::sqrt((q.w * q.w) + (q.x * q.x) + (q.y * q.y) + (q.z * q.z));\n    // Written as a comparison against the norm rather than `!(|n-1| > tol)`:",
+      "replace": "    const f64 n = (q.w * q.w) + (q.x * q.x) + (q.y * q.y) + (q.z * q.z);\n    // Written as a comparison against the norm rather than `!(|n-1| > tol)`:",
+      "suites": [
+        "test_camera",
+        "test_math"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the orientation tolerance is ten times looser",
+      "file": "src/core/Math.hpp",
+      "find": "inline constexpr Tolerance kUnitQuaternionTolerance{16.0 * std::numeric_limits<f64>::epsilon()};",
+      "replace": "inline constexpr Tolerance kUnitQuaternionTolerance{160.0 * std::numeric_limits<f64>::epsilon()};",
+      "suites": [
+        "test_camera",
+        "test_math"
+      ],
+      "expect": "caught"
+    }
+  ]
+}

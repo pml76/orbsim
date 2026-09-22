@@ -640,8 +640,17 @@ TEST_CASE("the narrowing is exact, and it is the subtraction that makes it so") 
     // A difference every width holds exactly comes back untouched.
     const Camera exactCamera =
         cameraOrFail(Position{6771000.0, 0.0, 0.0}, Quat{}, degrees(45.0), kNearPlane);
-    REQUIRE(bitIdentical(toRenderSpace(Position{6771001.5, 2.25, -3.0}, exactCamera),
-                         Vec3f{.x = 1.5F, .y = 2.25F, .z = -3.0F}));
+    const Vec3f exact = toRenderSpace(Position{6771001.5, 2.25, -3.0}, exactCamera);
+    REQUIRE(bitIdentical(exact, Vec3f{.x = 1.5F, .y = 2.25F, .z = -3.0F}));
+
+    // **And bit identity looks at all three components.** Added because the
+    // mutation pass found it missing: a `bitIdentical` that compared only `x`
+    // survived every assertion above, since each of them differs from its
+    // expected value in `x` or not at all. Two mutants now die here
+    // (VERIFICATION.md rule 19, and rule 23 -- a check nothing can fail is not
+    // a check).
+    REQUIRE(!bitIdentical(exact, Vec3f{.x = 1.5F, .y = 2.26F, .z = -3.0F}));
+    REQUIRE(!bitIdentical(exact, Vec3f{.x = 1.5F, .y = 2.25F, .z = -3.01F}));
 }
 
 TEST_CASE("the jitter budget holds, and does not depend on the distance to the origin") {
