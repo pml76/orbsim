@@ -34,6 +34,19 @@ inline constexpr f64 kTau = 2.0 * kPi;
     return std::bit_cast<std::uint64_t>(v);
 }
 
+// The same for a 32-bit float, so that the one type this project keeps in 32
+// bits -- `view/Camera.hpp`'s `Vec3f`, at the GPU boundary -- says bit
+// identity with the same word as everything else does (M1-11).
+//
+// **An overload rather than a template**, so that the return type is the width
+// of the argument. Written out because `bitsOf(someFloat)` would otherwise
+// promote to `f64` and draw `-Wdouble-promotion`, which is an error here: a
+// promotion is exact, so the comparison would still be right, and a warning
+// that fires on correct code is a warning that teaches nothing.
+[[nodiscard]] constexpr std::uint32_t bitsOf(f32 v) noexcept {
+    return std::bit_cast<std::uint32_t>(v);
+}
+
 // The base for a strong scalar that is *not* a physical quantity: one f64, no
 // implicit conversion in either direction, ordering, and arithmetic that keeps
 // the type.

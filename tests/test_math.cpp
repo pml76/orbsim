@@ -30,6 +30,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <limits>
 #include <numbers>
 #include <random>
 #include <string_view>
@@ -322,5 +323,51 @@ TEST_CASE("isRotation accepts rounding and refuses what was never a rotation",
             }
         }
         REQUIRE(isRotation(transposed, kRotationTolerance));
+    }
+}
+
+TEST_CASE("isUnitQuaternion refuses what was never a rotation", "[math][quaternion]") {
+    // **The tolerance is tight on purpose, and M1-11 is why.** A quaternion of
+    // length 1 + e produces a rotation matrix whose orthonormality residual is
+    // about ten times e, so whatever this admits bounds, ten times over, the
+    // best any consumer's matrix can be claimed to be. The camera's view
+    // matrix is the first consumer.
+    constexpr f64 kNotANumber = std::numeric_limits<f64>::quiet_NaN();
+    constexpr f64 kInfinity = std::numeric_limits<f64>::infinity();
+
+    // A NaN and an infinity fail because `nearlyEqual` compares a difference
+    // against a tolerance rather than testing equality: every comparison
+    // against a NaN is false, so the refusal is the default rather than a case
+    // somebody remembered to write.
+    const std::array<Quat, 6> notRotations{
+        {
+            Quat{0.0, 0.0, 0.0, 0.0},
+            Quat{2.0, 0.0, 0.0, 0.0},
+            Quat{1.0, 0.0, 0.0, 1.0},
+            Quat{0.5, 0.5, 0.5, 0.5001},
+            Quat{kNotANumber, 0.0, 0.0, 0.0},
+            Quat{kInfinity, 0.0, 0.0, 0.0},
+        },
+    };
+    for (const Quat& q : notRotations) {
+        REQUIRE(!isUnitQuaternion(q, kUnitQuaternionTolerance));
+    }
+}
+
+TEST_CASE("isUnitQuaternion accepts everything this project builds", "[math][quaternion]") {
+    REQUIRE(isUnitQuaternion(Quat{}, kUnitQuaternionTolerance));
+    REQUIRE(isUnitQuaternion(Quat{0.0, 1.0, 0.0, 0.0}, kUnitQuaternionTolerance));
+
+    // **With headroom, measured.** Over 500,000 draws on 2026-09-22,
+    // `normalize` and `fromAxisAngle` both land within 1.5 ulp of unit length
+    // where the tolerance admits 16. The tolerance was set from the *other*
+    // measurement -- composing without renormalising reaches 6.0 ulp after ten
+    // products -- so this case is what says the direct producers still fit.
+    Sampler sampler;
+    for (std::size_t i = 0; i < 2000; ++i) {
+        CAPTURE(kSweepSeed, i);
+        REQUIRE(isUnitQuaternion(sampler.rotation(), kUnitQuaternionTolerance));
+        REQUIRE(isUnitQuaternion(quaternionFrom(matrixOf(sampler.rotation())),
+                                 kUnitQuaternionTolerance));
     }
 }

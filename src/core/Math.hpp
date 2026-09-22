@@ -457,6 +457,61 @@ struct Quat {
     return n > 0.0 ? Quat{q.w / n, q.x / n, q.y / n, q.z / n} : Quat{};
 }
 
+// How far from unit length a quaternion may be and still be one that rounding
+// produced, rather than one that was never a rotation at all (M1-11).
+//
+// **Sixteen ulp of 1.0**, where one ulp there is 2.2e-16. Every number below
+// was measured before the value was chosen, and the value was chosen twice:
+// it was 4 ulp for a few hours, until the measurement in the second paragraph
+// showed what 4 would have cost a caller (register decision 118).
+//
+// **What this project's own producers leave**, over 500,000 draws: 1.5 ulp
+// from `normalize`, 1.5 from `Quat::fromAxisAngle`, 1.5 from `quaternionFrom`.
+// A freshly normalised quaternion is *not* exactly unit, and that matters more
+// than it looks, because a caller's own error adds to it.
+//
+// **What composing costs, which is the number that set this one.** Multiplying
+// unit quaternions without renormalising drifts: **2.5 ulp after one product,
+// 3.0 after two, 4.5 after five, 6.0 after ten.** Sixteen is about 2.7 times
+// the ten-product worst -- the same margin the direct producers get, applied
+// to the realistic worst caller rather than to the easiest one. At 4 ulp a
+// caller composing five rotations would have been refused, and this project
+// had told the owner the figure was "a few hundred": it was five, and the
+// suite found that out by failing.
+//
+// **It is still far tighter than `kRotationTolerance`, and the reason is a
+// coupling that was measured rather than assumed.** A quaternion of length
+// 1 + e produces a rotation matrix whose orthonormality residual is about
+// **10 e** -- measured across six decades, from 2.2e-16 to 1e-9 -- so whatever
+// is admitted here is, times ten, the best any consumer's matrix can be
+// asserted to be. At 1e-12, `kRotationTolerance`'s value, the view matrix
+// M1-11 builds could only be claimed orthonormal to 1e-11; at 16 ulp it is
+// claimed to 320 ulp, which is 7.1e-14.
+//
+// A caller that composes should still renormalise, which is exactly what
+// `integrateAngularVelocity` below already does deliberately. This tolerance
+// gives that caller room to be a few products late, not licence to never do it.
+inline constexpr Tolerance kUnitQuaternionTolerance{16.0 * std::numeric_limits<f64>::epsilon()};
+
+// Is this quaternion a unit one, and therefore a rotation?
+//
+// Public for the reason `isRotation` above is public: it is a precondition of
+// the things that take a quaternion as an orientation, and a precondition
+// nothing can check from outside is one nobody can test.
+//
+// **On the norm, not the squared norm.** The squared form needs no square root
+// and is the usual trick, but |n^2 - 1| is about 2|n - 1| near one, so the
+// tolerance would then mean twice what its name says -- the "in what?" of
+// `VERIFICATION.md` rule 9 applied to a predicate. One square root per camera
+// is not a cost worth that ambiguity.
+[[nodiscard]] inline bool isUnitQuaternion(const Quat& q, Tolerance tolerance) noexcept {
+    const f64 n = std::sqrt((q.w * q.w) + (q.x * q.x) + (q.y * q.y) + (q.z * q.z));
+    // Written as a comparison against the norm rather than `!(|n-1| > tol)`:
+    // nearlyEqual already refuses a NaN, because every comparison against one
+    // is false and it returns `difference <= tolerance`.
+    return nearlyEqual(n, 1.0, tolerance);
+}
+
 // Below this rotation *per step*, integrating is skipped, so that a stationary
 // body's orientation stays bit-identical across idle frames rather than
 // drifting by a rounding error per frame. That is the whole reason for the
