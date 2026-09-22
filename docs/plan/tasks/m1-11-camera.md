@@ -148,7 +148,15 @@ quantises visibly was corrected by this task's measurement (decision 120).
 
 ## Done when
 
-- [x] `check` green in both trees. 188 tests, 0 failed, in each.
+- [x] `check` green in both trees. 189 tests, 0 failed, in each, and **all six
+      toolchains re-run** rather than left to the phase gate: `asan` and
+      `windows-msvc` at 189, `linux-sanitize` and `linux-gcc` at 188, none
+      failing, and no report from AddressSanitizer or UndefinedBehaviorSanitizer
+      -- the run that matters most for a task whose subject is a narrowing, since
+      an out-of-range cast to `f32` is undefined behaviour rather than merely
+      inexact. **gcc rejected a nested `std::array` initialiser in the suite that
+      clang and MSVC had both accepted**, after a day of green under two front
+      ends, which is `VERIFICATION.md` rule 20's argument in one line.
 - [x] `grep static_cast<f32>` over `src/` finds them in exactly one function.
 - [x] `orbsim_view` becomes a STATIC library when `Camera.cpp` arrives; M1-09
       left it INTERFACE because a sourceless static library does not configure.

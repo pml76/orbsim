@@ -187,9 +187,9 @@ const f64 kAdmittedUlps = kUnitQuaternionTolerance.value() / kEps;
     // down -z, so the camera's +z is the outward direction.
     const std::array<std::array<f64, 3>, 3> byColumn{
         {
-            {right.x.value(), right.y.value(), right.z.value()},
-            {up.x.value(), up.y.value(), up.z.value()},
-            {outward.x.value(), outward.y.value(), outward.z.value()},
+            {{right.x.value(), right.y.value(), right.z.value()}},
+            {{up.x.value(), up.y.value(), up.z.value()}},
+            {{outward.x.value(), outward.y.value(), outward.z.value()}},
         },
     };
     RotationMatrix m{};
