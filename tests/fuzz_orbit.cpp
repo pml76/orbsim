@@ -51,6 +51,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <limits>
 
 namespace {
 
@@ -154,19 +155,33 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     const auto [posX, posY, posZ, velX, velY, velZ, muValue] = raw;
     const StateVector sv{.pos = {posX, posY, posZ}, .vel = {velX, velY, velZ}};
 
-    // The factory, not a constructor: since M1-87 a GravParam cannot hold a
-    // value that is not finite and positive, so the fuzzer now exercises the
-    // *factory* with arbitrary bytes and stops where it refuses -- the shape
-    // fuzz_time already uses for DeltaUt1 and DeltaT.
-    const auto muOrError = GravParam::from(muValue);
-    if (!muOrError) return 0;
-    const GravParam mu = *muOrError;
+    // **The factory is fuzzed, and the case is not thrown away for failing it.**
+    //
+    // Since M1-87 a GravParam cannot hold a value that is not finite and
+    // positive, so the raw word goes to the factory and its verdict is a claim:
+    // whatever comes back accepted must be inside the range it promises. That
+    // is what fuzz_time already does for DeltaUt1 and DeltaT.
+    const auto rawMu = GravParam::from(muValue);
+    if (rawMu) {
+        require(std::isfinite(rawMu->value()));
+        require(rawMu->value() > 0.0);
+    }
 
-    // What a fuzzer can know about an accepted value without knowing the right
-    // answer: it is inside the range the factory promises. This is the claim
-    // that would catch a factory quietly widening its bound.
-    require(std::isfinite(mu.value()));
-    require(mu.value() > 0.0);
+    // Then the case continues on a mu the bytes can always produce. **The first
+    // version of this simply returned when the factory refused, and that threw
+    // away 50.02% of the input space** -- every negative, zero or non-finite mu
+    // word, and with it the six state-vector words of the same input, which had
+    // nothing wrong with them. Measured over the 64-bit pattern space on
+    // 2026-09-22, which is how it was noticed at all.
+    //
+    // Folding the sign away keeps the magnitude the fuzzer chose and costs only
+    // the sign bit, which nothing downstream can use: mu <= 0 is unrepresentable
+    // now, so there is no behaviour left for a negative word to reach. Only a
+    // NaN or an infinity dead-ends here, about 0.02% of patterns.
+    const auto usable =
+        GravParam::from(std::fabs(muValue) + std::numeric_limits<double>::denorm_min());
+    if (!usable) return 0;
+    const GravParam mu = *usable;
 
     // The time step reuses an input word so the fuzzer can steer it too.
     const Seconds dt{velX};
