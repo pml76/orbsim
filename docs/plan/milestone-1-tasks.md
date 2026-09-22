@@ -1,11 +1,14 @@
 # Milestone 1 — the task queue
 
-Status: **planned 2026-09-08.** 86 tasks, in one order. (84 until 2026-09-13,
+Status: **planned 2026-09-08.** 87 tasks, in one order. (84 until 2026-09-13,
 when an audit found phase F had no gate although the rule below says every
 phase ends with one. The new task is **M1-85**, sitting between 77 and 78:
 renumbering seven tasks to make it "78" would have broken the identifiers that
 commits and records cite -- decision 30. 85 until 2026-09-19, when UT1 from TT
-was split out of M1-07 as **M1-86**, sitting before it -- decision 73.)
+was split out of M1-07 as **M1-86**, sitting before it -- decision 73. 86 until
+2026-09-22, when a consistency pass over the source found `orbit/` answering the
+same bad input three different ways and **M1-87** was added before M1-11 to
+close it -- decision 109.)
 Which of them are done is in [`../STATUS.md`](../STATUS.md), not here.
 
 This is the working document for [milestone 1](milestone-1-earth.md): Earth, an
@@ -39,7 +42,7 @@ one starts.
 
 ### The standing rules, which every task inherits
 
-These are not repeated in the 86 documents. They apply to all of them.
+These are not repeated in the 87 documents. They apply to all of them.
 
 1. **The test is written first and seen to fail**, for the right reason
    ([`../VERIFICATION.md`](../VERIFICATION.md) rule 1). The failure message goes
@@ -129,6 +132,9 @@ numbers are identifiers and were not changed, because commits, records and
 HISTORY already cite them. **86 runs before 07**, since 2026-09-19 (decision
 73): the Earth's orientation needs a UT1 from the simulation's TT clock, and
 M1-86 is the conversion that gives one without the leap-second table.
+**87 runs before 11**, since 2026-09-22 (decision 109): it changes a public
+interface of `orbit/` and two types in `core/Units.hpp` that every later task
+builds on, and the cost of that grows with every call site written first.
 
 | # | Task | Prerequisites | Ends with |
 |---|---|---|---|
@@ -141,6 +147,7 @@ M1-86 is the conversion that gives one without the leap-second table.
 | [08](tasks/m1-08-solar-position.md) | Solar position | 05, 06, 07 | Sun direction and distance, 0.02″ against Horizons |
 | [09](tasks/m1-09-orbsim-view.md) | The `orbsim_view` library and `Mat4` | 01 | A Vulkan-free render library the tests can link, and a `Mat4` that carries the units of both spaces it maps between ([ADR 0020](../adr/0020-transforms-carry-their-units.md)) **and the frames** ([ADR 0021](../adr/0021-transforms-carry-their-frames.md)) |
 | [10](tasks/m1-10-reverse-z-projection.md) | Reverse-Z with an infinite far plane | 09 | ADR 0003 made real, and tested |
+| [87](tasks/m1-87-validated-scalars.md) | `Eccentricity` and `GravParam` validated at construction | — | A bad value with nowhere to live, and one error strategy in `orbit/` |
 | [11](tasks/m1-11-camera.md) | The camera, and the f64 → f32 boundary | 10 | One named narrowing function |
 | [12](tasks/m1-12-render-quality.md) | `Count<Derived>` and `RenderQuality` | 09 | An empty quality struct, and the path it travels |
 | [13](tasks/m1-13-pipelines.md) | Graphics pipelines and shader modules | 01, 09 | The renderer can create a pipeline |

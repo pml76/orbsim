@@ -282,7 +282,7 @@ Part 4 records which of them a machine currently checks and which do not yet
 exist. `CLAUDE.md` points at both.
 
 **Milestone 1 has two documents of its own, and both are load-bearing.**
-[`plan/milestone-1-tasks.md`](plan/milestone-1-tasks.md) is the queue: 86 tasks
+[`plan/milestone-1-tasks.md`](plan/milestone-1-tasks.md) is the queue: 87 tasks
 in one order, each with its own document under `plan/tasks/`, and the standing
 rules every task inherits.
 [`plan/milestone-1-decisions.md`](plan/milestone-1-decisions.md) is the
