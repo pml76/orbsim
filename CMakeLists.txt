@@ -474,13 +474,20 @@ target_link_libraries(orbsim_core
 # under tests/ includes a Vulkan or SDL header" a property of the link graph
 # rather than of anyone's memory.
 #
-# INTERFACE rather than STATIC, because M1-09 leaves it header-only and a
-# sourceless static library does not configure at all -- CMake stops with "No
-# SOURCES given to target" (measured 2026-09-20). It becomes STATIC the moment
-# M1-11 adds Camera.cpp; nothing else about it changes.
+# STATIC since M1-11, which added Camera.cpp. It was INTERFACE while M1-09 and
+# M1-10 left it header-only, because a sourceless static library does not
+# configure at all -- CMake stops with "No SOURCES given to target" (measured
+# 2026-09-20). Nothing else about it changed: it still links orbsim_core and
+# nothing else, and orbsim_core still cannot link it back.
 # ---------------------------------------------------------------------------
-add_library(orbsim_view INTERFACE)
-target_link_libraries(orbsim_view INTERFACE orbsim_core)
+set(ORBSIM_VIEW_SOURCES
+        src/view/Camera.cpp
+)
+add_library(orbsim_view STATIC ${ORBSIM_VIEW_SOURCES})
+target_link_libraries(orbsim_view
+        PUBLIC orbsim_core
+        PRIVATE orbsim_warnings orbsim_sanitizers
+)
 
 # The structural claim, checked rather than remembered (ADR 0012, and
 # VERIFICATION.md rule 21: a check not reachable from the build is an
@@ -565,6 +572,7 @@ target_compile_definitions(orbsim_test_support PRIVATE
 
 set(ORBSIM_TESTS
         test_astro_time
+        test_camera
         test_double_double
         test_earth_orientation
         test_fixture_file
@@ -590,6 +598,7 @@ endforeach()
 # render-side maths and the link graph keeps saying so.
 target_link_libraries(test_view_math PRIVATE orbsim_view)
 target_link_libraries(test_projection PRIVATE orbsim_view)
+target_link_libraries(test_camera PRIVATE orbsim_view)
 
 # The generated reference data is the data the error budgets were measured
 # against, or `check` says otherwise (M1-06, register decision 44). Horizons
@@ -905,6 +914,7 @@ orbsim_add_header_selfcheck(orbsim_header_selfcheck orbsim_core
         orbit/Orbit.hpp
 )
 orbsim_add_header_selfcheck(orbsim_view_header_selfcheck orbsim_view
+        view/Camera.hpp
         view/Frame.hpp
         view/Mat4.hpp
         view/Projection.hpp
@@ -916,6 +926,7 @@ orbsim_add_header_selfcheck(orbsim_test_header_selfcheck orbsim_test_support
 add_dependencies(test_orbit orbsim_header_selfcheck orbsim_test_header_selfcheck)
 add_dependencies(test_view_math orbsim_view_header_selfcheck)
 add_dependencies(test_projection orbsim_view_header_selfcheck)
+add_dependencies(test_camera orbsim_view_header_selfcheck)
 
 if(ORBSIM_BUILD_APP)
     orbsim_add_header_selfcheck(orbsim_render_header_selfcheck orbsim_render_deps
