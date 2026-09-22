@@ -22,6 +22,15 @@
 // that refuses -- which is the same coverage against the thing that now does
 // the work.
 //
+// **Every refusal asserts `!has_value()` before it reads `error()`**, and that
+// is not belt and braces. `std::expected::error()` on an expected that holds a
+// value is undefined behaviour: in practice it reads the storage and compares
+// equal to NotFinite, the zero enumerator, so a case written without the guard
+// **passes while the factory accepts the value it was supposed to refuse**.
+// The mutation pass of 2026-09-22 found exactly that -- the guard had been
+// dropped while splitting these cases to clear a cognitive-complexity finding,
+// and a fix for a lint finding had quietly removed the thing the test was for.
+//
 // **One claim per case, and one loop per case.** Catch2's REQUIRE expands to a
 // branch, so a case with three loops of two assertions scores past
 // readability-function-cognitive-complexity on the generated function. Splitting
@@ -78,6 +87,7 @@ TEST_CASE("a negative eccentricity is refused by its own name", "[units][eccentr
     for (const f64 negative : kNegatives) {
         INFO("eccentricity " << negative);
         const auto ecc = Eccentricity::from(negative);
+        REQUIRE(!ecc.has_value());
         REQUIRE(ecc.error() == UnitError::NegativeEccentricity);
     }
 }
@@ -88,6 +98,7 @@ TEST_CASE("a non-finite eccentricity is refused by a different name", "[units][e
     for (const f64 value : kNonFinite) {
         INFO("eccentricity " << value);
         const auto ecc = Eccentricity::from(value);
+        REQUIRE(!ecc.has_value());
         REQUIRE(ecc.error() == UnitError::NotFinite);
     }
 }
@@ -122,6 +133,7 @@ TEST_CASE("a non-positive gravitational parameter is refused by name", "[units][
     for (const f64 refused : std::to_array<f64>({0.0, -0.0, -1e-300, -1.0, -1e300})) {
         INFO("mu " << refused);
         const auto mu = GravParam::from(refused);
+        REQUIRE(!mu.has_value());
         REQUIRE(mu.error() == UnitError::NonPositiveGravity);
     }
 }
@@ -133,6 +145,7 @@ TEST_CASE("a non-finite gravitational parameter is refused by a different name",
     for (const f64 value : kNonFinite) {
         INFO("mu " << value);
         const auto mu = GravParam::from(value);
+        REQUIRE(!mu.has_value());
         REQUIRE(mu.error() == UnitError::NotFinite);
     }
 }

@@ -61,8 +61,23 @@ of building the seam this way.
   rather than leaving it as a surprise.
 - **Dependency traits are right**: `PointMassGravity` reports `Position`, and a
   consumer asking for velocity-independence accepts it.
-- **Named failures**: a zero radius, a non-finite state, a non-positive `mu`,
-  each by name, matching the vocabulary `OrbitError` already uses.
+- **Named failures**: a zero radius and a non-finite state, each by name,
+  matching the vocabulary `OrbitError` already uses.
+
+  *(This listed a non-positive `mu` too, until 2026-09-22. It is no longer
+  reachable: [M1-87](m1-87-validated-scalars.md) made `GravParam` a validated
+  type, so a non-positive one cannot be constructed, and
+  `OrbitError::NonPositiveGravity` was removed with the five checks that
+  returned it. An error a caller cannot receive is the dead defensive code
+  ADR 0002 argues against.*
+
+  *The other half of that change is the one this task depends on: `GravParam`
+  **kept** its quantity, so `mu.quantity() / (r * r)` is still an m·s⁻²
+  quantity and the `Acceleration` below can come out of the dimension system
+  rather than out of a comment. That was the reason the validated type was
+  built to hold a `Scalar` rather than an `f64` --
+  [ADR 0022](../../adr/0022-a-bounded-scalar-validates-itself.md), register
+  decision 110.)*
 - **The variant dispatches**, and adding an alternative that a visitor does not
   handle fails to compile — demonstrated in a comment with the actual error,
   since it cannot be a runtime test.

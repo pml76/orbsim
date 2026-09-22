@@ -265,7 +265,7 @@ claims to outlive the conversation.
 | 92-97 | The six M1-09 rulings, below: four put before its code and two that followed from the first | [ADR 0020](../adr/0020-transforms-carry-their-units.md), [M1-09](tasks/m1-09-orbsim-view.md), and the header of [`src/view/Mat4.hpp`](../../src/view/Mat4.hpp) |
 | 98 | Frames, reversing 94 | [ADR 0021](../adr/0021-transforms-carry-their-frames.md), [`src/view/Frame.hpp`](../../src/view/Frame.hpp) and the header of [`src/view/Mat4.hpp`](../../src/view/Mat4.hpp) |
 | 99–105 | The seven M1-10 rulings, below: the reversed projection, its tolerances, and the flat projection ruled out | [M1-10](tasks/m1-10-reverse-z-projection.md), [ADR 0003](../adr/0003-reverse-z-depth.md)'s update of 2026-09-21, and the headers of [`src/view/Projection.hpp`](../../src/view/Projection.hpp) and [`tests/test_projection.cpp`](../../tests/test_projection.cpp) |
-| 106–114 | The nine M1-87 rulings, below: two scalars validated at construction, and what that removes | [M1-87](tasks/m1-87-validated-scalars.md), ADR 0022 when the code lands, and the headers of [`src/core/Units.hpp`](../../src/core/Units.hpp) and [`src/orbit/Orbit.hpp`](../../src/orbit/Orbit.hpp) |
+| 106–114 | The nine M1-87 rulings, below: two scalars validated at construction, and what that removes | [ADR 0022](../adr/0022-a-bounded-scalar-validates-itself.md), [M1-87](tasks/m1-87-validated-scalars.md), and the headers of [`src/core/Units.hpp`](../../src/core/Units.hpp) and [`src/orbit/Orbit.hpp`](../../src/orbit/Orbit.hpp) |
 
 *(The row above was added on 2026-09-21. This table stopped at 98 while section
 9 ran to 105, which contradicts the promise at the top of this file that

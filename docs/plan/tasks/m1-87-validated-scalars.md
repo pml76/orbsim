@@ -1,10 +1,10 @@
 # M1-87 — `Eccentricity` and `GravParam` are validated at construction
 
-Phase: A | Status: **not started**
+Phase: A | Status: **done, 2026-09-22**
 Prerequisites: none in the queue. Runs **before M1-11**, because it changes a
 public interface of `orbit/` and a type in `core/Units.hpp` that every later
 task builds on (decision 109)
-Decided by: ADR 0022 (written with this task); register decisions 106–114
+Decided by: [ADR 0022](../../adr/0022-a-bounded-scalar-validates-itself.md); register decisions 106–114
 
 ## Purpose
 
@@ -165,18 +165,62 @@ must come out **unchanged except for the four removed assertions and the ones
 the new cases add**, which is what says the refactor changed no behaviour.
 Decision 96's commit is the precedent for using the count that way.
 
+## What the numbers turned out to be
+
+**56 construction sites**, 3 in `src/` and 53 in `tests/`, exactly as measured
+before the work started.
+
+**The assertion count is the evidence that nothing else changed.** 1,369,392
+before, **1,369,454** after, in 168 cases where there were 155. The +62 is
+`test_orbit` -4 and `test_orbit_scales` -1 -- the five assertions that can no
+longer be written -- plus 67 in the new `tests/test_units_validated.cpp`.
+Nothing else moved.
+
+**All six toolchains, 2026-09-22.** 173 tests under both Windows trees, `asan`
+and `windows-msvc`; 172 under `linux-sanitize` and `linux-gcc`, which are core
+only and do not build the GPU smoke test. No build error or warning anywhere.
+
+**The mutation pass ran twice, and the first run is the one worth reading.**
+Twelve mutants; 11 caught and 1 survived. The code was right and the *test* was
+not: every refusal case read `error()` without asserting `!has_value()` first,
+which is undefined behaviour on an expected that holds a value and in practice
+compares equal to `NotFinite`, the zero enumerator. The case passed while the
+factory accepted the NaN it was written to refuse.
+
+The guard had been dropped while splitting the suite to clear a
+`readability-function-cognitive-complexity` finding -- a fix for a lint finding
+had quietly removed the thing the test was for, which is `VERIFICATION.md`
+rule 23 arriving inside this task. Two mutants of the same shape settle the
+mechanism rather than leaving it a theory: the `GravParam` NaN mutant was caught
+in both runs, because there the NaN is still *refused* and only the name is
+wrong, so `error()` is well-defined.
+
+Second run, guard restored: **twelve of twelve, none surviving, none invalid**,
+seven of them at compile time.
+
+**Two findings arrived from the tooling and both were fixed rather than
+suppressed.** `elementsFromState` reached 88 lines against a threshold of 80, so
+the eccentricity construction moved into `assignShape` -- an in/out `Elements&`,
+the shape its two neighbours already have for this exact budget. And the new
+suite first tripped `clang-analyzer`'s `EnumCastOutOfRange` inside Catch2's own
+flag arithmetic; splitting it to one claim per case cleared that and the
+complexity finding together, with no `NOLINT`.
+
 ## Done when
 
-- [ ] `check` green in both trees.
-- [ ] `Eccentricity{-0.5}` and `GravParam{-1.0}` do not compile, each shown
-      failing once rather than assumed.
-- [ ] `mu.quantity() / (r * r)` yields an m·s⁻² quantity, proven by a
+- [x] `check` green in both trees.
+- [x] `Eccentricity{-0.5}` and `GravParam{-1.0}` do not compile, each shown
+      failing once rather than assumed -- with a control that does compile, so
+      the probe proves something.
+- [x] `mu.quantity() / (r * r)` yields an m·s⁻² quantity, proven by a
       `static_assert`, so M1-62 has what ADR 0019 promised it.
-- [ ] `NonPositiveGravity` appears nowhere in `orbit/`.
-- [ ] Every refusal has a test that asks for it by name.
-- [ ] A mutation pass, with its file committed.
-- [ ] All six toolchains before the commit: both Windows trees, `asan`,
+- [x] `NonPositiveGravity` appears nowhere in `orbit/`.
+- [x] Every refusal has a test that asks for it by name -- and asserts
+      `!has_value()` before reading `error()`, which the mutation pass is the
+      reason anyone knows to check.
+- [x] A mutation pass, with its file committed.
+- [x] All six toolchains before the commit: both Windows trees, `asan`,
       `windows-msvc`, `linux-sanitize`, `linux-gcc`.
-- [ ] ADR 0022 written, superseding ADR 0019's clause that `Eccentricity` is
+- [x] ADR 0022 written, superseding ADR 0019's clause that `Eccentricity` is
       an mp-units kind and extending ADR 0018's argument; the ADR index and
       `STATUS.md` updated.

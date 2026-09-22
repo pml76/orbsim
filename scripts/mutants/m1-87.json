@@ -1,0 +1,151 @@
+{
+  "task": "M1-87",
+  "tree": "build/relwithdebinfo",
+  "note": "Eccentricity and GravParam validated at construction. The question this pass asks is not whether the suite covers the new factories -- tests/test_units_validated.cpp exists for that and was written for it -- but whether it covers them for the right reasons.\n\n**It ran twice, and the first run is the reason to keep this file.** 11 caught, 1 survived: \"Eccentricity::from accepts a non-finite value\". The code was right; the *test* was not. Every refusal case read `REQUIRE(ecc.error() == ...)` with no `has_value()` guard before it, and `std::expected::error()` on an expected that holds a value is undefined behaviour -- in practice it reads the storage and compares equal to NotFinite, the zero enumerator. So the case passed while the factory accepted the NaN it was written to refuse.\n\nThe guard had been dropped while splitting the suite to clear a readability-function-cognitive-complexity finding: a fix for a lint finding had quietly removed the thing the test was for. That is VERIFICATION.md rule 23 -- a check that stops checking looks exactly like one that passes.\n\n**Two mutants of the same shape pin the mechanism down rather than leaving it a theory.** \"GravParam::from loses the NaN\" was caught in both runs, because there the NaN is still refused, only under the wrong name, so error() is well-defined. The Eccentricity one survived because there the NaN is accepted, so error() is undefined. Same mutation, opposite outcomes, and the difference is exactly the missing guard.\n\nSecond run, with the guard restored: 12 caught, 0 survived, 0 invalid -- seven at compile time on the static_asserts beside the types, five by tests. That is the pass this file records; the first is what earned it.",
+  "mutants": [
+    {
+      "name": "Eccentricity::from accepts a negative value",
+      "file": "src/core/Units.hpp",
+      "find": "        if (v < 0.0) return std::unexpected(UnitError::NegativeEccentricity);",
+      "replace": "        if (v < -1.0e300) return std::unexpected(UnitError::NegativeEccentricity);",
+      "suites": [
+        "test_units_validated",
+        "test_orbit",
+        "test_orbit_scales"
+      ],
+      "expect": "caught",
+      "note": "Widened rather than deleted, so the parameter stays used and the branch stays reachable -- an `if (false)` would be a -Wunreachable-code error and read as a kill without testing anything (PROJECT_STATE.md section 8). Expected to die at compile time on the static_assert that Eccentricity::from(-0.5) has no value, before any test runs."
+    },
+    {
+      "name": "Eccentricity::from accepts a non-finite value",
+      "file": "src/core/Units.hpp",
+      "find": "        if (!isFinite(v)) return std::unexpected(UnitError::NotFinite);\n        if (v < 0.0) return std::unexpected(UnitError::NegativeEccentricity);",
+      "replace": "        if (!isFinite(v) && v < 0.0) return std::unexpected(UnitError::NotFinite);\n        if (v < 0.0) return std::unexpected(UnitError::NegativeEccentricity);",
+      "suites": [
+        "test_units_validated"
+      ],
+      "expect": "caught",
+      "note": "A NaN now reaches the sign test, fails it, and is accepted. The static_asserts cannot catch this -- MSVC's constant evaluator disagrees with its own runtime about NaN, which is why the non-finite cases are run-time tests.\n\n**This is the mutant that survived the first run**, and it found a hole in the test rather than in the code: error() was being read without has_value() being checked first. Kept pointed at exactly that, because it is the assertion most likely to be weakened again by somebody tidying the suite."
+    },
+    {
+      "name": "Eccentricity::from refuses a negative value under the wrong name",
+      "file": "src/core/Units.hpp",
+      "find": "        if (v < 0.0) return std::unexpected(UnitError::NegativeEccentricity);",
+      "replace": "        if (v < 0.0) return std::unexpected(UnitError::NotFinite);",
+      "suites": [
+        "test_units_validated"
+      ],
+      "expect": "caught",
+      "note": "The refusal still happens; only the name is wrong. A suite that checked has_value() and not the error would pass this, which is why every refusal case asserts the name."
+    },
+    {
+      "name": "Eccentricity::from stores a value other than the one it was given",
+      "file": "src/core/Units.hpp",
+      "find": "        return Eccentricity{v};",
+      "replace": "        return Eccentricity{std::nextafter(v, 1.0e300)};",
+      "suites": [
+        "test_units_validated",
+        "test_orbit",
+        "test_orbit_scales"
+      ],
+      "expect": "caught",
+      "note": "One ulp, in the direction that keeps every value inside its bound, so no refusal changes. Only the bit-identity case can see this -- every tolerance in the file would accept it, which is the reason that case is written bit for bit."
+    },
+    {
+      "name": "GravParam::from accepts a mu of zero",
+      "file": "src/core/Units.hpp",
+      "find": "        if (!(v > 0.0)) return std::unexpected(UnitError::NonPositiveGravity);",
+      "replace": "        if (!(v >= 0.0)) return std::unexpected(UnitError::NonPositiveGravity);",
+      "suites": [
+        "test_units_validated",
+        "test_orbit",
+        "test_orbit_scales"
+      ],
+      "expect": "caught",
+      "note": "The off-by-one-comparison that matters: a massless central body becomes constructible. Expected at compile time, on the static_assert that GravParam::from(0.0) has no value."
+    },
+    {
+      "name": "GravParam::from accepts a negative mu",
+      "file": "src/core/Units.hpp",
+      "find": "        if (!(v > 0.0)) return std::unexpected(UnitError::NonPositiveGravity);",
+      "replace": "        if (!(v > -1.0e300)) return std::unexpected(UnitError::NonPositiveGravity);",
+      "suites": [
+        "test_units_validated",
+        "test_orbit",
+        "test_orbit_scales"
+      ],
+      "expect": "caught",
+      "note": "The condition this whole task exists to hold. If this survives, nothing in the suite is actually asking whether mu is positive."
+    },
+    {
+      "name": "GravParam::from loses the NaN, by testing the sign first",
+      "file": "src/core/Units.hpp",
+      "find": "        if (!isFinite(v)) return std::unexpected(UnitError::NotFinite);\n        // Negated, so that a NaN would fail it too",
+      "replace": "        if (!isFinite(v) && v > 0.0) return std::unexpected(UnitError::NotFinite);\n        // Negated, so that a NaN would fail it too",
+      "suites": [
+        "test_units_validated"
+      ],
+      "expect": "caught",
+      "note": "A NaN fails `v > 0.0`, so it is no longer reported as NotFinite -- it falls through to the sign test and is refused as NonPositiveGravity instead. The refusal survives; the name does not. Run-time only, for the same MSVC reason as the second mutant."
+    },
+    {
+      "name": "GravParam::quantity hands back a scaled quantity",
+      "file": "src/core/Units.hpp",
+      "find": "    [[nodiscard]] constexpr Quantity quantity() const noexcept { return q_; }",
+      "replace": "    [[nodiscard]] constexpr Quantity quantity() const noexcept { return Quantity{q_.value() * 2.0}; }",
+      "suites": [
+        "test_units_validated"
+      ],
+      "expect": "caught",
+      "note": "The accessor decision 110 exists for. The unit would still be right -- this is why the test asserts the number as well as the static_assert asserting the unit."
+    },
+    {
+      "name": "two unit errors describe the same thing",
+      "file": "src/core/Units.hpp",
+      "find": "        return \"an eccentricity must not be negative\";",
+      "replace": "        return \"the value must be finite\";",
+      "suites": [
+        "test_units_validated"
+      ],
+      "expect": "caught",
+      "note": "The usual way a describe() rots is a case answered by copying its neighbour. Caught only by the case that compares them pairwise, not by the one that checks each is non-empty."
+    },
+    {
+      "name": "the conic fix-up moves the eccentricity to the wrong side of 1",
+      "file": "src/orbit/Orbit.cpp",
+      "find": "        el.ecc = eccentricityAdjacentToOne(0.0);",
+      "replace": "        el.ecc = eccentricityAdjacentToOne(2.0);",
+      "suites": [
+        "test_orbit",
+        "test_orbit_scales"
+      ],
+      "expect": "caught",
+      "note": "An ellipse whose eccentricity is nudged to just above 1 instead of just below. This mutant is aimed at the helper the refactor introduced: the values it produces are still valid eccentricities, so the factory cannot catch it and only the conic classification can."
+    },
+    {
+      "name": "assignShape accepts a non-finite eccentricity",
+      "file": "src/orbit/Orbit.cpp",
+      "find": "    const auto ecc = Eccentricity::from(toDouble(state.ecc));\n    if (!ecc) return std::unexpected(OrbitError::NotFinite);",
+      "replace": "    const auto ecc = Eccentricity::from(toDouble(state.ecc));\n    if (!ecc) return std::unexpected(OrbitError::RectilinearOrbit);",
+      "suites": [
+        "test_orbit",
+        "test_orbit_scales"
+      ],
+      "expect": "caught",
+      "note": "The error a caller sees, changed. The value is still refused, so anything asking only whether elementsFromState failed would pass. If this survives it means no test reaches this path by name, and the honest answer would be to say so rather than invent one."
+    },
+    {
+      "name": "the default eccentricity is not zero",
+      "file": "src/core/Units.hpp",
+      "find": "    f64 value_{};\n};",
+      "replace": "    f64 value_{0.5};\n};",
+      "suites": [
+        "test_units_validated",
+        "test_orbit",
+        "test_orbit_scales"
+      ],
+      "expect": "caught",
+      "note": "Elements holds one as an aggregate member, so this is what an element set starts with. Expected at compile time, on the static_assert that a default Eccentricity is zero."
+    }
+  ]
+}
