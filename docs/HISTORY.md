@@ -1765,6 +1765,189 @@ Three things the verification caught that reading would not have:
   clang reports nothing. One platform tells you about your code, two about
   your assumptions.
 
+### M1-10, reverse-Z with an infinite far plane, 2026-09-21
+
+[ADR 0003](adr/0003-reverse-z-depth.md) became real seventeen days after it was
+accepted, and its central claim stopped being an argument. Two points a metre
+apart at 1000 km land **9 to 14 ulp apart** in a 32-bit depth buffer, where a
+conventional projection with a far plane at 1e9 m puts them on **bit-identical**
+values. The control sits in the suite beside the claim, because a precision
+claim with nothing to compare against is a number rather than evidence.
+
+The depth row is constant, so `depth == nearPlane / distance` exactly, and that
+is what the suite asserts -- bit for bit, the rule itself rather than one of its
+consequences.
+
+**`constexpr` did not survive the three front ends**, which is rule 20 paying
+for itself in a single measurement. clang 23.1.0 and MSVC 19.51 both refuse
+`std::tan` in a constant expression; gcc-14 accepts it as an extension. A
+`static_assert` over the whole function would have been green on one compiler
+and red on two. So the entry point is `inline`, and a `constexpr` helper taking
+an already-computed focal length carries the matrix layout in **seven**
+compile-time assertions -- which is why six of the pass's fourteen mutants die
+before a test runs (decision 99).
+
+Four of the task's numbers were replaced by measurement (decisions 99-104), and
+the flat projection for the instrument panels was ruled **out** after its
+consequences were measured rather than argued (decision 105).
+
+**The mutation pass was fourteen of fourteen, none surviving, none invalid**,
+and it did two things beyond counting. It killed M1-09's declared survivor, the
+perspective divide multiplying by w. And it **corrected two written-down claims
+that had never been run**: M1-09's prediction about which test would execute
+that survivor -- false, because at a near plane of 1 m the depth numerator and
+denominator are the same number, so `n/n` and `n*n` are both 1 and the case
+accepts every wrong divide constructible -- and then M1-10's own comment about
+what its two extra assertions buy, which was also wrong, for a different reason:
+they read `transform()`'s output *before* the divide, so they cannot see a fault
+inside it.
+
+That is rule 23 applied to a sentence rather than to two implementations. **A
+prediction about which test will catch a mutant is not a measurement**, and a
+mutant file full of them decays into a record of a pass nobody ran.
+
+### The consistency pass, 2026-09-21
+
+A sweep of every document against the tree, asked for rather than triggered by
+a failure. The headline is the part that did not move: **`STATUS.md`'s test
+table was exactly right.** Running all eleven suites gave 1,369,392 assertions
+in 155 cases, and every one of the eleven per-suite figures matched to the
+digit. The link checker, the mutation anchors, `clang-format` and
+`clang-tidy --verify-config` were all clean.
+
+What had drifted was prose, and it drifted in one direction: numbers quoted
+somewhere other than the one place they live.
+
+- **The Sun's error budget was stated twice with different numbers.** The
+  register's budget table still read 0.1" and 1e-6 AU, and the paragraph under
+  it still defended that figure with the twelvefold headroom decision 85 had
+  rejected -- while the task document, the test and ADR 0016 all carried 0.02"
+  and 5e-8 AU. The frame's row had been amended when decision 76 tightened it;
+  the Sun's had not.
+- **`STATUS.md` disagreed with itself** about the size of the suite: 140 CTest
+  entries in the MSVC paragraph and 160 eighteen lines below.
+- **`realism.md`, the live gap list, described a tree from before phase A's
+  astronomy** -- "no notion of where any body is, and no frame other than the
+  central body's inertial frame", when `src/astro/` had both.
+- **`HISTORY.md` opened its change history** with "All of it on
+  `review-fixes-2026-09` ... which is untouched", in the present tense, under
+  the section heading, governing about 1,700 lines of work done on `master`.
+- **`CODING_GUIDELINES.md` recommended CI in one place** -- "Put it in CI and it
+  stays true forever" -- for a thing already done as four header self-check
+  targets inside `check`, in a project that declined CI in ADR 0005.
+- **The lint suppression costs had been measured over nine translation units**;
+  there are twenty-two. Re-measured: 2,949, 2,799 and 2,707 findings against
+  679, 908 and 725.
+- **The swappable-parameters blind-spot note said three sites**, and ended "if a
+  fourth site ever appears, the option is how to find it." A fourth had appeared
+  on 2026-09-17 with ADR 0019, four days after the measurement, and nothing had
+  run it. The option is on now, and the four sites carry a `NOLINT` each with
+  its reason.
+- **The worked example had never received decision 96's option.** The register
+  records that blind spot as closed "project-wide"; there are two `.clang-tidy`
+  files and only one had been changed. Switching it on in the example revealed
+  exactly one site -- `checkNear`, which `CODING_GUIDELINES` section 2 cites by
+  name as the case that check exists to catch.
+
+**Three measurements in that session returned a confident zero, and all three
+were broken instruments rather than clean results.** A grep for
+`warning: ... [check]` where `WarningsAsErrors: '*'` prints
+`error: ... [check,-warnings-as-errors]`. An inline `-config` string that failed
+to parse, so clang-tidy ran with no check enabled at all. And, on the worked
+example, a config that omitted `SuppressParametersUsedTogether` and therefore
+inherited the default that hides everything. Each looked exactly like a tree
+with nothing to report.
+
+**And two claims made during the pass were wrong.** "`IgnoreClassesWithAll
+MemberVariablesBeingPublic` is not set in either `.clang-tidy`" -- it is set, in
+the example's; the root had been checked and the result reported as though both
+had been. And a measurement that nothing used `GravParam`'s unit arithmetic,
+which the compiler disproved the next day. Both are recorded where they were
+made rather than quietly corrected.
+
+### M1-87, two scalars that validate themselves, 2026-09-22
+
+The source half of the consistency pass, checking the code against
+`CLAUDE.md`'s twelve non-negotiables. Most of it held: the `VkResult`
+discipline with its two documented exceptions, the one-way layering at both the
+link and include level, the bounded safeguarded solver that still reports
+non-convergence, constants carrying their units, no unexplained suppression
+anywhere, no `TODO` in the tree.
+
+**What did not hold was the error strategy in `orbit/`.** One class of bad input
+had three answers: `elementsFromState`, `propagate` and `propagateElements`
+reported a non-positive `mu` by name; `stateFromElements` and `orbitInfo`
+asserted it; and three of the four anomaly converters did neither. ADR 0002 and
+`CODING_GUIDELINES` section 7 both ask for one strategy per layer.
+
+The third group is what decided the task, and it was measured on a probe built
+against the real `orbsim_core` rather than reasoned about:
+
+```
+e = -0.5000 | trueToEcc finite  +1.127589 | eccToTrue finite  +0.415419
+e = -1.5000 | trueToEcc NaN     -nan(ind) | eccToTrue NaN     -nan(ind)
+e = +0.5000 | trueToEcc finite  +0.415419 | eccToTrue finite  +1.127589
+```
+
+A negative eccentricity between -1 and 0 came back as a **finite, plausible,
+wrong** number -- and each converter returned the *other's* answer for +0.5,
+because the `sqrt((1-e)/(1+e))` factor inverts. Below -1 a NaN was returned as a
+valid `Radians`. Nothing reported, nothing asserted: rule 7's "silently coping",
+four lines from a sibling that asserted the same condition.
+
+**The answer was rule 24 rather than rule 7** -- prefer the bug you cannot
+write. Both scalars became validated classes, so `NonPositiveGravity` and its
+five checks went, and three assertions nothing could reach went with them
+([ADR 0022](adr/0022-a-bounded-scalar-validates-itself.md), decisions 106-114).
+
+Two things about how it was decided are worth keeping.
+
+**A cost was accepted in writing and then turned out to be avoidable.**
+Validating `GravParam` supersedes ADR 0019's clause that `mu / (r*r)` produces
+an acceleration type, and M1-62's planned named failure for a non-positive `mu`.
+Both were put up before the ruling. Afterwards, `Scalar<R>` turned out to
+*derive from* `mp_units::quantity<R, f64>` -- so a class that holds the `Scalar`
+keeps the algebra -- and the cheaper design was put back up rather than
+absorbed (decision 110). It mattered sooner than expected: `specificEnergy` in
+the test support already wrote `mu / length(sv.pos)`, and its own comment
+records that dropping mu's unit had once left the expression "numerically right
+... and unprovable".
+
+**The mutation pass found a defect in the test written for the task.** Twelve
+mutants; the first run caught 11 and one survived. The code was right and the
+test was not: every refusal case read `error()` without asserting
+`!has_value()` first, which is undefined behaviour on an expected that holds a
+value and in practice compares equal to `NotFinite`, the zero enumerator. The
+case passed while the factory accepted the NaN it was written to refuse.
+
+The guard had been there in the first version. It was dropped while splitting
+the suite to clear a `readability-function-cognitive-complexity` finding -- **a
+fix for a lint finding quietly removing the thing the test was for**. Two
+mutants of the same shape settle the mechanism rather than leaving it a theory:
+the `GravParam` NaN mutant was caught in both runs, because there the NaN is
+still refused and only the name is wrong, so `error()` is well-defined. Second
+run, guard restored: twelve of twelve, none surviving, none invalid.
+
+**The assertion count is what says nothing else moved.** 1,369,392 before,
+1,369,454 after, in 168 cases where there were 155: `test_orbit` -4 and
+`test_orbit_scales` -1, being the five assertions that can no longer be
+written, plus 67 in the new `tests/test_units_validated.cpp`. All six
+toolchains, 173 tests on Windows and under `asan` and MSVC, 172 under both
+Linux presets.
+
+**And a fuzz target was changed and not run.** M1-87 pointed `fuzz_orbit` at the
+new factory and returned early when it refused -- which threw away **50.02%** of
+the input space, measured over the 64-bit pattern space: every negative, zero or
+non-finite `mu` word, and with it the six state-vector words of the same input.
+`check` compiles the fuzz sources but does not execute them, so the change was
+committed, built and left unexercised until an inventory of deferred work went
+looking. Folding the sign away instead keeps the magnitude the fuzzer chose and
+dead-ends only on a NaN or an infinity, about 0.02% of patterns. Afterwards, on
+a tree deleted and reconfigured first: `fuzz_orbit` 9,834,988 runs and
+`fuzz_time` 2,798,737 runs, 241 seconds each, zero findings.
+
+---
+
 ## 4. The bug that justified the session
 
 `propagate()` returned `SolverDidNotConverge` for a plain circular orbit at

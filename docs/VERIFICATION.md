@@ -350,6 +350,19 @@ is exact to 2 ulp at every scale now (`core/Math.hpp`), and bit-identical to
 before wherever before was right. Afterwards: 22.6 million executions in 61
 seconds, zero findings.
 
+**The reach of a fuzz target is part of it, and can be lost without a test
+failing.** M1-87 pointed `fuzz_orbit`'s entry at the new `GravParam` factory and
+returned early where it refused -- which discarded **50.02%** of the input
+space, measured over the 64-bit pattern space: every negative, zero or
+non-finite `mu` word, and with it the six state-vector words of the same input.
+`check` compiles the fuzz sources but does not run them, so the change was
+committed, built and left unexercised. Folding the sign away instead keeps the
+magnitude the fuzzer chose and dead-ends only on a NaN or an infinity, about
+0.02% of patterns. **Ask what fraction of inputs a change makes the target
+reject before it tests anything**, and run it afterwards -- 2026-09-22:
+`fuzz_orbit` 9,834,988 runs, `fuzz_time` 2,798,737, 241 seconds each, zero
+findings.
+
 Highest value still to come is a **file parser** — a scenario loader, a DE440
 reader, a DDS/KTX2 header parser — because those consume untrusted bytes and are
 the classic memory-safety surface. The harness is there for them now.
@@ -625,6 +638,38 @@ nothing.
 When a test passes on the first try, ask what would have to be broken for it to
 fail. If the answer is "nothing plausible", the test is decoration.
 
+**And distrust a null result, which is the same rule pointed at a measurement
+rather than at two implementations.** A tool that reports nothing looks exactly
+like a tree with nothing to report. Before quoting a zero, make the instrument
+produce a one: run it against something known to fail, and only then believe
+the clean answer.
+
+Four instances in a single day, 2026-09-21 and 09-22, all of them caught only
+because the zero was too good:
+
+- a grep for `warning: ... [check]` where `WarningsAsErrors: '*'` makes
+  clang-tidy print `error: ... [check,-warnings-as-errors]`. Zero findings for
+  three checks that in fact have thousands;
+- an inline `-config` string to clang-tidy that failed to parse, so it ran with
+  no check enabled at all -- and said so only in a line that scrolled past;
+- the same measurement on the worked example, with a config that omitted
+  `SuppressParametersUsedTogether` and therefore inherited the default that
+  hides most pairs;
+- and a test, which is the one that matters. Every refusal case in
+  `tests/test_units_validated.cpp` read `REQUIRE(ecc.error() == ...)` with no
+  `has_value()` guard before it. Reading `error()` on a `std::expected` that
+  holds a value is undefined behaviour, and in practice compares equal to the
+  zero enumerator -- so the case **passed while the factory accepted the value
+  it was written to refuse**. The guard had been dropped while splitting the
+  suite to satisfy a cognitive-complexity check: a fix for a lint finding
+  quietly removing the thing the test was for.
+
+The last one was found by the mutation pass and by nothing else, which is the
+argument for rule 19 in one sentence. Note the shape it shares with the
+clang-tidy header filter that went sixteen commits matching nothing (rule 20):
+**a check that silently stops checking is indistinguishable from one that
+passes**, and only an instrument you have seen fail tells the two apart.
+
 ### Rule 24. Prefer the bug you cannot write
 
 The whole of `CODING_GUIDELINES.md` in one line, and the reason it belongs in a
@@ -663,7 +708,7 @@ rules a machine checks and which depend on a person remembering.
 | 16 Determinism | `check` — `TEST_CASE("propagation is bit-identical across runs")`, over 100 steps | **done** |
 | 17 Dimensional analysis | The compiler — mp-units under `core/Units.hpp` and `Vec3<R>`, [ADR 0019](adr/0019-vectors-carry-their-unit.md) | **done** |
 | 18 Coverage | By hand, periodically. Orbit.cpp 99.2% lines | **done** |
-| 19 Mutation testing | By hand, periodically; the **anchors** are in `check` | exercised 2026-09-07, again 2026-09-19 on M1-04, M1-06 and M1-05, 2026-09-20 on M1-86, M1-07, M1-08 and M1-09, and **2026-09-21 on M1-10: fourteen of fourteen, none surviving, none invalid**, six of them at compile time. M1-09's declared survivor died there -- and the pass found that *two written-down claims about which test would catch what* had never been run, one of them in M1-09's own mutant file |
+| 19 Mutation testing | By hand, periodically; the **anchors** are in `check` | exercised 2026-09-07, again 2026-09-19 on M1-04, M1-06 and M1-05, 2026-09-20 on M1-86, M1-07, M1-08 and M1-09, **2026-09-21 on M1-10: fourteen of fourteen, none surviving, none invalid**, and **2026-09-22 on M1-87, which ran twice**, six of them at compile time. M1-09's declared survivor died there -- and the pass found that *two written-down claims about which test would catch what* had never been run, one of them in M1-09's own mutant file |
 | 20 WSL, UBSan, second compiler | By hand, before a milestone | **done** |
 | 21 `check` is the definition of done | The build, both trees | **done** |
 | 22–24 The human rules | A person | discipline |
@@ -832,6 +877,26 @@ Rule 23 is usually read as distrusting two implementations that agree. This is
 the same rule applied to a sentence: **a prediction about which test will
 catch a mutant is not a measurement**, and a mutant file full of them decays
 into a record of a pass nobody ran.
+
+**On M1-87, 2026-09-22: twelve mutants, and the pass ran twice.** The first
+run caught eleven and left one surviving -- and the code was right, the *test*
+was not. Every refusal case in the new suite read `error()` without asserting
+`!has_value()` first, which is undefined behaviour on an expected that holds a
+value and in practice compares equal to the zero enumerator, so the case passed
+while the factory accepted the NaN it was written to refuse.
+
+The guard had been there and was dropped while splitting the suite to clear a
+`readability-function-cognitive-complexity` finding: **a fix for a lint finding
+removed the thing the test was for.** Two mutants of the same shape settle the
+mechanism rather than leaving it a theory -- the `GravParam` NaN mutant was
+caught in both runs, because there the NaN is still refused and only the name is
+wrong, so `error()` is well-defined. Second run, guard restored: twelve of
+twelve, none surviving, none invalid, seven at compile time.
+
+This is the second time a pass has found a hole in a *test* rather than in the
+code -- M1-09's `retargetFrame` was the first -- and both times the test was
+checking something that cancelled: there a faulty operation applied twice, here
+an assertion whose subject was undefined. Rule 23's new half is written for it.
 
 Two things follow from this table, and they are the reason it exists.
 

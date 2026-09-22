@@ -780,6 +780,77 @@ asked for.
       elementwise is unsatisfiable, and `inverseRigid`'s "identity to 1e-14"
       is dimensionally wrong because the translation column is in metres.
 
+18. **M1-10's seven questions: all settled 2026-09-21**, decisions 99-105 of
+    [`plan/milestone-1-decisions.md`](plan/milestone-1-decisions.md) section 9.
+    Five went up before any code; two came out of the mutation pass, which is
+    the unusual part. What to know without opening the register:
+
+    - **The projection is not `constexpr`, and that is a three-front-end
+      result** (decision 99). clang 23.1.0 and MSVC 19.51 refuse `std::tan` in
+      a constant expression; gcc-14 accepts it as an extension. A
+      `static_assert` over the whole function would have been green on one and
+      red on two. The entry point is `inline`, and a `constexpr` helper taking
+      an already-computed focal length carries the matrix layout in seven
+      compile-time assertions -- which is why six of the fourteen mutants die
+      before a test runs.
+    - **Four of the task's numbers were replaced by measurement** (decisions
+      99-104): the near plane's test cases, the "infinity maps to zero"
+      threshold, the tolerances, and the frustum edge's independence. The
+      pattern is decision 54's -- a budget is about twice a measurement taken
+      before the number is written down.
+    - **The aspect ratio is a kind of its own**, `Aspect` in
+      `view/Projection.hpp` (decision 100). The task document said `f64
+      aspect`, which non-negotiable 1 forbids across an interface; it was
+      written nine days before ADR 0019.
+    - **The flat projection for the instrument panels was ruled out** after its
+      consequences were measured (decision 105). M1-79 and M1-80 draw the MFD
+      after the tonemap in screen space; what they would want is pixels to
+      clip, which needs a screen frame and a pixel unit no task has specified.
+    - **`f32` in `tests/test_projection.cpp` is a written exception to
+      non-negotiable 8** (decision 103), because a claim about what a 32-bit
+      depth buffer holds cannot be made in 64-bit arithmetic. The reason is at
+      the site.
+    - **The mutation pass corrected two written-down claims that had never been
+      run** -- M1-09's prediction about which test would catch its survivor,
+      and M1-10's own comment about what its extra assertions buy. Rule 23
+      applied to a sentence: a prediction about which test will catch a mutant
+      is not a measurement.
+
+19. **M1-87's nine questions: all settled 2026-09-22**, decisions 106-114 of
+    [`plan/milestone-1-decisions.md`](plan/milestone-1-decisions.md) section 9,
+    and recorded in [ADR 0022](adr/0022-a-bounded-scalar-validates-itself.md).
+    The task came out of a consistency pass over the source rather than out of
+    the queue. What to know without opening the register:
+
+    - **`Eccentricity` and `GravParam` validate themselves** (decisions 107,
+      108): private constructors, `from()` factories returning
+      `std::expected`, and a new `UnitError` in `core/Units.hpp` beside the
+      types -- decision 90's precedent, since `core` cannot reach `OrbitError`.
+      Finite and non-negative for an eccentricity, finite and positive for a
+      mu, with **no upper bound** on either.
+    - **`OrbitError::NonPositiveGravity` is gone**, with the five checks that
+      returned it and three assertions nothing could reach. An error a caller
+      cannot receive is the dead defensive code ADR 0002 argues against.
+    - **`orbitInfo` keeps its plain return** (decision 114), reversing a ruling
+      taken earlier the same day: `mu > 0` was its only guard, so a
+      `std::expected` would carry nothing.
+    - **`GravParam` keeps its quantity** (decision 110), holding a
+      `Scalar<m^3/s^2>` and exposing it, so `mu.quantity() / (r * r)` is still
+      an acceleration. `Scalar<R>` *derives from* `mp_units::quantity<R, f64>`,
+      which is why holding one preserves the algebra. Found after the plain
+      design had been ruled, and put back up rather than absorbed.
+    - **Literals go through `consteval` helpers** (decision 113),
+      `eccentricity()` and `gravParam()`, so a bad literal fails the build
+      rather than throwing at run time. 56 construction sites, 3 in `src/`.
+    - **Four assertions were removed with an explicit go-ahead** (decision
+      112), being calls that can no longer be written. Neither `TEST_CASE` was
+      deleted, and the one `VERIFICATION.md` rule 6 cites by name keeps it.
+    - **What is still an assertion, deliberately**:
+      `stateFromElements`'s `p > 0`. It derives from `el.slr`, `el.sma` and
+      `el.ecc`, so validating the eccentricity does not close it, and `slr` and
+      `sma` are `Metres`. Named in M1-87's "Out of scope" as the next question
+      in this family if a scenario loader ever supplies elements directly.
+
 ## 8. Gotchas worth not rediscovering
 
 **Six small ones from 2026-09-20, each measured rather than reasoned about.**
