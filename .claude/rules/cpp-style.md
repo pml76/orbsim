@@ -49,6 +49,15 @@ cmake -S coding-guidelines-example -B coding-guidelines-example/build -G Ninja \
   body that runs onto its own line. Prefer configuring a check to disabling it:
   [`lint-config.md`](lint-config.md).
 - A formatting pass gets its own commit, doing nothing else.
+- **Two scalars validate themselves**, and a third answer to a bad value came
+  with them. `Eccentricity` and `GravParam` in `core/Units.hpp` have private
+  constructors: `Eccentricity{0.5}` does not compile. Build one with
+  `Eccentricity::from(v)`, which reports a `UnitError`, or with the `consteval`
+  helpers `eccentricity(v)` / `gravParam(v)` for a literal, which fail the
+  build rather than throwing. `GravParam::quantity()` is the way back into the
+  unit algebra, which is why the force model can still write
+  `mu.quantity() / (r * r)`. Adding a unit with a physical bound? Give it the
+  same shape ([ADR 0022](../../docs/adr/0022-a-bounded-scalar-validates-itself.md)).
 - Decisions that span files go in [`docs/adr/`](../../docs/adr/) as short
   records: what was decided, what was considered, why. Read the relevant one
   before changing anything it covers.

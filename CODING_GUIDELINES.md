@@ -620,6 +620,15 @@ representation of it.
   now what `propagate()` promises when handed a degenerate orbit. Write it down.
   The answer "it depends what the caller does" is how you get two callers doing
   different things.
+- **And there is a third answer, which beats both where it applies.** If the
+  value has a physical bound — an eccentricity is not negative, a
+  gravitational parameter is not zero — neither report nor assert: give the
+  type a private constructor and a factory, and the bad value cannot be built.
+  That is section 24 of `docs/VERIFICATION.md`, prefer the bug you cannot
+  write, and [`docs/adr/0022`](docs/adr/0022-a-bounded-scalar-validates-itself.md)
+  records where it was chosen over the other two and what it cost. It is not a
+  default: it is the answer for a value whose meaning makes some numbers
+  impossible.
 - **Whatever you choose, be consistent.** One strategy per layer. A codebase
   where a third of the functions throw, a third return `bool`, and a third
   return `std::expected` is worse than any one of those three done uniformly.

@@ -183,9 +183,14 @@ and the conventions and the finishing checklist are in
    preference; `bugprone-easily-swappable-parameters` is enabled deliberately.
 2. **No boolean parameters.** If a call site needs `/*hostVisible=*/`, the
    parameter wanted to be an `enum class`.
-3. **`std::expected` for failures a caller can cause; assertions for what only
-   a bug can cause.** One strategy per layer. Never a `bool` plus an
-   out-parameter, and never two-phase `init()` — use a factory.
+3. **Three answers to a bad value, in order of preference: make it
+   unrepresentable, report it, assert it.** Where a value has a physical
+   bound, a private constructor and a factory mean it cannot be built at all
+   ([`docs/adr/0022`](docs/adr/0022-a-bounded-scalar-validates-itself.md));
+   `Eccentricity` and `GravParam` are the two that do. Otherwise
+   `std::expected` for what a caller can cause, and assertions for what only a
+   bug can. Never a `bool` plus an out-parameter, and never two-phase
+   `init()` — use a factory.
 4. **Every loop is bounded and reports non-convergence.** A Newton iteration
    that runs out of steps must say so, not return its last guess.
 5. **Rule of Zero.** No hand-written destructors. If you are adding one, wrap

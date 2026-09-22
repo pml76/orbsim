@@ -34,60 +34,62 @@
 # twice is one fact with two chances to rot. The second block now carries the
 # reasoning only, and points here for the numbers.
 #
-# Measured 2026-09-21 over the **twenty-two** linted translation units with
-# `--checks=-*,<check>`. The count has now gone stale twice -- it said five,
-# then nine -- and the reason is always the same: the linted set grows with
-# every suite, not the code with every defect. "findings" is what a lint run
-# prints, which counts a header once per translation unit that includes it;
-# "lines" is distinct source lines, which is what a NOLINT at every site would
-# have to touch. **Read the lines, not the findings.** Between 2026-09-13 and
-# 2026-09-21 the findings roughly quadrupled while the lines not quite
-# doubled, and almost all of that gap is the translation-unit count going from
-# nine to twenty-two: the same header, counted more times.
+# Measured 2026-09-22 over the **twenty-three** linted translation units, with
+# `--checks=-*,<check>` over each. **This block is a dated snapshot, and the
+# translation-unit count has gone stale three times** -- it said five, then
+# nine, then twenty-two, each time because the linted set grew with a new suite
+# rather than because the code got worse. Re-measure before quoting it.
+#
+# "findings" is what a lint run prints, which counts a header once per
+# translation unit that includes it; "lines" is distinct source lines, which is
+# what a NOLINT at every site would have to touch. **Read the lines, not the
+# findings** -- between 2026-09-13 and 2026-09-22 the findings roughly
+# quadrupled while the lines not quite doubled, and almost all of that gap is
+# the same header counted in more translation units.
 #
 # To re-measure, and check the instrument first: under `WarningsAsErrors: '*'`
 # a finding prints as `error: ... [<check>,-warnings-as-errors]`, **not** as
 # `warning: ... [<check>]`. A grep for the second form returns zero for every
 # check and looks exactly like a clean tree. That happened while taking this
-# measurement, which is VERIFICATION.md rule 23 arriving inside the file that
-# is about it.
+# measurement -- VERIFICATION.md rule 23, distrust a null result, arriving
+# inside the file it is about.
 #
-#   -cppcoreguidelines-avoid-magic-numbers    2,949 findings, 526 lines
-#   -readability-magic-numbers                the same 2,949 -- these are two
+#   -cppcoreguidelines-avoid-magic-numbers    3,270 findings, 534 lines
+#   -readability-magic-numbers                the same 3,270 -- these are two
 #                                             names for one check, so the cost
-#                                             is 2,949 and not 5,898
+#                                             is 3,270 and not 6,540
 #
-#       325 of the 526 lines are in tests/, where a table of expected values
+#       326 of the 534 lines are in tests/, where a table of expected values
 #       *is* the test: naming each entry would hide the thing being asserted.
-#       The other 201 are in src/ (122 core, 50 orbit, 21 view, 5 astro,
+#       The other 208 are in src/ (129 core, 50 orbit, 21 view, 5 astro,
 #       3 app), and most are a series coefficient or a conversion factor whose
 #       provenance is already in a comment beside it. This is the entry most
 #       worth removing, and the cheapest, because the two populations want
 #       opposite treatment and clang-tidy reads a .clang-tidy per directory.
 #
-#   -readability-identifier-length             2,799 findings, 568 lines
+#   -readability-identifier-length             3,064 findings, 584 lines
 #
 #       The check wants three characters and this domain's notation does not
-#       have them: el (54), a (44), m (41), v (39), tt (38), t (34), mu (32),
-#       b (27), q (25), sv (24), c (24), s (22), r (21), ok (21), dt (21),
-#       e (20), then x, y, p, l, d and at. Renaming `a` to `semiMajorAxis`
-#       inside a Kepler solve makes the formula harder to check against the
-#       book it came from, not easier, and CODING_GUIDELINES section 15 asks
-#       for names that say what a thing is in its own domain.
+#       have them. 74 distinct names; the common ones are el (54), a (44),
+#       v (43), m (39), tt (38), t (34), q (24), c (24), sv (24), ok (22),
+#       e (20), mu (19), s (18), x (16), r (15), b (12). Renaming `a` to
+#       `semiMajorAxis` inside a Kepler solve makes the formula harder to check
+#       against the book it came from, not easier, and CODING_GUIDELINES
+#       section 15 asks for names that say what a thing is in its own domain.
 #       The narrower instrument here is this check's own IgnoredParameterNames /
 #       IgnoredVariableNames, not a NOLINT: see .claude/rules/lint-config.md.
-#       By directory: 306 lines in tests, 111 core, 82 orbit, 33 view,
+#       By directory: 312 lines in tests, 119 core, 84 orbit, 33 view,
 #       23 render, 13 astro.
 #
-#   -modernize-use-trailing-return-type        2,707 findings, 493 lines
+#   -modernize-use-trailing-return-type        3,005 findings, 509 lines
 #
 #       A style inversion, not a defect. The check wants `auto f() -> T`; this
-#       codebase writes `T f()`, consistently, in all 493 places. Zero of the
-#       2,707 is a bug. It is the same class of thing as the brace deviation in
+#       codebase writes `T f()`, consistently, in all 509 places. Zero of the
+#       3,005 is a bug. It is the same class of thing as the brace deviation in
 #       CODING_GUIDELINES section 15 -- choose one, apply it everywhere, write
-#       it down -- so turning it on means rewriting 493 declarations and
+#       it down -- so turning it on means rewriting 509 declarations and
 #       changing the house style. That is a decision about taste.
-#       By directory: 158 tests, 157 core, 71 render, 46 orbit, 29 view,
+#       By directory: 169 core, 160 tests, 71 render, 48 orbit, 29 view,
 #       23 astro, 9 app.
 ---
 Checks: >

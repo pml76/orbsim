@@ -73,3 +73,24 @@ loudly, in the debugger, at the moment it happens -- rather than twenty
 minutes later as a spacecraft in the wrong place. Which is also why the
 definition of done runs the tests in a Debug tree: an assertion that never
 executes protects nothing.
+
+## A third answer, added by 0022 on 2026-09-22
+
+This record splits a bad value two ways: **report** what a caller can cause,
+**assert** what only a bug can produce, and never blur them.
+[`0022`](0022-a-bounded-scalar-validates-itself.md) adds a third that comes
+before both where it applies: **make the value unrepresentable.** Where a
+scalar has a physical bound -- an eccentricity is not negative, a gravitational
+parameter is not zero -- a private constructor and a factory mean no function
+downstream has to decide anything, because the value cannot be built.
+
+Nothing here is superseded. The split between reporting and asserting stands
+for every condition that is not a bound on a value, which is most of them, and
+0022 records itself as "not a pattern to apply by default".
+
+What it does change is the shape of a mistake this record describes. The worked
+example of "silently coping" here is `if (r0 <= 0.0) return sv;`. `orbit/` had
+a subtler one until 2026-09-22: the *same* condition reported by three public
+functions, asserted by two, and unguarded in three more -- which read as three
+deliberate choices and was in fact nobody's. `VERIFICATION.md` rule 24 is the
+preference order, and 0022 is where it was first chosen over rule 7.
