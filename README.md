@@ -50,9 +50,12 @@ window, creates a device and paces frames. **Nothing is drawn yet.** See
   build checks what it generates against a committed hash. TDB - TT from
   Skyfield is committed, with the script that wrote it, and every clone checks
   against it.
-- **Eleven Catch2 test suites, over a million checks**
-  (`docs/STATUS.md` has the count, and it is the only place it lives), the
-  useful ones crossing the code
+- **Catch2 test suites, over a million checks** -- how many of each is in
+  [`docs/STATUS.md`](docs/STATUS.md), which is the only place either number
+  lives. *(This line carried the suite count until 2026-09-22 and went stale
+  the same day it was written, when M1-87 added a suite. A count stated
+  alongside a pointer to where counts live is the pointer arguing with
+  itself.)* The useful ones cross the code
   against something it did not produce: elements and anomalies against
   references computed in 60-digit decimal arithmetic, state→elements against
   elements→state, energy and angular momentum before and after, the exact
@@ -146,12 +149,12 @@ The project has an opinionated, enforced house style:
   the error strategy, reverse-Z, pinned dependencies, how correctness is
   enforced, simulation-not-sandbox, scalable render quality, eight more taken
   before milestone 1 began, from how the renderer is verified to how the
-  integrator is put together, and six since — ERFA computes the astronomy,
+  integrator is put together, and since then: ERFA computes the astronomy,
   every warning is an error, every conversion in `orbit/` reports, vectors
-  carry their unit, and a transform carries the units and the frames of both
-  spaces it maps between.
-  [The index](docs/adr/README.md) is the list, and the count is in
-  [`docs/STATUS.md`](docs/STATUS.md)
+  carry their unit, a transform carries the units and the frames of both spaces
+  it maps between, and a scalar with a physical bound validates itself.
+  **[The index](docs/adr/README.md) is the list and the count**; this paragraph
+  deliberately no longer carries one, having gone stale three times
 - [`docs/VERIFICATION.md`](docs/VERIFICATION.md) — how the project knows the
   code is right, as distinct from how it is written. A physics bug does not
   crash; it returns a plausible number

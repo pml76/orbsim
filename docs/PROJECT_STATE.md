@@ -333,15 +333,24 @@ Catch2-macro complexity scores on individual test cases. Every one carries its
 reason, which is the property that matters; the count is not a number to keep
 down for its own sake.
 
-**Recounted 2026-09-21: 32 directives across 11 files in `src/`, 85 across 13
-in `tests/`, and 4 in the worked example** — counting `NOLINT(`,
-`NOLINTNEXTLINE(`, `NOLINTBEGIN(` and `NOLINTEND(` over tracked files only.
-Nine of the 22 that register decision 96 turned up on 2026-09-20 are in that
-total, each on a provably symmetric parameter pair with the reason at the site.
-The growth is still the 2026-09-08 ruling working as intended and not a
-regression, but a number written down once and left for eight days of task
-work is worth re-reading before it is quoted: **if you need the current
-figure, run the count rather than reading either of these.**
+**This number is not written down any more, and the reason is instructive.** It
+was recounted on 2026-09-21 -- and was wrong again within hours, because three
+commits later the same day added four suppressions for the swappable-parameters
+blind spot and one in the worked example. A figure that cannot survive the
+session that measured it is not a fact worth recording. Run it instead:
+
+```
+git ls-files src tests | xargs grep -coE 'NOLINT(NEXTLINE|BEGIN|END)?\('
+```
+
+What is worth recording is the shape. The growth since 2026-09-08 is that
+ruling working as intended -- emptying the config list moved suppressions to
+the sites that need them -- and **every one carries its reason**, which is the
+property that matters. Nine of them are the provably symmetric pairs decision 96
+turned up on 2026-09-20; the rest are `SDL_Log` varargs, the `reinterpret_cast`s
+a C API requires, the seeded generators, Catch2-macro complexity scores, and
+since 2026-09-21 four canonical coordinate orderings. The count is not a number
+to keep down for its own sake.
 
 ### 6.2 `EXAMPLE.md` was deleted — RULED: leave it deleted
 

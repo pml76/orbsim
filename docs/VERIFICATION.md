@@ -499,9 +499,12 @@ result rather than a line nobody reads.
 M1-05, M1-86 and M1-07 were mutated by hand before the harness existed or on
 the day it landed, so what survives of them is the prose in Part 4 below --
 including M1-05's three accepted survivors, which are described there and
-nowhere a machine can read. `mutant-anchors` therefore checks three tasks and
-41 anchors, not eight tasks; it cannot report a stale anchor for a pass that
-left none. That is a real gap and it is recorded rather than closed:
+nowhere a machine can read. **`mutant-anchors` therefore checks only the tasks
+that left a file**, not every task that had a pass; it cannot report a stale
+anchor for a pass that left none, and it prints its own counts, which is why
+they are not written down here -- the figure quoted in this sentence went stale
+within a day of being written, when M1-87 added the fourth file. That is a real
+gap and it is recorded rather than closed:
 reconstructing five passes from prose would be inventing mutants and claiming
 they had been run, which is the shape rule 23 is about. Every pass from M1-08
 onwards leaves its file. *(Noted 2026-09-21.)*
@@ -708,7 +711,7 @@ rules a machine checks and which depend on a person remembering.
 | 16 Determinism | `check` — `TEST_CASE("propagation is bit-identical across runs")`, over 100 steps | **done** |
 | 17 Dimensional analysis | The compiler — mp-units under `core/Units.hpp` and `Vec3<R>`, [ADR 0019](adr/0019-vectors-carry-their-unit.md) | **done** |
 | 18 Coverage | By hand, periodically. Orbit.cpp 99.2% lines | **done** |
-| 19 Mutation testing | By hand, periodically; the **anchors** are in `check` | exercised 2026-09-07, again 2026-09-19 on M1-04, M1-06 and M1-05, 2026-09-20 on M1-86, M1-07, M1-08 and M1-09, **2026-09-21 on M1-10: fourteen of fourteen, none surviving, none invalid**, and **2026-09-22 on M1-87, which ran twice**, six of them at compile time. M1-09's declared survivor died there -- and the pass found that *two written-down claims about which test would catch what* had never been run, one of them in M1-09's own mutant file |
+| 19 Mutation testing | By hand, periodically; the **anchors** are in `check` | exercised 2026-09-07, again 2026-09-19 on M1-04, M1-06 and M1-05, and 2026-09-20 on M1-86, M1-07, M1-08 and M1-09. **2026-09-21 on M1-10: fourteen of fourteen, none surviving, none invalid**, six of them at compile time -- M1-09's declared survivor died there, and the pass found that *two written-down claims about which test would catch what* had never been run, one of them in M1-09's own mutant file. **2026-09-22 on M1-87: twelve mutants, and the pass ran twice** -- 11 caught and 1 surviving first, because the *test* was wrong rather than the code, then twelve of twelve, none surviving, none invalid, seven of them at compile time |
 | 20 WSL, UBSan, second compiler | By hand, before a milestone | **done** |
 | 21 `check` is the definition of done | The build, both trees | **done** |
 | 22–24 The human rules | A person | discipline |
