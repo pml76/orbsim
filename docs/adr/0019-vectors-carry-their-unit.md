@@ -375,3 +375,28 @@ or **rejected with a reason** — it cannot stay open once this is answered.
 above becomes the obvious next record, which is the point: the reason to do
 this at all is that a frame tag is where the bugs that cannot currently be seen
 are hiding.
+
+## The `Eccentricity` kind is superseded by 0022, 2026-09-22
+
+**[`0022`](0022-a-bounded-scalar-validates-itself.md) supersedes one clause of
+this record.** `Eccentricity` was an mp-units *kind* -- dimensionless, but not
+interchangeable with any other ratio, which is what stopped
+`solveKepler(anomaly, eccentricity)` compiling backwards. It is a validated
+class now, because a negative eccentricity was reaching three anomaly
+converters and coming back as a plausible wrong answer, and a class holds that
+bound where a kind cannot.
+
+The separation this record bought is kept and strengthened: a class is not
+convertible to or constructible from anything, and the four assertions at the
+foot of `core/Units.hpp` still hold against it. What is given up is the
+arithmetic, which nothing used.
+
+**`GravParam` is not superseded.** 0022 keeps it inside the dimension system
+deliberately, holding a `Scalar<m³/s⁻²>` and exposing it, so this record's
+central example -- `mu / (r*r)` produces an acceleration *type* -- still holds,
+spelled `mu.quantity() / (r * r)`. That was measured to be possible only after
+the alternative had been ruled, and the cheaper design was put back up rather
+than absorbed (register decision 110).
+
+*(Appended 2026-09-22. Everything else in this record stands: the nine types on
+mp-units, `Vec3<R>` on a reference, and the costs recorded above.)*

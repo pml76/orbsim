@@ -574,6 +574,7 @@ set(ORBSIM_TESTS
         test_projection
         test_sun
         test_time
+        test_units_validated
         test_view_math
 )
 foreach(test_name IN LISTS ORBSIM_TESTS)

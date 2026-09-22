@@ -95,9 +95,8 @@ void checkElements(const Elements& el, GravParam mu) {
         requireNoNaN(back->vel);
     }
 
-    // mu > 0 is already established: elementsFromState reports
-    // NonPositiveGravity rather than returning a value otherwise, so
-    // orbitInfo's precondition holds here.
+    // orbitInfo has no precondition left to hold: GravParam carries mu > 0
+    // itself since M1-87, which is what let the assertion here go.
     const OrbitInfo info = orbitInfo(el, mu);
     for (const double value : std::to_array<double>({
              info.periapsis.value(),
@@ -154,7 +153,20 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     // outside it.
     const auto [posX, posY, posZ, velX, velY, velZ, muValue] = raw;
     const StateVector sv{.pos = {posX, posY, posZ}, .vel = {velX, velY, velZ}};
-    const GravParam mu{muValue};
+
+    // The factory, not a constructor: since M1-87 a GravParam cannot hold a
+    // value that is not finite and positive, so the fuzzer now exercises the
+    // *factory* with arbitrary bytes and stops where it refuses -- the shape
+    // fuzz_time already uses for DeltaUt1 and DeltaT.
+    const auto muOrError = GravParam::from(muValue);
+    if (!muOrError) return 0;
+    const GravParam mu = *muOrError;
+
+    // What a fuzzer can know about an accepted value without knowing the right
+    // answer: it is inside the range the factory promises. This is the claim
+    // that would catch a factory quietly widening its bound.
+    require(std::isfinite(mu.value()));
+    require(mu.value() > 0.0);
 
     // The time step reuses an input word so the fuzzer can steer it too.
     const Seconds dt{velX};

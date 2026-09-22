@@ -31,6 +31,9 @@
 #include "core/Scalar.hpp"
 
 #include <concepts>
+#include <cstdint>
+#include <expected>
+#include <string_view>
 #include <type_traits>
 
 #include <mp-units/framework.h>
@@ -54,14 +57,20 @@ inline constexpr auto kDegree = mp_units::angular::degree;
 
 } // namespace units
 
-// Eccentricity is dimensionless, but it is its own *kind*: not interchangeable
-// with any other ratio. This is what stops solveKepler(anomaly, eccentricity)
-// compiling backwards, and it is the one thing a plain dimension system cannot
-// express -- a bare `quantity<one, f64>` accepts any ratio at all. Measured
-// 2026-09-17: without the kind, a mass ratio converts straight into an
-// eccentricity; with it, neither converts to the other.
-inline constexpr struct EccentricityKind final : mp_units::quantity_spec<mp_units::dimensionless> {
-} kEccentricityKind;
+// *(An `EccentricityKind` lived here from 2026-09-17 until 2026-09-22. It was
+// an mp-units **kind** -- dimensionless, but not interchangeable with any
+// other ratio -- which is what stopped `solveKepler(anomaly, eccentricity)`
+// compiling backwards, and it was the one thing a plain dimension system
+// cannot express, since a bare `quantity<one, f64>` accepts any ratio at all.
+//
+// Eccentricity is a class now (M1-87, decision 108), and a class is not
+// interchangeable with anything, so the separation the kind bought is kept and
+// strengthened -- the assertions at the foot of this header still hold, and
+// hold against a stronger claim. What is genuinely given up is the arithmetic:
+// an eccentricity no longer takes part in the unit algebra. Nothing used it
+// there, measured before the change, and no task document asks for it.
+// GravParam, which does have arithmetic ahead of it in M1-62, keeps its
+// quantity instead of losing it -- see `quantity()` below.)*
 
 // The type of every physical scalar: an mp-units quantity, with this
 // project's house rules put back on top of it.
@@ -225,13 +234,53 @@ template <auto R1, auto R2>
     return Scalar<R1 / R2>{l.value() / r.value()};
 }
 
-// The nine names. Each is one line because everything they do lives in
-// Scalar<> above and in mp-units beneath it; adding a unit is adding a line.
+// What a validated scalar refuses (M1-87, register decisions 106 and 111).
 //
-// They are aliases rather than distinct types, so two of them over the same
-// reference would be the same type. That is fine here -- no two of these share
-// one -- and where a distinction is wanted without a distinct unit, the way to
-// get it is a *kind*, as Eccentricity does below.
+// Two of the nine types below have a physical bound, and since 2026-09-22 they
+// hold it themselves rather than trusting every caller: a value outside the
+// bound cannot be constructed, so no function downstream has to decide whether
+// to report it, assert it, or -- as three anomaly converters did -- return a
+// plausible wrong answer. That is VERIFICATION.md rule 24, prefer the bug you
+// cannot write, chosen over rule 7's report-or-assert.
+//
+// It lives here, beside the types, rather than in a layer-wide error header:
+// the precedent is decision 90, which put EphemerisError in astro/Sun.hpp for
+// the same reason. `core` cannot reach OrbitError -- the dependency is one-way
+// -- which is the other half of why this exists.
+//
+// One name per failure (decision 45's rule), each saying what it means
+// physically rather than which predicate failed. NonPositiveGravity keeps the
+// name it had in OrbitError, which commits, tests and records already use.
+enum class UnitError : std::uint8_t {
+    NotFinite,            // a NaN or an infinity
+    NegativeEccentricity, // e < 0 is not a conic
+    NonPositiveGravity,   // mu <= 0 is not a central body
+};
+
+// No `default:`, as every describe() in this project is written, so that
+// adding a value to the enum is a -Wswitch error at the function that must
+// then be updated rather than a silent "unknown".
+[[nodiscard]] constexpr std::string_view describe(UnitError error) noexcept {
+    switch (error) {
+    case UnitError::NotFinite:
+        return "the value must be finite";
+    case UnitError::NegativeEccentricity:
+        return "an eccentricity must not be negative";
+    case UnitError::NonPositiveGravity:
+        return "a gravitational parameter must be greater than zero";
+    }
+    return "unknown unit error";
+}
+
+// The nine names. Seven are one line because everything they do lives in
+// Scalar<> above and in mp-units beneath it; adding such a unit is adding a
+// line. The other two, Eccentricity and GravParam, are classes, because they
+// are the two with a bound to hold.
+//
+// The seven are aliases rather than distinct types, so two of them over the
+// same reference would be the same type. That is fine here -- no two of them
+// share one -- and where a distinction is wanted without a distinct unit, the
+// way to get it is a *kind*.
 using Radians = Scalar<units::kRadian>;
 using Degrees = Scalar<units::kDegree>;
 using Metres = Scalar<units::kMetre>;
@@ -245,9 +294,55 @@ using RadiansPerSecond = Scalar<units::kRadian / units::kSecond>;
 // for a parabola, positive for an escape trajectory.
 using SpecificEnergy = Scalar<mp_units::si::joule / mp_units::si::kilogram>;
 
-// Dimensionless, but not interchangeable with any other dimensionless
-// quantity -- that is what the kind above buys.
-using Eccentricity = Scalar<kEccentricityKind[mp_units::one]>;
+// The shape of a conic: 0 is a circle, below 1 an ellipse, 1 a parabola, above
+// 1 a hyperbola. Dimensionless, and not interchangeable with any other ratio.
+//
+// **Validated at construction** (M1-87, decision 107). A negative eccentricity
+// is not a conic, and before 2026-09-22 three of the four anomaly converters
+// accepted one: measured on a probe against the real library, e = -0.5 gave a
+// finite, plausible, wrong answer -- in fact each converter returned the
+// *other's* answer for +0.5, because the sqrt((1-e)/(1+e)) factor inverts --
+// and e = -1.5 returned a NaN as a valid Radians. Their sibling
+// meanToEccentricAnomaly asserted the same condition four lines away. None of
+// those guards exists now, because none of them can be reached.
+//
+// **Finite and non-negative, with no upper bound.** A hyperbolic eccentricity
+// is unbounded in principle, and orbit/Orbit.hpp records convergence measured
+// from 0 to 100; a cap would be a threshold carrying a hidden scale, which is
+// the defect class this project has already shipped once.
+class Eccentricity {
+public:
+    // Zero -- a circle -- and a real value, not an indeterminate one. Elements
+    // holds one as an aggregate member, so this has to exist, and
+    // cppcoreguidelines-pro-type-member-init is what found the equivalent gap
+    // in mp-units' own default constructor on 2026-09-17.
+    constexpr Eccentricity() noexcept = default;
+
+    [[nodiscard]] static constexpr std::expected<Eccentricity, UnitError> from(f64 v) noexcept {
+        if (!isFinite(v)) return std::unexpected(UnitError::NotFinite);
+        if (v < 0.0) return std::unexpected(UnitError::NegativeEccentricity);
+        return Eccentricity{v};
+    }
+
+    [[nodiscard]] constexpr f64 value() const noexcept { return value_; }
+
+    // Ordering without equality, as Scalar has: comparing two doubles with ==
+    // is what CODING_GUIDELINES section 11 forbids, and bit identity says the
+    // other thing by name.
+    [[nodiscard]] friend constexpr auto operator<=>(Eccentricity l, Eccentricity r) noexcept {
+        return l.value_ <=> r.value_;
+    }
+    friend bool operator==(Eccentricity, Eccentricity) = delete;
+
+    [[nodiscard]] constexpr bool bitIdentical(Eccentricity other) const noexcept {
+        return bitsOf(value_) == bitsOf(other.value_);
+    }
+
+private:
+    explicit constexpr Eccentricity(f64 v) noexcept : value_{v} {}
+
+    f64 value_{};
+};
 
 // A reciprocal time. The Lagrange coefficient fdot is one, and naming it is
 // what lets `position * fdot` be checked as a velocity.
@@ -260,7 +355,75 @@ using PerSecond = Scalar<mp_units::one / units::kSecond>;
 using Irradiance = Scalar<mp_units::si::watt / mp_units::pow<2>(units::kMetre)>;
 
 // Standard gravitational parameter GM of a central body, m^3/s^2.
-using GravParam = Scalar<mp_units::pow<3>(units::kMetre) / mp_units::pow<2>(units::kSecond)>;
+//
+// **Validated at construction** (M1-87, decision 108). A mu that is not
+// greater than zero is not a central body, and until 2026-09-22 orbit/ had two
+// answers for one: elementsFromState, propagate and propagateElements reported
+// NonPositiveGravity, while stateFromElements and orbitInfo asserted. ADR 0002
+// asks for one strategy per layer; this is the third option, which is that the
+// value never exists. Those five checks and that enumerator are gone with it.
+//
+// **It keeps its quantity** (decision 110), which is the point of holding a
+// Scalar rather than an f64. Scalar<R> *derives from* mp_units::quantity<R,
+// f64>, so the unit algebra belongs to the base and survives being held: the
+// force model in M1-62 can still write `mu.quantity() / (r * r)` and get an
+// m/s^2 quantity, which is what ADR 0019 promised when it said `mu / (r*r)`
+// produces an acceleration type. Validating the value was not allowed to cost
+// that, and it did not have to.
+class GravParam {
+public:
+    using Quantity = Scalar<mp_units::pow<3>(units::kMetre) / mp_units::pow<2>(units::kSecond)>;
+
+    // No default constructor: a mu of zero is not a neutral starting value, it
+    // is an invalid one, and there is nothing sensible for a default to hold.
+    // DeltaUt1 declines one for the mirror-image reason -- there, zero is
+    // valid but is a modelling decision that must be named at the call site.
+    GravParam() = delete;
+
+    [[nodiscard]] static constexpr std::expected<GravParam, UnitError> from(f64 v) noexcept {
+        if (!isFinite(v)) return std::unexpected(UnitError::NotFinite);
+        // Negated, so that a NaN would fail it too -- it cannot reach here,
+        // but the shape is the one view/Projection.hpp's isFinitePositive
+        // exists to keep, and readability-simplify-boolean-expr would rewrite
+        // `v <= 0.0` into something that accepts a NaN.
+        if (!(v > 0.0)) return std::unexpected(UnitError::NonPositiveGravity);
+        return GravParam{v};
+    }
+
+    [[nodiscard]] constexpr f64 value() const noexcept { return q_.value(); }
+
+    // The typed quantity, for arithmetic that should stay in the dimension
+    // system. `value()` is the way out of it, and is what every call site in
+    // orbit/ uses today.
+    [[nodiscard]] constexpr Quantity quantity() const noexcept { return q_; }
+
+    [[nodiscard]] friend constexpr auto operator<=>(GravParam l, GravParam r) noexcept {
+        return l.value() <=> r.value();
+    }
+    friend bool operator==(GravParam, GravParam) = delete;
+
+    [[nodiscard]] constexpr bool bitIdentical(GravParam other) const noexcept {
+        return q_.bitIdentical(other.q_);
+    }
+
+private:
+    explicit constexpr GravParam(f64 v) noexcept : q_{v} {}
+
+    Quantity q_;
+};
+
+// Literals, checked at compile time (decision 113).
+//
+// `from()` is the door for a value that arrives at run time -- a scenario
+// file, a fixture, the fuzzer -- and reports. These two are for a value
+// written into the source, where a bad one should never reach a test run:
+// consteval means the unwrap happens during constant evaluation, and an
+// unwrap of a failed expected is not a constant expression, so `eccentricity(-0.5)`
+// fails the build rather than throwing. kDeltaUt1Unmodelled shows the plain
+// spelling of the same trick; these exist because this header has 56 call
+// sites and an element table should stay readable.
+[[nodiscard]] consteval Eccentricity eccentricity(f64 v) { return Eccentricity::from(v).value(); }
+[[nodiscard]] consteval GravParam gravParam(f64 v) { return GravParam::from(v).value(); }
 
 // Named, not implicit -- see the note on Scalar above. The factor is mp-units',
 // not ours: `.in()` applies the library's own degree-to-radian magnitude, which
@@ -372,6 +535,50 @@ static_assert(addable<Metres, Metres>);
 static_assert(!addable<Metres, Seconds>, "a length plus a time must not compile");
 static_assert(!addable<Radians, Eccentricity>, "an angle plus a ratio must not compile");
 static_assert(!addable<Irradiance, Metres>, "nor a flux density plus a length");
+
+// --- the two validated scalars (M1-87) --------------------------------------
+//
+// What the classes buy, proved at compile time. The refusals are here as
+// well as in the suite because these are the claims a call site depends on,
+// and a static_assert runs on every build whether or not anyone runs ctest.
+//
+// **No NaN case here, deliberately.** MSVC's constant evaluator disagrees with
+// its own runtime about NaN comparisons -- measured 2026-09-17, PROJECT_STATE
+// section 8 -- so a static_assert about a NaN is a claim about the evaluator
+// rather than about the value. The NotFinite refusals are tested at run time,
+// where every front end agrees.
+static_assert(Eccentricity{}.value() == 0.0, "a default eccentricity is a circle, not a surprise");
+static_assert(!std::is_constructible_v<Eccentricity, f64>,
+              "the only door is from(), so a bad value has nowhere to live");
+static_assert(!std::is_default_constructible_v<GravParam>,
+              "and a mu has no neutral value to default to");
+static_assert(!std::is_constructible_v<GravParam, f64>, "same door for a mu");
+
+static_assert(Eccentricity::from(0.0).has_value(), "a circle is a conic");
+static_assert(Eccentricity::from(2.5).has_value(), "and so is a hyperbola, with no upper bound");
+static_assert(!Eccentricity::from(-0.5).has_value(), "a negative eccentricity is not");
+static_assert(Eccentricity::from(-0.5).error() == UnitError::NegativeEccentricity,
+              "and it is refused by that name, not by a generic one");
+static_assert(!GravParam::from(0.0).has_value(), "a massless central body is not one");
+static_assert(!GravParam::from(-1.0).has_value(), "nor a repulsive one");
+static_assert(GravParam::from(-1.0).error() == UnitError::NonPositiveGravity);
+
+// The literal helpers, and the thing they are for: a bad literal is a build
+// failure. `eccentricity(-0.5)` does not compile -- written once, watched
+// failing, and then removed, as this project does with every negative
+// assertion it cannot leave in the source.
+static_assert(eccentricity(0.7306).value() == 0.7306);
+static_assert(gravParam(3.986004418e14).value() == 3.986004418e14);
+
+// **The reason GravParam holds a Scalar rather than an f64** (decision 110),
+// and the one assertion M1-62 depends on: mu still takes part in the unit
+// algebra, so an acceleration comes out of the dimension system rather than
+// out of a comment. This is ADR 0019's `mu / (r*r)` clause, kept.
+static_assert(nearlyEqual((gravParam(3.986004418e14).quantity() / (Metres{7.0e6} * Metres{7.0e6}))
+                              .numerical_value_in(units::kMetre / mp_units::pow<2>(units::kSecond)),
+                          3.986004418e14 / (7.0e6 * 7.0e6),
+                          Tolerance{0.0}),
+              "mu over a squared length is an acceleration, and the type system knows it");
 
 // Irradiance is a power over an area, and the algebra knows it. The second of
 // these is what stops the inverse-square law in astro/Sun.hpp being written

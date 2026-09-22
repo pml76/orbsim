@@ -849,14 +849,52 @@ void assignInPlaneAngles(Elements& el, const OrbitFrame& frame) {
 // e < 1, the anomaly conversions among them, would be guessing. Moving it to
 // the adjacent double changes it by less than the eccentricity vector's own
 // rounding.
+// The two elements read straight off the exact state, and the one place in
+// this file where an eccentricity can be refused.
+//
+// **Reported, not asserted.** It is computed from the caller's state, and a
+// caller's state can make it non-finite: the fuzzer found exactly that on
+// 2026-09-07, elements coming back claiming success with an infinite
+// eccentricity. Before M1-87 the value was built unchecked and
+// `elementsAreUsable` caught it at the end; `Eccentricity::from` catches it
+// earlier now and maps to the same error, so nothing a caller can see has
+// changed.
+//
+// An in/out `Elements&`, like `assignInPlaneAngles` and `assignConic` below.
+// Returning the pair instead is a clean change in itself and costs lines at a
+// call site that has none to spare -- `elementsFromState` sits against
+// `readability-function-size`, which is the reason those two have this shape
+// too (PROJECT_STATE.md section 7, item 10).
+[[nodiscard]] std::expected<void, OrbitError> assignShape(Elements& el, const ExactState& state) {
+    const auto ecc = Eccentricity::from(toDouble(state.ecc));
+    if (!ecc) return std::unexpected(OrbitError::NotFinite);
+    el.ecc = *ecc;
+    el.slr = Metres{toDouble(state.slr)};
+    return {};
+}
+
+// The two eccentricities adjacent to 1, one on each side -- as close to a
+// parabola as a double gets. Not `constexpr`, because `std::nextafter` is not,
+// so they go through the factory like everything else since M1-87.
+//
+// **Asserted, not reported.** Both are finite and strictly positive by
+// construction, so a refusal here could only mean this code is wrong, which is
+// the half of ADR 0002 that asserts. The caller returns void and has nothing
+// to report with in any case.
+[[nodiscard]] Eccentricity eccentricityAdjacentToOne(f64 towards) {
+    const auto ecc = Eccentricity::from(std::nextafter(1.0, towards));
+    ORBSIM_EXPECTS(ecc.has_value());
+    return *ecc;
+}
+
 void assignConic(Elements& el, const ExactState& state) {
     const Conic conic = conicOf(toDouble(state.alphaRadius));
     el.sma = Metres{conic == Conic::Parabola ? kInf : toDouble(state.rmag / state.alphaRadius)};
     if (conic == Conic::Ellipse && !(el.ecc.value() < 1.0)) {
-        el.ecc = Eccentricity{std::nextafter(1.0, 0.0)};
+        el.ecc = eccentricityAdjacentToOne(0.0);
     }
     if (conic == Conic::Hyperbola && !(el.ecc.value() > 1.0)) {
-        el.ecc = Eccentricity{std::nextafter(1.0, 2.0)};
+        el.ecc = eccentricityAdjacentToOne(2.0);
     }
 }
 
@@ -963,8 +1001,7 @@ void assignConic(Elements& el, const ExactState& state) {
 // --- state <-> elements ----------------------------------------------------
 
 std::expected<Elements, OrbitError> elementsFromState(const StateVector& sv, GravParam mu) {
-    if (!isFinite(sv) || !std::isfinite(mu.value())) return std::unexpected(OrbitError::NotFinite);
-    if (!(mu.value() > 0.0)) return std::unexpected(OrbitError::NonPositiveGravity);
+    if (!isFinite(sv)) return std::unexpected(OrbitError::NotFinite);
 
     // Everything the elements are built from, computed once, with every
     // cancelling step carried in double-double. See exactStateOf above.
@@ -1007,8 +1044,7 @@ std::expected<Elements, OrbitError> elementsFromState(const StateVector& sv, Gra
     }
 
     Elements el;
-    el.ecc = Eccentricity{toDouble(state.ecc)};
-    el.slr = Metres{toDouble(state.slr)};
+    if (auto ok = assignShape(el, state); !ok) return std::unexpected(ok.error());
 
     // Every conic has a positive semi-latus rectum, so a zero here is not an
     // orbit shape -- it is |h|^2 underflowing, which the ratio test above
@@ -1045,10 +1081,12 @@ std::expected<Elements, OrbitError> elementsFromState(const StateVector& sv, Gra
 }
 
 std::expected<StateVector, OrbitError> stateFromElements(const Elements& el, GravParam mu) {
-    // Asserted, not reported: every caller of this obtains its elements from
-    // elementsFromState or builds them literally, so a non-positive mu here is
-    // a bug in the caller rather than user input.
-    ORBSIM_EXPECTS(mu.value() > 0.0);
+    // No guard on mu. It cannot be non-positive or non-finite: GravParam has
+    // held that invariant since M1-87, so there is nothing here to assert and
+    // nothing to report. This used to assert, on the argument that every
+    // caller obtained its elements from elementsFromState or wrote them
+    // literally -- true then, and a claim about the call graph rather than
+    // about the value, which is the kind that stops being true quietly.
 
     // Prefer the stored semi-latus rectum: it is the one shape parameter that
     // stays finite on a parabolic orbit.
@@ -1099,8 +1137,11 @@ std::expected<StateVector, OrbitError> stateFromElements(const Elements& el, Gra
     return out;
 }
 
+// No guard, and no std::expected: mu > 0 was this function's only one, and
+// GravParam holds it now. Everything else here is computed to stay finite
+// deliberately, or returns infinity on purpose, so there is nothing an error
+// channel could carry (decision 114).
 OrbitInfo orbitInfo(const Elements& el, GravParam mu) {
-    ORBSIM_EXPECTS(mu.value() > 0.0);
 
     const f64 e = el.ecc.value();
     const f64 m = mu.value();
@@ -1216,8 +1257,10 @@ Radians eccentricToMeanAnomaly(Radians eccAnomaly, Eccentricity ecc) {
 // `ln(2M/e + 1.8)` is the recognisable classical starter, which the literature
 // attributes to Danby (1992) -- again not checked here against the source.
 std::expected<Radians, OrbitError> meanToEccentricAnomaly(Radians meanAnomaly, Eccentricity ecc) {
+    // e >= 0 was asserted here until M1-87. Eccentricity holds it now -- which
+    // is also what closed the hole in this function's three siblings, who
+    // guarded nothing at all and returned a plausible wrong answer.
     const f64 e = ecc.value();
-    ORBSIM_EXPECTS(e >= 0.0);
 
     if (e < 1.0) {
         // Solving M = E - e*sin(E) for E. dM/dE = 1 - e*cos(E) >= 1 - e > 0,
@@ -1350,10 +1393,9 @@ std::expected<StateVector, OrbitError> propagate(const StateVector& sv, GravPara
     // Checked first and by name. NaN passes every comparison below unnoticed
     // and then comes out of Newton as "did not converge", which is true but
     // sends whoever reads the log looking at the solver instead of the file.
-    if (!isFinite(sv) || !std::isfinite(mu.value()) || !std::isfinite(dt.value())) {
+    if (!isFinite(sv) || !std::isfinite(dt.value())) {
         return std::unexpected(OrbitError::NotFinite);
     }
-    if (!(mu.value() > 0.0)) return std::unexpected(OrbitError::NonPositiveGravity);
 
     const f64 r0 = length(sv.pos).value();
     // This used to silently return the input, which turned a loud, findable
@@ -1433,10 +1475,9 @@ std::expected<StateVector, OrbitError> propagate(const StateVector& sv, GravPara
 // `ParabolicElements` error with it, are gone.
 std::expected<Elements, OrbitError>
 propagateElements(const Elements& el, GravParam mu, Seconds dt) {
-    if (!std::isfinite(mu.value()) || !std::isfinite(dt.value())) {
+    if (!std::isfinite(dt.value())) {
         return std::unexpected(OrbitError::NotFinite);
     }
-    if (!(mu.value() > 0.0)) return std::unexpected(OrbitError::NonPositiveGravity);
     // The shape has to be usable: a positive, finite semi-latus rectum -- the
     // one parameter every conic has -- and a semi-major axis that is not zero
     // and not NaN. An infinite one is a parabola and is welcome.

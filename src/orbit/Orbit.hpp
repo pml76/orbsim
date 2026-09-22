@@ -109,8 +109,13 @@ enum class OrbitError : std::uint8_t {
     // and while |r| was, before length() became safe at every scale. A corrupt
     // scenario, not an orbit.
     NotFinite,
-    DegenerateState,    // zero radius: a vessel at the exact centre of a body
-    NonPositiveGravity, // mu <= 0 is not a central body
+    DegenerateState, // zero radius: a vessel at the exact centre of a body
+    // There was a `NonPositiveGravity` here until 2026-09-22. mu <= 0 is not a
+    // central body, and three of the five entry points below reported it while
+    // two asserted it -- the split M1-87 closed. `GravParam` holds the
+    // invariant now (register decision 108), so nothing can produce the value
+    // and an enumerator no code can return is a lie in a header, which is the
+    // reason `ParabolicElements` went the same way on 2026-09-12.
     // There was a `ParabolicElements` here until 2026-09-12: propagateElements
     // refused an element set within 1e-9 of e = 1, or one with no finite
     // semi-major axis, because the classical Kepler equation could not be
@@ -143,8 +148,6 @@ enum class OrbitError : std::uint8_t {
         return "input is not finite, or a magnitude derived from it overflowed";
     case OrbitError::DegenerateState:
         return "state vector has zero radius; there is no orbit to describe";
-    case OrbitError::NonPositiveGravity:
-        return "gravitational parameter must be positive";
     case OrbitError::RectilinearOrbit:
         return "velocity is parallel to position; a radial trajectory has no orbital plane";
     case OrbitError::UnreachableAnomaly:
@@ -166,19 +169,18 @@ enum class OrbitError : std::uint8_t {
 // added to the enum and answered by copying its neighbour.
 static_assert(!describe(OrbitError::NotFinite).empty() &&
                   !describe(OrbitError::DegenerateState).empty() &&
-                  !describe(OrbitError::NonPositiveGravity).empty() &&
                   !describe(OrbitError::RectilinearOrbit).empty() &&
                   !describe(OrbitError::UnreachableAnomaly).empty() &&
                   !describe(OrbitError::SolverDidNotConverge).empty(),
               "every OrbitError describes itself");
 
-static_assert(
-    describe(OrbitError::NotFinite) != describe(OrbitError::DegenerateState) &&
-        describe(OrbitError::DegenerateState) != describe(OrbitError::NonPositiveGravity) &&
-        describe(OrbitError::NonPositiveGravity) != describe(OrbitError::RectilinearOrbit) &&
-        describe(OrbitError::RectilinearOrbit) != describe(OrbitError::UnreachableAnomaly) &&
-        describe(OrbitError::UnreachableAnomaly) != describe(OrbitError::SolverDidNotConverge),
-    "and no two of them the same thing");
+static_assert(describe(OrbitError::NotFinite) != describe(OrbitError::DegenerateState) &&
+                  describe(OrbitError::DegenerateState) != describe(OrbitError::RectilinearOrbit) &&
+                  describe(OrbitError::RectilinearOrbit) !=
+                      describe(OrbitError::UnreachableAnomaly) &&
+                  describe(OrbitError::UnreachableAnomaly) !=
+                      describe(OrbitError::SolverDidNotConverge),
+              "and no two of them the same thing");
 
 // --- conversions -----------------------------------------------------------
 
@@ -187,9 +189,8 @@ static_assert(
 // Reports, rather than returning elements a caller cannot use: `NotFinite` for
 // a non-finite input *or* a quantity derived from one that overflows -- every
 // component can be finite while |h|^2 or the eccentricity vector is not;
-// `NonPositiveGravity`; `DegenerateState` for a vessel at the
-// exact centre of the body; and `RectilinearOrbit` for a radial trajectory,
-// which has no orbital plane and therefore no inclination. On success every
+// `DegenerateState` for a vessel at the exact centre of the body; and `RectilinearOrbit` for a
+// radial trajectory, which has no orbital plane and therefore no inclination. On success every
 // element is a usable number, which is checked before returning.
 //
 // **Every element is the nearest double to the exact conversion of the input
@@ -341,8 +342,8 @@ static_assert(
 //
 // Reported rather than asserted, because a scenario file can produce all of
 // them: `NotFinite` for a non-finite input, a magnitude that overflows, or a
-// *result* that does; `NonPositiveGravity`; and `DegenerateState` for a
-// zero-radius state, or for a result that lands on the centre.
+// *result* that does; and `DegenerateState` for a zero-radius state, or for a
+// result that lands on the centre.
 [[nodiscard]] std::expected<StateVector, OrbitError>
 propagate(const StateVector& sv, GravParam mu, Seconds dt);
 
@@ -357,8 +358,8 @@ propagate(const StateVector& sv, GravParam mu, Seconds dt);
 // 1.0e-13 on the parabola itself. The classical Kepler route it replaced was up
 // to 1.5% out near e = 1 and refused everything inside 1e-9 of it.
 //
-// Reports `NotFinite` for a non-finite mu, time step or element set, and
-// `NonPositiveGravity` for mu <= 0. `slr` must be positive and finite: it is the
+// Reports `NotFinite` for a non-finite time step or element set. `mu` cannot
+// be either, since M1-87. `slr` must be positive and finite: it is the
 // one shape parameter every conic has, and the anomaly is read back through it.
 [[nodiscard]] std::expected<Elements, OrbitError>
 propagateElements(const Elements& el, GravParam mu, Seconds dt);

@@ -55,7 +55,7 @@ TEST_CASE("elements <-> state round trip", "[orbit]") {
             .name = "LEO, inclined, slightly eccentric",
             .el = makeElements({
                 .sma = Metres{kEarthRadius.value() + 500e3},
-                .ecc = Eccentricity{0.01},
+                .ecc = eccentricity(0.01),
                 .inc = Degrees{51.6},
                 .lan = Degrees{120.0},
                 .aop = Degrees{45.0},
@@ -66,7 +66,7 @@ TEST_CASE("elements <-> state round trip", "[orbit]") {
             .name = "GTO, highly eccentric",
             .el = makeElements({
                 .sma = Metres{24582e3},
-                .ecc = Eccentricity{0.7306},
+                .ecc = eccentricity(0.7306),
                 .inc = Degrees{28.5},
                 .lan = Degrees{10.0},
                 .aop = Degrees{178.0},
@@ -77,7 +77,7 @@ TEST_CASE("elements <-> state round trip", "[orbit]") {
             .name = "Polar",
             .el = makeElements({
                 .sma = Metres{7200e3},
-                .ecc = Eccentricity{0.02},
+                .ecc = eccentricity(0.02),
                 .inc = Degrees{90.0},
                 .lan = Degrees{300.0},
                 .aop = Degrees{90.0},
@@ -88,7 +88,7 @@ TEST_CASE("elements <-> state round trip", "[orbit]") {
             .name = "Retrograde",
             .el = makeElements({
                 .sma = Metres{8000e3},
-                .ecc = Eccentricity{0.15},
+                .ecc = eccentricity(0.15),
                 .inc = Degrees{145.0},
                 .lan = Degrees{200.0},
                 .aop = Degrees{320.0},
@@ -120,7 +120,7 @@ TEST_CASE("degenerate orbits stay finite", "[orbit]") {
     SECTION("circular inclined") {
         const Elements el = makeElements({
             .sma = Metres{7000e3},
-            .ecc = Eccentricity{0.0},
+            .ecc = eccentricity(0.0),
             .inc = Degrees{30.0},
             .lan = Degrees{70.0},
             .aop = Degrees{40.0},
@@ -144,7 +144,7 @@ TEST_CASE("degenerate orbits stay finite", "[orbit]") {
     SECTION("equatorial (geostationary)") {
         const Elements el = makeElements({
             .sma = Metres{42164e3},
-            .ecc = Eccentricity{0.001},
+            .ecc = eccentricity(0.001),
             .inc = Degrees{0.0},
             .lan = Degrees{0.0},
             .aop = Degrees{60.0},
@@ -189,7 +189,7 @@ TEST_CASE("known analytic values", "[orbit]") {
     // Vis-viva on an eccentric orbit, checked at periapsis.
     const Elements e2 = makeElements({
         .sma = Metres{10000e3},
-        .ecc = Eccentricity{0.3},
+        .ecc = eccentricity(0.3),
         .inc = Degrees{20.0},
         .lan = Degrees{0.0},
         .aop = Degrees{0.0},
@@ -217,7 +217,7 @@ TEST_CASE("universal-variable vs Kepler-element propagation", "[orbit]") {
             .name = "near-circular LEO",
             .el = makeElements({
                 .sma = Metres{6878e3},
-                .ecc = Eccentricity{0.001},
+                .ecc = eccentricity(0.001),
                 .inc = Degrees{51.6},
                 .lan = Degrees{30.0},
                 .aop = Degrees{10.0},
@@ -228,7 +228,7 @@ TEST_CASE("universal-variable vs Kepler-element propagation", "[orbit]") {
             .name = "GTO",
             .el = makeElements({
                 .sma = Metres{24582e3},
-                .ecc = Eccentricity{0.7306},
+                .ecc = eccentricity(0.7306),
                 .inc = Degrees{28.5},
                 .lan = Degrees{10.0},
                 .aop = Degrees{178.0},
@@ -239,7 +239,7 @@ TEST_CASE("universal-variable vs Kepler-element propagation", "[orbit]") {
             .name = "very eccentric",
             .el = makeElements({
                 .sma = Metres{100000e3},
-                .ecc = Eccentricity{0.95},
+                .ecc = eccentricity(0.95),
                 .inc = Degrees{63.4},
                 .lan = Degrees{90.0},
                 .aop = Degrees{270.0},
@@ -274,7 +274,7 @@ TEST_CASE("universal-variable vs Kepler-element propagation", "[orbit]") {
 TEST_CASE("propagation invariants", "[orbit]") {
     const Elements el = makeElements({
         .sma = Metres{12000e3},
-        .ecc = Eccentricity{0.4},
+        .ecc = eccentricity(0.4),
         .inc = Degrees{35.0},
         .lan = Degrees{140.0},
         .aop = Degrees{25.0},
@@ -400,12 +400,12 @@ TEST_CASE("Kepler equation solver", "[orbit]") {
 
         for (int i = 0; i < 360; ++i) {
             const Radians meanAnomaly = toRadians(Degrees{static_cast<f64>(i)});
-            const auto solved = meanToEccentricAnomaly(meanAnomaly, Eccentricity{ecc});
+            const auto solved = meanToEccentricAnomaly(meanAnomaly, eccentricityOf(ecc));
             if (!solved) {
                 allSolved = false;
                 break;
             }
-            const Radians backAgain = eccentricToMeanAnomaly(*solved, Eccentricity{ecc});
+            const Radians backAgain = eccentricToMeanAnomaly(*solved, eccentricityOf(ecc));
             worst = std::max(worst, std::abs(wrapPi(backAgain - meanAnomaly).value()));
         }
 
@@ -420,10 +420,11 @@ TEST_CASE("Kepler equation solver", "[orbit]") {
         for (int i = 0; i < 360; i += 7) {
             CAPTURE(ecc, i);
             const Radians nu = toRadians(Degrees{static_cast<f64>(i)});
-            const Radians eccAnomaly = trueToEccentricAnomaly(nu, Eccentricity{ecc});
+            const Radians eccAnomaly = trueToEccentricAnomaly(nu, eccentricityOf(ecc));
             INFO("true <-> eccentric (elliptic)");
-            REQUIRE_THAT(wrapPi(eccentricToTrueAnomaly(eccAnomaly, Eccentricity{ecc}) - nu).value(),
-                         WithinAbsOf(0.0, Tolerance{1e-10}));
+            REQUIRE_THAT(
+                wrapPi(eccentricToTrueAnomaly(eccAnomaly, eccentricityOf(ecc)) - nu).value(),
+                WithinAbsOf(0.0, Tolerance{1e-10}));
         }
     }
 
@@ -433,13 +434,14 @@ TEST_CASE("Kepler equation solver", "[orbit]") {
         for (int i = -20; i <= 20; ++i) {
             CAPTURE(ecc, i);
             const Radians nu{nuMax * static_cast<f64>(i) / 20.0};
-            const Radians hyperbolic = trueToEccentricAnomaly(nu, Eccentricity{ecc});
+            const Radians hyperbolic = trueToEccentricAnomaly(nu, eccentricityOf(ecc));
             INFO("true <-> eccentric (hyperbolic)");
-            REQUIRE_THAT(wrapPi(eccentricToTrueAnomaly(hyperbolic, Eccentricity{ecc}) - nu).value(),
-                         WithinAbsOf(0.0, Tolerance{1e-9}));
+            REQUIRE_THAT(
+                wrapPi(eccentricToTrueAnomaly(hyperbolic, eccentricityOf(ecc)) - nu).value(),
+                WithinAbsOf(0.0, Tolerance{1e-9}));
 
-            const Radians meanAnomaly = eccentricToMeanAnomaly(hyperbolic, Eccentricity{ecc});
-            const auto solved = meanToEccentricAnomaly(meanAnomaly, Eccentricity{ecc});
+            const Radians meanAnomaly = eccentricToMeanAnomaly(hyperbolic, eccentricityOf(ecc));
+            const auto solved = meanToEccentricAnomaly(meanAnomaly, eccentricityOf(ecc));
             INFO(errorName(solved));
             REQUIRE(solved.has_value());
             INFO("hyperbolic Kepler round trip");
@@ -462,18 +464,20 @@ TEST_CASE("failures are reported, not approximated", "[orbit]") {
     INFO("and refused by elementsFromState too");
     REQUIRE(!degenerateElements.has_value());
 
-    const StateVector leo{.pos = {7000e3, 0, 0}, .vel = {0, 7546.0, 0}};
-    const auto massless = propagate(leo, GravParam{0.0}, 60.0_s);
-    INFO("a massless central body is refused");
-    REQUIRE(!massless.has_value());
-    REQUIRE(massless.error() == OrbitError::NonPositiveGravity);
-
-    const auto negativeGravity = elementsFromState(leo, GravParam{-1.0});
-    INFO("negative gravity is refused");
-    REQUIRE(!negativeGravity.has_value());
+    // **Three assertions stood here until M1-87** (register decision 112, with
+    // the owner's go-ahead): a massless central body refused as
+    // NonPositiveGravity, a negative one refused by elementsFromState, and that
+    // error describing itself. None of them can be written now -- GravParam
+    // holds mu > 0, so `gravParam(0.0)` and `gravParam(-1.0)` fail the build
+    // rather than reaching either function, and the enumerator is gone.
+    //
+    // What they checked has not stopped being checked. It moved from a runtime
+    // report to a type that cannot hold the value, which is VERIFICATION.md
+    // rule 24 -- prefer the bug you cannot write -- and the refusals now have
+    // their own cases against GravParam::from in test_units_validated.cpp.
+    // This case keeps its name, which rule 6 cites, and everything else it did.
 
     // Every error can be explained to a human.
     REQUIRE(!describe(OrbitError::SolverDidNotConverge).empty());
     REQUIRE(!describe(OrbitError::DegenerateState).empty());
-    REQUIRE(!describe(OrbitError::NonPositiveGravity).empty());
 }

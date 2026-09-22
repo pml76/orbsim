@@ -30,12 +30,23 @@
 
 namespace orb::test {
 
+// A value a sweep has already constrained, unwrapped for a test.
+//
+// `.value()` on a refused expected throws, and in a test that is the right
+// kind of loud: it means the sweep produced something it was not supposed to,
+// which is a fault in the test rather than in the code under it. Production
+// code never uses these -- it takes the reporting factory, or the consteval
+// helpers for a literal, which fail the build instead.
+[[nodiscard]] inline Eccentricity eccentricityOf(f64 v) { return Eccentricity::from(v).value(); }
+[[nodiscard]] inline GravParam gravParamOf(f64 v) { return GravParam::from(v).value(); }
+
 // Gravitational parameters, m^3/s^2. Earth is WGS-84 / EGM-96; the others are
 // the IAU 2015 nominal values as tabulated in JPL's DE440 documentation.
-inline constexpr GravParam kMuMoon{4.9028001e12};
-inline constexpr GravParam kMuEarth{3.986004418e14};
-inline constexpr GravParam kMuJupiter{1.26686534e17};
-inline constexpr GravParam kMuSun{1.32712440018e20};
+// Through the consteval helper, so a mistyped one fails the build.
+inline constexpr GravParam kMuMoon = gravParam(4.9028001e12);
+inline constexpr GravParam kMuEarth = gravParam(3.986004418e14);
+inline constexpr GravParam kMuJupiter = gravParam(1.26686534e17);
+inline constexpr GravParam kMuSun = gravParam(1.32712440018e20);
 
 // WGS-84 equatorial radius.
 inline constexpr Metres kEarthRadius{6378137.0};
@@ -99,7 +110,7 @@ struct ElementsInDegrees {
 // from an energy -- numerically right, because the dropped unit was restored by
 // hand at the call site, and unprovable. The compiler checks it now.
 [[nodiscard]] inline SpecificEnergy specificEnergy(const StateVector& sv, GravParam mu) {
-    return SpecificEnergy{(0.5 * lengthSq(sv.vel)) - (mu / length(sv.pos))};
+    return SpecificEnergy{(0.5 * lengthSq(sv.vel)) - (mu.quantity() / length(sv.pos))};
 }
 
 [[nodiscard]] inline SpecificAngularMomentum specificAngularMomentum(const StateVector& sv) {

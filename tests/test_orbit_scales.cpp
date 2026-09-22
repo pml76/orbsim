@@ -108,7 +108,7 @@ constexpr StateVector kFuzzerHyperbola{
     .pos = {6.6047118912273269e-313, 8.8544950093349595e-159, 8.8544945874389708e-159},
     .vel = {2.3135945642312217e-157, -9.2559606829389177e+61, -9.2559631349317831e+61},
 };
-constexpr GravParam kFuzzerMu{4.3333423748712802e-35};
+constexpr GravParam kFuzzerMu = gravParam(4.3333423748712802e-35);
 
 } // namespace
 
@@ -267,11 +267,10 @@ TEST_CASE("non-finite inputs are refused by name", "[orbit][scales]") {
     INFO("NaN time step -> " << errorName(nanTime));
     REQUIRE(nanTimeRefused);
 
-    const auto nanGravity = propagate(leo, GravParam{kNaN}, 60.0_s);
-    const bool nanGravityRefused =
-        !nanGravity.has_value() && nanGravity.error() == OrbitError::NotFinite;
-    INFO("NaN gravitational parameter -> " << errorName(nanGravity));
-    REQUIRE(nanGravityRefused);
+    // A NaN gravitational parameter was refused here until M1-87 (decision
+    // 112). It cannot be built now -- GravParam::from reports NotFinite and
+    // there is no other door -- so the case lives against the factory in
+    // test_units_validated.cpp instead, where a NaN can still be handed in.
 
     const auto el = elementsFromState(leo, kMuEarth);
     INFO(errorName(el));
@@ -364,7 +363,7 @@ TEST_CASE("states with no orbital plane", "[orbit][scales]") {
     // thing the fuzzer found, and the one that argued for checking the answer
     // rather than adding another input guard.
     const auto tinyMu = elementsFromState(
-        {.pos = {1.0e120, 0.0, 0.0}, .vel = {9.68e119, 1.0e118, 0.0}}, GravParam{6.8e-231});
+        {.pos = {1.0e120, 0.0, 0.0}, .vel = {9.68e119, 1.0e118, 0.0}}, gravParam(6.8e-231));
     const bool tinyMuRefused = !tinyMu.has_value() && tinyMu.error() == OrbitError::NotFinite;
     INFO("elements that overflow are not returned as a success -> " << errorName(tinyMu));
     REQUIRE(tinyMuRefused);
@@ -377,7 +376,7 @@ TEST_CASE("states with no orbital plane", "[orbit][scales]") {
         .pos = {1.5419835033e-313, 7.477078763343729e20, 4.483094976257099e-120},
         .vel = {4.483094640249093e-120, 1.3792778605844018e40, 7.477080264543605e20},
     };
-    const auto overflowed = propagate(violent, GravParam{7.477080264551322e20}, 0.0_s);
+    const auto overflowed = propagate(violent, gravParam(7.477080264551322e20), 0.0_s);
     const bool reportedRatherThanAsserted = overflowed.has_value() ||
                                             overflowed.error() == OrbitError::NotFinite ||
                                             overflowed.error() == OrbitError::DegenerateState;
@@ -393,7 +392,7 @@ TEST_CASE("states with no orbital plane", "[orbit][scales]") {
             .pos = {-7.8804e115, -4.62693e-179, -1.60283e-180},
             .vel = {-1.60283e-180, -1.60283e-180, -1.60283e-180},
         },
-        GravParam{3.01352e296});
+        gravParam(3.01352e296));
     const bool underflowedSlrRefused =
         !underflowedSlr.has_value() && underflowedSlr.error() == OrbitError::RectilinearOrbit;
     INFO("a semi-latus rectum that underflows is not an orbit -> " << errorName(underflowedSlr));
@@ -402,7 +401,7 @@ TEST_CASE("states with no orbital plane", "[orbit][scales]") {
     // But a genuinely eccentric orbit is not rectilinear, however thin it is.
     const Elements thin = makeElements({
         .sma = Metres{2.0e7},
-        .ecc = Eccentricity{0.9999},
+        .ecc = eccentricity(0.9999),
         .inc = 45.0_deg,
         .lan = 0.0_deg,
         .aop = 0.0_deg,
@@ -698,7 +697,7 @@ TEST_CASE("an underflowing semi-major axis is not a NaN radius", "[orbit][scales
         .pos = {6.013470016999446e-154, 6.01347001699909e-154, 6.013470018388293e-154},
         .vel = {-4.252558376478985e+71, -4.252558376500915e+71, -4.252558376500915e+71},
     };
-    const GravParam mu{6.554909140857642e-260};
+    const GravParam mu = gravParam(6.554909140857642e-260);
 
     const auto el = elementsFromState(state, mu);
     INFO("elementsFromState -> " << errorName(el));
@@ -762,25 +761,25 @@ TEST_CASE("element propagation holds on both sides of a parabola", "[orbit][scal
         Case{
             .name = "an ellipse 2e-9 inside a parabola",
             .sma = Metres{3499999904697733.5},
-            .ecc = Eccentricity{0.99999999799999995},
+            .ecc = eccentricity(0.99999999799999995),
             .expected = Radians{1.6936408726557204},
         },
         Case{
             .name = "an ellipse 5e-10 inside a parabola, which is refused today",
             .sma = Metres{13999998841634902.0},
-            .ecc = Eccentricity{0.99999999949999996},
+            .ecc = eccentricity(0.99999999949999996),
             .expected = Radians{1.6936408733653279},
         },
         Case{
             .name = "the parabola itself, which is refused today",
             .sma = Metres{kInf},
-            .ecc = Eccentricity{1.0},
+            .ecc = eccentricity(1.0),
             .expected = Radians{1.6936408736018638},
         },
         Case{
             .name = "a hyperbola 2e-9 outside a parabola",
             .sma = Metres{-3500000098986763.0},
-            .ecc = Eccentricity{1.0000000019999999},
+            .ecc = eccentricity(1.0000000019999999),
             .expected = Radians{1.6936408745480071},
         },
     });
@@ -816,7 +815,7 @@ TEST_CASE("element propagation holds outbound and over a long step", "[orbit][sc
     constexpr Metres kSlr{1.4e7};
     const Elements el{
         .sma = Metres{3499999904697733.5},
-        .ecc = Eccentricity{0.99999999799999995},
+        .ecc = eccentricity(0.99999999799999995),
         .inc = Radians{0.0},
         .lan = Radians{0.0},
         .aop = Radians{0.0},
@@ -862,13 +861,13 @@ TEST_CASE("element propagation keeps the semi-major axis it was given", "[orbit]
         Case{
             .name = "an ellipse 2e-9 inside a parabola",
             .sma = Metres{3499999904697733.5},
-            .ecc = Eccentricity{0.99999999799999995},
+            .ecc = eccentricity(0.99999999799999995),
             .expected = Radians{3.1260267023022133},
         },
         Case{
             .name = "a hyperbola 2e-9 outside a parabola",
             .sma = Metres{-3500000098986763.0},
-            .ecc = Eccentricity{1.0000000019999999},
+            .ecc = eccentricity(1.0000000019999999),
             .expected = Radians{3.1260264967557301},
         },
     });
@@ -1149,7 +1148,7 @@ void checkOneEccentricity(f64 e) {
     constexpr Metres kSemiMajor{2.0e7};
     const Elements el = makeElements({
         .sma = kSemiMajor,
-        .ecc = Eccentricity{e},
+        .ecc = eccentricityOf(e),
         .inc = 45.0_deg,
         .lan = 30.0_deg,
         .aop = 60.0_deg,
@@ -1429,7 +1428,7 @@ void sweepClosedOrbits(Sampler& sampler) {
     for (std::size_t i = 0; i < kClosedCases; ++i) {
         const Body& body = kBodies.at(i % kBodies.size());
 
-        const Eccentricity ecc{sampler.fraction() * 0.95};
+        const Eccentricity ecc = eccentricityOf(sampler.fraction() * 0.95);
         const Metres sma{sampler.logUniform(
             {.lo = body.minPeriapsis.value() / (1.0 - ecc.value()), .hi = body.maxSma.value()})};
         const Elements el{
@@ -1453,7 +1452,7 @@ void sweepHyperbolicOrbits(Sampler& sampler) {
     for (std::size_t i = 0; i < kHyperbolicCases; ++i) {
         const Body& body = kBodies.at(i % kBodies.size());
 
-        const Eccentricity ecc{1.05 + (sampler.fraction() * 4.0)};
+        const Eccentricity ecc = eccentricityOf(1.05 + (sampler.fraction() * 4.0));
         const Metres periapsis{sampler.logUniform(
             {.lo = body.minPeriapsis.value(), .hi = body.maxSma.value() / 10.0})};
         const Metres sma{-periapsis.value() / (ecc.value() - 1.0)}; // negative, by convention
@@ -1685,7 +1684,7 @@ void sweepNearParabolicOrbits(Sampler& sampler) {
 void sweepSmallEccentricities(Sampler& sampler) {
     for (std::size_t i = 0; i < kRoundTripCases; ++i) {
         const Body& body = kBodies.at(i % kBodies.size());
-        const Eccentricity ecc{sampler.logUniform({.lo = 1e-16, .hi = 1e-2})};
+        const Eccentricity ecc = eccentricityOf(sampler.logUniform({.lo = 1e-16, .hi = 1e-2}));
         const f64 sma = sampler.logUniform(
             {.lo = body.minPeriapsis.value() / (1.0 - ecc.value()), .hi = body.maxSma.value()});
         const Elements el{
@@ -1709,7 +1708,7 @@ void sweepSmallEccentricities(Sampler& sampler) {
 void sweepHyperbolicAsymptotes(Sampler& sampler) {
     for (std::size_t i = 0; i < kRoundTripCases; ++i) {
         const Body& body = kBodies.at(i % kBodies.size());
-        const Eccentricity ecc{1.0 + sampler.logUniform({.lo = 1e-6, .hi = 99.0})};
+        const Eccentricity ecc = eccentricityOf(1.0 + sampler.logUniform({.lo = 1e-6, .hi = 99.0}));
         const f64 sma =
             -sampler.logUniform({.lo = body.minPeriapsis.value(), .hi = body.maxSma.value()});
         const f64 slr = -sma * ((ecc.value() * ecc.value()) - 1.0);
@@ -1806,7 +1805,7 @@ reversibilityBudget(const Elements& start, const Elements& end, GravParam mu, Se
                         : slr.value() / (1.0 - (eccentricity * eccentricity));
     return {
         .sma = Metres{sma},
-        .ecc = Eccentricity{std::isfinite(sma) ? std::sqrt(1.0 - (slr.value() / sma)) : 1.0},
+        .ecc = eccentricityOf(std::isfinite(sma) ? std::sqrt(1.0 - (slr.value() / sma)) : 1.0),
         .inc = sampler.angle(kPi),
         .lan = sampler.angle(kTau),
         .aop = sampler.angle(kTau),
@@ -1912,7 +1911,7 @@ void sweepParabolicPropagation(Sampler& sampler) {
 void sweepNearCircularPropagation(Sampler& sampler) {
     for (std::size_t i = 0; i < kPropagationCases; ++i) {
         const Body& body = kBodies.at(i % kBodies.size());
-        const Eccentricity ecc{sampler.logUniform({.lo = 1e-13, .hi = 1e-2})};
+        const Eccentricity ecc = eccentricityOf(sampler.logUniform({.lo = 1e-13, .hi = 1e-2}));
         const f64 sma = sampler.logUniform(
             {.lo = body.minPeriapsis.value() / (1.0 - ecc.value()), .hi = body.maxSma.value()});
         const Elements el{
@@ -2051,11 +2050,11 @@ TEST_CASE("elementsFromState is accurate to the resolution of a double", "[orbit
                     .pos = {98115305.6517241, -36899386.05634015, -63434678.16796173},
                     .vel = {35263.74015082627, -13262.052775336871, -22799.134065214468},
                 },
-            .mu = GravParam{1.26686534e17},
+            .mu = gravParam(1.26686534e17),
             .want =
                 {
                     .sma = Metres{984109853.7716752},
-                    .ecc = Eccentricity{1.0},
+                    .ecc = eccentricity(1.0),
                     .inc = Radians{1.6530067199888987},
                     .lan = Radians{5.873583714414224},
                     .aop = Radians{2.595342089300744},
@@ -2080,11 +2079,11 @@ TEST_CASE("elementsFromState is accurate to the resolution of a double", "[orbit
                     .pos = {41748328800.00065, 50413494846.746025, 28790214535.44694},
                     .vel = {95.73084603298135, 115.60047196533479, 66.01729156934707},
                 },
-            .mu = GravParam{398600441800000.0},
+            .mu = gravParam(398600441800000.0),
             .want =
                 {
                     .sma = Metres{-25327823861.335873},
-                    .ecc = Eccentricity{1.0},
+                    .ecc = eccentricity(1.0),
                     .inc = Radians{2.7026987962183653},
                     .lan = Radians{2.0930065922253807},
                     .aop = Radians{4.3868367873725855},
@@ -2105,11 +2104,11 @@ TEST_CASE("elementsFromState is accurate to the resolution of a double", "[orbit
                     .pos = {-640755300159.4368, 29100549031.838127, 346946167705.056},
                     .vel = {-2.2807014201260682, 32.969662883052614, -0.9995679123141444},
                 },
-            .mu = GravParam{398600441800000.0},
+            .mu = gravParam(398600441800000.0),
             .want =
                 {
                     .sma = Metres{6.583308070576134e+23},
-                    .ecc = Eccentricity{0.9999999999989005},
+                    .ecc = eccentricity(0.9999999999989005),
                     .inc = Radians{2.6396867135064164},
                     .lan = Radians{4.836596791006594},
                     .aop = Radians{1.5475516847830715},
@@ -2130,11 +2129,11 @@ TEST_CASE("elementsFromState is accurate to the resolution of a double", "[orbit
                     .pos = {184933078210043.56, 12227088438166.695, 154761708918660.75},
                     .vel = {515460.5071996036, 34080.33415690606, 431364.41700335406},
                 },
-            .mu = GravParam{1.32712440018e20},
+            .mu = gravParam(1.32712440018e20),
             .want =
                 {
                     .sma = Metres{-293005379.96767074},
-                    .ecc = Eccentricity{1.0000034505920776},
+                    .ecc = eccentricity(1.0000034505920776),
                     .inc = Radians{1.7765735746548228},
                     .lan = Radians{0.24121218097744143},
                     .aop = Radians{3.858093101748927},
@@ -2155,11 +2154,11 @@ TEST_CASE("elementsFromState is accurate to the resolution of a double", "[orbit
                     .pos = {89977497286.24823, 325806749198.3961, -6363974265.222106},
                     .vel = {-33.02472617867604, 9.071987671541756, -2.4776024906511935},
                 },
-            .mu = GravParam{398600441800000.0},
+            .mu = gravParam(398600441800000.0),
             .want =
                 {
                     .sma = Metres{338062845427.7559},
-                    .ecc = Eccentricity{2.410249444739502e-09},
+                    .ecc = eccentricity(2.410249444739502e-09),
                     .inc = Radians{0.07463870595147103},
                     .lan = Radians{4.18840882891478},
                     .aop = Radians{0.26957632809726984},
@@ -2192,11 +2191,11 @@ TEST_CASE("elementsFromState is accurate to the resolution of a double", "[orbit
                             2.0383290377229924e-51,
                         },
                 },
-            .mu = GravParam{6.762040535602958e-213},
+            .mu = gravParam(6.762040535602958e-213),
             .want =
                 {
                     .sma = Metres{9.408723759066775e-112},
-                    .ecc = Eccentricity{0.7793327632486454},
+                    .ecc = eccentricity(0.7793327632486454),
                     .inc = Radians{2.537170817576543},
                     .lan = Radians{3.673972445843512},
                     .aop = Radians{6.126893603302964},
@@ -2217,11 +2216,11 @@ TEST_CASE("elementsFromState is accurate to the resolution of a double", "[orbit
                     .pos = {33533205800013.06, 17263837004043.322, -2700443730722.6323},
                     .vel = {0.001461083271751538, 0.0011796325768950588, -0.00055901478564361},
                 },
-            .mu = GravParam{72579463.2331308},
+            .mu = gravParam(72579463.2331308),
             .want =
                 {
                     .sma = Metres{8.272163997668141e+17},
-                    .ecc = Eccentricity{0.9999961169100106},
+                    .ecc = eccentricity(0.9999961169100106),
                     .inc = Radians{0.844951349416489},
                     .lan = Radians{3.5534480537245505},
                     .aop = Radians{0.6871285419999764},
@@ -2272,7 +2271,7 @@ TEST_CASE("elementsFromState is accurate to the resolution of a double", "[orbit
 TEST_CASE("the perifocal velocity keeps e - 1 where ecc cannot", "[orbit][scales]") {
     const Elements el{
         .sma = Metres{7000000000000.0},
-        .ecc = Eccentricity{1.0 - 1e-6},
+        .ecc = eccentricity(1.0 - 1e-6),
         .inc = Radians{0.4},
         .lan = Radians{0.9},
         .aop = Radians{1.7},
@@ -2281,7 +2280,7 @@ TEST_CASE("the perifocal velocity keeps e - 1 where ecc cannot", "[orbit][scales
         .tra = Radians{kPi + 9.99999993922529e-09},
         .slr = Metres{13999992.999999998},
     };
-    const GravParam mu{398600441800000.0};
+    const GravParam mu = gravParam(398600441800000.0);
     const Seconds dt{2331406655074.406};
     constexpr f64 kBudget = 40.0 * kUnitRoundoff;
 
@@ -2401,7 +2400,8 @@ TEST_CASE("the conversion's magnitudes are identical on every toolchain", "[orbi
                     exactlyScaledDouble(engine, {.lowest = -40, .highest = 40}),
                 },
         };
-        const GravParam mu{std::abs(exactlyScaledDouble(engine, {.lowest = -20, .highest = 60}))};
+        const GravParam mu =
+            gravParamOf(std::abs(exactlyScaledDouble(engine, {.lowest = -20, .highest = 60})));
         const auto el = elementsFromState(sv, mu);
         if (!el) continue;
         ++accepted;
@@ -2510,7 +2510,7 @@ TEST_CASE("a radial trajectory at the threshold is refused, not parameterised", 
 TEST_CASE("a nearly radial hyperbola's state is not a NaN position", "[orbit][scales]") {
     const Elements el{
         .sma = Metres{-375379.36666112917},
-        .ecc = Eccentricity{1.0000000000000002},
+        .ecc = eccentricity(1.0000000000000002),
         .inc = Radians{1.7465823605526356},
         .lan = Radians{2.711287424773329},
         .aop = Radians{1.5649763444984528},
@@ -2518,7 +2518,7 @@ TEST_CASE("a nearly radial hyperbola's state is not a NaN position", "[orbit][sc
         .tra = Radians{kPi + -1.630431922805542e-08},
         .slr = Metres{6.719943304116789e-11},
     };
-    const GravParam mu{1.26686534e17};
+    const GravParam mu = gravParam(1.26686534e17);
 
     const auto sv = stateFromElements(el, mu);
     INFO("stateFromElements -> " << errorName(sv));
@@ -2546,14 +2546,14 @@ TEST_CASE("a nearly radial hyperbola's state is not a NaN position", "[orbit][sc
 TEST_CASE("an eccentricity that rounds to 1 does not halve the radius", "[orbit][scales]") {
     const Elements el{
         .sma = Metres{1.4e23},
-        .ecc = Eccentricity{1.0 - 1e-16},
+        .ecc = eccentricity(1.0 - 1e-16),
         .inc = Radians{0.4},
         .lan = Radians{0.9},
         .aop = Radians{1.7},
         .tra = Radians{kPi},
         .slr = Metres{1.4e7},
     };
-    const GravParam mu{3.986004418e14};
+    const GravParam mu = gravParam(3.986004418e14);
 
     const auto sv = stateFromElements(el, mu);
     INFO("stateFromElements -> " << errorName(sv));
@@ -2582,14 +2582,14 @@ TEST_CASE("an anomaly past a hyperbola's asymptote is refused", "[orbit][scales]
     // e = 1.5 puts the asymptote at 2.3005 rad; pi is past it.
     const Elements el{
         .sma = Metres{-1.12e7},
-        .ecc = Eccentricity{1.5},
+        .ecc = eccentricity(1.5),
         .inc = Radians{0.4},
         .lan = Radians{0.9},
         .aop = Radians{1.7},
         .tra = Radians{kPi},
         .slr = Metres{1.4e7},
     };
-    const GravParam mu{3.986004418e14};
+    const GravParam mu = gravParam(3.986004418e14);
 
     const auto sv = stateFromElements(el, mu);
     INFO("stateFromElements -> " << errorName(sv));
