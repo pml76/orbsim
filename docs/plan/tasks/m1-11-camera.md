@@ -165,3 +165,14 @@ quantises visibly was corrected by this task's measurement (decision 120).
       the geometries where it genuinely fails**, which are not the one this
       document named.
 - [x] The budget is in the header, the test and the commit message.
+- [x] The mutation pass is run and recorded, as
+      [`scripts/mutants/m1-11.json`](../../../scripts/mutants/m1-11.json).
+      **Fifteen mutants, run twice**: 10 caught, 1 survived and 4 invalid first;
+      fifteen of fifteen on the second, none surviving and none invalid. The
+      survivor was a real hole — a `bitIdentical` comparing only `x` passed every
+      case in the suite — and the four invalid ones were wrong in the mutants
+      rather than in the code. The pass also confirmed two things this document
+      argued rather than measured: a view matrix that forgets to conjugate is
+      killed by the axes case and by nothing before it, and a ten-times-looser
+      orientation tolerance is killed by the 270 ulp orthonormality budget rather
+      than by any refusal case, because the refusal probes move with the constant.
