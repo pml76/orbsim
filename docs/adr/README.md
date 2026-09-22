@@ -105,6 +105,26 @@ projection rather than only for affine matrices. Runtime cost measured at
 nil, on the stricter of the two candidate designs, before the design was
 chosen.
 
+**0022 -- a scalar with a physical bound validates itself -- on 2026-09-22
+with M1-87**, and it came out of a consistency pass over the source rather than
+out of the task queue. `orbit/` was answering one class of bad input three
+ways: three public functions reported a non-positive `mu`, two asserted it, and
+three anomaly converters did neither, so a negative eccentricity came back as a
+finite, plausible, wrong number. It **supersedes 0019's clause** that
+`Eccentricity` is an mp-units *kind* -- a class holds a bound where a kind
+cannot, and is at least as non-convertible -- and 0019 carries the note back.
+`GravParam` is deliberately *not* superseded: it keeps its quantity, so 0019's
+own example, `mu / (r*r)` producing an acceleration type, still holds. That was
+found to be possible only after the plainer design had been ruled, and the
+cheaper one was put back up rather than absorbed.
+
+**0002 gained a dated note the same day.** It splits a bad value two ways,
+report and assert; 0022 adds a third that comes before both where a value has a
+physical bound. Nothing in 0002 is superseded -- its split governs every
+condition that is not a bound on a value, which is most of them -- and the note
+says so, so that a reader arriving at the error strategy through 0002 does not
+leave with two of the three.
+
 The worked example keeps its own three records under
 [`../../coding-guidelines-example/docs/adr/`](../../coding-guidelines-example/docs/adr/).
 They are superseded by 0001 and 0002 here where the two disagree. Its 0003 is
