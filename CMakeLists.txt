@@ -580,6 +580,7 @@ set(ORBSIM_TESTS
         test_orbit
         test_orbit_scales
         test_projection
+        test_render_quality
         test_sun
         test_time
         test_units_validated
@@ -599,6 +600,29 @@ endforeach()
 target_link_libraries(test_view_math PRIVATE orbsim_view)
 target_link_libraries(test_projection PRIVATE orbsim_view)
 target_link_libraries(test_camera PRIVATE orbsim_view)
+target_link_libraries(test_render_quality PRIVATE orbsim_view)
+
+# The run-time half of Count's wraparound guard (M1-12, register decision 136).
+#
+# Its own program, because the claim is that an assertion fires and an assertion
+# that fires calls abort -- which Catch2 cannot survive, taking the reporter and
+# every case that had not run yet with it. The script decides which way round
+# the exit code means, and reports SKIPPED rather than passing in a tree where
+# assertions are not live. See cmake/VerifyCountWraparound.cmake.
+add_executable(count_wraparound_probe tests/count_wraparound_probe.cpp)
+target_link_libraries(count_wraparound_probe PRIVATE
+        orbsim_core
+        orbsim_warnings
+        orbsim_sanitizers
+)
+add_test(NAME count_wraparound_aborts
+        COMMAND ${CMAKE_COMMAND}
+                -DPROBE=$<TARGET_FILE:count_wraparound_probe>
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/VerifyCountWraparound.cmake
+)
+set_tests_properties(count_wraparound_aborts PROPERTIES
+        SKIP_REGULAR_EXPRESSION "SKIPPED:"
+)
 
 # The generated reference data is the data the error budgets were measured
 # against, or `check` says otherwise (M1-06, register decision 44). Horizons
@@ -828,12 +852,21 @@ add_custom_target(orbsim_shaders DEPENDS ${SPIRV_OUTPUTS})
 # ---------------------------------------------------------------------------
 # Application
 # ---------------------------------------------------------------------------
-# What the renderer and the app see: the core, plus the graphics libraries.
-# One target, so that the header self-check below compiles those headers with
-# exactly the view of the world the application has.
+# What the renderer and the app see: the core, the render-side maths, plus the
+# graphics libraries. One target, so that the header self-check below compiles
+# those headers with exactly the view of the world the application has.
+#
+# **orbsim_view joined on 2026-09-23 with M1-12**, and it is the first time a
+# shipping target links it -- until then only three test suites did, which is
+# why view/Camera.hpp and view/Projection.hpp existed for three days without
+# the application being able to see them. The direction is unchanged and still
+# one-way: the application and the renderer link orbsim_view, orbsim_view
+# links orbsim_core, and orbsim_core links neither (ADR 0012, and the
+# configure-time check beside that target).
 add_library(orbsim_render_deps INTERFACE)
 target_link_libraries(orbsim_render_deps INTERFACE
         orbsim_core
+        orbsim_view
         vma_impl
         vk-bootstrap::vk-bootstrap
         Vulkan::Headers
@@ -918,6 +951,7 @@ orbsim_add_header_selfcheck(orbsim_view_header_selfcheck orbsim_view
         view/Frame.hpp
         view/Mat4.hpp
         view/Projection.hpp
+        view/RenderQuality.hpp
 )
 orbsim_add_header_selfcheck(orbsim_test_header_selfcheck orbsim_test_support
         tests/FixtureFile.hpp
@@ -927,6 +961,7 @@ add_dependencies(test_orbit orbsim_header_selfcheck orbsim_test_header_selfcheck
 add_dependencies(test_view_math orbsim_view_header_selfcheck)
 add_dependencies(test_projection orbsim_view_header_selfcheck)
 add_dependencies(test_camera orbsim_view_header_selfcheck)
+add_dependencies(test_render_quality orbsim_view_header_selfcheck)
 
 if(ORBSIM_BUILD_APP)
     orbsim_add_header_selfcheck(orbsim_render_header_selfcheck orbsim_render_deps
@@ -1154,6 +1189,7 @@ add_custom_target(check
 )
 add_dependencies(check
         ${ORBSIM_TESTS}
+        count_wraparound_probe
         t_erfa_c
         t_erfa_c_extra
         orbsim_header_selfcheck

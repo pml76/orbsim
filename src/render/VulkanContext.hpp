@@ -16,6 +16,7 @@
 // lost device turns into a hang three frames later.
 //
 #include "render/VulkanHandle.hpp"
+#include "view/RenderQuality.hpp"
 
 #include <array>
 #include <atomic>
@@ -67,6 +68,21 @@ struct FrameContext {
     uint32_t imageIndex{0};
     uint32_t frameIndex{0}; // which of the kFramesInFlight slots
     VkExtent2D extent{};
+
+    // The quality settings this frame draws at, snapshotted by value (M1-12,
+    // ADR 0007). **Nothing reads it yet**, and nothing will until M1-46 gives
+    // the struct its first field; it is here now because threading a settings
+    // value through a renderer built for one fixed configuration is a
+    // retrofit, and this is the moment when there is one draw call and it
+    // costs nothing.
+    //
+    // **The caller fills it**, rather than beginFrame taking it as an
+    // argument. The consequence is worth naming: nothing forces a future
+    // frame path to fill it, so it is default-initialised to the value every
+    // preset currently produces and a forgotten assignment is a wrong image
+    // rather than a compile error. M1-13 is where the draw calls arrive and
+    // where that becomes a parameter if it should.
+    orb::view::RenderQuality quality{};
 };
 
 // Rule of Zero. Every handle below owns itself (render/VulkanHandle.hpp), so

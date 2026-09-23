@@ -7,6 +7,7 @@
 #include "app/SdlHandle.hpp"
 #include "core/Units.hpp"
 #include "render/VulkanContext.hpp"
+#include "view/RenderQuality.hpp"
 
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_init.h>
@@ -153,6 +154,18 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
     std::print("GPU: {}\n", gfx.deviceName());
     std::print("Swapchain: {}x{}\n", gfx.extent().width, gfx.extent().height);
 
+    // The one quality value the application owns (M1-12, ADR 0007). It is
+    // handed to each frame by value and nothing reads it yet -- the fields
+    // arrive with the features that cost frames, in M1-46 and M1-59.
+    //
+    // **A preset named here rather than a --quality argument.** A command-line
+    // switch is an actual setting, which this task puts out of scope, and all
+    // four presets are the same value today, so it would be a control with no
+    // effect. M1-16's probe mode is the task that first needs one by name.
+    // Which preset is ADR 0007's open question about the default at first run,
+    // and is not settled by naming one here.
+    const orb::view::RenderQuality quality = orb::view::RenderQuality::high();
+
     uint64_t frames = 0;
     const uint64_t startTicks = SDL_GetTicks();
 
@@ -160,7 +173,7 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
         const Seconds elapsed{static_cast<double>(SDL_GetTicks() - startTicks) / 1000.0};
         if (options.runFor.value() > 0.0 && elapsed >= options.runFor) break;
 
-        const auto frame = gfx.beginFrame();
+        auto frame = gfx.beginFrame();
         if (!frame) {
             std::print(stderr, "Frame could not begin: {}\n", frame.error().message);
             return kExitFailure;
@@ -169,6 +182,12 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
             SDL_Delay(kIdleDelayMs); // minimised or mid-rebuild
             continue;
         }
+
+        // The renderer takes the quality value by value, once per frame: a
+        // copy of a trivially copyable aggregate, so a later adaptive
+        // controller can change it between frames without anything holding a
+        // reference to what it changed.
+        (*frame)->quality = quality;
 
         // Nothing drawn yet; the clear colour is the whole frame.
         if (const auto ended = gfx.endFrame(**frame); !ended) {
