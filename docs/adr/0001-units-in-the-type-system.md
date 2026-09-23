@@ -107,6 +107,54 @@ This closes the question [`0007`](0007-render-quality-is-a-struct.md) left
 open. Decision 19 of [the register](../plan/milestone-1-decisions.md); built by
 [M1-12](../plan/tasks/m1-12-render-quality.md).
 
+## Update, 2026-09-23: `Count` is built, and one sentence above is no longer true
+
+[M1-12](../plan/tasks/m1-12-render-quality.md) built the paragraph above.
+`Count<Derived>` is in `core/Scalar.hpp` with `Texels` and `Mebibytes` beside
+it (decision 123), and everything that paragraph asks for is there. Two things
+about it are worth recording here, where the type system lives.
+
+**"`Pixels` stays on the `f64` `Quantity`" is wrong, and has been since
+2026-09-17.** The *reason* stands — a screen-space threshold of 2.5 px is a
+real quantity and rounding it to 2 or 3 would change what the quadtree does —
+but [`0019`](0019-vectors-carry-their-unit.md) moved every type in
+`core/Units.hpp` onto mp-units that day, and `Quantity<Derived>` now carries
+only `Tolerance`, which takes no part in dimensional analysis. A `Pixels` on
+that base would be the one dimensional unit in the header standing outside the
+dimension system. The register carried this correction as a note on decision 19
+from 2026-09-21; this is the record catching up with it.
+
+**`Pixels` has a dimension of its own** — `units::kPixelDimension`,
+`kScreenLength` and `kPixel` — which is the mechanism mp-units itself uses for
+the **angle**, formally dimensionless in SI and given `dim_angle` regardless.
+This project already depends on that: `Radians` is built on
+`angular::radian`, and it is why an angle cannot be built from a ratio.
+
+*(A **kind** was tried first, for one day, and did not do the job — decision
+137. A kind restricts implicit conversion and, by design, permits explicit
+construction, so `Pixels{someRatio}` was legitimate mp-units on every front
+end. It looked refused under clang and MSVC, and that was an accident of
+`Scalar<>`'s deleted conversion operator resolving differently per front end
+rather than anything a kind promised. The second toolchain is what found it,
+and the numbers are in the register row and beside the type.)*
+
+*(A consequence worth writing down, because the obvious assertion is
+vacuous: `Eccentricity` was this header's other dimensionless quantity, so
+`!is_constructible_v<Pixels, Eccentricity>` passes whether or not a pixel is
+separate from anything — a class is not constructible from a quantity either
+way. The assertions that carry the claim compare `Pixels` against
+`Scalar<one>` and against the ratio of two lengths. Found while preparing
+M1-12's mutation pass, which is what that pass is for.)*
+
+**A count refuses to wrap rather than wrapping** (decision 124). The paragraph
+above says "no division that could truncate" and stops there; addition,
+subtraction and multiplication can all wrap round, and `Texels{1} - Texels{2}`
+would otherwise be 4,294,967,295. The mechanism is a call, on the wrapping
+branch, to a function that is deliberately not `constexpr`, so the expression
+stops being a constant expression and the build fails — in every tree, and at
+no run-time cost, both measured on three front ends before the shape was
+chosen. The register row has the numbers.
+
 ## Update, 2026-09-17: the Vec3 paragraph is under review
 
 The paragraph above -- *"Vectors stay `Vec3` of `f64`. A vector's unit is a

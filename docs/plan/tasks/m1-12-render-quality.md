@@ -1,8 +1,14 @@
 # M1-12 — `Count<Derived>` and `RenderQuality`
 
-Phase: A | Status: not started
+Phase: A | Status: **done, 2026-09-23**
 Prerequisites: M1-09
 Decided by: [ADR 0001](../../adr/0001-units-in-the-type-system.md), [ADR 0007](../../adr/0007-render-quality-is-a-struct.md), [ADR 0012](../../adr/0012-orbsim-view.md)
+
+**Twelve questions went up before any code was written and were ruled the same
+day**: decisions 123-134 of the [register](../milestone-1-decisions.md). Two of
+them reversed what this document or its sources said, and both reversals came
+out of a measurement rather than an argument -- see "What measurement changed"
+below.
 
 ## Purpose
 
@@ -78,10 +84,106 @@ translation unit that reads a quality setting does not compile" true rather than
 hoped for. The check is the `-DORBSIM_BUILD_APP=OFF` build from M1-09, which
 builds the core and every physics suite without `orbsim_view` existing at all.
 
+## What measurement changed
+
+**The precondition this document asks for does not exist unless it is written
+a particular way** (decision 124). "Unsigned wraparound at zero is reported by
+a precondition rather than silently producing four billion" reads as though
+`ORBSIM_EXPECTS` would do it. Measured on 2026-09-23, before any of this was
+written: `assert` expands to nothing under `NDEBUG`, so in the RelWithDebInfo
+tree `Texels{1} - Texels{2}` stays a perfectly good constant expression worth
+**4,294,967,295**, and only the Debug tree refuses it. Written that way, the
+claim in the Tests section below would have been true in one tree and false in
+the other. What makes it unconditional is that the function called on the
+wrapping branch is deliberately **not** `constexpr`, which takes the whole
+expression out of constant evaluation whatever `NDEBUG` says. Confirmed on
+three implementations in two configurations each -- clang 23.1, gcc-14 14.3.0,
+MSVC 14.51, at `-O2 -DNDEBUG` and `-O0` -- with a positive control, and
+measured to cost nothing: `mov`, `sub`, `ret`, the same three instructions an
+unguarded subtraction emits.
+
+**"Like `Eccentricity`" had stopped meaning one thing** (decision 126). This
+document's `Pixels` clause says "on its own mp-units *kind*, like
+`Eccentricity`" -- but `Eccentricity` stopped being a kind on 2026-09-22, the
+day before this task, when [ADR 0022](../../adr/0022-a-bounded-scalar-validates-itself.md)
+made it a class holding its own bound. The bound waits for a caller to say
+which bound it wants; the *mechanism* did not survive the day.
+
+**A kind does not do what this document chose it for** (decision 137), and the
+second toolchain is what said so. A kind restricts **implicit** conversion and,
+by design, permits explicit construction -- `explicitly_convertible(dimensionless,
+kPixelKind)` is true on clang, gcc and MSVC alike -- so `Pixels{someRatio}` was
+legitimate mp-units all along. It *looked* refused under clang and MSVC, and
+that appearance was an accident of this project's own `Scalar<>`, which deletes
+a conversion operator for every target type and so perturbs overload resolution
+differently on each front end. Traced from a failing `linux-gcc` build to a
+fourteen-line reproduction with no library in it. **The answer is the mechanism
+mp-units uses for the angle**: a dimension of its own, which this project
+already depends on for `Radians`. Every claim then holds by construction rather
+than by a front end's opinion, and the unit algebra survives -- which matters,
+because it type-checks M1-50's screen-space error end to end:
+`Pixels / Metres * Metres` is `Pixels`. **The deleted operator is a separate
+latent defect and is deliberately not fixed here**; it changes all nine types.
+
+**One of this task's own assertions was vacuous, and the mutation pass is what
+asked the question.** `Eccentricity` was `core/Units.hpp`'s other dimensionless
+quantity, so `!is_constructible_v<Pixels, Eccentricity>` passes whether or not
+`Pixels` has a kind -- a class is not constructible from a quantity either way.
+The assertions that actually fail when the kind is removed compare `Pixels`
+against `Scalar<one>` and against the ratio of two lengths, and they were added
+before the pass ran. A second hole went the same way: nothing pinned
+`kCountMaximum` to the type's real maximum, since every guard and every proof
+of a guard reads that one constant and they all move together. It is now
+checked against the language's own wrapping rule, which is a fact the constant
+cannot supply about itself.
+
+**The sweeps are a covering table rather than a random draw, and there is no
+seed.** `tests/test_projection.cpp`'s monotonicity case and the whole of
+`tests/test_sun.cpp` already make that choice for the same reason, and the
+reason is stronger for whole numbers: integer arithmetic goes wrong at the
+ends, at the powers of two and at zero, and a uniform draw over the 32-bit
+range reaches the last few thousand values with a probability
+indistinguishable from zero. The probes are those places, crossed with
+themselves. *(This also removed the only reason the suite would have needed a
+`NOLINT`, which is not why it was done but is worth recording: the house
+pattern for a seeded engine is a suppression at the site, and there are eight
+of them in `tests/`.)*
+
 ## Done when
 
-- [ ] `check` green in both trees.
-- [ ] ADR 0007's open question is closed, and ADR 0001 carries the dated note
+- [x] `check` green in both trees. **200 tests, 0 failed, in each**, up from
+      189 -- ten new Catch2 cases and one probe. `check` builds the lint, the
+      format check, the document-link check and the mutation anchors, so those
+      are green too. **All six toolchains re-run** rather than left to the
+      phase gate: 200 under `relwithdebinfo`, `debug`, `asan` and
+      `windows-msvc`, 199 under `linux-sanitize` and `linux-gcc`, none failing,
+      and no report from AddressSanitizer or UndefinedBehaviorSanitizer.
+- [x] ADR 0007's open question is closed, and ADR 0001 carries the dated note
       about `Count` (both written in M1-02, updated here if the shape changed).
-- [ ] A `RenderQuality` value reaches the frame code, and nothing reads it.
-- [ ] `-DORBSIM_BUILD_APP=OFF` still builds core and its tests.
+      Both notes also correct the 2026-09-08 claim that `Pixels` stays on the
+      `f64` base, whose *reason* stands and whose *mechanism* stopped being
+      true on 2026-09-17.
+- [x] A `RenderQuality` value reaches the frame code, and nothing reads it.
+      The application owns one, names `high()` in code, and assigns it into
+      each `FrameContext` (decisions 127 and 128).
+- [x] `-DORBSIM_BUILD_APP=OFF` still builds core and its tests: **424 targets,
+      198 CTest entries, all passing**, and `orbsim_core`'s own link line in
+      the generated build file names no render-side library. The tree was
+      deleted afterwards rather than kept, per `PROJECT_STATE.md` section 8.
+- [x] `orbsim_render_deps` links `orbsim_view`, which is the **first time a
+      shipping target does** -- until this task only three test suites did, so
+      the camera and the projection had existed for three days without the
+      application being able to see them.
+- [x] The run-time half of the guard has a test of its own,
+      `count_wraparound_aborts` (decision 136), which **passes in `debug` and
+      is reported skipped in `relwithdebinfo`** rather than passing there
+      without checking anything. Both trees list 200 CTest entries now.
+- [ ] The mutation pass runs, in `build/debug` rather than
+      `build/relwithdebinfo`: the guard's run-time half only exists where
+      assertions are live, so a pass in the release tree would report
+      survivors for a mechanism that is simply not present there. The file is
+      [`scripts/mutants/m1-12.json`](../../../scripts/mutants/m1-12.json),
+      nineteen mutants, anchors verified. **It has not run yet**, because the
+      harness restores the tree with `git checkout --` and so refuses to start
+      against uncommitted work -- this line is filled in with the result, not
+      before it.

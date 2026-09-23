@@ -185,3 +185,51 @@ The illustrative header comment above therefore reads
 aggregate of per-feature settings, `enum class` for discrete choices, strong
 types for continuous ones, `constexpr` preset factories, and `fromConfig`
 returning `std::expected` -- is unchanged.
+
+## Update, 2026-09-23: the struct exists, and the path is threaded
+
+[M1-12](../plan/tasks/m1-12-render-quality.md) built it.
+`src/view/RenderQuality.hpp` holds the aggregate with its four `constexpr`
+presets, **empty of fields**, and the value travels from the application into
+each frame without anything reading it. That was the point: threading a
+settings value through a renderer built for one fixed configuration is the
+same class of retrofit as the pipeline itself, and it is nearly free while
+there is one draw call and nothing drawn. M1-46 gives the struct its first
+fields and its presets their first disagreement.
+
+Three things this record did not settle, settled now, with the register rows
+that carry the reasoning:
+
+- **The numeric base for count-like units is built** (decision 123).
+  `Count<Derived>` is in `core/Scalar.hpp` beside `Tolerance`, with `Texels`
+  and `Mebibytes`; `Pixels` is a `Scalar<>` on a **kind** of its own in
+  `core/Units.hpp`, *not* on the `f64` base this record's 2026-09-08 update
+  named -- see [`0001`](0001-units-in-the-type-system.md)'s note of the same
+  day for why the reason stands and the mechanism does not.
+- **The value reaches the frame as a `FrameContext` field the caller fills**
+  (decision 127), rather than as an argument to `beginFrame`. The consequence
+  is written in the field's comment rather than left to be discovered: nothing
+  forces a later frame path to fill it.
+- **The application names a preset in code** (decision 128). There is no
+  `--quality` argument, because a switch is an actual setting and all four
+  presets are the same value today. **This is not an answer to the "default
+  preset at first run" question below**, which stays open.
+
+**The determinism test this record asks for is not here, and that is not an
+omission.** "Run one scenario at two presets and assert the simulation state
+is bit-identical" is vacuous while the presets are one value and nothing reads
+them; it belongs to M1-70 and M1-85, which is where the plan puts it. What
+*is* checked today is the structural half, and it is checked rather than
+claimed: `orbsim_core`'s link line names no render-side library, a
+configure-time assertion in `CMakeLists.txt` fails the build if it ever does,
+and a `-DORBSIM_BUILD_APP=OFF` tree builds the core and every physics suite
+with this header absent -- 424 targets and 198 tests passing on 2026-09-23.
+
+**One clause of this record now has a counterexample in its own codebase, and
+it is worth naming.** "Every field carries a default member initializer" is
+right and is repeated in the header. The struct has no fields yet, so the
+claim is trivially true today; the reason to write this down is that
+`FrameContext::quality` is default-initialised for exactly that reason, and a
+reader who meets the two facts together should know which one is load-bearing.
+It is the field initialisers: they are what makes a forgotten assignment a
+defined value rather than rubbish.
