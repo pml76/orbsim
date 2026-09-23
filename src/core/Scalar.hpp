@@ -5,11 +5,19 @@
 // circle constants, and the base every strong scalar type is built on.
 //
 // This is the bottom of the core's include order -- Scalar -> Units -> Math ->
-// Orbit -- and it depends on nothing but the standard library. It exists as a
-// separate header so that Units.hpp can define Radians and Seconds *before*
-// Math.hpp needs them for rotations and integration; when the strong types
-// lived above the vector maths, every rotation took a bare f64 angle.
+// Orbit -- and it depends on nothing but the standard library and
+// core/Contract.hpp, which is itself only <cassert> and two macros. It exists
+// as a separate header so that Units.hpp can define Radians and Seconds
+// *before* Math.hpp needs them for rotations and integration; when the strong
+// types lived above the vector maths, every rotation took a bare f64 angle.
 //
+// *(The sentence above read "nothing but the standard library" until
+// 2026-09-23, which was true until Count<> below needed a precondition. The
+// dependency is one header deep and acyclic -- Contract.hpp includes nothing
+// of ours -- but the claim had to be corrected rather than quietly outgrown.)*
+//
+#include "core/Contract.hpp"
+
 #include <bit>
 #include <cmath>
 #include <compare>
@@ -63,9 +71,12 @@ inline constexpr f64 kTau = 2.0 * kPi;
 // mp-units kind because it is a parameter of a comparison between two bare
 // doubles, not a measurement of anything.
 //
-// Both bases present the same surface -- value(), ordering, no `==`,
-// bitIdentical, arithmetic that keeps the type -- so code reading a scalar does
-// not have to know which one it came from.
+// Both bases present the same surface -- value(), ordering, arithmetic that
+// keeps the type -- so code reading a scalar does not have to know which one it
+// came from. Count<> below is the third, and it differs in the places where
+// being integral genuinely changes the answer: it has `==` and no
+// bitIdentical, because for a whole number those are the same claim. Each
+// difference is written out beside it.
 template <typename Derived> struct Quantity {
     // An accessor rather than a public member since 2026-09-17. It was a public
     // member, on the argument that `value` IS the interface of a unit type and
@@ -244,6 +255,182 @@ static_assert(!isFinite(absOf(-std::numeric_limits<f64>::infinity())),
     return a > kPi ? a - kTau : a;
 }
 
+// --- counts: the integral sibling of Quantity (M1-12) -----------------------
+//
+// Register decision 19 and ADR 0001's update of 2026-09-08. A texel count, a
+// mip level and a cache budget in mebibytes are **counts**: whole numbers with
+// no meaningful fractional part. An f64 base invites a division that truncates
+// without saying so, or a texture 2047.9999 texels wide. So they get a base of
+// their own.
+
+// The largest number a count can hold. Named once, because it appears both in
+// the guards below and in the proofs of them, and a limit written twice is one
+// fact with two chances to rot.
+inline constexpr std::uint32_t kCountMaximum = std::numeric_limits<std::uint32_t>::max();
+
+// And it really is the last value the type holds, checked against the
+// language's own wrapping rule rather than against the definition one line
+// above -- which would be the code agreeing with itself. Written because
+// preparing the mutation pass found that nothing else here would notice a
+// limit that was one too small: every guard and every proof of a guard reads
+// this constant, so they all move together and all keep agreeing.
+static_assert(kCountMaximum + 1U == 0U, "one past the limit is where an unsigned count wraps");
+
+// Half of what a count's arithmetic does instead of wrapping round: the half
+// that speaks to the compiler. The other half is the ORBSIM_EXPECTS beside
+// each call, which speaks to a Debug run.
+//
+// **Deliberately not constexpr, and that is the entire mechanism.** An
+// expression that reaches a call to a function which is not constexpr is not a
+// constant expression, so `Texels{1} - Texels{2}` fails the build and names
+// this function -- in **every** tree, because that is a rule of the language
+// rather than a property of NDEBUG.
+//
+// ORBSIM_EXPECTS on its own would not do it, and the difference was measured
+// rather than assumed on 2026-09-23. assert expands to nothing under NDEBUG,
+// and the underflow then becomes a perfectly good constant expression worth
+// 4,294,967,295: the Debug tree refused it and the RelWithDebInfo tree did
+// not. A guard that quietly stops guarding in the shipped configuration looks
+// exactly like one that works, which is VERIFICATION.md rule 23.
+//
+// **It costs nothing.** The body is empty, so it inlines away, the branch dies
+// with it, and a guarded subtraction emits mov, sub, ret -- the three
+// instructions an unguarded one emits, compared side by side at -O2 -DNDEBUG.
+// Both claims were confirmed on all three front ends in both configurations --
+// clang 23.1, gcc-14 14.3.0 and MSVC 14.51 -- with a positive control, since
+// "not a constant expression" and "the proof is broken" are otherwise the
+// same answer.
+//
+// **Empty rather than holding the assertion itself, and that was not the first
+// attempt.** It was `{ ORBSIM_EXPECTS(false); }`, which is tidier and which
+// three Windows trees accepted. The `linux-sanitize` preset rejected it the
+// same day: once assertions are live, a function whose only statement is
+// `assert(false)` never returns -- glibc marks the failure path, so clang can
+// see it -- and -Wmissing-noreturn says so. **The attribute would have been a
+// lie**, because under NDEBUG the body is empty and the function does return,
+// and calling a [[noreturn]] function that returns is undefined behaviour.
+// MSVC's assert does not mark its failure path, which is why the Windows
+// builds were silent. That is VERIFICATION.md rule 20 in one episode, and the
+// fix is better than what it replaced: the assertion now sits where the values
+// are and names the condition rather than the constant `false`.
+//
+// **What none of it catches** is a bad value arriving at run time in a release
+// build. In Debug the assertions catch it; when counts start coming out of
+// configuration files, reporting them is fromConfig's job (ADR 0007).
+inline void stopConstantEvaluation() noexcept {}
+
+// The base for a count: one std::uint32_t, no dimension, no fractional part.
+// The same CRTP shape as Quantity above and the same `friend Derived` trick, so
+// `struct Other : Count<Texels>` does not compile.
+//
+// **Where the surface differs from Quantity's**, each difference being the type
+// being whole rather than fractional:
+//
+//   * **`==` is provided rather than deleted.** On a double, exact equality is
+//     what CODING_GUIDELINES section 11 forbids and -Wfloat-equal reports; on a
+//     whole number it is simply the comparison, with nothing to approximate.
+//     bitIdentical has no counterpart here for the same reason -- for these
+//     values `==` already *is* bit identity, so a second spelling would be two
+//     names for one claim.
+//   * **There is no division at all**, by another count or by a plain number.
+//     Either truncates in silence, which is the defect the integral base exists
+//     to prevent. A ratio of two counts is a named function returning f64, and
+//     it will be written when something wants one.
+//   * **The scale of a multiplication is exactly a std::uint32_t**, so a call
+//     site writes `* 2U`. `* 2` does not compile, because an int would be a
+//     signed-to-unsigned conversion that -Wsign-conversion reports and ADR 0017
+//     makes an error; `* 1.5` does not compile either, which is the point --
+//     the implicit f64-to-unsigned narrowing would have given 1.
+//   * **Nothing wraps round.** See stopConstantEvaluation above.
+template <typename Derived> struct Count {
+    [[nodiscard]] constexpr std::uint32_t value() const noexcept { return value_; }
+
+    // The defaulted <=> gives <, >, <= and >=, and brings a defaulted == with
+    // it. See the note above for why this base has one where Quantity does not.
+    [[nodiscard]] constexpr auto operator<=>(const Count&) const noexcept = default;
+    [[nodiscard]] constexpr bool operator==(const Count&) const noexcept = default;
+
+    // Each of the three reads the same way, and the two lines after the
+    // condition are the two halves of one precondition: the assertion is for a
+    // value that arrives at run time in a Debug build, and the call is what
+    // refuses the expression while the compiler is evaluating it. See
+    // stopConstantEvaluation above for why neither does the other's job.
+    [[nodiscard]] constexpr Derived operator+(Derived other) const noexcept {
+        const bool wouldWrap = other.value_ > kCountMaximum - value_;
+        ORBSIM_EXPECTS(!wouldWrap);
+        if (wouldWrap) stopConstantEvaluation();
+        return Derived{value_ + other.value_};
+    }
+    [[nodiscard]] constexpr Derived operator-(Derived other) const noexcept {
+        const bool wouldWrap = other.value_ > value_;
+        ORBSIM_EXPECTS(!wouldWrap);
+        if (wouldWrap) stopConstantEvaluation();
+        return Derived{value_ - other.value_};
+    }
+
+    // The test is written so that it cannot itself overflow: kCountMaximum
+    // divided by the scale is the largest value that still fits, so the product
+    // is checked without ever forming it. A scale of zero is separated out
+    // because dividing by it is undefined behaviour, and because zero is the
+    // one scale that can never overflow.
+    //
+    // Constrained to std::uint32_t exactly rather than taking one: a parameter
+    // of that type would accept an f64 or an int through an implicit
+    // conversion, and `Texels{2} * 1.5` would compile and mean `* 1`.
+    template <std::same_as<std::uint32_t> Scale>
+    [[nodiscard]] constexpr Derived operator*(Scale scale) const noexcept {
+        const bool wouldWrap = scale != 0U && value_ > kCountMaximum / scale;
+        ORBSIM_EXPECTS(!wouldWrap);
+        if (wouldWrap) stopConstantEvaluation();
+        return Derived{value_ * scale};
+    }
+
+    // The mirrored spelling, so `4U * Texels{16}` reads as it should. Routed
+    // through the member, so the guard lives in one place.
+    template <std::same_as<std::uint32_t> Scale>
+    [[nodiscard]] friend constexpr Derived operator*(Scale scale, Derived count) noexcept {
+        return count * scale;
+    }
+
+    constexpr Derived& operator+=(Derived other) noexcept {
+        derived() = derived() + other;
+        return derived();
+    }
+    constexpr Derived& operator-=(Derived other) noexcept {
+        derived() = derived() - other;
+        return derived();
+    }
+
+private:
+    std::uint32_t value_{};
+
+    // Only the named derived type may construct its base, which is what stops
+    // `struct Other : Count<Texels>` from compiling by accident.
+    friend Derived;
+    constexpr Count() noexcept = default;
+    explicit constexpr Count(std::uint32_t v) noexcept : value_(v) {}
+
+    [[nodiscard]] constexpr Derived& derived() noexcept { return static_cast<Derived&>(*this); }
+};
+
+// A number of texels -- the elements of a texture. An edge length or a total;
+// two of them deliberately do not multiply, so an edge length cannot become an
+// area without somebody writing that conversion down and naming its unit.
+// First fields: the atmosphere's lookup tables in M1-46.
+struct Texels : Count<Texels> {
+    constexpr Texels() noexcept = default;
+    explicit constexpr Texels(std::uint32_t v) noexcept : Count{v} {}
+};
+
+// A memory budget in units of 2^20 bytes -- mebibytes rather than megabytes,
+// because a graphics allocation is a power of two and 10^6 bytes is a different
+// number. Thirty-two bits reach 4,194,303 MiB, which is four tebibytes. First
+// field: the tile cache's budget in M1-34 and M1-59.
+struct Mebibytes : Count<Mebibytes> {
+    constexpr Mebibytes() noexcept = default;
+    explicit constexpr Mebibytes(std::uint32_t v) noexcept : Count{v} {}
+};
+
 // Compile-time proofs of the properties the rest of the codebase relies on.
 static_assert(sizeof(Tolerance) == sizeof(f64), "a strong type must cost nothing");
 static_assert(std::is_trivially_copyable_v<Tolerance>);
@@ -264,6 +451,75 @@ static_assert(!std::equality_comparable<Tolerance>, "exact equality of a double 
 static_assert(Tolerance{0.0}.bitIdentical(Tolerance{0.0}) &&
                   !Tolerance{0.0}.bitIdentical(Tolerance{-0.0}),
               "bit identity tells the two zeros apart, as a determinism check needs");
+
+// --- and the same for the counts (M1-12) ------------------------------------
+//
+// Almost everything Count buys is one of these, which is why
+// tests/test_render_quality.cpp holds so little: a refusal cannot be asserted
+// at run time, and an assertion here runs on every build whether or not anyone
+// invokes the suite. Each negative claim below was written inverted once and
+// watched failing before it was believed.
+
+// Concepts rather than bare requires-expressions, for the reason core/Units.hpp
+// gives beside `addable`: a requires-expression on non-dependent operands is
+// diagnosed rather than evaluated.
+template <typename A, typename B>
+concept divisible = requires(const A& x, const B& y) { x / y; };
+template <typename A, typename B>
+concept multipliable = requires(const A& x, const B& y) { x * y; };
+
+static_assert(sizeof(Texels) == sizeof(std::uint32_t), "a strong type must cost nothing");
+static_assert(sizeof(Mebibytes) == sizeof(std::uint32_t));
+static_assert(std::is_trivially_copyable_v<Texels>);
+static_assert(std::is_trivially_copyable_v<Mebibytes>);
+static_assert(!std::is_convertible_v<std::uint32_t, Texels>, "construction must be explicit");
+static_assert(!std::is_convertible_v<Texels, std::uint32_t>, "no silent way back to a bare number");
+// Constructibility as well as convertibility, which answer different questions
+// -- what happens by accident, and what happens when somebody writes the braces
+// on purpose. core/Units.hpp records the day the two disagreed.
+static_assert(!std::is_convertible_v<Texels, Mebibytes>, "and no way across either");
+static_assert(!std::is_constructible_v<Texels, Mebibytes>, "not even with the braces written out");
+static_assert(!std::is_constructible_v<Mebibytes, Texels>);
+static_assert(Texels{}.value() == 0U, "a default count is zero, not whatever was on the stack");
+
+static_assert((Texels{1024U} + Texels{24U}).value() == 1048U);
+static_assert((Texels{1024U} - Texels{24U}).value() == 1000U);
+static_assert((Texels{16U} * 4U).value() == 64U);
+static_assert((4U * Texels{16U}).value() == 64U, "and the scale reads on either side");
+static_assert(Texels{1U} < Texels{2U});
+static_assert(Texels{2U} == Texels{2U}, "a whole number compares exactly, so == is the right word");
+static_assert(Texels{1U} != Texels{2U});
+
+static_assert(!divisible<Texels, Texels>,
+              "a ratio of counts would truncate, so it is not an operator");
+static_assert(!divisible<Texels, std::uint32_t>, "nor is a count over a plain number");
+static_assert(!divisible<Texels, f64>);
+static_assert(!multipliable<Texels, Texels>,
+              "an edge length times an edge length is an area, which has no type here");
+static_assert(!multipliable<Texels, Mebibytes>);
+static_assert(!multipliable<Texels, f64>, "and a fractional scale would silently mean its floor");
+static_assert(!multipliable<Texels, int>, "a signed scale has to be spelled unsigned");
+
+// **The guard, proved where it has to hold: inside a constant expression.**
+// A count that would wrap is refused while the compiler is working the
+// expression out, so a bad literal is a build failure rather than four billion
+// of something.
+template <typename F>
+concept constantEvaluable = requires { typename std::bool_constant<(F{}(), true)>; };
+
+static_assert(!constantEvaluable<decltype([] { return (Texels{1U} - Texels{2U}).value(); })>,
+              "a subtraction that would go below zero is refused as the compiler evaluates it");
+static_assert(
+    !constantEvaluable<decltype([] { return (Texels{kCountMaximum} + Texels{1U}).value(); })>,
+    "and an addition that would carry past the end");
+static_assert(!constantEvaluable<decltype([] { return (Texels{kCountMaximum} * 2U).value(); })>,
+              "and a product that would not fit");
+// **The positive control**, and it is not decoration: without it, "this is not
+// a constant expression" and "this proof is broken" are the same answer, which
+// is VERIFICATION.md rule 23 exactly. Measured against the unguarded form on
+// 2026-09-23, where the same concept answered yes.
+static_assert(constantEvaluable<decltype([] { return (Texels{1024U} - Texels{24U}).value(); })>,
+              "while every operation that does fit is still a constant expression");
 
 } // namespace orb
 

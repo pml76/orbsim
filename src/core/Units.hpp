@@ -55,6 +55,40 @@ inline constexpr auto kSecond = mp_units::si::second;
 inline constexpr auto kRadian = mp_units::angular::radian;
 inline constexpr auto kDegree = mp_units::angular::degree;
 
+// **A length on the screen gets a dimension of its own** (M1-12, register
+// decision 137), which is the one thing in this header mp-units does not
+// already provide.
+//
+// A pixel is a picture element, so in SI it is a count and therefore
+// dimensionless. Giving it a dimension anyway is a modelling choice, and it is
+// exactly the choice mp-units itself makes for the **angle** -- formally
+// dimensionless too, and given `dim_angle` regardless. This project already
+// relies on that: `kRadian` above is `angular::radian`, which is why an angle
+// cannot be built from a ratio. A screen length wants the same treatment for
+// the same reason. Adding pixels to a mass fraction is meaningless, while the
+// ratio of two screen lengths is an ordinary number, and a dimension says both.
+//
+// **What was tried first, and why it was not enough.** Until 2026-09-23 this
+// was an mp-units *kind* -- dimensionless, but nominally not interchangeable
+// with other ratios -- copied from the shape `EccentricityKind` had until
+// M1-87. A kind restricts **implicit** conversion and, by design, does not
+// restrict explicit construction: `explicitly_convertible(dimensionless,
+// kPixelKind)` is **true**, measured on all three front ends, so
+// `Pixels{someRatio}` was legitimate mp-units. It appeared to be refused under
+// clang and MSVC, and that appearance was an accident of `Scalar`'s deleted
+// conversion operator, which the front ends resolve differently for class
+// targets -- gcc accepted what clang and MSVC rejected, and `linux-gcc` was
+// what said so. A dimension refuses it outright, everywhere, and needs no
+// help from that operator: `Pixels::kBaseConvertsToANumber` is **false**,
+// because this base is not dimensionless, so the operator is not declared for
+// it at all.
+inline constexpr struct PixelDimension final : mp_units::base_dimension<"px"> {
+} kPixelDimension;
+inline constexpr struct ScreenLength final : mp_units::quantity_spec<kPixelDimension> {
+} kScreenLength;
+inline constexpr struct Pixel final : mp_units::named_unit<"px", mp_units::kind_of<kScreenLength>> {
+} kPixel;
+
 } // namespace units
 
 // *(An `EccentricityKind` lived here from 2026-09-17 until 2026-09-22. It was
@@ -71,6 +105,10 @@ inline constexpr auto kDegree = mp_units::angular::degree;
 // there, measured before the change, and no task document asks for it.
 // GravParam, which does have arithmetic ahead of it in M1-62, keeps its
 // quantity instead of losing it -- see `quantity()` below.)*
+
+// *(A `PixelKind` lived here for one day, 2026-09-23. The dimension that
+// replaced it is in the `units` namespace above, where the references belong,
+// and the comment there says what a kind did not do.)*
 
 // The type of every physical scalar: an mp-units quantity, with this
 // project's house rules put back on top of it.
@@ -344,6 +382,25 @@ private:
     f64 value_{};
 };
 
+// A length on the screen. See `units::kPixelDimension` above for why a pixel
+// has a dimension of its own rather than being a dimensionless ratio.
+//
+// **A real quantity and not a Count**, deliberately: a subdivision threshold of
+// 2.5 px is meaningful, and rounding it to 2 or 3 would change what the
+// quadtree does. M1-50 derives the screen-space error in it and M1-59 makes it
+// a RenderQuality field.
+//
+// **It does not validate itself yet, and that is a decision rather than an
+// oversight** (M1-12, register decision 126). ADR 0022 says a scalar with a
+// physical bound holds its own bound, and this one has no settled bound to
+// hold: a threshold wants "finite and above zero", a distance wants "not
+// negative", and a pixel *coordinate* -- which register decision 105 leaves to
+// M1-80 -- wants any sign at all. It becomes a validated class when the first
+// caller says which of those it is, which is M1-50 or M1-59, and not before.
+// The dimension is what separates it in the meantime, and separation and
+// validation are different jobs.
+using Pixels = Scalar<units::kPixel>;
+
 // A reciprocal time. The Lagrange coefficient fdot is one, and naming it is
 // what lets `position * fdot` be checked as a velocity.
 using PerSecond = Scalar<mp_units::one / units::kSecond>;
@@ -459,6 +516,12 @@ inline namespace literals {
 
 [[nodiscard]] constexpr Seconds operator""_s(long double v) noexcept {
     return Seconds{static_cast<f64>(v)};
+}
+
+// A screen-space threshold is written often enough in the render-side maths to
+// earn the suffix the other four have (M1-12).
+[[nodiscard]] constexpr Pixels operator""_px(long double v) noexcept {
+    return Pixels{static_cast<f64>(v)};
 }
 
 } // namespace literals
@@ -619,6 +682,66 @@ static_assert(std::is_same_v<decltype(Metres{1.0} / Seconds{1.0}), MetresPerSeco
 static_assert(nearlyEqual((Metres{100.0} / Seconds{2.0}).value(), 50.0, Tolerance{0.0}));
 static_assert(nearlyEqual((MetresPerSecond{3.0} * Seconds{2.0}).value(), 6.0, Tolerance{0.0}),
               "and a speed times a time is the length it travelled");
+
+// --- pixels (M1-12) ---------------------------------------------------------
+//
+// What the kind buys, stated as the claims a call site depends on. The first
+// two are the ones that matter: a pixel is dimensionless, so without a kind of
+// its own every other dimensionless ratio in this header would convert into it.
+// **The claim the dimension makes**, and it needs a dimensionless quantity to
+// make it against -- which is worth spelling out, because the obvious assertion
+// is vacuous. Eccentricity was this header's other dimensionless quantity until
+// 2026-09-22 and is a plain class since, so asserting that a class is not
+// constructible from a quantity holds whether or not a pixel is separate from
+// anything. The ratio of two lengths is the real test, and these are the
+// assertions that fail if the dimension is taken away.
+//
+// **Both of these were measured on all three front ends before being written**
+// (2026-09-23), because the pair they replaced was not: with the earlier *kind*
+// the second of them held under clang and MSVC and failed under gcc, and the
+// agreement was an accident of `Scalar`'s deleted conversion operator rather
+// than anything a kind promised. See `units::kPixelDimension` above.
+static_assert(!std::is_same_v<Pixels, Scalar<mp_units::one>>,
+              "a pixel is not interchangeable with a plain dimensionless ratio");
+static_assert(!std::is_constructible_v<Pixels, decltype(Metres{2.0} / Metres{1.0})>,
+              "and a ratio of two lengths is not a number of pixels, "
+              "not even when somebody writes the braces");
+static_assert(!std::is_convertible_v<decltype(Metres{2.0} / Metres{1.0}), Pixels>,
+              "nor does it become one on its own");
+static_assert(!Pixels::kBaseConvertsToANumber,
+              "and a pixel is outside the dimensionless-conversion machinery entirely, "
+              "which is what the dimension buys over a kind");
+static_assert(Scalar<mp_units::one>::kBaseConvertsToANumber,
+              "-- the control, without which the assertion above could pass for a "
+              "trait that had simply stopped being true of anything");
+
+// The unit algebra a validated class would have given up, and the reason the
+// dimension was preferred: this is M1-50's screen-space error formula, checked
+// by the type system rather than by a comment. A focal length in pixels, over a
+// distance in metres, times a geometric error in metres, is a number of pixels.
+static_assert(std::is_same_v<decltype(Pixels{1000.0} / Metres{1.0} * Metres{1.0}), Pixels>,
+              "px/m times m is px, and the dimension system knows it");
+static_assert(nearlyEqual((Pixels{6.0} / Pixels{3.0}).value(), 2.0, Tolerance{0.0}),
+              "and the ratio of two screen lengths is an ordinary number again");
+
+static_assert(!std::is_constructible_v<Pixels, Eccentricity>,
+              "a pixel measurement must never be usable as an eccentricity");
+static_assert(!std::is_constructible_v<Eccentricity, Pixels>, "nor the other way round");
+static_assert(!std::is_constructible_v<Pixels, Radians>, "nor an angle a length on the screen");
+static_assert(!std::is_constructible_v<Radians, Pixels>);
+static_assert(!std::is_convertible_v<f64, Pixels>, "construction must be explicit");
+static_assert(!std::is_convertible_v<Pixels, f64>, "and there is no silent way back");
+static_assert(!addable<Pixels, Radians>, "a screen length plus an angle must not compile");
+static_assert(!addable<Pixels, Eccentricity>, "nor a screen length plus a ratio");
+static_assert(!equatable<Pixels, Pixels>, "exact equality of a double is spelled out");
+static_assert(sizeof(Pixels) == sizeof(f64));
+static_assert(std::is_trivially_copyable_v<Pixels>);
+// Named rather than written inline, for the reason kOneKilometre gives above:
+// `2.5_px.value()` lexes as one pp-number and does not compile.
+inline constexpr Pixels kTwoAndAHalfPixels = 2.5_px;
+static_assert(nearlyEqual(kTwoAndAHalfPixels.value(), 2.5, Tolerance{0.0}));
+static_assert(nearlyEqual((Pixels{2.0} + Pixels{0.5}).value(), 2.5, Tolerance{0.0}),
+              "and the arithmetic is the plain arithmetic of the number it carries");
 
 } // namespace orb
 
