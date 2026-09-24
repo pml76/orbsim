@@ -126,10 +126,15 @@ carries terms worth recording.
 | [Skyfield](https://rhodesmill.org/skyfield/) 1.55 (Brandon Rhodes) | MIT. Its `tdb_minus_tt` is USNO Circular 179 eq. 2.6 (Kaplan 2005), written independently of SOFA; its dependencies are certifi, jplephem, numpy and sgp4, none of them ERFA -- checked 2026-09-19 | Generates the committed TDB − TT reference, [`data/skyfield/tdb-minus-tt.txt`](data/skyfield/tdb-minus-tt.txt), that [M1-05](docs/plan/tasks/m1-05-tdb-and-ut1.md) asserts its 20 µs budget against (register decisions 53-55), and since 2026-09-20 the **Earth-orientation reference**, [`data/skyfield/earth-orientation.txt`](data/skyfield/earth-orientation.txt), that [M1-07](docs/plan/tasks/m1-07-earth-orientation.md) asserts its 0.1 mas budget against (decisions 75, 76 and 82). For the rotation its route is independent -- sidereal time on the equinox-based matrix, where ERFA's is CIO-based -- but its IAU 2000A nutation is a port of NOVAS's, which shares IERS modules with SOFA's, and decision 75 records that as the limit of this reference. **Committed**, unlike Horizons output: the terms are MIT, and a table of numbers computed from a published formula is not the software. No Skyfield code enters this project; [`data/skyfield/README.md`](data/skyfield/README.md) has the recipe. NOVAS 3.1 evaluates the same equation, and was not chosen: it would add no independence, and its terms could not be confirmed that day -- the user's guide states no licence and asks users to e-mail USNO, the USNO source URL returned HTTP 500, and the Astrophysics Source Code Library failed TLS verification |
 | JPL Horizons (NASA/JPL-Caltech) | **No licence is stated anywhere, and the FAQ asks for permission** — read 2026-09-17. **Settled the same day: this project queries Horizons and does not redistribute its output.** Fixtures are generated into gitignored `data/horizons/`; the recipe and the checksums are committed instead | Sun, Moon and Earth positions and the time scales ([M1-06](docs/plan/tasks/m1-06-horizons-fixtures.md), [M1-08](docs/plan/tasks/m1-08-solar-position.md)) |
 | Orbiter (Martin Schweiger) | MIT at the root; **LGPL** in two directories; the standalone `orbiter-tileedit` repository is GPL v3 | The tile format specification and the archive format. **The licence boundary is not uniform and has its own document:** [`docs/ORBITER-REFERENCE.md`](docs/ORBITER-REFERENCE.md) |
+| MSIS / NRLMSISE-00 atmosphere models (US Naval Research Laboratory) | **Two different problems, and neither route is permissive** — NRLMSIS 2.x is academic and non-commercial with delivery obligations; the 2001 C port grants no permission at all. Read at the source 2026-09-24 | **Nothing, and that is the point of the row.** The thermospheric density model wanted for atmospheric drag. No third-party code is to be taken: the route decided is to implement from the published model. The detail is below, because the absence of a usable licence is the finding |
 
 **The Horizons row is the one open item in this file**, and reading the terms
-on 2026-09-17 did not close it. What was found, with the sources, because the
-absence of a statement is itself the finding:
+on 2026-09-17 did not close it. *(Still one, after the MSIS row joined the table
+on 2026-09-24 — that row reports terms this project cannot use and then takes
+nothing under them, which is a closed question with an unwelcome answer.
+Horizons is open because its output **is** consumed, under terms nobody has
+stated.)* What was found, with the sources, because the absence of a statement
+is itself the finding:
 
 | Source | What it says |
 |---|---|
@@ -160,6 +165,99 @@ cannot run on a fresh clone until somebody runs the recipe, so they report
 themselves **skipped** rather than passing quietly. That is a real weakening of
 [`docs/VERIFICATION.md`](docs/VERIFICATION.md) rule 3 and is recorded there as
 well as here.
+
+### The atmosphere density model — read 2026-09-24, before it was needed
+
+Written down early on purpose. Nothing in this project uses a density model
+yet, and [`docs/plan/realism.md`](docs/plan/realism.md) names NRLMSISE-00 in
+three places, once as "the standard", so the obvious first move whenever
+atmospheric drag is built is to fetch an implementation. **Two of the three
+obvious routes are closed, and both of them look open from a distance.** This
+section exists so that is discovered here rather than after the code is
+written.
+
+**NRLMSIS 2.0 and 2.1 — academic and non-commercial.** The current model is
+distributed under the *MSIS® (NRL-SOF-014-1) Software Open Source Academic
+Research License Agreement*, whose name is the trap: "Open Source" appears in
+the title and the terms are not. Section 2, verbatim:
+
+> *"In accordance with federal law, authorization is given to use, reproduce,
+> and modify the Software solely for research, academic, and non-profit
+> purposes and only in accordance with the terms and conditions in this
+> Agreement. **Any commercial use is prohibited.** No other rights or
+> permissions are provided."*
+
+Three further conditions matter as much as that one. Section 4(a) forbids
+selling or licensing for a fee not only the software and its derivatives but
+**any data products generated by it**, without NRL's written consent — so
+shipping a table computed from it is covered too. Section 4(b) makes every
+modification, **including a translation to another programming language**,
+deliverable back to NRL Code 7630, requires it be published as open source, and
+grants the US Government a licence to it. And MSIS® is a registered trademark,
+so the name cannot be used freely for a modified model either. The licence text
+is `nrlmsis2.1_license.txt` inside the distribution at
+`https://map.nrl.navy.mil/map/pub/nrl/NRLMSIS/NRLMSIS2.1/`.
+
+**The 2001 NRLMSISE-00 C port — no permission at all.** The widely used C
+version by Dominik Brodowski, of the model by Picone, Hedin and Drob, has a
+section headed "1. LEGAL INFORMATION" in its `DOCUMENTATION` file. It reads, in
+full:
+
+> *"This package is distributed in the hope that it will be useful, but WITHOUT
+> ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS
+> FOR A PARTICULAR PURPOSE. Please inform the maintainer of the C release
+> (Dominik Brodowski - mail@brodo.de) of any patches and bug-fixes you
+> implement for NRLMSISE-00 so that this C package can be updated with these
+> improvements."*
+
+That is a **warranty disclaimer and a request, and it is not a licence.** It
+grants no right to copy, modify or redistribute. The phrasing is borrowed from
+the GPL's disclaimer clause, which is why it reads like permission at a glance;
+the sentence that would have granted any is absent.
+
+**Two traps worth naming, because each one points the wrong way.**
+
+*Orbiter ships that C file.* It is at `Src/Celbody/Vsop87/Earth/Atmosphere/`
+in the reference clone, and Orbiter's root is MIT — which does **not**
+relicense a third-party file inside it. That is this file's own first principle,
+stated under "What this file is for" below and applied already to `bc7enc_rdo`
+and to Orbiter itself: the unit recorded here is the *file*, wherever a
+repository is not uniform.
+
+*SPDX lists a licence with the identifier `NRL`, and it is a different licence.*
+That one is BSD-style — *"NRL grants permission for redistribution and use in
+source and binary forms, with or without modification"* — and it permits
+commercial use. It has nothing to do with the MSIS agreement above. Anyone
+checking "the NRL licence" against an SPDX list will get a permissive answer to
+a question they did not ask.
+
+**What is used instead: the published model.** The owner ruled on 2026-09-24
+that NRLMSISE-00 is to be **implemented from the literature**, so no
+third-party code arrives and no licence is needed. Two consequences are
+recorded with the ruling rather than left to be found:
+
+- **The independence limit.** Every NRLMSISE-00 implementation descends from
+  the same NRL coefficient tables, so a comparison against another one checks
+  *our use of the model* — argument order, units, the species mixture — and not
+  the model. This is the same limit the Skyfield row above records for its
+  nutation, and it gets the same treatment: stated in the fixture's own README
+  before any budget is claimed against it.
+- **A published alternative exists if the implementation proves too large.**
+  Orbiter's own default is not MSIS at all but Jacchia-71 with Gill's
+  bi-polynomial fit — Jacchia, *Revised Static Models of the Thermosphere and
+  Exosphere with Empirical Temperature Profiles*, SAO Special Report 332
+  (1971), and Gill, *Smooth Bi-Polynomial Interpolation of Jacchia 1971
+  Atmospheric Densities*, DLR-GSOC IB 96-1 (1996). Both are papers, so that
+  route owes nobody a licence either, and Orbiter's technical reference
+  publishes a measured comparison of the two models.
+
+The ruling and its milestone are in
+[`docs/plan/milestones.md`](docs/plan/milestones.md), which is **`Status:
+proposed`** — so the ruling is the owner's and dated, while the register entry
+and the milestone that carries it are not settled yet. **The licence finding
+above is independent of all of that**, which is why it is recorded here now:
+it is a fact about somebody else's terms, and it does not change if the plan
+does.
 
 ## What this file is for
 
