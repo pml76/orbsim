@@ -582,6 +582,7 @@ set(ORBSIM_TESTS
         test_pipeline_inputs
         test_projection
         test_render_quality
+        test_srgb
         test_sun
         test_time
         test_units_validated
@@ -608,6 +609,7 @@ target_link_libraries(test_projection PRIVATE orbsim_view)
 target_link_libraries(test_camera PRIVATE orbsim_view)
 target_link_libraries(test_render_quality PRIVATE orbsim_view)
 target_link_libraries(test_pipeline_inputs PRIVATE orbsim_view)
+target_link_libraries(test_srgb PRIVATE orbsim_view)
 
 # The run-time half of Count's wraparound guard (M1-12, register decision 136).
 #
@@ -986,6 +988,8 @@ orbsim_add_header_selfcheck(orbsim_view_header_selfcheck orbsim_view
         view/Projection.hpp
         view/PushConstants.hpp
         view/RenderQuality.hpp
+        view/SceneClear.hpp
+        view/Srgb.hpp
         view/VertexLayout.hpp
 )
 orbsim_add_header_selfcheck(orbsim_test_header_selfcheck orbsim_test_support
@@ -999,6 +1003,7 @@ add_dependencies(test_projection orbsim_view_header_selfcheck)
 add_dependencies(test_camera orbsim_view_header_selfcheck)
 add_dependencies(test_render_quality orbsim_view_header_selfcheck)
 add_dependencies(test_pipeline_inputs orbsim_view_header_selfcheck)
+add_dependencies(test_srgb orbsim_view_header_selfcheck)
 
 if(ORBSIM_BUILD_APP)
     orbsim_add_header_selfcheck(orbsim_render_header_selfcheck orbsim_render_deps
