@@ -1035,6 +1035,15 @@ set(ORBSIM_LINT_SOURCES
 foreach(test_name IN LISTS ORBSIM_TESTS)
     list(APPEND ORBSIM_LINT_SOURCES tests/${test_name}.cpp)
 endforeach()
+# The two kinds of test source that are not a suite's own file, and were not
+# linted until 2026-09-24: the abort listener compiled into every suite, and
+# the count-wraparound probes. Found when the call they both make reached
+# src/app/main.cpp and met a lint conflict there that it had never met here
+# (register decision 156).
+list(APPEND ORBSIM_LINT_SOURCES tests/AbortBehaviour.cpp)
+foreach(operation IN LISTS ORBSIM_COUNT_WRAPAROUND_OPERATIONS)
+    list(APPEND ORBSIM_LINT_SOURCES tests/count_wraparound_${operation}.cpp)
+endforeach()
 if(ORBSIM_BUILD_APP)
     list(APPEND ORBSIM_LINT_SOURCES ${ORBSIM_APP_SOURCES})
 endif()

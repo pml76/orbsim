@@ -25,13 +25,18 @@
 //
 // A no-op everywhere else. On Linux and macOS abort already just aborts.
 //
-#include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_test_run_info.hpp>
 #include <catch2/interfaces/catch_interfaces_reporter.hpp>
 #include <catch2/reporters/catch_reporter_event_listener.hpp>
 #include <catch2/reporters/catch_reporter_registrars.hpp>
 
+// _set_abort_behavior and its two flags are declared in the Windows C
+// runtime's <stdlib.h> itself; <cstdlib> reaches them only through it. The
+// same one-line suppression src/app/main.cpp carries, for the same reason
+// (register decisions 155 and 156).
 #ifdef _WIN32
-#include <cstdlib>
+// NOLINTNEXTLINE(modernize-deprecated-headers)
+#include <stdlib.h>
 #endif
 
 namespace {

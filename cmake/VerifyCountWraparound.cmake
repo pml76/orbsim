@@ -50,6 +50,20 @@ if(stdout_text MATCHES "the guard did not fire")
             "The probe's own report:\n${stdout_text}${stderr_text}")
 endif()
 
+# **An abort only counts if it is the assertion's.** ORBSIM_EXPECTS writes its
+# condition with "precondition violated" beside it, and both the MSVC and the
+# glibc runtime print that on stderr as they abort. Anything else that ends the
+# process -- a failure to print, which inside a noexcept function would be
+# std::terminate, and so an abort too -- would otherwise read as the guard
+# firing. Added 2026-09-24, when the probe moved from printf to std::println,
+# which can throw (register decision 156).
+if(NOT exit_code EQUAL 0 AND NOT stderr_text MATCHES "precondition violated")
+    message(FATAL_ERROR
+            "the probe ended abnormally without the assertion's message, so its exit "
+            "says nothing about the guard. Its output was:
+${stdout_text}${stderr_text}")
+endif()
+
 if(exit_code EQUAL 0)
     message(FATAL_ERROR
             "the count wraparound probe returned normally and said nothing about "

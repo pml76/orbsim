@@ -33,7 +33,16 @@
 #ifndef NDEBUG
 #include "core/Scalar.hpp"
 
-#include <cstdlib>
+#include <print>
+
+// _set_abort_behavior and its two flags are declared in the Windows C
+// runtime's <stdlib.h> itself; <cstdlib> reaches them only through it. The
+// same one-line suppression src/app/main.cpp carries, for the same reason
+// (register decisions 155 and 156).
+#ifdef _WIN32
+// NOLINTNEXTLINE(modernize-deprecated-headers)
+#include <stdlib.h>
+#endif
 #endif
 
 namespace orb::probe {
@@ -54,8 +63,8 @@ enum class Operation : std::uint8_t {
 [[nodiscard]] inline int runProbe([[maybe_unused]] Operation operation,
                                   [[maybe_unused]] int seed) noexcept {
 #ifdef NDEBUG
-    std::puts("SKIPPED: assertions are not live in this configuration, so the "
-              "run-time half of the guard does not exist here");
+    static_cast<void>(std::puts("SKIPPED: assertions are not live in this configuration, so "
+                                "the run-time half of the guard does not exist here"));
     return 0;
 #else
 #ifdef _WIN32
@@ -72,30 +81,40 @@ enum class Operation : std::uint8_t {
     const auto small = static_cast<std::uint32_t>(seed);
     const std::uint32_t larger = small + 1U;
 
-    switch (operation) {
-    case Operation::Subtract: {
-        std::printf("provoking %u - %u, which must not be allowed to wrap\n", small, larger);
-        std::fflush(stdout);
-        const Texels difference = Texels{small} - Texels{larger};
-        std::printf("the guard did not fire: the difference came back as %u\n", difference.value());
-        break;
-    }
-    case Operation::Add: {
-        std::printf(
-            "provoking %u + %u, which must not be allowed to wrap\n", Texels::kMaximum, small);
-        std::fflush(stdout);
-        const Texels sum = Texels{Texels::kMaximum} + Texels{small};
-        std::printf("the guard did not fire: the sum came back as %u\n", sum.value());
-        break;
-    }
-    case Operation::Multiply: {
-        std::printf(
-            "provoking %u * %u, which must not be allowed to wrap\n", Texels::kMaximum, larger);
-        std::fflush(stdout);
-        const Texels product = Texels{Texels::kMaximum} * larger;
-        std::printf("the guard did not fire: the product came back as %u\n", product.value());
-        break;
-    }
+    // Inside a try, because std::println can throw -- a failed write, or no
+    // memory -- and this function promises not to. What the catch returns is
+    // an ordinary failure, not an abort, and VerifyCountWraparound.cmake only
+    // accepts an abort that carries the assertion's own message, so a
+    // printing failure can never pass for the guard firing.
+    try {
+        switch (operation) {
+        case Operation::Subtract: {
+            std::println("provoking {} - {}, which must not be allowed to wrap", small, larger);
+            static_cast<void>(std::fflush(stdout));
+            const Texels difference = Texels{small} - Texels{larger};
+            std::println("the guard did not fire: the difference came back as {}",
+                         difference.value());
+            break;
+        }
+        case Operation::Add: {
+            std::println(
+                "provoking {} + {}, which must not be allowed to wrap", Texels::kMaximum, small);
+            static_cast<void>(std::fflush(stdout));
+            const Texels sum = Texels{Texels::kMaximum} + Texels{small};
+            std::println("the guard did not fire: the sum came back as {}", sum.value());
+            break;
+        }
+        case Operation::Multiply: {
+            std::println(
+                "provoking {} * {}, which must not be allowed to wrap", Texels::kMaximum, larger);
+            static_cast<void>(std::fflush(stdout));
+            const Texels product = Texels{Texels::kMaximum} * larger;
+            std::println("the guard did not fire: the product came back as {}", product.value());
+            break;
+        }
+        }
+    } catch (...) {
+        return 1;
     }
 
     // Only reached if the assertion did not fire, which is the failure these

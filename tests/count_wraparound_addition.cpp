@@ -6,7 +6,6 @@
 //
 #include "tests/CountWraparound.hpp"
 
-int main(int argc, char** argv) {
-    static_cast<void>(argv);
+int main(int argc, char** /*argv*/) {
     return orb::probe::runProbe(orb::probe::Operation::Add, argc);
 }
