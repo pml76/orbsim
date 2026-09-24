@@ -23,6 +23,7 @@
 #include <compare>
 #include <concepts>
 #include <cstdint>
+#include <expected>
 #include <limits>
 #include <numbers>
 #include <type_traits>
@@ -440,6 +441,35 @@ struct Mebibytes : Count<Mebibytes> {
     explicit constexpr Mebibytes(std::uint32_t v) noexcept : Count{v} {}
 };
 
+// What a count's named operations refuse, when refusing is all they can do
+// (register decision 141).
+//
+// It lives here rather than beside `UnitError` in core/Units.hpp for the
+// reason decision 90 put `EphemerisError` in astro/Sun.hpp: an error belongs
+// to the module that can produce it, and this header is below that one -- a
+// `UnitError` is not reachable from here, and reaching for one would invert
+// the include order the top of this file describes.
+//
+// One name per failure, saying what it means rather than which predicate
+// failed, as every error enum in this project is written.
+enum class CountError : std::uint8_t {
+    ZeroBlockSize, // no number of empty blocks fills anything
+};
+
+// **No `describe()` yet, deliberately, and this is the one place this header
+// departs from ADR 0002's shape.** Every other error enum in the project has
+// one, written as a `switch` with no `default:` so that adding an enumerator
+// is a -Wswitch error rather than a silent "unknown". With a single
+// enumerator that switch is what `readability-trivial-switch` reports, and
+// register decision 91 ruled that exact case for `describe(EphemerisError)`:
+// the answer there was a suppression at the one line, which is the owner's to
+// grant and has not been asked for here.
+//
+// Nothing is lost while the enum has one value -- the name says what the
+// failure is, and there is no caller wanting text. Whoever adds the second
+// enumerator writes `describe()` then, and by then the switch is not trivial.
+// Recorded in docs/STATUS.md so it is not left to memory.
+
 // A number of bytes, on a **64-bit** representation (register decision 140).
 //
 // **Why it is not 32 bits, unlike its two siblings.** A texel count and a
@@ -493,26 +523,29 @@ struct Bytes : Count<Bytes, std::uint64_t> {
         return *this + Bytes{step - remainder};
     }
 
-    // How many blocks of `each` fit in this many bytes, as a plain number --
-    // the answer is a count of things, not a quantity of bytes.
+    // How many blocks of `each` fit in this many bytes -- a count of things, so
+    // a plain number rather than a quantity of bytes.
     //
-    // This is the division Count refuses, given a name and a precondition, so
-    // that the refusal stays the rule and the exception is visible.
-    [[nodiscard]] constexpr std::uint64_t howManyFit(Bytes each) const noexcept {
+    // This is the division Count refuses, given a name so that the refusal
+    // stays the rule and the exception is visible.
+    //
+    // **It reports rather than asserting**, which is the one place these two
+    // named operations differ, and the reason is that the failure has no
+    // defined answer. An assertion vanishes under NDEBUG and would leave a
+    // division by zero -- undefined behaviour, where every other guard in this
+    // header only ever prevented a *defined* wrong answer.
+    // `clang-analyzer-core.DivideZero` is what pointed that out. Returning a
+    // number on the bad path would have been the third option ADR 0002
+    // separates from reporting and asserting, so it reports.
+    //
+    // **The compile-time refusal comes free**, and is the same mechanism
+    // `eccentricity()` uses: unwrapping a failed expected is not a constant
+    // expression, so `Bytes{100}.howManyFit(Bytes{0}).value()` fails the build
+    // rather than the test run.
+    [[nodiscard]] constexpr std::expected<std::uint64_t, CountError>
+    howManyFit(Bytes each) const noexcept {
         const std::uint64_t size = each.value();
-        const bool usable = size != 0U;
-        ORBSIM_EXPECTS(usable);
-        if (!usable) stopConstantEvaluation();
-        // **The early return is not the third option ADR 0002 forbids**, and
-        // the distinction is worth stating because it looks exactly like it.
-        // A block size of zero is refused twice already: at compile time by the
-        // line above, and at run time by the assertion wherever assertions
-        // live. This line exists only for a release build that has reached here
-        // with a defect anyway, and its job is to make that path **defined**:
-        // `clang-analyzer-core.DivideZero` pointed out on 2026-09-24 that
-        // without it the division is undefined behaviour under NDEBUG, which
-        // is strictly worse than a wrong number. Nothing here is silent.
-        if (!usable) return 0U;
+        if (size == 0U) return std::unexpected(CountError::ZeroBlockSize);
         return value() / size;
     }
 };
@@ -671,8 +704,23 @@ static_assert(
 static_assert(
     !constantEvaluable<decltype([] { return Bytes{100U}.alignedUpTo(Bytes{0U}).value(); })>,
     "and so is an alignment of zero");
-static_assert(!constantEvaluable<decltype([] { return Bytes{100U}.howManyFit(Bytes{0U}); })>,
-              "and a block size of zero, which would otherwise divide by it");
+// A block size of zero is **reported** rather than refused outright, because
+// it is the one failure here with no defined answer (see howManyFit). So the
+// claim is that it reports, by name -- and `has_value()` is checked before
+// `error()` is read, which is not decoration: reading `error()` on an expected
+// that holds a value is undefined behaviour and compares equal to the zero
+// enumerator, so an assertion without the guard passes while the function
+// quietly accepts what it should refuse. M1-87's mutation pass found exactly
+// that.
+static_assert(!Bytes{100U}.howManyFit(Bytes{0U}).has_value(), "a block size of zero has no answer");
+static_assert(Bytes{100U}.howManyFit(Bytes{0U}).error() == CountError::ZeroBlockSize,
+              "and it is refused by that name, not by a generic one");
+static_assert(Bytes{100U}.howManyFit(Bytes{16U}).has_value(), "-- the control");
+// And unwrapping the refusal is still a build failure, which is what
+// `eccentricity()` relies on: a bad literal never reaches a test run.
+static_assert(
+    !constantEvaluable<decltype([] { return Bytes{100U}.howManyFit(Bytes{0U}).value(); })>,
+    "unwrapping the refusal is not a constant expression, so a bad literal fails the build");
 static_assert(
     constantEvaluable<decltype([] { return Bytes{100U}.alignedUpTo(Bytes{16U}).value(); })>,
     "-- the control, without which these three say nothing");

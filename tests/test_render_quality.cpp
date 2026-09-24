@@ -298,8 +298,23 @@ TEST_CASE("how many fit is the whole number of blocks, with the remainder droppe
     for (const std::uint64_t total : kByteProbes) {
         for (const std::uint64_t each : kAlignments) {
             CAPTURE(total, each);
-            REQUIRE(Bytes{total}.howManyFit(Bytes{each}) == total / each);
+            const auto fitting = Bytes{total}.howManyFit(Bytes{each});
+            REQUIRE(fitting.has_value());
+            REQUIRE(*fitting == total / each);
         }
+    }
+}
+
+// The one failure it can report. `has_value()` is asserted before `error()` is
+// read, because reading `error()` on an expected that holds a value is
+// undefined behaviour and compares equal to the zero enumerator -- a case
+// without the guard passes while the function accepts what it should refuse.
+TEST_CASE("a block size of zero is reported by name, not assumed away") {
+    for (const std::uint64_t total : kByteProbes) {
+        CAPTURE(total);
+        const auto fitting = Bytes{total}.howManyFit(Bytes{0U});
+        REQUIRE(!fitting.has_value());
+        REQUIRE(fitting.error() == CountError::ZeroBlockSize);
     }
 }
 
@@ -309,7 +324,7 @@ TEST_CASE("that many blocks fit, and one more would not") {
     for (const std::uint64_t total : kByteProbes) {
         for (const std::uint64_t each : kAlignments) {
             CAPTURE(total, each);
-            const std::uint64_t fitting = Bytes{total}.howManyFit(Bytes{each});
+            const std::uint64_t fitting = Bytes{total}.howManyFit(Bytes{each}).value();
             REQUIRE(total - (fitting * each) < each);
         }
     }

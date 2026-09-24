@@ -279,6 +279,17 @@
       ],
       "expect": "caught",
       "why": "The whole reason decision 140 widened the base. If this survives, nothing in the suite actually depends on a byte count reaching past four billion."
+    },
+    {
+      "name": "a block size of zero is accepted instead of reported",
+      "file": "src/core/Scalar.hpp",
+      "find": "        if (size == 0U) return std::unexpected(CountError::ZeroBlockSize);",
+      "replace": "        if (size == 0U) return std::uint64_t{0};",
+      "suites": [
+        "test_render_quality"
+      ],
+      "expect": "caught",
+      "why": "The reason decision 141 made this one report rather than assert: an assertion vanishes under NDEBUG and would leave a division by zero, and returning a number on the bad path is the third option ADR 0002 separates from reporting and asserting. This mutant is that third option, written out."
     }
   ]
 }
