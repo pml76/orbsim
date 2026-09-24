@@ -239,7 +239,7 @@ rasterization(const GraphicsPipelineDesc& desc) noexcept {
     };
 }
 
-// Viewport and scissor are set per frame by VulkanContext::beginRendering, so
+// Viewport and scissor are set per frame, by each pass VulkanContext records, so
 // they are dynamic here. Baked in, every resize of the window would need every
 // pipeline rebuilt -- the thing this file's header says never happens during
 // a frame.

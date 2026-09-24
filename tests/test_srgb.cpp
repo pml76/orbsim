@@ -56,40 +56,44 @@ struct Reference {
 
 // The encode, at each input the script chose: zero, the linear segment, the
 // knee and the double just above it, the power segment, and one.
-constexpr std::array kEncodeReferences{
-    Reference{.input = 0.0, .expected = 0.0},
-    Reference{.input = 1e-09, .expected = 1.2920000000000001e-08},
-    Reference{.input = 1e-06, .expected = 1.292e-05},
-    Reference{.input = 0.001, .expected = 0.012920000000000001},
-    Reference{.input = 0.0031308, .expected = 0.040449936},
-    Reference{.input = 0.0031308000000000004, .expected = 0.04044990748269016},
-    Reference{.input = 0.01, .expected = 0.09985282273412834},
-    Reference{.input = 0.018, .expected = 0.1428256813030392},
-    Reference{.input = 0.05, .expected = 0.24780052799263166},
-    Reference{.input = 0.1, .expected = 0.34919021262829386},
-    Reference{.input = 0.214, .expected = 0.4999555493402056},
-    Reference{.input = 0.5, .expected = 0.7353569830524495},
-    Reference{.input = 0.75, .expected = 0.8808250210902998},
-    Reference{.input = 0.9, .expected = 0.9546871718858663},
-    Reference{.input = 0.99, .expected = 0.995591277378595},
-    Reference{.input = 1.0, .expected = 1.0},
+constexpr std::array<Reference, 16> kEncodeReferences{
+    {
+        Reference{.input = 0.0, .expected = 0.0},
+        Reference{.input = 1e-09, .expected = 1.2920000000000001e-08},
+        Reference{.input = 1e-06, .expected = 1.292e-05},
+        Reference{.input = 0.001, .expected = 0.012920000000000001},
+        Reference{.input = 0.0031308, .expected = 0.040449936},
+        Reference{.input = 0.0031308000000000004, .expected = 0.04044990748269016},
+        Reference{.input = 0.01, .expected = 0.09985282273412834},
+        Reference{.input = 0.018, .expected = 0.1428256813030392},
+        Reference{.input = 0.05, .expected = 0.24780052799263166},
+        Reference{.input = 0.1, .expected = 0.34919021262829386},
+        Reference{.input = 0.214, .expected = 0.4999555493402056},
+        Reference{.input = 0.5, .expected = 0.7353569830524495},
+        Reference{.input = 0.75, .expected = 0.8808250210902998},
+        Reference{.input = 0.9, .expected = 0.9546871718858663},
+        Reference{.input = 0.99, .expected = 0.995591277378595},
+        Reference{.input = 1.0, .expected = 1.0},
+    },
 };
 
-constexpr std::array kDecodeReferences{
-    Reference{.input = 0.0, .expected = 0.0},
-    Reference{.input = 1e-06, .expected = 7.739938080495356e-08},
-    Reference{.input = 0.004, .expected = 0.00030959752321981426},
-    Reference{.input = 0.006, .expected = 0.0004643962848297214},
-    Reference{.input = 0.012, .expected = 0.0009287925696594428},
-    Reference{.input = 0.02, .expected = 0.0015479876160990713},
-    Reference{.input = 0.04045, .expected = 0.0031308049535603713},
-    Reference{.input = 0.04045000000000001, .expected = 0.0031308072830676828},
-    Reference{.input = 0.1, .expected = 0.010022825574869035},
-    Reference{.input = 0.5019607843137255, .expected = 0.21586050011389915}, // 128/255
-    Reference{.input = 0.5, .expected = 0.21404114048223244},
-    Reference{.input = 0.75, .expected = 0.5225215539683918},
-    Reference{.input = 0.9, .expected = 0.7874122893956171},
-    Reference{.input = 1.0, .expected = 1.0},
+constexpr std::array<Reference, 14> kDecodeReferences{
+    {
+        Reference{.input = 0.0, .expected = 0.0},
+        Reference{.input = 1e-06, .expected = 7.739938080495356e-08},
+        Reference{.input = 0.004, .expected = 0.00030959752321981426},
+        Reference{.input = 0.006, .expected = 0.0004643962848297214},
+        Reference{.input = 0.012, .expected = 0.0009287925696594428},
+        Reference{.input = 0.02, .expected = 0.0015479876160990713},
+        Reference{.input = 0.04045, .expected = 0.0031308049535603713},
+        Reference{.input = 0.04045000000000001, .expected = 0.0031308072830676828},
+        Reference{.input = 0.1, .expected = 0.010022825574869035},
+        Reference{.input = 0.5019607843137255, .expected = 0.21586050011389915}, // 128/255
+        Reference{.input = 0.5, .expected = 0.21404114048223244},
+        Reference{.input = 0.75, .expected = 0.5225215539683918},
+        Reference{.input = 0.9, .expected = 0.7874122893956171},
+        Reference{.input = 1.0, .expected = 1.0},
+    },
 };
 
 // What the standard's rounded constants leave at the knees, from the same
@@ -273,8 +277,8 @@ TEST_CASE("the window at the knee is where the standard puts it, and no wider") 
 TEST_CASE("the scene clear is the old display colour decoded, and displays as it did") {
     // The three display values the scene was cleared to before M1-14, and
     // the 8-bit codes a display showed for them.
-    constexpr std::array kDisplayValues{0.004, 0.006, 0.012};
-    const std::array cleared{kSceneClear.red, kSceneClear.green, kSceneClear.blue};
+    constexpr std::array<f64, 3> kDisplayValues{{0.004, 0.006, 0.012}};
+    const std::array<f32, 3> cleared{{kSceneClear.red, kSceneClear.green, kSceneClear.blue}};
 
     for (std::size_t i = 0; i < kDisplayValues.size(); ++i) {
         const f64 display = kDisplayValues.at(i);
