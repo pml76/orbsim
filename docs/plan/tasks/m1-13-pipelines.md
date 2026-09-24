@@ -1,10 +1,12 @@
 # M1-13 — Graphics pipelines and shader modules
 
-Phase: A | Status: **implemented, 2026-09-24; the mutation pass waits on the commit**
+Phase: A | Status: **committed, 2026-09-24; the mutation pass is not yet closed**
 Prerequisites: M1-01, M1-09 *(Corrected 2026-09-21: the queue says each task lists its true
 prerequisites so that a reordering can be reasoned about, and this task tests its pure
 functions -- the vertex input description and the push-constant range -- in
 `orbsim_view`, which M1-09 creates.)*
+
+> **KNOWN GAP, accepted by the owner on 2026-09-24: no test can yet tell which way depth is compared.** Changing `kDepthCompareOp` from `GREATER` to `LESS` survives every test in the project, because nothing is drawn until M1-19 and `LESS` is a valid comparison the validation layers rightly accept. A pipeline built that way draws nothing at all (ADR 0003). It is the one declared survivor in `scripts/mutants/m1-13.json`, and **M1-16's probe frames and M1-19's lines probe are what must kill it** -- whoever closes those tasks re-runs this mutant and removes the declaration.
 
 **Twelve questions went up before any code was written and were ruled the same
 day**: decisions 142-153 of the [register](../milestone-1-decisions.md). Ten
@@ -112,10 +114,25 @@ exits 3 and the validation layers name the rule
 (`VUID-VkGraphicsPipelineCreateInfo-layout-07987`). A clean run of an
 instrument never seen to fail proves nothing (`VERIFICATION.md` rule 23).
 
-**What no test can see yet**: which way depth is compared. `LESS` is a valid
-comparison, and nothing is drawn until M1-19. That is the gap the Tests section
-above names, and `scripts/mutants/m1-13.json` declares it as the one expected
-survivor.
+**What no test can see yet**: which way depth is compared -- the known gap
+stated at the top of this document.
+
+**The mutation pass, 2026-09-24**, eighteen mutants in `build/debug`, run three
+times:
+
+1. **16 caught, 2 survived.** One survivor was the declared one. The other was
+   not expected: describing a four-component attribute to Vulkan as three.
+   The validation layers accept it, because Vulkan lets a shader read a vec4
+   from a three-component format and supplies the missing alpha as 1.0. Closed
+   in the code, not in the mutant file: `render/Pipeline.cpp` now checks each
+   translated format against Vulkan-Utility-Libraries' own format table.
+2. **16 caught, 1 survived, 1 hung.** The new check fired inside the
+   application, and the Windows debug runtime turned the abort into a modal
+   dialog, so `orbsim_smoke` waited for a click until the harness gave up. A
+   hung mutant is not a kill. The fix -- the same `_set_abort_behavior` call
+   every suite makes -- needs a lint suppression the owner has not yet ruled
+   on; `docs/STATUS.md` has the question.
+3. Waits on that ruling.
 
 ## Done when
 

@@ -76,4 +76,10 @@ The standing rules, plus `ctest -R probe_lines`.
 - [ ] `lines.png` approved and committed as a golden.
 - [ ] No allocation happens inside the frame path — checked by reading the code
       and by the capacity test.
-- [ ] `line.vert` and `line.frag` are loaded by something for the first time.
+- [ ] `line.vert` and `line.frag` are drawn with for the first time. *(Amended 2026-09-24: M1-13
+      loads them at start-up, so "loaded" was already true.)*
+- [ ] **M1-13's declared survivor is killed**: the mutant in `scripts/mutants/m1-13.json` that
+      compares depth with `LESS` is re-run against the `lines` probe and caught, and its
+      `"expect": "survives"` is changed to `"caught"`. The owner accepted that gap on
+      2026-09-24 on condition that it is documented prominently, and a checklist is what
+      closes a task.

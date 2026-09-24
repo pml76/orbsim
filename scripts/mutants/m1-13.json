@@ -1,7 +1,7 @@
 {
   "task": "M1-13",
   "tree": "build/debug",
-  "note": "Graphics pipelines, and the Vulkan-free description of what they are told. Two halves, judged two ways. The orbsim_view half -- vertex layouts and push-constant ranges -- is judged by test_pipeline_inputs and by the static_asserts beside the types, most of which compare this code's arithmetic against the compiler's own sizeof and offsetof. The src/render half cannot be reached from tests/, so its mutants build the application and are judged by CTest entries: orbsim_smoke, which fails on any validation-layer report, and shader_missing_is_reported. **The expected results below were measured, not predicted** -- a prediction about which test catches a mutant is not a measurement (VERIFICATION.md rule 23) -- and the depth-comparison mutant is the survivor the task document names in advance: nothing is drawn until M1-19, so no test can yet see which way depth is compared.",
+  "note": "Graphics pipelines, and the Vulkan-free description of what they are told. Two halves, judged two ways. The orbsim_view half -- vertex layouts and push-constant ranges -- is judged by test_pipeline_inputs and by the static_asserts beside the types, most of which compare this code's arithmetic against the compiler's own sizeof and offsetof. The src/render half cannot be reached from tests/, so its mutants build the application and are judged by CTest entries: orbsim_smoke, which fails on any validation-layer report, and shader_missing_is_reported. **The expected results below were measured, not predicted** -- a prediction about which test catches a mutant is not a measurement (VERIFICATION.md rule 23) -- and the depth-comparison mutant is the survivor the task document names in advance: nothing is drawn until M1-19, so no test can yet see which way depth is compared. **That survivor was accepted by the owner on 2026-09-24, on the condition that it is documented prominently** -- it heads m1-13-pipelines.md and sits in STATUS.md's open row -- and M1-16 and M1-19 are what must kill it.",
   "mutants": [
     {
       "name": "an attribute's width counts 64-bit components",
@@ -160,7 +160,7 @@
       "targets": ["orbsim"],
       "ctest": ["orbsim_smoke"],
       "expect": "survives",
-      "why": "The gap m1-13-pipelines.md states in advance: a pipeline cannot be inspected without a device, and nothing is drawn until M1-19, so no test can see which way depth is compared. LESS is a valid comparison and the validation layers rightly accept it. Killed when something is drawn and compared -- M1-16's probe machinery and M1-19's lines probe. Put to the owner for acceptance on 2026-09-24."
+      "why": "The gap m1-13-pipelines.md states in advance: a pipeline cannot be inspected without a device, and nothing is drawn until M1-19, so no test can see which way depth is compared. LESS is a valid comparison and the validation layers rightly accept it. Killed when something is drawn and compared -- M1-16's probe machinery and M1-19's lines probe. Accepted by the owner on 2026-09-24, on condition that it is documented prominently, which m1-13-pipelines.md and STATUS.md now do."
     }
   ]
 }
