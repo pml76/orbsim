@@ -94,9 +94,18 @@ struct FrameContext {
 // convert into one another, so `createBuffer(usage, size, ...)` compiled --
 // which bugprone-easily-swappable-parameters reports since
 // SuppressParametersUsedTogether was switched off on 2026-09-20. A strong
-// `Bytes` type would be the other answer and is deliberately not taken here:
-// register decision 19 puts an integral Count<Derived> in core/Scalar.hpp, and
-// inventing a size type in the renderer would pre-empt it in the wrong layer.
+// `Bytes` type would be the other answer.
+//
+// **It was waiting for Count<Derived>, which arrived with M1-12 on 2026-09-23,
+// and the wait is over without the answer being obvious.** `Count` holds a
+// `std::uint32_t`, and `VkDeviceSize` is a `uint64_t` -- checked, not assumed.
+// A `Bytes` built on `Count` would cap at 4,294,967,295 bytes, which is less
+// than the memory on the card this project targets, so it would be a type that
+// cannot express a buffer this renderer will legitimately want. The three ways
+// out -- widen `Count`, give it a 64-bit sibling, or keep `VkDeviceSize` here
+// and accept that the struct's designated initialisers are what makes the call
+// site readable -- are a decision rather than a tidy-up, and the owner's.
+// Recorded in docs/STATUS.md's open row rather than settled here.
 struct BufferRequest {
     VkDeviceSize size{};
     VkBufferUsageFlags usage{};

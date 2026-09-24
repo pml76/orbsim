@@ -1,7 +1,7 @@
 {
   "task": "M1-12",
   "tree": "build/debug",
-  "note": "Count<Derived>, Pixels and the empty RenderQuality -- the mutants that are decisive in the **Debug** tree. Its sibling m1-12-release.json holds the two that are decisive only where assertions are compiled out, and the reason for the split is the most useful thing the first run found. Count's wraparound guard has two halves: `if (wouldWrap) stopConstantEvaluation()`, a call to a function that is not constexpr, and `ORBSIM_EXPECTS(!wouldWrap)` beside it. **In Debug the second half does the first half's job as well**, because a failing assert is itself not a constant expression -- so mutating the marker function, or deleting the call to it, changes nothing a Debug build can see. Both survived here on 2026-09-23 against an expectation of 'caught', which is how this was found: the marker function's unique contribution exists only in the release tree, where the assert is gone. The run-time mutants are the mirror image and are only decisive here, where the assertion is live. Neither tree tests this code on its own.",
+  "note": "Count<Derived>, Pixels and the empty RenderQuality -- the mutants that are decisive in the **Debug** tree. Its sibling m1-12-release.json holds the two that are decisive only where assertions are compiled out, and the reason for the split is the most useful thing the first run found. Count's wraparound guard has two halves: `if (wouldWrap) stopConstantEvaluation()`, a call to a function that is not constexpr, and `ORBSIM_EXPECTS(!wouldWrap)` beside it. **In Debug the second half does the first half's job as well**, because a failing assert is itself not a constant expression -- so mutating the marker function, or deleting the call to it, changes nothing a Debug build can see. Both survived here on 2026-09-23 against an expectation of 'caught', which is how this was found: the marker function's unique contribution exists only in the release tree, where the assert is gone. The run-time mutants are the mirror image and are only decisive here, where the assertion is live. Neither tree tests this code on its own. **Since 2026-09-24 three of these are judged by a CTest entry rather than by a suite** (decision 139): the run-time half of each guard is provoked by a probe whose success is an abort, which `ctest` can judge and `run_mutant` cannot. They were declared survivors before that, and one of them was a survivor of everything for a day, because the script judging the probe failed only on exit 0 while the probe reported its fault with exit 1.",
   "mutants": [
     {
       "name": "the subtraction's condition is inverted, so it refuses what fits and allows what does not",
@@ -63,8 +63,14 @@
       "suites": [
         "test_render_quality"
       ],
-      "expect": "survives",
-      "why": "A declared survivor **of this harness**, not of the suite. `count_wraparound_subtraction_aborts` catches it -- measured 2026-09-24 by deleting each of the three guards in turn and running all three entries: each deletion failed exactly its own entry and no other, and a healthy tree passed all three. The harness cannot run those entries, because a probe's success is a non-zero exit -- the assertion firing -- and run_mutant reads any non-zero exit as a kill, so listing one here would report every mutant as caught. Teaching mutate.py an inverted expectation would close that gap and is the owner's call. **This field was wrong for a day**: it claimed the CTest entry caught it, from reasoning rather than a run. It did not -- the probe returned 1 and the script failed only on exit 0. Both were fixed on 2026-09-24."
+      "expect": "caught",
+      "why": "**Caught by `count_wraparound_subtraction_aborts`, not by a Catch2 suite**, and the harness can say so since 2026-09-24 (decision 139). It was a declared survivor until then, for a structural reason rather than a hole: this probe's success is a non-zero exit -- the assertion firing -- so running it as a `suite` would have reported every mutant as caught. A `ctest` entry inverts it correctly, because the CMake script behind it already knows which way round the exit means. Measured the same day by deleting each of the three guards in turn: each deletion fails exactly its own entry and no other, and a healthy tree passes all three.",
+      "targets": [
+        "count_wraparound_subtraction"
+      ],
+      "ctest": [
+        "count_wraparound_subtraction_aborts"
+      ]
     },
     {
       "name": "the addition keeps only the compile-time half of its guard",
@@ -74,8 +80,14 @@
       "suites": [
         "test_render_quality"
       ],
-      "expect": "survives",
-      "why": "A declared survivor **of this harness**, not of the suite. `count_wraparound_addition_aborts` catches it -- measured 2026-09-24 by deleting each of the three guards in turn and running all three entries: each deletion failed exactly its own entry and no other, and a healthy tree passed all three. The harness cannot run those entries, because a probe's success is a non-zero exit -- the assertion firing -- and run_mutant reads any non-zero exit as a kill, so listing one here would report every mutant as caught. Teaching mutate.py an inverted expectation would close that gap and is the owner's call. **Listed since 2026-09-24.** Until then only the subtraction's version existed, and deleting this guard passed the whole of `check` -- 200 tests, exit 0 -- because nothing anywhere provoked this operation at run time."
+      "expect": "caught",
+      "why": "**Caught by `count_wraparound_addition_aborts`, not by a Catch2 suite**, and the harness can say so since 2026-09-24 (decision 139). It was a declared survivor until then, for a structural reason rather than a hole: this probe's success is a non-zero exit -- the assertion firing -- so running it as a `suite` would have reported every mutant as caught. A `ctest` entry inverts it correctly, because the CMake script behind it already knows which way round the exit means. Measured the same day by deleting each of the three guards in turn: each deletion fails exactly its own entry and no other, and a healthy tree passes all three.",
+      "targets": [
+        "count_wraparound_addition"
+      ],
+      "ctest": [
+        "count_wraparound_addition_aborts"
+      ]
     },
     {
       "name": "the multiplication keeps only the compile-time half of its guard",
@@ -85,8 +97,14 @@
       "suites": [
         "test_render_quality"
       ],
-      "expect": "survives",
-      "why": "A declared survivor **of this harness**, not of the suite. `count_wraparound_multiplication_aborts` catches it -- measured 2026-09-24 by deleting each of the three guards in turn and running all three entries: each deletion failed exactly its own entry and no other, and a healthy tree passed all three. The harness cannot run those entries, because a probe's success is a non-zero exit -- the assertion firing -- and run_mutant reads any non-zero exit as a kill, so listing one here would report every mutant as caught. Teaching mutate.py an inverted expectation would close that gap and is the owner's call. **Listed since 2026-09-24.** Until then only the subtraction's version existed, and deleting this guard passed the whole of `check` -- 200 tests, exit 0 -- because nothing anywhere provoked this operation at run time."
+      "expect": "caught",
+      "why": "**Caught by `count_wraparound_multiplication_aborts`, not by a Catch2 suite**, and the harness can say so since 2026-09-24 (decision 139). It was a declared survivor until then, for a structural reason rather than a hole: this probe's success is a non-zero exit -- the assertion firing -- so running it as a `suite` would have reported every mutant as caught. A `ctest` entry inverts it correctly, because the CMake script behind it already knows which way round the exit means. Measured the same day by deleting each of the three guards in turn: each deletion fails exactly its own entry and no other, and a healthy tree passes all three.",
+      "targets": [
+        "count_wraparound_multiplication"
+      ],
+      "ctest": [
+        "count_wraparound_multiplication_aborts"
+      ]
     },
     {
       "name": "the limit is not the last value the type holds",

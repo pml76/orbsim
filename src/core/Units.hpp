@@ -206,10 +206,33 @@ template <auto kReference> struct Scalar : mp_units::quantity<kReference, f64> {
     //
     // Nothing here wants the operator in either case: `.value()` is how a
     // number comes out of a quantity in this project.
+    //
+    // **Narrowed to arithmetic targets on 2026-09-24** (register decision 138),
+    // and the reason is the whole of what M1-12 found. Deleting a conversion to
+    // *every* type, in order to refuse the two or three that matter, declares a
+    // deleted candidate that overload resolution must consider for **class**
+    // targets as well -- and the three front ends do not agree about what that
+    // means. gcc-14 accepted what clang 23.1 and MSVC 14.51 rejected. Reduced
+    // to fourteen lines with no library in it: a derived class carrying a
+    // deleted `operator V()` template, handed to a constructor taking its base,
+    // is constructible under gcc and not under the other two.
+    //
+    // That divergence did real damage before it was understood. M1-12 asserted
+    // that a ratio of two lengths is not a number of pixels; the assertion held
+    // on three toolchains and failed on the fourth, and the *agreement* was the
+    // wrong answer -- an accident of this operator, not anything the type
+    // system promised.
+    //
+    // `std::is_arithmetic_v<V>` is exactly what mp-units' operator exists for
+    // and exactly what this one exists to refuse, so the narrowing gives up
+    // nothing. Measured before it was made: `f64{ratio}` still refused,
+    // `is_constructible_v<f64, Ratio>` still false, the trait still agreeing
+    // with the compiler in every row, `SpecificEnergy{m2/s2}` still working --
+    // and all three front ends agreeing, which they did not before.
     static constexpr bool kBaseConvertsToANumber = std::is_constructible_v<f64, base>;
 
     template <typename V>
-        requires kBaseConvertsToANumber
+        requires kBaseConvertsToANumber && std::is_arithmetic_v<V>
     explicit constexpr operator V() const = delete;
     [[nodiscard]] friend constexpr Scalar operator-(Scalar q) noexcept {
         return Scalar{-static_cast<const base&>(q)};
@@ -585,6 +608,27 @@ static_assert(
     "a length over a time is a speed, and the type system knows it");
 static_assert(!std::is_convertible_v<Eccentricity, f64>,
               "a dimensionless quantity must not decay to a bare double");
+
+// --- what the deleted conversion operator refuses (decision 138) ------------
+//
+// Narrowed to arithmetic targets on 2026-09-24. These pin what it is *for*, so
+// that narrowing it further, or losing it, is a build failure rather than a
+// silent widening of what a dimensionless quantity will turn into. `Scalar<one>`
+// is the ratio every division of like units produces -- `Metres / Metres` --
+// and is the only dimensionless Scalar left in this header now that
+// Eccentricity is a class and a pixel has a dimension.
+static_assert(!std::is_constructible_v<f64, Scalar<mp_units::one>>,
+              "a dimensionless quantity does not decay to a bare double");
+static_assert(!std::is_constructible_v<f32, Scalar<mp_units::one>>, "nor to a float");
+static_assert(!std::is_constructible_v<int, Scalar<mp_units::one>>,
+              "nor to any other arithmetic type");
+static_assert(!std::is_convertible_v<Scalar<mp_units::one>, f64>, "and not implicitly either");
+// The legitimate conversion the narrowing had to keep: two units of one
+// dimension, which the test support relies on for J/kg from m2/s2.
+static_assert(
+    std::is_constructible_v<SpecificEnergy,
+                            decltype(Metres{1.0} * Metres{1.0} / (Seconds{1.0} * Seconds{1.0}))>,
+    "a quantity still converts to another of the same dimension, explicitly");
 
 // The dimensional errors, refused. Concepts rather than bare requires-
 // expressions because a requires-expression on non-dependent operands is

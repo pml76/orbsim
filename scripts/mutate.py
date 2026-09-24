@@ -147,8 +147,9 @@ def run_mutant(root: Path, cmake: str, tree: str, mutant: dict) -> tuple:
     path.write_text(text.replace(mutant["find"], mutant["replace"]),
                     encoding="utf-8", newline="\n")
 
+    targets = list(mutant["suites"]) + list(mutant.get("targets", []))
     try:
-        build = subprocess.run([cmake, "--build", tree, "--target", *mutant["suites"]],
+        build = subprocess.run([cmake, "--build", tree, "--target", *targets],
                                cwd=root, capture_output=True, text=True,
                                timeout=BUILD_TIMEOUT_SECONDS)
     except subprocess.TimeoutExpired:
@@ -174,6 +175,25 @@ def run_mutant(root: Path, cmake: str, tree: str, mutant: dict) -> tuple:
         if run.returncode != 0:
             cases = failing_cases(run.stdout)
             caught.append(f"{suite}: " + ("; ".join(cases) if cases else "nonzero exit"))
+    # A CTest entry rather than an executable, for a test whose **success is a
+    # non-zero exit** (added 2026-09-24, register decision 139). The
+    # count-wraparound probes abort on purpose, so running them directly here
+    # would report every mutant as caught -- the loop above reads any non-zero
+    # exit as a kill. `ctest` inverts it correctly, because the CMake script
+    # behind the entry already knows which way round the probe's exit means,
+    # including that a tree with assertions compiled out reports SKIPPED rather
+    # than passing. A skip is not a kill: ctest exits zero on it, so a mutant
+    # judged only this way survives in the release tree, which is honest.
+    for entry in mutant.get("ctest", []):
+        try:
+            run = subprocess.run(["ctest", "-R", f"^{entry}$", "--output-on-failure"],
+                                 cwd=root / tree, capture_output=True, text=True,
+                                 timeout=SUITE_TIMEOUT_SECONDS)
+        except subprocess.TimeoutExpired:
+            return "HUNG", f"ctest -R {entry} did not finish in {SUITE_TIMEOUT_SECONDS} s"
+        if run.returncode != 0:
+            caught.append(f"ctest: {entry}")
+
     if caught:
         return "CAUGHT (test)", " | ".join(caught)[:160]
     return "SURVIVED", ""
