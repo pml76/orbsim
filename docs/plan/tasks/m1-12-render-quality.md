@@ -1,11 +1,12 @@
 # M1-12 — `Count<Derived>` and `RenderQuality`
 
-Phase: A | Status: **done, 2026-09-23**
+Phase: A | Status: **done, 2026-09-24**
 Prerequisites: M1-09
 Decided by: [ADR 0001](../../adr/0001-units-in-the-type-system.md), [ADR 0007](../../adr/0007-render-quality-is-a-struct.md), [ADR 0012](../../adr/0012-orbsim-view.md)
 
 **Twelve questions went up before any code was written and were ruled the same
-day**: decisions 123-134 of the [register](../milestone-1-decisions.md). Two of
+day**: decisions 123-134 of the [register](../milestone-1-decisions.md), with
+135-139 following as the work turned things up. Two of
 them reversed what this document or its sources said, and both reversals came
 out of a measurement rather than an argument -- see "What measurement changed"
 below.
@@ -123,7 +124,11 @@ already depends on for `Radians`. Every claim then holds by construction rather
 than by a front end's opinion, and the unit algebra survives -- which matters,
 because it type-checks M1-50's screen-space error end to end:
 `Pixels / Metres * Metres` is `Pixels`. **The deleted operator is a separate
-latent defect and is deliberately not fixed here**; it changes all nine types.
+latent defect and was deliberately not fixed here**; it changes all nine types.
+*(Fixed immediately afterwards, on 2026-09-24, as decision 138 -- the deletion
+is constrained to arithmetic targets, which is exactly the set it was written
+to refuse, and the three front ends agree now. It is recorded here as it stood
+during the task, because the task's reasoning depended on it standing.)*
 
 **One of this task's own assertions was vacuous, and the mutation pass is what
 asked the question.** `Eccentricity` was `core/Units.hpp`'s other dimensionless
@@ -187,9 +192,13 @@ of them in `tests/`.)*
       program can only abort once, and the three were measured to be
       independent: deleting each guard in turn fails **exactly** its own entry
       and no other, and a healthy tree passes all three.
-- [x] The mutation pass, **run twice, and the second time in two trees**:
-      nineteen mutants, **18 caught, 1 declared survivor, none invalid, none
-      hung**. In `build/debug`, 17 mutants and 16 caught -- 13 at compile time
+- [x] The mutation pass, **run three times, the last of them across two
+      trees**: twenty-one mutants, **21 caught, no survivors, none invalid,
+      none hung** -- 19 in `build/debug` and 2 in `build/relwithdebinfo`.
+      The last survivor stopped being one when decision 139 taught the harness
+      to judge a CTest entry, which is what actually catches it.
+
+      *(The second run read 19 mutants, 18 caught and 1 declared survivor.)* In `build/debug`, 17 mutants and 16 caught -- 13 at compile time
       naming the assertion that fired, 3 by the suite; in
       `build/relwithdebinfo`, the 2 that only that tree can decide, both
       caught.

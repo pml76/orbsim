@@ -99,11 +99,19 @@ matches the new suite to the assertion is the check, not a coincidence worth
 mentioning -- it is what says nothing else moved while `core/Scalar.hpp` and
 `core/Units.hpp` were edited underneath thirteen other suites.
 
-**All six toolchains re-run against M1-12 on 2026-09-23**, and they agree:
-200 CTest tests under `relwithdebinfo`, `debug`, `asan` and `windows-msvc`, and
-199 under `linux-sanitize` and `linux-gcc`, which are core only and so do not
-build the GPU smoke test. 0 failed anywhere, and no report from
-AddressSanitizer or UndefinedBehaviorSanitizer.
+**All six toolchains re-run against M1-12 on 2026-09-24**, after decision 138
+narrowed a conversion operator that every translation unit in the tree sees, and
+they agree: 202 CTest tests under `relwithdebinfo`, `debug`, `asan` and
+`windows-msvc`, and 201 under `linux-sanitize` and `linux-gcc`, which are core
+only and so do not build the GPU smoke test. 0 failed anywhere, and no report
+from AddressSanitizer or UndefinedBehaviorSanitizer.
+
+**The mutation pass is 21 of 21, with no survivors**, across two trees: 19 in
+`build/debug` and 2 in `build/relwithdebinfo`, none invalid and none hung. It
+took three runs to get there and every correction was in the pass rather than
+in the code -- a mutant that would not compile, two that the Debug tree
+structurally could not see, and three whose real judge is a CTest entry the
+harness could not run until decision 139 taught it to.
 
 **gcc earned its keep twice in M1-12, and the second time it changed a design.**
 First it rejected a guard whose only statement was `assert(false)`:
