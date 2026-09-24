@@ -138,7 +138,8 @@ namespace {
 }
 
 [[nodiscard]] std::expected<UniquePipelineLayout, RenderError>
-createLayout(VkDevice device, std::span<const view::PushConstantRange> ranges) {
+createLayout(VkDevice device, const GraphicsPipelineDesc& desc) {
+    const std::span<const view::PushConstantRange> ranges = desc.pushConstants;
     std::vector<VkPushConstantRange> vulkanRanges;
     vulkanRanges.reserve(ranges.size());
     for (const view::PushConstantRange& range : ranges) {
@@ -150,6 +151,8 @@ createLayout(VkDevice device, std::span<const view::PushConstantRange> ranges) {
     }
     const VkPipelineLayoutCreateInfo info{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .setLayoutCount = vulkanCount(desc.descriptorSetLayouts.size()),
+        .pSetLayouts = desc.descriptorSetLayouts.data(),
         .pushConstantRangeCount = vulkanCount(vulkanRanges.size()),
         .pPushConstantRanges = vulkanRanges.data(),
     };
@@ -301,10 +304,12 @@ createPipeline(VkDevice device, const GraphicsPipelineDesc& desc, VkPipelineLayo
     };
     const std::vector<VkVertexInputAttributeDescription> attributes =
         toVulkan(desc.vertexInput.attributes);
+    // No attributes, no vertex buffer: the pipeline header says why.
+    const bool readsVertexBuffer = !attributes.empty();
     const VkPipelineVertexInputStateCreateInfo vertexInput{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
-        .vertexBindingDescriptionCount = 1,
-        .pVertexBindingDescriptions = &binding,
+        .vertexBindingDescriptionCount = readsVertexBuffer ? 1U : 0U,
+        .pVertexBindingDescriptions = readsVertexBuffer ? &binding : nullptr,
         .vertexAttributeDescriptionCount = vulkanCount(attributes.size()),
         .pVertexAttributeDescriptions = attributes.data(),
     };
@@ -375,7 +380,7 @@ GraphicsPipeline::GraphicsPipeline(UniquePipelineLayout layout, UniquePipeline p
 
 std::expected<GraphicsPipeline, RenderError>
 GraphicsPipeline::create(VkDevice device, const GraphicsPipelineDesc& desc) {
-    auto layout = createLayout(device, desc.pushConstants);
+    auto layout = createLayout(device, desc);
     if (!layout) return std::unexpected(layout.error());
     auto pipeline = createPipeline(device, desc, layout->get());
     if (!pipeline) return std::unexpected(pipeline.error());
@@ -387,7 +392,9 @@ ScenePipelines::ScenePipelines(Built built) noexcept
 
 std::expected<ScenePipelines, RenderError>
 ScenePipelines::create(const VulkanContext& context, const std::filesystem::path& shaderDirectory) {
-    const AttachmentFormats attachments{.colour = context.colorFormat(), .depth = kDepthFormat};
+    // The HDR target, not the swapchain: the scene draws light, and only the
+    // resolve pass writes the display (ADR 0014, M1-14).
+    const AttachmentFormats attachments{.colour = kHdrFormat, .depth = kDepthFormat};
 
     auto lineShaders = loadShaders(context, shaderDirectory, "line");
     if (!lineShaders) return std::unexpected(lineShaders.error());

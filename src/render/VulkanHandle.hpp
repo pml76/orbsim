@@ -115,6 +115,11 @@ using UniqueCommandPool = OwnedHandle<VkCommandPool, VkDevice, vkDestroyCommandP
 using UniqueShaderModule = OwnedHandle<VkShaderModule, VkDevice, vkDestroyShaderModule>;
 using UniquePipelineLayout = OwnedHandle<VkPipelineLayout, VkDevice, vkDestroyPipelineLayout>;
 using UniquePipeline = OwnedHandle<VkPipeline, VkDevice, vkDestroyPipeline>;
+// Since M1-14, whose resolve pass reads the HDR target through a descriptor
+// set. The sets themselves need no wrapper: they are freed with their pool.
+using UniqueDescriptorSetLayout =
+    OwnedHandle<VkDescriptorSetLayout, VkDevice, vkDestroyDescriptorSetLayout>;
+using UniqueDescriptorPool = OwnedHandle<VkDescriptorPool, VkDevice, vkDestroyDescriptorPool>;
 
 // The rest do not fit that shape, so each gets its own small type rather than
 // a template contorted to cover them.

@@ -85,7 +85,15 @@ struct ShaderModules {
 // What the pipeline renders into, which dynamic rendering asks for when the
 // pipeline is created rather than through a render pass object. One colour
 // attachment, because there is one; a second is a change to make when there
-// is one to describe.
+// is one to describe. The scene draws into kHdrFormat with depth; the resolve
+// pass (render/ResolvePass.hpp) draws into the swapchain's format with no
+// depth attachment at all, which is `depth = VK_FORMAT_UNDEFINED`.
+//
+// **Neither format is checked here, and cannot be.** Vulkan compares a
+// pipeline's formats with the attachments only when something is drawn, so a
+// pipeline built for the wrong one is accepted at creation. That is why the
+// scene's format is a named constant rather than something read from the
+// context (M1-14).
 struct AttachmentFormats {
     VkFormat colour{VK_FORMAT_UNDEFINED};
     VkFormat depth{kDepthFormat};
@@ -94,6 +102,11 @@ struct AttachmentFormats {
 // A vertex layout from view/VertexLayout.hpp, seen through a span so the
 // description does not depend on how many attributes there are. The span
 // refers to storage the caller keeps alive until create() returns.
+//
+// **No attributes means no vertex buffer** (M1-14): the resolve pass draws its
+// triangle from gl_VertexIndex alone. A scene pipeline handed an empty list by
+// mistake is not silent -- its shader declares inputs nothing supplies, which
+// the validation layers report at creation.
 struct VertexInput {
     Bytes stride;
     std::span<const view::VertexAttribute> attributes;
@@ -110,6 +123,9 @@ struct GraphicsPipelineDesc {
     DepthState depth;
     AttachmentFormats attachments;
     std::span<const view::PushConstantRange> pushConstants;
+    // Set 0, set 1, ... in order. Empty for a pipeline that reads no
+    // descriptors, which every scene pipeline is until textures arrive.
+    std::span<const VkDescriptorSetLayout> descriptorSetLayouts;
 };
 
 // A pipeline and the layout it was built with, owned together.

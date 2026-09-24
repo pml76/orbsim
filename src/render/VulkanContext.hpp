@@ -55,6 +55,26 @@ inline constexpr VkFormat kDepthFormat = VK_FORMAT_D32_SFLOAT;
 inline constexpr float kDepthClear = 0.0F;
 inline constexpr VkCompareOp kDepthCompareOp = VK_COMPARE_OP_GREATER;
 
+// The linear HDR target the scene is drawn into (ADR 0014, M1-14): light, in
+// a floating-point format, never display-ready colour. Nothing but the
+// resolve pass (render/ResolvePass.hpp) writes the swapchain, and it is the
+// one place the sRGB encode happens.
+//
+// **A named constant rather than something asked of the device**, because the
+// Vulkan specification makes this format mandatory for exactly the two uses
+// here -- a colour attachment and an image a shader reads -- and Khronos's
+// desktop baseline profiles 2022 to 2026 and Android's 2021 baseline all list
+// it (checked 2026-09-24 against the SDK's profile files). So there is no
+// second format to fall back to that a conformant device could need; create()
+// still asks the device and reports a missing feature by name rather than
+// assuming, and a scene pipeline reads this constant, so it cannot be built
+// for the swapchain's format by mistake -- a mismatch Vulkan only reports
+// once something is drawn.
+//
+// Sixteen bits per channel: 11 significant bits, 0.05 % relative, which is
+// the quantisation floor M1-18's 0.5 % radiometry budget is stated against.
+inline constexpr VkFormat kHdrFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
+
 // Not booleans. `create(window, true)` and `createBuffer(size, usage, true)`
 // were mysteries at the call site, patched with /*name=*/ comments that the
 // compiler could not check -- and that comment was the evidence the type was
@@ -78,7 +98,11 @@ struct RenderError {
     std::string message;
 };
 
+class ResolvePass; // render/ResolvePass.hpp; endFrame records it
+
 // Everything a frame needs to record its commands. Handed out by beginFrame.
+// What is recorded into `cmd` between beginFrame and endFrame draws into the
+// HDR target, never into the swapchain.
 struct FrameContext {
     VkCommandBuffer cmd{VK_NULL_HANDLE};
     uint32_t imageIndex{0};
@@ -144,8 +168,8 @@ public:
     [[nodiscard]] static std::expected<VulkanContext, RenderError>
     create(SDL_Window* window, Validation validation, std::atomic<uint32_t>& validationErrors);
 
-    // Acquires a swapchain image and opens a command buffer with the colour and
-    // depth attachments already bound and cleared.
+    // Acquires a swapchain image and opens a command buffer with the HDR
+    // target and the depth attachment already bound and cleared.
     //
     // Two layers of outcome, deliberately. The outer expected is failure: the
     // device was lost, a fence could not be waited on, the swapchain could not
@@ -159,8 +183,13 @@ public:
     [[nodiscard]] std::expected<std::optional<FrameContext>, RenderError>
     beginFrame(orb::view::RenderQuality quality);
 
-    // Closes the render pass, transitions for presentation, submits, presents.
-    [[nodiscard]] std::expected<void, RenderError> endFrame(const FrameContext& frame);
+    // Closes the scene's rendering, runs the resolve pass from the HDR target
+    // into the swapchain image, transitions it for presentation, submits and
+    // presents. The resolve pass is a parameter rather than something a
+    // caller may remember to record, so a frame cannot reach the display
+    // without its one encode.
+    [[nodiscard]] std::expected<void, RenderError> endFrame(const FrameContext& frame,
+                                                            const ResolvePass& resolve);
 
     [[nodiscard]] std::expected<void, RenderError> waitIdle() const;
 
@@ -192,7 +221,11 @@ public:
     [[nodiscard]] VkDevice device() const noexcept { return device_.get(); }
     [[nodiscard]] VkPhysicalDevice physicalDevice() const noexcept { return physicalDevice_; }
     [[nodiscard]] VmaAllocator allocator() const noexcept { return allocator_.get(); }
-    [[nodiscard]] VkFormat colorFormat() const noexcept { return swapchainFormat_; }
+    // The swapchain's format, which only the resolve pass draws into. Named
+    // for what it is since M1-14; it was colorFormat(), and the scene
+    // pipelines used it, which stopped being right the day the scene moved
+    // to kHdrFormat.
+    [[nodiscard]] VkFormat swapchainFormat() const noexcept { return swapchainFormat_; }
     [[nodiscard]] VkExtent2D extent() const noexcept { return swapchainExtent_; }
     // A reference into this context, and marked so, which lets clang report
     // one held past the context's lifetime where it can follow the two.
@@ -208,8 +241,11 @@ private:
     [[nodiscard]] std::expected<void, RenderError> createUploadContext();
     [[nodiscard]] std::expected<void, RenderError> createSwapchain();
     [[nodiscard]] std::expected<void, RenderError> createDepthAttachment();
+    [[nodiscard]] std::expected<void, RenderError> createHdrTarget();
+    void releaseSizedResources() noexcept;
     [[nodiscard]] std::expected<void, RenderError> recreateSwapchain();
-    void beginRendering(VkCommandBuffer cmd, uint32_t imageIndex) const;
+    void beginSceneRendering(VkCommandBuffer cmd) const;
+    void recordResolve(const FrameContext& frame, const ResolvePass& resolve) const;
 
     // Non-owning: SDL owns the window, and it outlives this object.
     SDL_Window* window_{nullptr};
@@ -236,6 +272,13 @@ private:
 
     UniqueImage depthImage_;
     UniqueImageView depthView_;
+
+    // The linear HDR target: swapchain-sized, recreated with it, and one for
+    // all frames in flight, as the depth image is -- the barriers order the
+    // frames on the one queue, so a second image would buy only overlap that
+    // those barriers already give away.
+    UniqueImage hdrImage_;
+    UniqueImageView hdrView_;
 
     // Per frame in flight. std::array, not a C array: it knows its own size,
     // and .at() bounds-checks the handful of runtime-indexed accesses in the

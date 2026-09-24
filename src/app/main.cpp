@@ -7,7 +7,9 @@
 #include "app/SdlHandle.hpp"
 #include "core/Units.hpp"
 #include "render/Pipeline.hpp"
+#include "render/ResolvePass.hpp"
 #include "render/VulkanContext.hpp"
+#include "render/VulkanHandle.hpp"
 #include "view/RenderQuality.hpp"
 
 #include <SDL3/SDL_events.h>
@@ -166,6 +168,60 @@ struct Options {
     return true;
 }
 
+// The frame loop, until the user quits or `--seconds` runs out. Split out of
+// runRenderer, which owns what the loop uses and so decides when it is
+// destroyed; this only uses it.
+[[nodiscard]] int runFrameLoop(orb::gfx::VulkanContext& gfx,
+                               const orb::gfx::ResolvePass& resolve,
+                               const Options& options) {
+    // The one quality value the application owns (M1-12, ADR 0007). It is
+    // handed to each frame by value and nothing reads it yet -- the fields
+    // arrive with the features that cost frames, in M1-46 and M1-59.
+    //
+    // **A preset named here rather than a --quality argument.** A command-line
+    // switch is an actual setting, which this task puts out of scope, and all
+    // four presets are the same value today, so it would be a control with no
+    // effect. M1-16's probe mode is the task that first needs one by name.
+    // Which preset is ADR 0007's open question about the default at first run,
+    // and is not settled by naming one here.
+    const orb::view::RenderQuality quality = orb::view::RenderQuality::high();
+
+    uint64_t frames = 0;
+    const uint64_t startTicks = SDL_GetTicks();
+
+    while (handleEvents(gfx)) {
+        const Seconds elapsed{static_cast<double>(SDL_GetTicks() - startTicks) / 1000.0};
+        if (options.runFor.value() > 0.0 && elapsed >= options.runFor) break;
+
+        auto frame = gfx.beginFrame(quality);
+        if (!frame) {
+            std::print(stderr, "Frame could not begin: {}\n", frame.error().message);
+            return kExitFailure;
+        }
+        if (!*frame) {
+            SDL_Delay(kIdleDelayMs); // minimised or mid-rebuild
+            continue;
+        }
+
+        // Nothing drawn yet: the clear colour is the whole frame, and the
+        // resolve pass carries it to the display.
+        if (const auto ended = gfx.endFrame(**frame, resolve); !ended) {
+            std::print(stderr, "Frame could not be presented: {}\n", ended.error().message);
+            return kExitFailure;
+        }
+        ++frames;
+    }
+
+    const uint64_t elapsedMs = SDL_GetTicks() - startTicks;
+    if (elapsedMs > 0) {
+        std::print("{} frames in {} ms ({:.1f} fps)\n",
+                   frames,
+                   elapsedMs,
+                   1000.0 * static_cast<double>(frames) / static_cast<double>(elapsedMs));
+    }
+    return 0;
+}
+
 // Creates the renderer, runs the frame loop, and destroys the renderer on
 // return -- which is the point of it being a separate function: the caller
 // reads the validation error count only once teardown has happened.
@@ -198,54 +254,29 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
         return kExitFailure;
     }
 
-    // The one quality value the application owns (M1-12, ADR 0007). It is
-    // handed to each frame by value and nothing reads it yet -- the fields
-    // arrive with the features that cost frames, in M1-46 and M1-59.
-    //
-    // **A preset named here rather than a --quality argument.** A command-line
-    // switch is an actual setting, which this task puts out of scope, and all
-    // four presets are the same value today, so it would be a control with no
-    // effect. M1-16's probe mode is the task that first needs one by name.
-    // Which preset is ADR 0007's open question about the default at first run,
-    // and is not settled by naming one here.
-    const orb::view::RenderQuality quality = orb::view::RenderQuality::high();
-
-    uint64_t frames = 0;
-    const uint64_t startTicks = SDL_GetTicks();
-
-    while (handleEvents(gfx)) {
-        const Seconds elapsed{static_cast<double>(SDL_GetTicks() - startTicks) / 1000.0};
-        if (options.runFor.value() > 0.0 && elapsed >= options.runFor) break;
-
-        auto frame = gfx.beginFrame(quality);
-        if (!frame) {
-            std::print(stderr, "Frame could not begin: {}\n", frame.error().message);
-            return kExitFailure;
-        }
-        if (!*frame) {
-            SDL_Delay(kIdleDelayMs); // minimised or mid-rebuild
-            continue;
-        }
-
-        // Nothing drawn yet; the clear colour is the whole frame.
-        if (const auto ended = gfx.endFrame(**frame); !ended) {
-            std::print(stderr, "Frame could not be presented: {}\n", ended.error().message);
-            return kExitFailure;
-        }
-        ++frames;
+    // The resolve pass: the one draw that writes the display, encoding the
+    // HDR target once at the end of every frame (M1-14, ADR 0014). After the
+    // scene pipelines, so a missing shader directory still names
+    // line.vert.spv first, which shader_missing_is_reported checks.
+    const auto resolve = orb::gfx::ResolvePass::create(gfx, options.shaderDirectory);
+    if (!resolve) {
+        std::print(stderr, "Resolve pass could not be created: {}\n", resolve.error().message);
+        return kExitFailure;
     }
 
-    const uint64_t elapsedMs = SDL_GetTicks() - startTicks;
-    if (elapsedMs > 0) {
-        std::print("{} frames in {} ms ({:.1f} fps)\n",
-                   frames,
-                   elapsedMs,
-                   1000.0 * static_cast<double>(frames) / static_cast<double>(elapsedMs));
-    }
+    // Declared after everything a frame uses, so destroyed before any of it:
+    // the GPU is idle before the resolve pass and the pipelines go, on every
+    // path out of this function. The last frame's commands still use the
+    // resolve pass when the loop ends, and the validation layers said so the
+    // first time it ran (M1-14) -- the same fault DeviceIdleGuard was written
+    // for inside VulkanContext.
+    const orb::gfx::DeviceIdleGuard idleBeforeTeardown{gfx.device()};
+
+    const int status = runFrameLoop(gfx, *resolve, options);
 
     // No shutdown() call: ~VulkanContext runs here, in reverse declaration
     // order, without anyone having to remember.
-    return 0;
+    return status;
 }
 
 [[nodiscard]] int run(std::span<char* const> args) {

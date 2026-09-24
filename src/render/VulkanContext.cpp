@@ -1,16 +1,20 @@
 #include "render/VulkanContext.hpp"
+#include "render/ResolvePass.hpp"
 #include "render/VulkanHandle.hpp"
 #include "view/RenderQuality.hpp"
+#include "view/SceneClear.hpp"
 
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_log.h>
 #include <SDL3/SDL_video.h>
 #include <SDL3/SDL_vulkan.h>
 #include <VkBootstrap.h>
+#include <vulkan/utility/vk_format_utils.h>
 #include <vulkan/vk_enum_string_helper.h>
 #include <vulkan/vk_platform.h>
 #include <vulkan/vulkan_core.h>
 
+#include <array>
 #include <atomic>
 #include <cstddef>
 #include <cstdint>
@@ -223,7 +227,16 @@ struct InstanceBundle {
                 .set_debug_callback_user_data_pointer(&validationErrors)
                 .set_debug_messenger_severity(
                     severityBits(VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) |
-                    severityBits(VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT));
+                    severityBits(VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT))
+                // Synchronization validation (M1-14). The base layers check
+                // each command on its own and do not see an image read before
+                // the write it depends on has finished -- a hazard M1-14
+                // creates for the first time, when the resolve pass reads what
+                // the scene wrote. On wherever validation is, so orbsim_smoke
+                // checks every barrier on every `check` rather than on one
+                // manual run. It costs nothing without --validate.
+                .add_validation_feature_enable(
+                    VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);
         }
         return builder.build();
     };
@@ -336,6 +349,105 @@ struct DeviceBundle {
     };
 }
 
+// Whether the device can draw into kHdrFormat and let a shader read it. Both
+// are mandatory in the Vulkan specification, so a conformant device always
+// passes; the device is asked anyway, once, because "mandatory" is a claim
+// about the device and the device is the one to ask (M1-14).
+[[nodiscard]] std::expected<void, RenderError> checkHdrFormat(VkPhysicalDevice physicalDevice) {
+    VkFormatProperties properties{};
+    vkGetPhysicalDeviceFormatProperties(physicalDevice, kHdrFormat, &properties);
+    const VkFormatFeatureFlags have = properties.optimalTilingFeatures;
+    const auto lacks = [have](VkFormatFeatureFlagBits feature) {
+        return (have & static_cast<VkFormatFeatureFlags>(feature)) == 0;
+    };
+    if (lacks(VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)) {
+        return fail(std::string("The GPU cannot render into ") + string_VkFormat(kHdrFormat) +
+                    ", which the Vulkan specification makes mandatory");
+    }
+    if (lacks(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) {
+        return fail(std::string("The GPU cannot read ") + string_VkFormat(kHdrFormat) +
+                    " in a shader, which the Vulkan specification makes mandatory");
+    }
+    return {};
+}
+
+// The swapchain formats this renderer can present, best first. Every one is
+// UNORM in the sRGB colour space, because tonemap.frag writes the sRGB encode
+// itself (ADR 0014); an _SRGB format would have the hardware encode a second
+// time and wash the image out. Which of them a surface offers depends on the
+// GPU, the driver and the display, and the list is what lets the renderer run
+// where the first is missing: 8-bit BGRA is what Windows drivers offer first,
+// 8-bit RGBA is common elsewhere, and the two 10-bit layouts serve displays
+// that offer only those.
+constexpr std::array kPresentableFormats{
+    VkSurfaceFormatKHR{
+        .format = VK_FORMAT_B8G8R8A8_UNORM,
+        .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
+    },
+    VkSurfaceFormatKHR{
+        .format = VK_FORMAT_R8G8B8A8_UNORM,
+        .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
+    },
+    VkSurfaceFormatKHR{
+        .format = VK_FORMAT_A2B10G10R10_UNORM_PACK32,
+        .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
+    },
+    VkSurfaceFormatKHR{
+        .format = VK_FORMAT_A2R10G10B10_UNORM_PACK32,
+        .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
+    },
+};
+
+// **vk-bootstrap does not refuse when none of the list is offered**: it takes
+// whatever the driver lists first (find_best_surface_format, v1.3.302), which
+// may be an _SRGB format or an HDR colour space. So what came back is checked
+// against Vulkan-Utility-Libraries' format table -- an opinion formed without
+// this code -- and refused by name rather than presented wrong.
+[[nodiscard]] std::expected<void, RenderError> checkPresentableFormat(VkFormat format,
+                                                                      VkColorSpaceKHR colourSpace) {
+    if (colourSpace != VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+        return fail(std::string("The display offers no sRGB swapchain; the closest was ") +
+                    string_VkFormat(format) + " in " + string_VkColorSpaceKHR(colourSpace));
+    }
+    if (!vkuFormatIsUNORM(format) || vkuFormatIsSRGB(format)) {
+        return fail(std::string("The display offers no UNORM swapchain format; the closest was ") +
+                    string_VkFormat(format) + ", which would apply the sRGB encode a second time");
+    }
+    return {};
+}
+
+// Hands vk-bootstrap kPresentableFormats in order: the first as the one
+// wanted, the rest as fallbacks it tries in turn.
+void requestPresentableFormats(vkb::SwapchainBuilder& builder) {
+    builder.set_desired_format(kPresentableFormats.front());
+    for (const VkSurfaceFormatKHR& fallback : std::span(kPresentableFormats).subspan(1)) {
+        builder.add_fallback_format(fallback);
+    }
+}
+
+// Both passes cover the whole target, and the viewport and scissor are
+// dynamic in every pipeline (render/Pipeline.cpp), so each pass sets them.
+//
+// **Not flipped.** The one vertical flip lives in the projection matrix, as a
+// single negated entry (view/Projection.hpp, which says so and is tested for
+// it). This viewport used to flip as well, with a negative height, and the
+// two together would have drawn every frame upside down -- invisible while
+// nothing was drawn, and found by reading the two side by side before M1-19
+// draws the first line (register decision 154).
+void setFullViewport(VkCommandBuffer cmd, VkExtent2D extent) {
+    const VkViewport viewport{
+        .x = 0.0F,
+        .y = 0.0F,
+        .width = static_cast<float>(extent.width),
+        .height = static_cast<float>(extent.height),
+        .minDepth = 0.0F,
+        .maxDepth = 1.0F,
+    };
+    const VkRect2D scissor{.offset = {.x = 0, .y = 0}, .extent = extent};
+    vkCmdSetViewport(cmd, 0, 1, &viewport);
+    vkCmdSetScissor(cmd, 0, 1, &scissor);
+}
+
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -405,6 +517,8 @@ std::expected<VulkanContext, RenderError> VulkanContext::create(
     ctx.graphicsQueueFamily_ = device->graphicsQueueFamily;
     ctx.deviceName_ = std::move(device->name);
     ctx.idleGuard_ = DeviceIdleGuard{ctx.device_.get()};
+
+    if (auto hdr = checkHdrFormat(ctx.physicalDevice_); !hdr) return std::unexpected(hdr.error());
 
     if (auto step = ctx.createAllocator(); !step) return std::unexpected(step.error());
     if (auto step = ctx.createFrameResources(); !step) return std::unexpected(step.error());
@@ -482,27 +596,18 @@ std::expected<void, RenderError> VulkanContext::createSwapchain() {
     }
     if (width <= 0 || height <= 0) return fail("Window has zero size");
 
-    // Children before parents. The image views reference the swapchain and
-    // the depth view references the depth image; Vulkan wants them gone
-    // before the objects they were created from. Everything here is idle --
-    // recreateSwapchain waited for the device -- so the order is the only
-    // thing that matters.
-    swapchainViews_.clear();
-    renderFinished_.clear();
-    depthView_.reset();
-    depthImage_.reset();
+    releaseSizedResources();
 
     vkb::SwapchainBuilder builder{
         physicalDevice_, device_.get(), surface_.get(), graphicsQueueFamily_, graphicsQueueFamily_};
 
-    // UNORM rather than SRGB: the shaders write display-ready colours directly,
-    // so an automatic linear-to-sRGB conversion would wash them out.
+    // UNORM, never _SRGB: the resolve pass writes the sRGB encode itself, once
+    // (ADR 0014), and an _SRGB swapchain would encode a second time. A list,
+    // because what a surface offers depends on the GPU, the driver and the
+    // display; see kPresentableFormats.
+    requestPresentableFormats(builder);
     auto built =
         builder
-            .set_desired_format(VkSurfaceFormatKHR{
-                .format = VK_FORMAT_B8G8R8A8_UNORM,
-                .colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR,
-            })
             // Mailbox keeps latency low without tearing. FIFO is the
             // required fallback and is always present.
             .set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
@@ -517,6 +622,15 @@ std::expected<void, RenderError> VulkanContext::createSwapchain() {
     if (!built) return fail("Swapchain creation failed: " + built.error().message());
 
     vkb::Swapchain vkbSwapchain = built.value();
+    // Checked before anything is built on it. The new swapchain is not wrapped
+    // yet, so a refusal destroys it here; the retired one stays with
+    // swapchain_ and is destroyed with it.
+    if (auto presentable =
+            checkPresentableFormat(vkbSwapchain.image_format, vkbSwapchain.color_space);
+        !presentable) {
+        vkb::destroy_swapchain(vkbSwapchain);
+        return presentable;
+    }
     swapchain_ = UniqueSwapchain{device_.get(), vkbSwapchain.swapchain}; // destroys the retired one
     swapchainFormat_ = vkbSwapchain.image_format;
     swapchainExtent_ = vkbSwapchain.extent;
@@ -541,6 +655,7 @@ std::expected<void, RenderError> VulkanContext::createSwapchain() {
     }
 
     if (auto depth = createDepthAttachment(); !depth) return depth;
+    if (auto hdr = createHdrTarget(); !hdr) return hdr;
 
     swapchainDirty_ = false;
     return {};
@@ -601,6 +716,78 @@ std::expected<void, RenderError> VulkanContext::createDepthAttachment() {
     depthView_ = UniqueImageView{device_.get(), view};
 
     return {};
+}
+
+// The linear HDR target the scene draws into (ADR 0014): the size of the
+// swapchain and rebuilt with it. Drawn into, then read by the resolve pass --
+// the two uses kHdrFormat's comment says the specification guarantees.
+std::expected<void, RenderError> VulkanContext::createHdrTarget() {
+    const VkImageCreateInfo hdrInfo{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
+        .imageType = VK_IMAGE_TYPE_2D,
+        .format = kHdrFormat,
+        .extent = {.width = swapchainExtent_.width, .height = swapchainExtent_.height, .depth = 1},
+        .mipLevels = 1,
+        .arrayLayers = 1,
+        .samples = VK_SAMPLE_COUNT_1_BIT,
+        .tiling = VK_IMAGE_TILING_OPTIMAL,
+        .usage = VkImageUsageFlags{VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT} |
+                 VkImageUsageFlags{VK_IMAGE_USAGE_SAMPLED_BIT},
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+    };
+    const VmaAllocationCreateInfo hdrAlloc{
+        .usage = VMA_MEMORY_USAGE_AUTO,
+        .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
+    };
+
+    VkImage image = VK_NULL_HANDLE;
+    VmaAllocation allocation = nullptr;
+    if (auto ok = vkCheck(
+            vmaCreateImage(allocator_.get(), &hdrInfo, &hdrAlloc, &image, &allocation, nullptr),
+            "vmaCreateImage (HDR target)");
+        !ok) {
+        return ok;
+    }
+    hdrImage_ = UniqueImage{allocator_.get(), image, allocation};
+
+    const VkImageViewCreateInfo hdrViewInfo{
+        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image = hdrImage_.get(),
+        .viewType = VK_IMAGE_VIEW_TYPE_2D,
+        .format = kHdrFormat,
+        .subresourceRange =
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .baseMipLevel = 0,
+                .levelCount = 1,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+    };
+    VkImageView view = VK_NULL_HANDLE;
+    if (auto ok = vkCheck(vkCreateImageView(device_.get(), &hdrViewInfo, nullptr, &view),
+                          "vkCreateImageView (HDR target)");
+        !ok) {
+        return ok;
+    }
+    hdrView_ = UniqueImageView{device_.get(), view};
+    return {};
+}
+
+// Everything sized to the swapchain, released before it is rebuilt. Children
+// before parents: the image views reference the swapchain, and each view its
+// image; Vulkan wants them gone before the objects they were created from.
+// Everything here is idle -- recreateSwapchain waited for the device -- so
+// the order is the only thing that matters. Split out of createSwapchain,
+// which the HDR target pushed past readability-function-size (M1-14).
+void VulkanContext::releaseSizedResources() noexcept {
+    swapchainViews_.clear();
+    renderFinished_.clear();
+    depthView_.reset();
+    depthImage_.reset();
+    hdrView_.reset();
+    hdrImage_.reset();
 }
 
 std::expected<void, RenderError> VulkanContext::recreateSwapchain() {
@@ -666,8 +853,11 @@ VulkanContext::beginFrame(orb::view::RenderQuality quality) {
     VkCommandBuffer cmd = commandBuffers_.at(frame);
     if (auto ok = beginOneTimeCommandBuffer(cmd); !ok) return std::unexpected(ok.error());
 
+    // From UNDEFINED, because the scene clears the target: last frame's
+    // contents are discarded rather than kept, which is also what makes a
+    // frame independent of the one before it.
     transitionImage(cmd,
-                    swapchainImages_.at(imageIndex),
+                    hdrImage_.get(),
                     {
                         .from = VK_IMAGE_LAYOUT_UNDEFINED,
                         .to = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
@@ -680,7 +870,7 @@ VulkanContext::beginFrame(orb::view::RenderQuality quality) {
                     },
                     VK_IMAGE_ASPECT_DEPTH_BIT);
 
-    beginRendering(cmd, imageIndex);
+    beginSceneRendering(cmd);
 
     return FrameContext{
         .cmd = cmd,
@@ -694,16 +884,18 @@ VulkanContext::beginFrame(orb::view::RenderQuality quality) {
 // Split out of beginFrame: acquiring an image and describing a render pass are
 // two jobs, and only the first of them can fail. F.2 -- a function does one
 // thing.
-void VulkanContext::beginRendering(VkCommandBuffer cmd, uint32_t imageIndex) const {
+void VulkanContext::beginSceneRendering(VkCommandBuffer cmd) const {
+    // The scene clears to light, not to a display colour: view/SceneClear.hpp
+    // holds the old display colour decoded through sRGB, so the frame shows
+    // exactly what it showed before the HDR target existed.
+    constexpr orb::view::LinearRgba kClear = orb::view::kSceneClear;
     const VkRenderingAttachmentInfo colorAttachment{
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-        .imageView = swapchainViews_.at(imageIndex).get(),
+        .imageView = hdrView_.get(),
         .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
         .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
         .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        // Deep space is not pure black: a very dark blue reads better than
-        // #000000 once stars and a lit limb are in frame.
-        .clearValue = {.color = {{0.004F, 0.006F, 0.012F, 1.0F}}},
+        .clearValue = {.color = {{kClear.red, kClear.green, kClear.blue, kClear.alpha}}},
     };
     const VkRenderingAttachmentInfo depthAttachment{
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
@@ -723,28 +915,56 @@ void VulkanContext::beginRendering(VkCommandBuffer cmd, uint32_t imageIndex) con
         .pDepthAttachment = &depthAttachment,
     };
     vkCmdBeginRendering(cmd, &rendering);
-
-    // **Not flipped.** The one vertical flip lives in the projection matrix,
-    // as a single negated entry (view/Projection.hpp, which says so and is
-    // tested for it). This viewport used to flip as well, with a negative
-    // height, and the two together would have drawn every frame upside down
-    // -- invisible while nothing was drawn, and found by reading the two side
-    // by side before M1-19 draws the first line (register decision 154).
-    const VkViewport viewport{
-        .x = 0.0F,
-        .y = 0.0F,
-        .width = static_cast<float>(swapchainExtent_.width),
-        .height = static_cast<float>(swapchainExtent_.height),
-        .minDepth = 0.0F,
-        .maxDepth = 1.0F,
-    };
-    const VkRect2D scissor{.offset = {.x = 0, .y = 0}, .extent = swapchainExtent_};
-    vkCmdSetViewport(cmd, 0, 1, &viewport);
-    vkCmdSetScissor(cmd, 0, 1, &scissor);
+    setFullViewport(cmd, swapchainExtent_);
 }
 
-std::expected<void, RenderError> VulkanContext::endFrame(const FrameContext& frame) {
+// The finished HDR target becomes an image a shader reads, and the swapchain
+// image becomes the one thing the resolve pass draws into. The first of these
+// barriers is the project's first read-after-write dependency between two
+// passes, which synchronization validation checks under --validate.
+void VulkanContext::recordResolve(const FrameContext& frame, const ResolvePass& resolve) const {
+    transitionImage(frame.cmd,
+                    hdrImage_.get(),
+                    {
+                        .from = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                        .to = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                    });
+    transitionImage(frame.cmd,
+                    swapchainImages_.at(frame.imageIndex),
+                    {
+                        .from = VK_IMAGE_LAYOUT_UNDEFINED,
+                        .to = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                    });
+
+    // Cleared to black before the triangle covers it. The triangle writes
+    // every pixel, so the clear is never seen -- unless the triangle is ever
+    // wrong, and then the uncovered part is black on every frame rather than
+    // whatever the image last held.
+    const VkRenderingAttachmentInfo displayAttachment{
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        .imageView = swapchainViews_.at(frame.imageIndex).get(),
+        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .clearValue = {.color = {{0.0F, 0.0F, 0.0F, 1.0F}}},
+    };
+    const VkRenderingInfo rendering{
+        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+        .renderArea = {.offset = {.x = 0, .y = 0}, .extent = swapchainExtent_},
+        .layerCount = 1,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &displayAttachment,
+    };
+    vkCmdBeginRendering(frame.cmd, &rendering);
+    setFullViewport(frame.cmd, swapchainExtent_);
+    resolve.record(frame.cmd, frame.frameIndex, hdrView_.get());
     vkCmdEndRendering(frame.cmd);
+}
+
+std::expected<void, RenderError> VulkanContext::endFrame(const FrameContext& frame,
+                                                         const ResolvePass& resolve) {
+    vkCmdEndRendering(frame.cmd);
+    recordResolve(frame, resolve);
 
     transitionImage(frame.cmd,
                     swapchainImages_.at(frame.imageIndex),

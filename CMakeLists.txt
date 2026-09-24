@@ -851,6 +851,8 @@ set(SHADER_SOURCES
         shaders/line.frag
         shaders/body.vert
         shaders/body.frag
+        shaders/fullscreen.vert
+        shaders/tonemap.frag
 )
 
 set(SPIRV_OUTPUTS "")
@@ -898,6 +900,7 @@ target_link_libraries(orbsim_render_deps INTERFACE
 set(ORBSIM_APP_SOURCES
         src/app/main.cpp
         src/render/Pipeline.cpp
+        src/render/ResolvePass.cpp
         src/render/VulkanContext.cpp
 )
 add_executable(orbsim ${ORBSIM_APP_SOURCES})
@@ -1008,6 +1011,7 @@ add_dependencies(test_srgb orbsim_view_header_selfcheck)
 if(ORBSIM_BUILD_APP)
     orbsim_add_header_selfcheck(orbsim_render_header_selfcheck orbsim_render_deps
             render/Pipeline.hpp
+            render/ResolvePass.hpp
             render/VulkanHandle.hpp
             render/VulkanContext.hpp
             app/SdlHandle.hpp
