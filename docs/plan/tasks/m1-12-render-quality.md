@@ -178,12 +178,53 @@ of them in `tests/`.)*
       `count_wraparound_aborts` (decision 136), which **passes in `debug` and
       is reported skipped in `relwithdebinfo`** rather than passing there
       without checking anything. Both trees list 200 CTest entries now.
-- [ ] The mutation pass runs, in `build/debug` rather than
-      `build/relwithdebinfo`: the guard's run-time half only exists where
-      assertions are live, so a pass in the release tree would report
-      survivors for a mechanism that is simply not present there. The file is
-      [`scripts/mutants/m1-12.json`](../../../scripts/mutants/m1-12.json),
-      nineteen mutants, anchors verified. **It has not run yet**, because the
-      harness restores the tree with `git checkout --` and so refuses to start
-      against uncommitted work -- this line is filled in with the result, not
-      before it.
+- [x] The mutation pass, **run twice, and the second time in two trees**:
+      nineteen mutants, **18 caught, 1 declared survivor, none invalid, none
+      hung**. In `build/debug`, 17 mutants and 16 caught -- 13 at compile time
+      naming the assertion that fired, 3 by the suite; in
+      `build/relwithdebinfo`, the 2 that only that tree can decide, both
+      caught.
+
+      **First run, 2026-09-23: 15 caught, 3 survived, 1 invalid**, and all
+      three findings were in the *pass* rather than in the code -- as M1-11's
+      and M1-87's first runs also were.
+
+      **Two survivors were undeclared, and they are the useful finding: the
+      guard's two halves mask each other, in opposite trees.** `ORBSIM_EXPECTS`
+      and the call to the non-`constexpr` marker sit side by side, and *in a
+      Debug build the assertion does the marker's job as well* -- a failing
+      assert is itself not a constant expression, so a bad literal is refused
+      whether or not the marker is there. Marking the marker `constexpr`, and
+      deleting the call outright, therefore changed nothing this tree could
+      see. The mirror image holds in `relwithdebinfo`, where the assertion is
+      gone and the run-time mutants survive instead. **Neither tree tests this
+      code on its own**, which the pass discovered and no amount of reading
+      would have. The mutants are split accordingly:
+      [`m1-12.json`](../../../scripts/mutants/m1-12.json) against
+      `build/debug` and
+      [`m1-12-release.json`](../../../scripts/mutants/m1-12-release.json)
+      against `build/relwithdebinfo`.
+
+      **One mutant was invalid**, and in the mutant rather than the code:
+      `derived() = derived();` left the parameter unused, which
+      `-Wunused-parameter` reports and ADR 0017 makes an error. A mutant that
+      does not compile proves nothing; it subtracts now instead.
+
+      **One declared survivor stands**, for the reason its `why` field gives:
+      the property is checked by `count_wraparound_aborts`, which this harness
+      structurally cannot run, because that probe's success is a non-zero exit.
+
+      **And the pass hung the machine before it ran clean**, twice in one run,
+      which produced the other two changes. A mutant that trips an assertion
+      inside a Catch2 case calls abort, and the Windows debug runtime turns
+      abort's own message into a modal dialog: the suite sat there alive and
+      the pass sat there with it. `tests/count_wraparound_probe.cpp` had
+      carried the cure since the day before and nothing else did, so
+      **`tests/AbortBehaviour.cpp` now compiles into every suite** -- compiled
+      in rather than linked from `orbsim_test_support`, because a Catch2
+      listener in a static library is dropped unless something references it
+      and `test_render_quality` references none of the support code. And
+      **`mutate.py` no longer waits forever**: a suite or a build that exceeds
+      its limit is reported HUNG, which is neither a kill nor a survivor, and
+      fails the run. Verified by hand against the exact mutant that hung,
+      before the pass was let near it again.

@@ -1,26 +1,14 @@
 {
   "task": "M1-12",
   "tree": "build/debug",
-  "note": "Count<Derived>, Pixels and the empty RenderQuality. **The tree is build/debug and not build/relwithdebinfo, which every earlier pass used, and the reason is the subject of the task.** Count's wraparound guard has two halves: a call to a function that is not constexpr, which refuses the expression while the compiler evaluates it and so fires in either tree, and an ORBSIM_EXPECTS beside it, which exists only where NDEBUG is not defined. Run in relwithdebinfo, every mutant that only loosens the run-time half survives -- not because the suite has a hole but because the thing being mutated is not there. Debug is the tree where both halves exist, and the compile-time half is unaffected by the choice. Most of these therefore die at compile time and name the assertion that fired. One mutant is a declared survivor and it is the honest one: making the guard's function constexpr-callable in the *run-time* sense changes nothing any test can see, because every wraparound this suite provokes is provoked at compile time and nothing in the project runs one at run time and watches it abort. Closing that needs a death test -- a separate executable that must abort, and only in Debug -- which is a new CTest target and the owner's decision, not this task's.",
+  "note": "Count<Derived>, Pixels and the empty RenderQuality -- the mutants that are decisive in the **Debug** tree. Its sibling m1-12-release.json holds the two that are decisive only where assertions are compiled out, and the reason for the split is the most useful thing the first run found. Count's wraparound guard has two halves: `if (wouldWrap) stopConstantEvaluation()`, a call to a function that is not constexpr, and `ORBSIM_EXPECTS(!wouldWrap)` beside it. **In Debug the second half does the first half's job as well**, because a failing assert is itself not a constant expression -- so mutating the marker function, or deleting the call to it, changes nothing a Debug build can see. Both survived here on 2026-09-23 against an expectation of 'caught', which is how this was found: the marker function's unique contribution exists only in the release tree, where the assert is gone. The run-time mutants are the mirror image and are only decisive here, where the assertion is live. Neither tree tests this code on its own.",
   "mutants": [
-    {
-      "name": "the guard's function is marked constexpr, which is the one change that undoes it",
-      "file": "src/core/Scalar.hpp",
-      "find": "inline void stopConstantEvaluation() noexcept {}",
-      "replace": "inline constexpr void stopConstantEvaluation() noexcept {}",
-      "suites": [
-        "test_render_quality"
-      ],
-      "expect": "caught"
-    },
     {
       "name": "the subtraction's condition is inverted, so it refuses what fits and allows what does not",
       "file": "src/core/Scalar.hpp",
       "find": "        const bool wouldWrap = other.value_ > value_;",
       "replace": "        const bool wouldWrap = other.value_ < value_;",
-      "suites": [
-        "test_render_quality"
-      ],
+      "suites": ["test_render_quality"],
       "expect": "caught"
     },
     {
@@ -28,19 +16,16 @@
       "file": "src/core/Scalar.hpp",
       "find": "        const bool wouldWrap = other.value_ > value_;",
       "replace": "        const bool wouldWrap = other.value_ >= value_;",
-      "suites": [
-        "test_render_quality"
-      ],
-      "expect": "caught"
+      "suites": ["test_render_quality"],
+      "expect": "caught",
+      "why": "Decisive only here. In the release tree the assertion is gone, the marker call does nothing at run time, and the subtraction goes on to give the right answer, so nothing would notice."
     },
     {
       "name": "the addition's condition is inverted",
       "file": "src/core/Scalar.hpp",
       "find": "        const bool wouldWrap = other.value_ > kCountMaximum - value_;",
       "replace": "        const bool wouldWrap = other.value_ < kCountMaximum - value_;",
-      "suites": [
-        "test_render_quality"
-      ],
+      "suites": ["test_render_quality"],
       "expect": "caught"
     },
     {
@@ -48,29 +33,16 @@
       "file": "src/core/Scalar.hpp",
       "find": "        const bool wouldWrap = other.value_ > kCountMaximum - value_;",
       "replace": "        const bool wouldWrap = other.value_ >= kCountMaximum - value_;",
-      "suites": [
-        "test_render_quality"
-      ],
-      "expect": "caught"
+      "suites": ["test_render_quality"],
+      "expect": "caught",
+      "why": "Decisive only here, for the reason the subtraction's one-off mutant gives."
     },
     {
       "name": "the multiplication's condition is inverted",
       "file": "src/core/Scalar.hpp",
       "find": "        const bool wouldWrap = scale != 0U && value_ > kCountMaximum / scale;",
       "replace": "        const bool wouldWrap = scale != 0U && value_ < kCountMaximum / scale;",
-      "suites": [
-        "test_render_quality"
-      ],
-      "expect": "caught"
-    },
-    {
-      "name": "the subtraction keeps only the run-time half of its guard",
-      "file": "src/core/Scalar.hpp",
-      "find": "        const bool wouldWrap = other.value_ > value_;\n        ORBSIM_EXPECTS(!wouldWrap);\n        if (wouldWrap) stopConstantEvaluation();",
-      "replace": "        const bool wouldWrap = other.value_ > value_;\n        ORBSIM_EXPECTS(!wouldWrap);\n        static_cast<void>(wouldWrap);",
-      "suites": [
-        "test_render_quality"
-      ],
+      "suites": ["test_render_quality"],
       "expect": "caught"
     },
     {
@@ -78,20 +50,16 @@
       "file": "src/core/Scalar.hpp",
       "find": "        const bool wouldWrap = other.value_ > value_;\n        ORBSIM_EXPECTS(!wouldWrap);\n        if (wouldWrap) stopConstantEvaluation();",
       "replace": "        const bool wouldWrap = other.value_ > value_;\n        if (wouldWrap) stopConstantEvaluation();",
-      "suites": [
-        "test_render_quality"
-      ],
+      "suites": ["test_render_quality"],
       "expect": "survives",
-      "why": "It survives *this harness*, and no longer survives the suite. The property is checked by the CTest entry count_wraparound_aborts, which this harness structurally cannot run: the probe's success is a non-zero exit -- the assertion firing -- and run_mutant reads any non-zero exit as a kill, so listing it here would report every mutant as caught. Removing the ORBSIM_EXPECTS makes the probe return 1 instead of aborting with 3, which cmake/VerifyCountWraparound.cmake calls a failure and this file cannot. Teaching mutate.py an inverted expectation would close the gap and is the owner's call, not this task's."
+      "why": "It survives *this harness*, and does not survive the suite. The property is checked by the CTest entry count_wraparound_aborts, which this harness structurally cannot run: the probe's success is a non-zero exit -- the assertion firing -- and run_mutant reads any non-zero exit as a kill, so listing it here would report every mutant as caught. Removing the ORBSIM_EXPECTS makes the probe return 1 instead of aborting with 3, which cmake/VerifyCountWraparound.cmake calls a failure and this file cannot. Teaching mutate.py an inverted expectation would close the gap and is the owner's call, not this task's."
     },
     {
       "name": "the limit is not the last value the type holds",
       "file": "src/core/Scalar.hpp",
       "find": "inline constexpr std::uint32_t kCountMaximum = std::numeric_limits<std::uint32_t>::max();",
       "replace": "inline constexpr std::uint32_t kCountMaximum = std::numeric_limits<std::uint32_t>::max() - 1U;",
-      "suites": [
-        "test_render_quality"
-      ],
+      "suites": ["test_render_quality"],
       "expect": "caught"
     },
     {
@@ -99,9 +67,7 @@
       "file": "src/core/Scalar.hpp",
       "find": "        if (wouldWrap) stopConstantEvaluation();\n        return Derived{value_ - other.value_};",
       "replace": "        if (wouldWrap) stopConstantEvaluation();\n        return Derived{other.value_ - value_};",
-      "suites": [
-        "test_render_quality"
-      ],
+      "suites": ["test_render_quality"],
       "expect": "caught"
     },
     {
@@ -109,9 +75,7 @@
       "file": "src/core/Scalar.hpp",
       "find": "        if (wouldWrap) stopConstantEvaluation();\n        return Derived{value_ + other.value_};",
       "replace": "        if (wouldWrap) stopConstantEvaluation();\n        return Derived{value_ - other.value_};",
-      "suites": [
-        "test_render_quality"
-      ],
+      "suites": ["test_render_quality"],
       "expect": "caught"
     },
     {
@@ -119,9 +83,7 @@
       "file": "src/core/Scalar.hpp",
       "find": "        if (wouldWrap) stopConstantEvaluation();\n        return Derived{value_ * scale};",
       "replace": "        if (wouldWrap) stopConstantEvaluation();\n        return Derived{value_ + scale};",
-      "suites": [
-        "test_render_quality"
-      ],
+      "suites": ["test_render_quality"],
       "expect": "caught"
     },
     {
@@ -129,29 +91,24 @@
       "file": "src/core/Scalar.hpp",
       "find": "        return count * scale;",
       "replace": "        return count;",
-      "suites": [
-        "test_render_quality"
-      ],
+      "suites": ["test_render_quality"],
       "expect": "caught"
     },
     {
-      "name": "the compound addition does not add",
+      "name": "the compound addition subtracts instead",
       "file": "src/core/Scalar.hpp",
       "find": "        derived() = derived() + other;",
-      "replace": "        derived() = derived();",
-      "suites": [
-        "test_render_quality"
-      ],
-      "expect": "caught"
+      "replace": "        derived() = derived() - other;",
+      "suites": ["test_render_quality"],
+      "expect": "caught",
+      "why": "This read `derived() = derived();` on 2026-09-23 and was INVALID rather than a kill: dropping `other` left the parameter unused, which -Wunused-parameter reports and ADR 0017 makes an error. A mutant that does not compile proves nothing, so it now uses the parameter and changes the operation instead."
     },
     {
       "name": "a count's scale accepts any type at all, so a fractional one silently means its floor",
       "file": "src/core/Scalar.hpp",
       "find": "    template <std::same_as<std::uint32_t> Scale>\n    [[nodiscard]] constexpr Derived operator*(Scale scale) const noexcept {",
       "replace": "    template <typename Scale>\n    [[nodiscard]] constexpr Derived operator*(Scale scale) const noexcept {",
-      "suites": [
-        "test_render_quality"
-      ],
+      "suites": ["test_render_quality"],
       "expect": "caught"
     },
     {
@@ -159,9 +116,7 @@
       "file": "src/core/Scalar.hpp",
       "find": "    explicit constexpr Texels(std::uint32_t v) noexcept : Count{v} {}",
       "replace": "    constexpr Texels(std::uint32_t v) noexcept : Count{v} {}",
-      "suites": [
-        "test_render_quality"
-      ],
+      "suites": ["test_render_quality"],
       "expect": "caught"
     },
     {
@@ -169,9 +124,7 @@
       "file": "src/core/Units.hpp",
       "find": "using Pixels = Scalar<units::kPixel>;",
       "replace": "using Pixels = Scalar<mp_units::one>;",
-      "suites": [
-        "test_render_quality"
-      ],
+      "suites": ["test_render_quality"],
       "expect": "caught"
     },
     {
@@ -179,9 +132,7 @@
       "file": "src/core/Units.hpp",
       "find": "    return Pixels{static_cast<f64>(v)};",
       "replace": "    return Pixels{static_cast<f64>(v) * 2.0};",
-      "suites": [
-        "test_render_quality"
-      ],
+      "suites": ["test_render_quality"],
       "expect": "caught"
     },
     {
@@ -189,9 +140,7 @@
       "file": "src/view/RenderQuality.hpp",
       "find": "    [[nodiscard]] static constexpr RenderQuality low() noexcept { return RenderQuality{}; }",
       "replace": "    [[nodiscard]] static RenderQuality low() noexcept { return RenderQuality{}; }",
-      "suites": [
-        "test_render_quality"
-      ],
+      "suites": ["test_render_quality"],
       "expect": "caught"
     }
   ]

@@ -1,0 +1,25 @@
+{
+  "task": "M1-12 (release tree)",
+  "tree": "build/relwithdebinfo",
+  "note": "The two mutants of `core/Scalar.hpp`'s wraparound guard that are decisive **only where assertions are compiled out**, split out of m1-12.json after the first run of 2026-09-23 found them surviving there against an expectation of 'caught'. The reason is worth more than the mutants: the guard has two halves, a call to a non-constexpr function and an ORBSIM_EXPECTS beside it, and **in a Debug build the assert does the marker's job too** -- a failing assert is itself not a constant expression, so the bad literal is refused whether or not the marker is there. The marker's unique contribution is in this tree, where `assert` expands to nothing and it is the only thing left standing between a bad literal and 4,294,967,295. The mirror image is also true, so neither tree tests this code on its own: the run-time mutants in the sibling file survive here, because the assertion they trip does not exist. Run both.",
+  "mutants": [
+    {
+      "name": "the guard's function is marked constexpr, which is the one change that undoes it",
+      "file": "src/core/Scalar.hpp",
+      "find": "inline void stopConstantEvaluation() noexcept {}",
+      "replace": "inline constexpr void stopConstantEvaluation() noexcept {}",
+      "suites": ["test_render_quality"],
+      "expect": "caught",
+      "why": "The single most important mutant of the task: it asks whether the not-constexpr-ness is what does the work, and in this tree nothing else can answer."
+    },
+    {
+      "name": "the subtraction keeps only the run-time half of its guard",
+      "file": "src/core/Scalar.hpp",
+      "find": "        const bool wouldWrap = other.value_ > value_;\n        ORBSIM_EXPECTS(!wouldWrap);\n        if (wouldWrap) stopConstantEvaluation();",
+      "replace": "        const bool wouldWrap = other.value_ > value_;\n        ORBSIM_EXPECTS(!wouldWrap);\n        static_cast<void>(wouldWrap);",
+      "suites": ["test_render_quality"],
+      "expect": "caught",
+      "why": "Deleting the call while keeping the assertion. In Debug this survives, because the assertion refuses the literal by itself; here it is the whole guard."
+    }
+  ]
+}

@@ -475,8 +475,9 @@ actually worth.
 **The harness is [`scripts/mutate.py`](../scripts/mutate.py) since
 2026-09-20**, with one JSON file of mutants per task under
 [`scripts/mutants/`](../scripts/mutants/) **for every task from M1-08
-onwards**. It exists because the two traps in
-this rule are procedural rather than clever, and both have been walked into:
+onwards**. It exists because the three traps in
+this rule are procedural rather than clever, and all three have been walked
+into:
 
 - **a mutant that does not compile is not a kill.** The script separates a
   `static_assert` firing -- a kill, and it prints *which* assertion -- from any
@@ -485,7 +486,25 @@ this rule are procedural rather than clever, and both have been walked into:
 - **a kill can be for the wrong reason.** It prints the Catch2 case names that
   failed, so a kill can be read rather than counted. M1-08's date-shift mutant
   is the example: it is caught by the span cases and never by the budget it
-  looks like it tests.
+  looks like it tests;
+- **a mutant can be decisive in only one build, so a pass run in the other
+  reports a hole that is not there.** *(Added 2026-09-24, from M1-12.)* Where a
+  claim is defended by two mechanisms that do not both exist in every
+  configuration, mutating one of them proves nothing in the build where the
+  other still covers for it. `core/Scalar.hpp`'s wraparound guard is the
+  example and it is exact: an `ORBSIM_EXPECTS` sits beside a call to a function
+  that is deliberately not `constexpr`, and **in a Debug build the assertion
+  does the other's job as well**, because a failing `assert` is itself not a
+  constant expression, so a bad literal is refused whether or not the marker is
+  there. Two mutants that attack the `constexpr` half therefore survived a
+  Debug pass while being caught in `relwithdebinfo` -- and the run-time mutants
+  are the mirror image, decisive in Debug and silent in the release tree.
+  Neither build tests that code on its own. The answer is **a mutant file per
+  tree**, [`m1-12.json`](../scripts/mutants/m1-12.json) and
+  [`m1-12-release.json`](../scripts/mutants/m1-12-release.json), each saying in
+  its note why its mutants are decisive only there. The general question to ask
+  of a surviving mutant, before believing the hole: *is the thing I just broke
+  even present in the build I ran?*
 
 It restores the tree with `git checkout --` in a `finally`, and refuses to
 start if any file it will touch is dirty -- so an exception or a Ctrl-C cannot
