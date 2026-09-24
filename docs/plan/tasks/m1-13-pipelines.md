@@ -1,10 +1,17 @@
 # M1-13 — Graphics pipelines and shader modules
 
-Phase: A | Status: not started
+Phase: A | Status: **implemented, 2026-09-24; the mutation pass waits on the commit**
 Prerequisites: M1-01, M1-09 *(Corrected 2026-09-21: the queue says each task lists its true
 prerequisites so that a reordering can be reasoned about, and this task tests its pure
 functions -- the vertex input description and the push-constant range -- in
 `orbsim_view`, which M1-09 creates.)*
+
+**Twelve questions went up before any code was written and were ruled the same
+day**: decisions 142-153 of the [register](../milestone-1-decisions.md). Ten
+were in the first round; two more -- what `create` returns, and where the
+push-constant sizes come from -- were raised before the code that needed them,
+because the first round had missed them. One changes what this document says,
+and is marked where it does.
 
 ## Purpose
 
@@ -30,7 +37,12 @@ the task that makes the renderer able to draw anything at all.
   `enum class DepthWrite { Disabled, Enabled }`,
   `enum class CullMode { None, Back, Front }`. `create(desc)` returning
   `std::expected<UniquePipeline, RenderError>`; a driver failure is the driver's
-  to explain.
+  to explain. *(Amended 2026-09-24, [register decision 147](../milestone-1-decisions.md):
+  `GraphicsPipeline::create(device, desc)` returns
+  `std::expected<GraphicsPipeline, RenderError>`, which owns the pipeline
+  **and its layout**. The push-constant ranges belong to the layout, and a draw
+  needs the layout every frame to send them through, so returning the pipeline
+  alone would have destroyed the layout on return.)*
 - **Reverse-Z in exactly one place**: the depth compare op is
   `VK_COMPARE_OP_GREATER`, set from a named constant beside `kDepthClear`, with
   the comment pointing at ADR 0003. A pipeline created with `LESS` out of habit
@@ -74,13 +86,44 @@ things it verifies rather than after.
 The standing rules, and `orbsim.exe --validate --seconds 3` exits 0 by hand at
 least once, with the log read rather than skimmed.
 
+## What was built
+
+- **`src/view/VertexLayout.hpp`** -- `AttributeFormat`, `ShaderLocation`,
+  `VertexAttribute`, and `VertexLayout<N>::packed`, which computes locations
+  and offsets from the formats in order. `LineVertex`, `BodyVertex` and their
+  layouts, with `static_assert`s against `sizeof` and `offsetof`.
+- **`src/view/PushConstants.hpp`** -- `ShaderStages`, `PushConstantError`,
+  `ByteRange`, and `PushConstantRange::from`, which keeps the specification's
+  five rules against the guaranteed 128 bytes. `LinePushConstants` and
+  `BodyPushConstants`, pinned to the reflected shaders.
+- **`src/render/Pipeline.hpp` / `.cpp`** -- the enums, `GraphicsPipelineDesc`,
+  `GraphicsPipeline` and `ScenePipelines`. The two scene pipelines are built at
+  start-up in `main.cpp`, after the context and before the first frame.
+- **`kDepthClear` and `kDepthCompareOp`** now sit in `VulkanContext.hpp` beside
+  `kDepthFormat`; `beginFrame` takes the `RenderQuality`; the application takes
+  `--shader-dir <path>`.
+- **Tests**: `tests/test_pipeline_inputs.cpp` (81 assertions in 7 cases), whose
+  expected numbers were read from the compiled shaders with
+  `spirv-cross --reflect`; and the CTest entry `shader_missing_is_reported`.
+
+**The smoke test was made to fail before it was trusted.** With the body's
+push-constant range declared for the vertex stage only, `orbsim --validate`
+exits 3 and the validation layers name the rule
+(`VUID-VkGraphicsPipelineCreateInfo-layout-07987`). A clean run of an
+instrument never seen to fail proves nothing (`VERIFICATION.md` rule 23).
+
+**What no test can see yet**: which way depth is compared. `LESS` is a valid
+comparison, and nothing is drawn until M1-19. That is the gap the Tests section
+above names, and `scripts/mutants/m1-13.json` declares it as the one expected
+survivor.
+
 ## Done when
 
-- [ ] `check` green in both trees, `orbsim_smoke` included.
-- [ ] No new hand-written destructor outside `VulkanHandle.hpp`.
-- [ ] Every `VkResult` in the new code goes through `vkCheck`.
-- [ ] The depth comparison constant is named, commented and used once.
-- [ ] **`projectionOf` is deleted from `view/Camera.hpp` and `view/Camera.cpp`**,
+- [x] `check` green in both trees, `orbsim_smoke` included.
+- [x] No new hand-written destructor outside `VulkanHandle.hpp`.
+- [x] Every `VkResult` in the new code goes through `vkCheck`.
+- [x] The depth comparison constant is named, commented and used once.
+- [x] **`projectionOf` is deleted from `view/Camera.hpp` and `view/Camera.cpp`**,
       with its test case in `tests/test_camera.cpp`. M1-11 added it as an
       explicitly temporary entry point so that its own suite could drive the
       whole chain and so that the camera's field of view and near plane were

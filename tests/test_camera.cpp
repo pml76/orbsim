@@ -787,23 +787,3 @@ TEST_CASE("the naive path fails the budget where it bites, and passes where it d
         REQUIRE(errors.naive > 5.0 * errors.render);
     }
 }
-
-// --------------------------------------------- the projection, temporarily --
-
-TEST_CASE("the projection a camera implies") {
-    // **`projectionOf` is temporary and M1-13 deletes it** (register decision
-    // 117), and so does this case.
-    const Camera camera = cameraOrFail(Position{}, Quat{}, degrees(45.0), kNearPlane);
-
-    const auto made = projectionOf(camera, kScreenAspect);
-    REQUIRE(made.has_value());
-    // Bit-identical to asking `view/Projection.hpp` directly, because that is
-    // all it does. Anything else would be a second projection to keep in step.
-    REQUIRE(made->bitIdentical(projectionOrFail(degrees(45.0))));
-
-    // The only error it can report, because `Camera` has already refused
-    // everything that could produce the other two.
-    const auto refused = projectionOf(camera, Aspect{0.0});
-    REQUIRE(!refused.has_value());
-    REQUIRE(refused.error() == ProjectionError::InvalidAspect);
-}

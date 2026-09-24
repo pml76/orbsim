@@ -1,5 +1,6 @@
 #include "render/VulkanContext.hpp"
 #include "render/VulkanHandle.hpp"
+#include "view/RenderQuality.hpp"
 
 #include <SDL3/SDL_error.h>
 #include <SDL3/SDL_log.h>
@@ -41,13 +42,6 @@
 
 namespace orb::gfx {
 namespace {
-
-// Reverse-Z: the depth buffer is cleared to 0.0 and the pipelines compare with
-// GREATER. Spreading float precision evenly across a range that runs from a
-// cockpit panel a metre away to a planet a hundred million kilometres out is
-// only possible this way; a conventional 0..1 depth buffer z-fights badly long
-// before it reaches those distances. See docs/adr/0003.
-constexpr float kDepthClear = 0.0F;
 
 enum class FenceState : std::uint8_t {
     Unsignalled,
@@ -620,7 +614,8 @@ std::expected<void, RenderError> VulkanContext::recreateSwapchain() {
     return createSwapchain();
 }
 
-std::expected<std::optional<FrameContext>, RenderError> VulkanContext::beginFrame() {
+std::expected<std::optional<FrameContext>, RenderError>
+VulkanContext::beginFrame(orb::view::RenderQuality quality) {
     // A minimised window has a zero-size swapchain, which cannot be created.
     // Report no frame and let the caller idle.
     int width = 0;
@@ -692,6 +687,7 @@ std::expected<std::optional<FrameContext>, RenderError> VulkanContext::beginFram
         .imageIndex = imageIndex,
         .frameIndex = frame,
         .extent = swapchainExtent_,
+        .quality = quality,
     };
 }
 

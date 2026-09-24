@@ -28,7 +28,7 @@ std::expected<Camera, CameraError> Camera::from(const Position& position,
     // agree only while somebody keeps them in step -- VERIFICATION.md rule 2.
     // Sharing them is what makes "a validated camera's projection can only
     // fail on the aspect ratio" true by construction rather than by
-    // coincidence, which is the claim `projectionOf` below makes.
+    // coincidence.
     if (!detail::isUsableFieldOfView(verticalFov.value())) {
         return std::unexpected(CameraError::InvalidFieldOfView);
     }
@@ -70,12 +70,6 @@ Vec3f toRenderSpace(const Position& worldMetres, const Camera& camera) noexcept 
         .y = static_cast<f32>(relative.y.value()),
         .z = static_cast<f32>(relative.z.value()),
     };
-}
-
-std::expected<Projection, ProjectionError> projectionOf(const Camera& camera,
-                                                        Aspect aspect) noexcept {
-    // Temporary; M1-13 owns the projection from then on and deletes this.
-    return infiniteReverseZPerspective(camera.verticalFov(), aspect, camera.nearPlane());
 }
 
 } // namespace orb::view

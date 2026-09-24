@@ -579,6 +579,7 @@ set(ORBSIM_TESTS
         test_math
         test_orbit
         test_orbit_scales
+        test_pipeline_inputs
         test_projection
         test_render_quality
         test_sun
@@ -606,6 +607,7 @@ target_link_libraries(test_view_math PRIVATE orbsim_view)
 target_link_libraries(test_projection PRIVATE orbsim_view)
 target_link_libraries(test_camera PRIVATE orbsim_view)
 target_link_libraries(test_render_quality PRIVATE orbsim_view)
+target_link_libraries(test_pipeline_inputs PRIVATE orbsim_view)
 
 # The run-time half of Count's wraparound guard (M1-12, register decision 136).
 #
@@ -893,6 +895,7 @@ target_link_libraries(orbsim_render_deps INTERFACE
 
 set(ORBSIM_APP_SOURCES
         src/app/main.cpp
+        src/render/Pipeline.cpp
         src/render/VulkanContext.cpp
 )
 add_executable(orbsim ${ORBSIM_APP_SOURCES})
@@ -926,6 +929,19 @@ add_custom_command(TARGET orbsim POST_BUILD
 # docs/STATUS.md says what each list comes to.
 add_test(NAME orbsim_smoke COMMAND orbsim --validate --seconds 2)
 set_tests_properties(orbsim_smoke PROPERTIES LABELS gpu)
+
+# A build tree whose shaders are missing is reported, by path, and the
+# application exits 1 rather than starting (M1-13, register decision 148). It
+# needs a device to get as far as loading shaders, so it is `gpu` too. The
+# script checks the exit code and the message, which no single CTest property
+# does; it says why.
+add_test(NAME shader_missing_is_reported
+        COMMAND ${CMAKE_COMMAND}
+                -DORBSIM=$<TARGET_FILE:orbsim>
+                -DMISSING=${CMAKE_CURRENT_BINARY_DIR}/no-such-shader-directory
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/VerifyMissingShader.cmake
+)
+set_tests_properties(shader_missing_is_reported PROPERTIES LABELS gpu)
 
 endif() # ORBSIM_BUILD_APP
 
@@ -968,7 +984,9 @@ orbsim_add_header_selfcheck(orbsim_view_header_selfcheck orbsim_view
         view/Frame.hpp
         view/Mat4.hpp
         view/Projection.hpp
+        view/PushConstants.hpp
         view/RenderQuality.hpp
+        view/VertexLayout.hpp
 )
 orbsim_add_header_selfcheck(orbsim_test_header_selfcheck orbsim_test_support
         tests/CountWraparound.hpp
@@ -980,9 +998,11 @@ add_dependencies(test_view_math orbsim_view_header_selfcheck)
 add_dependencies(test_projection orbsim_view_header_selfcheck)
 add_dependencies(test_camera orbsim_view_header_selfcheck)
 add_dependencies(test_render_quality orbsim_view_header_selfcheck)
+add_dependencies(test_pipeline_inputs orbsim_view_header_selfcheck)
 
 if(ORBSIM_BUILD_APP)
     orbsim_add_header_selfcheck(orbsim_render_header_selfcheck orbsim_render_deps
+            render/Pipeline.hpp
             render/VulkanHandle.hpp
             render/VulkanContext.hpp
             app/SdlHandle.hpp

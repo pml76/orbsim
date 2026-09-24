@@ -1,0 +1,166 @@
+{
+  "task": "M1-13",
+  "tree": "build/debug",
+  "note": "Graphics pipelines, and the Vulkan-free description of what they are told. Two halves, judged two ways. The orbsim_view half -- vertex layouts and push-constant ranges -- is judged by test_pipeline_inputs and by the static_asserts beside the types, most of which compare this code's arithmetic against the compiler's own sizeof and offsetof. The src/render half cannot be reached from tests/, so its mutants build the application and are judged by CTest entries: orbsim_smoke, which fails on any validation-layer report, and shader_missing_is_reported. **The expected results below were measured, not predicted** -- a prediction about which test catches a mutant is not a measurement (VERIFICATION.md rule 23) -- and the depth-comparison mutant is the survivor the task document names in advance: nothing is drawn until M1-19, so no test can yet see which way depth is compared.",
+  "mutants": [
+    {
+      "name": "an attribute's width counts 64-bit components",
+      "file": "src/view/VertexLayout.hpp",
+      "find": "    return Bytes{sizeof(f32)} * static_cast<std::uint32_t>(format);",
+      "replace": "    return Bytes{sizeof(f64)} * static_cast<std::uint32_t>(format);",
+      "suites": ["test_pipeline_inputs"],
+      "expect": "caught"
+    },
+    {
+      "name": "locations are counted from one",
+      "file": "src/view/VertexLayout.hpp",
+      "find": "                .location = ShaderLocation{static_cast<std::uint32_t>(kIndex)},",
+      "replace": "                .location = ShaderLocation{static_cast<std::uint32_t>(kIndex) + 1U},",
+      "suites": ["test_pipeline_inputs"],
+      "expect": "caught"
+    },
+    {
+      "name": "an attribute's offset includes its own width",
+      "file": "src/view/VertexLayout.hpp",
+      "find": "                .offset = widthOfFirst(formats, kIndex),",
+      "replace": "                .offset = widthOfFirst(formats, kIndex + 1U),",
+      "suites": ["test_pipeline_inputs"],
+      "expect": "caught"
+    },
+    {
+      "name": "the stride forgets the last attribute",
+      "file": "src/view/VertexLayout.hpp",
+      "find": "            widthOfFirst(formats, kCount),",
+      "replace": "            widthOfFirst(formats, kCount - 1U),",
+      "suites": ["test_pipeline_inputs"],
+      "expect": "caught"
+    },
+    {
+      "name": "an empty range is not refused",
+      "file": "src/view/PushConstants.hpp",
+      "find": "        if (bytes.size == Bytes{0U}) return std::unexpected(PushConstantError::EmptyRange);",
+      "replace": "        if (bytes.size == Bytes{1U}) return std::unexpected(PushConstantError::EmptyRange);",
+      "suites": ["test_pipeline_inputs"],
+      "expect": "caught"
+    },
+    {
+      "name": "the bound refuses a range that ends exactly at the guaranteed space",
+      "file": "src/view/PushConstants.hpp",
+      "find": "            bytes.offset > kGuaranteedPushConstantSpace - bytes.size) {",
+      "replace": "            bytes.offset >= kGuaranteedPushConstantSpace - bytes.size) {",
+      "suites": ["test_pipeline_inputs"],
+      "expect": "caught"
+    },
+    {
+      "name": "the bound is formed as a sum, which can wrap round",
+      "file": "src/view/PushConstants.hpp",
+      "find": "            bytes.offset > kGuaranteedPushConstantSpace - bytes.size) {",
+      "replace": "            bytes.offset + bytes.size > kGuaranteedPushConstantSpace) {",
+      "suites": ["test_pipeline_inputs"],
+      "expect": "caught"
+    },
+    {
+      "name": "the offset's alignment is not checked",
+      "file": "src/view/PushConstants.hpp",
+      "find": "        if (bytes.offset.alignedUpTo(kPushConstantAlignment) != bytes.offset) {",
+      "replace": "        if (bytes.offset.alignedUpTo(Bytes{1U}) != bytes.offset) {",
+      "suites": ["test_pipeline_inputs"],
+      "expect": "caught"
+    },
+    {
+      "name": "the size's alignment is not checked",
+      "file": "src/view/PushConstants.hpp",
+      "find": "        if (bytes.size.alignedUpTo(kPushConstantAlignment) != bytes.size) {",
+      "replace": "        if (bytes.size.alignedUpTo(Bytes{1U}) != bytes.size) {",
+      "suites": ["test_pipeline_inputs"],
+      "expect": "caught"
+    },
+    {
+      "name": "the alignment is eight bytes rather than four",
+      "file": "src/view/PushConstants.hpp",
+      "find": "inline constexpr Bytes kPushConstantAlignment{4U};",
+      "replace": "inline constexpr Bytes kPushConstantAlignment{8U};",
+      "suites": ["test_pipeline_inputs"],
+      "expect": "caught"
+    },
+    {
+      "name": "the guaranteed space is taken as Vulkan 1.4's 256 bytes",
+      "file": "src/view/PushConstants.hpp",
+      "find": "inline constexpr Bytes kGuaranteedPushConstantSpace{128U};",
+      "replace": "inline constexpr Bytes kGuaranteedPushConstantSpace{256U};",
+      "suites": ["test_pipeline_inputs"],
+      "expect": "caught"
+    },
+    {
+      "name": "the body's range is declared for the vertex stage only, though body.frag reads it",
+      "file": "src/view/PushConstants.hpp",
+      "find": "    PushConstantRange::wholeBlock<BodyPushConstants>(ShaderStages::VertexAndFragment).value();",
+      "replace": "    PushConstantRange::wholeBlock<BodyPushConstants>(ShaderStages::Vertex).value();",
+      "suites": ["test_pipeline_inputs"],
+      "targets": ["orbsim"],
+      "ctest": ["orbsim_smoke"],
+      "expect": "caught"
+    },
+    {
+      "name": "both stages translate to the vertex stage alone",
+      "file": "src/render/Pipeline.cpp",
+      "find": "        return VkShaderStageFlags{VK_SHADER_STAGE_VERTEX_BIT} |\n               VkShaderStageFlags{VK_SHADER_STAGE_FRAGMENT_BIT};",
+      "replace": "        return VkShaderStageFlags{VK_SHADER_STAGE_VERTEX_BIT};",
+      "suites": [],
+      "targets": ["orbsim"],
+      "ctest": ["orbsim_smoke"],
+      "expect": "caught"
+    },
+    {
+      "name": "a four-component attribute is described as three",
+      "file": "src/render/Pipeline.cpp",
+      "find": "    case view::AttributeFormat::Float32x4:\n        return VK_FORMAT_R32G32B32A32_SFLOAT;",
+      "replace": "    case view::AttributeFormat::Float32x4:\n        return VK_FORMAT_R32G32B32_SFLOAT;",
+      "suites": [],
+      "targets": ["orbsim"],
+      "ctest": ["orbsim_smoke"],
+      "expect": "caught"
+    },
+    {
+      "name": "viewport and scissor are not dynamic",
+      "file": "src/render/Pipeline.cpp",
+      "find": "        .dynamicStateCount = vulkanCount(kDynamicStates.size()),",
+      "replace": "        .dynamicStateCount = 0,",
+      "suites": [],
+      "targets": ["orbsim"],
+      "ctest": ["orbsim_smoke"],
+      "expect": "caught"
+    },
+    {
+      "name": "a missing shader is reported without its path",
+      "file": "src/render/VulkanContext.cpp",
+      "find": "    if (!file) return fail(\"Cannot open shader: \" + path.string());",
+      "replace": "    if (!file) return fail(\"Cannot open shader\");",
+      "suites": [],
+      "targets": ["orbsim"],
+      "ctest": ["shader_missing_is_reported"],
+      "expect": "caught"
+    },
+    {
+      "name": "--shader-dir is accepted and ignored",
+      "file": "src/app/main.cpp",
+      "find": "            options.shaderDirectory = pathFromUtf8(tokens.at(++i));",
+      "replace": "            static_cast<void>(pathFromUtf8(tokens.at(++i)));",
+      "suites": [],
+      "targets": ["orbsim"],
+      "ctest": ["shader_missing_is_reported"],
+      "expect": "caught"
+    },
+    {
+      "name": "depth is compared the conventional way round",
+      "file": "src/render/VulkanContext.hpp",
+      "find": "inline constexpr VkCompareOp kDepthCompareOp = VK_COMPARE_OP_GREATER;",
+      "replace": "inline constexpr VkCompareOp kDepthCompareOp = VK_COMPARE_OP_LESS;",
+      "suites": [],
+      "targets": ["orbsim"],
+      "ctest": ["orbsim_smoke"],
+      "expect": "survives",
+      "why": "The gap m1-13-pipelines.md states in advance: a pipeline cannot be inspected without a device, and nothing is drawn until M1-19, so no test can see which way depth is compared. LESS is a valid comparison and the validation layers rightly accept it. Killed when something is drawn and compared -- M1-16's probe machinery and M1-19's lines probe. Put to the owner for acceptance on 2026-09-24."
+    }
+  ]
+}

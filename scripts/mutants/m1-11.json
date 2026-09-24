@@ -1,7 +1,7 @@
 {
   "task": "M1-11",
   "tree": "build/relwithdebinfo",
-  "note": "The camera, the view matrix and the f64 -> f32 boundary. Two of these are the defect the whole task exists to prevent -- narrowing before the subtraction, and not subtracting at all -- and one is the error no other claim in the suite can see: a view matrix that forgets to conjugate. A rotation and its inverse are both rotations, both have determinant +1, and each round-trips perfectly against the other, so orthonormality, the determinant and the round trip are all blind to it; only the case that checks where the camera's own axes land can kill it, and the run confirmed that is what kills it first. The tolerance mutant is the one that proves the coupled budget does work: kUnitQuaternionTolerance is read by the suite's own boundary probes, so loosening it moves the probes with it and the refusal cases still pass -- what kills it is the view matrix's 270 ulp orthonormality budget, which the looser tolerance blows through. **Run twice, 2026-09-22.** The first run was 10 caught, 1 survived, 4 invalid. The survivor was real and is the reason two assertions now exist: a bitIdentical that compared only x passed every case in the suite, because every Vec3f compared there differs from its expected value in x or not at all. The four invalid mutants were all the same mistake in the mutants rather than in the code -- `&& false` on a guard makes its `return` unreachable, which -Wunreachable-code-return rejects under -Werror, and dropping the subtraction left `camera` unused. Rewritten so that each compiles and therefore says something.",
+  "note": "The camera, the view matrix and the f64 -> f32 boundary. Two of these are the defect the whole task exists to prevent -- narrowing before the subtraction, and not subtracting at all -- and one is the error no other claim in the suite can see: a view matrix that forgets to conjugate. A rotation and its inverse are both rotations, both have determinant +1, and each round-trips perfectly against the other, so orthonormality, the determinant and the round trip are all blind to it; only the case that checks where the camera's own axes land can kill it, and the run confirmed that is what kills it first. The tolerance mutant is the one that proves the coupled budget does work: kUnitQuaternionTolerance is read by the suite's own boundary probes, so loosening it moves the probes with it and the refusal cases still pass -- what kills it is the view matrix's 270 ulp orthonormality budget, which the looser tolerance blows through. **Run twice, 2026-09-22.** The first run was 10 caught, 1 survived, 4 invalid. The survivor was real and is the reason two assertions now exist: a bitIdentical that compared only x passed every case in the suite, because every Vec3f compared there differs from its expected value in x or not at all. The four invalid mutants were all the same mistake in the mutants rather than in the code -- `&& false` on a guard makes its `return` unreachable, which -Wunreachable-code-return rejects under -Werror, and dropping the subtraction left `camera` unused. Rewritten so that each compiles and therefore says something. **2026-09-24, M1-13:** the mutant 'the projection ignores the camera's near plane' is removed, because the function it mutated, projectionOf, was deleted by M1-13 as register decision 117 ruled -- and its test case with it. Fourteen mutants remain; a mutant of code that no longer exists cannot run, which is what mutant-anchors reported.",
   "mutants": [
     {
       "name": "the narrowing happens before the subtraction",
@@ -98,16 +98,6 @@
       "file": "src/view/Camera.cpp",
       "find": "    if (!detail::isFinitePositive(nearPlane.value())) {\n        return std::unexpected(CameraError::InvalidNearPlane);\n    }",
       "replace": "    // mutant: the near plane is not checked",
-      "suites": [
-        "test_camera"
-      ],
-      "expect": "caught"
-    },
-    {
-      "name": "the projection ignores the camera's near plane",
-      "file": "src/view/Camera.cpp",
-      "find": "    return infiniteReverseZPerspective(camera.verticalFov(), aspect, camera.nearPlane());",
-      "replace": "    return infiniteReverseZPerspective(camera.verticalFov(), aspect, Metres{1.0});",
       "suites": [
         "test_camera"
       ],

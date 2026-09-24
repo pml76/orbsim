@@ -6,6 +6,7 @@
 //
 #include "app/SdlHandle.hpp"
 #include "core/Units.hpp"
+#include "render/Pipeline.hpp"
 #include "render/VulkanContext.hpp"
 #include "view/RenderQuality.hpp"
 
@@ -17,6 +18,7 @@
 #include <SDL3/SDL_stdinc.h>
 #include <SDL3/SDL_timer.h>
 #include <SDL3/SDL_video.h>
+#include <algorithm>
 #include <atomic>
 #include <charconv>
 #include <cstddef>
@@ -24,6 +26,7 @@
 #include <cstdio>
 #include <exception>
 #include <expected>
+#include <filesystem>
 #include <memory>
 #include <print>
 #include <span>
@@ -38,7 +41,8 @@ namespace {
 using orb::Seconds;
 using orb::app::SdlError;
 
-constexpr std::string_view kUsage = "usage: orbsim [--validate | --no-validate] [--seconds <n>]\n";
+constexpr std::string_view kUsage =
+    "usage: orbsim [--validate | --no-validate] [--seconds <n>] [--shader-dir <path>]\n";
 
 // Exit codes. 0 is a clean run; anything else says which kind of failure, so
 // that a script (the smoke test, CI) can tell a usage error from a lost device
@@ -51,6 +55,24 @@ constexpr int kExitValidationErrors = 3;
 // about one frame at 60 Hz, long enough not to spin a core, short enough that
 // a restored window is noticed at once.
 constexpr Uint32 kIdleDelayMs = 16;
+
+// A path from the UTF-8 text SDL hands main its arguments in.
+//
+// **SDL's arguments are UTF-8 on every platform**: on Windows, where SDL
+// supplies the entry point, it re-reads the wide command line and converts it
+// (WIN_CheckDefaultArgcArgv in SDL's src/core/windows/SDL_windows.c). A
+// std::filesystem::path built from a char string reads it in the *current
+// code page* on Windows instead, which is the same text only while every
+// character is ASCII -- the failure CODING_GUIDELINES section 18 describes,
+// for a user whose account name steps outside it. Relabelling the bytes as
+// char8_t is what tells the path they are UTF-8. ORBSIM_SHADER_DIR goes through
+// here too: a string literal in this project's sources is UTF-8.
+[[nodiscard]] std::filesystem::path pathFromUtf8(std::string_view text) {
+    std::u8string utf8(text.size(), u8'\0');
+    std::ranges::transform(
+        text, utf8.begin(), [](char unit) { return static_cast<char8_t>(unit); });
+    return std::filesystem::path{utf8};
+}
 
 struct Options {
     // Validation defaults on in a debug build, but stays reachable from a
@@ -66,6 +88,12 @@ struct Options {
     // automated smoke test a way to exercise startup, the frame loop and
     // teardown -- the teardown path is where validation errors hide.
     Seconds runFor{0.0}; // zero means run until the user quits
+
+    // Where the compiled shaders are. The build tree's by default, which is
+    // where CMake writes them; an argument so that a run can be pointed
+    // elsewhere -- and so that a directory with no shaders in it can be
+    // tested for being reported by name (register decision 148).
+    std::filesystem::path shaderDirectory{pathFromUtf8(ORBSIM_SHADER_DIR)};
 };
 
 // std::from_chars rather than std::stod: a malformed argument is a user error
@@ -105,6 +133,11 @@ struct Options {
             auto seconds = parseSeconds(tokens.at(++i));
             if (!seconds) return std::unexpected(seconds.error());
             options.runFor = *seconds;
+        } else if (arg == "--shader-dir") {
+            if (i + 1 >= tokens.size()) {
+                return std::unexpected(SdlError{.message = "--shader-dir needs a path"});
+            }
+            options.shaderDirectory = pathFromUtf8(tokens.at(++i));
         } else {
             return std::unexpected(
                 SdlError{.message = "unknown argument '" + std::string(arg) + "'"});
@@ -154,6 +187,17 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
     std::print("GPU: {}\n", gfx.deviceName());
     std::print("Swapchain: {}x{}\n", gfx.extent().width, gfx.extent().height);
 
+    // Every pipeline the scene will draw with, created here and not during a
+    // frame (render/Pipeline.hpp says why). Nothing draws with them yet --
+    // that is M1-19 -- but creating them at start-up is what puts shader
+    // loading and pipeline creation under the validation layers on every run.
+    // Declared after `gfx`, so they are destroyed before the device is.
+    const auto pipelines = orb::gfx::ScenePipelines::create(gfx, options.shaderDirectory);
+    if (!pipelines) {
+        std::print(stderr, "Pipelines could not be created: {}\n", pipelines.error().message);
+        return kExitFailure;
+    }
+
     // The one quality value the application owns (M1-12, ADR 0007). It is
     // handed to each frame by value and nothing reads it yet -- the fields
     // arrive with the features that cost frames, in M1-46 and M1-59.
@@ -173,7 +217,7 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
         const Seconds elapsed{static_cast<double>(SDL_GetTicks() - startTicks) / 1000.0};
         if (options.runFor.value() > 0.0 && elapsed >= options.runFor) break;
 
-        auto frame = gfx.beginFrame();
+        auto frame = gfx.beginFrame(quality);
         if (!frame) {
             std::print(stderr, "Frame could not begin: {}\n", frame.error().message);
             return kExitFailure;
@@ -182,12 +226,6 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
             SDL_Delay(kIdleDelayMs); // minimised or mid-rebuild
             continue;
         }
-
-        // The renderer takes the quality value by value, once per frame: a
-        // copy of a trivially copyable aggregate, so a later adaptive
-        // controller can change it between frames without anything holding a
-        // reference to what it changed.
-        (*frame)->quality = quality;
 
         // Nothing drawn yet; the clear colour is the whole frame.
         if (const auto ended = gfx.endFrame(**frame); !ended) {

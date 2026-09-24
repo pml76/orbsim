@@ -244,26 +244,6 @@ static_assert(!isNarrowable(1.0e39) && !isNarrowable(-1.0e39),
 // place: the worked example's `toCameraRelative` is the shape to copy.
 [[nodiscard]] Vec3f toRenderSpace(const Position& worldMetres, const Camera& camera) noexcept;
 
-// The projection this camera implies, for a given window shape.
-//
-// **Temporary: delete this when M1-13 lands** (register decision 117). It
-// exists so that M1-11's suite can drive the whole chain through one entry
-// point and so that the camera's field of view and near plane are not
-// decoration for two tasks; M1-13 builds the real pipeline and owns the
-// projection from then on. `m1-13-pipelines.md` carries the obligation to
-// remove it, so that it is on somebody's checklist rather than in a comment
-// nobody opens.
-//
-// **Only `InvalidAspect` is reachable.** A `Camera` has already been refused
-// if its field of view or near plane could produce the other two, and it was
-// refused by *these same predicates* -- `Camera.cpp` calls
-// `view/Projection.hpp`'s rather than writing a second pair that could drift
-// from them (VERIFICATION.md rule 2). The error type is passed straight
-// through rather than narrowed to a new enum, because inventing one would say
-// a caller could do something different about it.
-[[nodiscard]] std::expected<Projection, ProjectionError> projectionOf(const Camera& camera,
-                                                                      Aspect aspect) noexcept;
-
 // Compile-time tests. A `static_assert` is a unit test that costs nothing at
 // run time, runs on every build whether or not the suite is invoked, and
 // cannot rot (CODING_GUIDELINES section 3).

@@ -37,7 +37,23 @@ namespace orb::gfx {
 // input latency, which matters for flying a spacecraft by hand.
 inline constexpr uint32_t kFramesInFlight = 2;
 
+// Reverse-Z (ADR 0003), which is three constants and they live together: the
+// depth buffer is 32-bit float, cleared to 0.0 -- infinity, under the
+// projection in view/Projection.hpp, which maps the near plane to 1.0 -- and
+// every pipeline keeps the fragment with the *greater* depth. Spreading float
+// precision evenly across a range that runs from a cockpit panel a metre away
+// to a planet a hundred million kilometres out is only possible this way; a
+// conventional 0-to-1 depth buffer z-fights badly long before it reaches those
+// distances.
+//
+// **The comparison is not a pipeline setting.** render/Pipeline.cpp reads it
+// from here and nowhere else, and GraphicsPipelineDesc has no field for it. A
+// pipeline created with LESS out of habit draws nothing at all, which is a
+// symptom that points nowhere near its cause, so the one way to get it wrong
+// is to edit this line.
 inline constexpr VkFormat kDepthFormat = VK_FORMAT_D32_SFLOAT;
+inline constexpr float kDepthClear = 0.0F;
+inline constexpr VkCompareOp kDepthCompareOp = VK_COMPARE_OP_GREATER;
 
 // Not booleans. `create(window, true)` and `createBuffer(size, usage, true)`
 // were mysteries at the call site, patched with /*name=*/ comments that the
@@ -73,15 +89,14 @@ struct FrameContext {
     // ADR 0007). **Nothing reads it yet**, and nothing will until M1-46 gives
     // the struct its first field; it is here now because threading a settings
     // value through a renderer built for one fixed configuration is a
-    // retrofit, and this is the moment when there is one draw call and it
-    // costs nothing.
+    // retrofit, and this is the moment when nothing is drawn and it costs
+    // nothing.
     //
-    // **The caller fills it**, rather than beginFrame taking it as an
-    // argument. The consequence is worth naming: nothing forces a future
-    // frame path to fill it, so it is default-initialised to the value every
-    // preset currently produces and a forgotten assignment is a wrong image
-    // rather than a compile error. M1-13 is where the draw calls arrive and
-    // where that becomes a parameter if it should.
+    // **beginFrame fills it, from its argument** (register decision 150,
+    // which settled decision 127's open half). Until M1-13 the caller
+    // assigned it after the fact, and a frame path that forgot drew at the
+    // default; now a frame cannot begin without somebody saying at what
+    // quality, and the compiler is what asks.
     orb::view::RenderQuality quality{};
 };
 
@@ -137,7 +152,12 @@ public:
     // be rebuilt. The inner optional is "no frame this time": the window is
     // minimised, or the swapchain was out of date and has just been rebuilt.
     // The second is routine and the caller should idle; the first is not.
-    [[nodiscard]] std::expected<std::optional<FrameContext>, RenderError> beginFrame();
+    //
+    // `quality` is taken by value and copied into the frame: a trivially
+    // copyable aggregate, so a later adaptive controller can change it between
+    // frames without anything holding a reference to what it changed.
+    [[nodiscard]] std::expected<std::optional<FrameContext>, RenderError>
+    beginFrame(orb::view::RenderQuality quality);
 
     // Closes the render pass, transitions for presentation, submits, presents.
     [[nodiscard]] std::expected<void, RenderError> endFrame(const FrameContext& frame);
