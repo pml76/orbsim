@@ -20,6 +20,7 @@ about to do.** They are one level deep from here, deliberately.
 | writing or changing C++ | [`CODING_GUIDELINES.md`](CODING_GUIDELINES.md), and copy the shape in [`coding-guidelines-example/`](coding-guidelines-example/) |
 | writing a test, or touching anything numerical | [`docs/VERIFICATION.md`](docs/VERIFICATION.md) — **before** the test, not after |
 | doing a milestone 1 task | [`docs/plan/milestone-1-tasks.md`](docs/plan/milestone-1-tasks.md), its [decision register](docs/plan/milestone-1-decisions.md), and the one task document |
+| wondering what comes after milestone 1 | [`docs/plan/milestones.md`](docs/plan/milestones.md) — **`Status: proposed`**, so read it as a proposal and not as a plan of record |
 | changing something that spans files | [`docs/adr/`](docs/adr/) — [the index](docs/adr/README.md) says which |
 | wondering why something is the way it is | [`docs/HISTORY.md`](docs/HISTORY.md) |
 | reading or borrowing Orbiter's source | [`docs/ORBITER-REFERENCE.md`](docs/ORBITER-REFERENCE.md) — the licence boundary is not uniform |

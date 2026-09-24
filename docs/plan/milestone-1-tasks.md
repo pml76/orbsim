@@ -94,7 +94,25 @@ and `fuzz_integrator`. Each gate task names exactly what it must run.
 *(This said "one to five" and omitted `fuzz_time` until 2026-09-21. That
 target was added on 2026-09-18 with M1-04, decision 41, and under the sentence
 above — which makes the enumeration the thing that decides what runs — it was
-run by no gate at all. Every gate task's count moved up by one with this.)*
+run by no gate at all.)*
+
+***The sentence that stood here claimed "Every gate task's count moved up by
+one with this", and on 2026-09-24 a consistency pass found that it had not.***
+The prose in M1-61, M1-74 and M1-84 had been corrected and **their `Done when`
+checklists had not**, so each gate closed on a number one short; M1-48 was
+missed in both places and said "three" where the list it cites by name says
+four. **Eight** numbers across four documents, two in each, all fixed that day
+— and that count was written "seven" first, beside the list it counts, in a
+note about a correction that had been miscounted. It was recounted rather than
+believed, which is the only reason it says eight. The lesson is narrower than
+"update every gate": a gate is closed by its checklist, so a
+correction applied to the prose above a checklist is a correction that does not
+take effect. The same pass found `windows-msvc` missing from M1-48, M1-61 and
+M1-84 for the same reason: it was added to the block above on 2026-09-14 and
+propagated into some gate documents and not others, then inherited onward by
+the ones that cite each other. **The note claiming a fix is not the fix**,
+which is rule 23 of [`../VERIFICATION.md`](../VERIFICATION.md) pointed at this
+file's own corrections.
 
 ---
 

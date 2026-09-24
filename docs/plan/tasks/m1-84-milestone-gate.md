@@ -20,6 +20,11 @@ that makes the next machine, or the next month, cheap.
 
 - `check` in both Windows trees.
 - The `asan` preset, all suites.
+- **`windows-msvc`** (the third implementation, and the only preset that builds
+  the renderer against a second compiler). *(Added 2026-09-24: it joined the
+  mandated sweep in [the queue](../milestone-1-tasks.md) on 2026-09-14 and was
+  never added here — in the one gate whose whole claim is "everything the
+  toolbox has, one final time".)*
 - `linux-sanitize` (ASan + UBSan), `linux-gcc` (the second compiler),
   `linux-tsan` (the threaded code).
 - **Six fuzz targets**, ten minutes each rather than four, since this is the
@@ -47,7 +52,7 @@ This is the half that is easy to skip and expensive to have skipped.
   built rather than planned.
 - **`docs/VERIFICATION.md`** Part 4 — the enforcement table updated. Rules 3
   and 15 have moved off **to build** and rule 4 off *partial* (that is the
-  status it carries, not *to build*); rule 13 has five targets rather than one;
+  status it carries, not *to build*); rule 13 has six targets rather than two;
   rule 14 has three pairs. The table is the honest accounting the document
   exists for, and it is only honest if it is current.
 - **`CLAUDE.md`** — the directory map gains `astro/`, `view/`, `sim/` and
@@ -74,7 +79,7 @@ model errors is now the most limiting. That last one is the input to milestone
 ## Done when
 
 - [ ] Every toolchain and every sanitizer passes.
-- [ ] Five fuzzers, ten minutes each, clean.
+- [ ] Six fuzzers, ten minutes each, clean.
 - [ ] The soak is clean with bounded memory.
 - [ ] Every document above describes the tree as it actually is.
 - [ ] `VERIFICATION.md` Part 4 has no rows left marked **to build**.

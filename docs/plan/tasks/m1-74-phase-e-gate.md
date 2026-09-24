@@ -44,7 +44,7 @@ TSan, GPU validation layers — plus:
 
 ## What to record
 
-In `PROJECT_STATE.md`: assertion counts per toolchain; five fuzzing totals; the
+In `PROJECT_STATE.md`: assertion counts per toolchain; six fuzzing totals; the
 GMAT budget as measured for Cowell and Encke; the chosen fixed step and its
 justification; the long-arc drift curves; the coverage table; and the
 measurements that justified the design — the step size each propagator needs for
@@ -59,7 +59,7 @@ stating plainly in the commit message.
 ## Done when
 
 - [ ] Every toolchain passes, counts matching, and the two compilers agree.
-- [ ] Five fuzzers clean.
+- [ ] Six fuzzers clean.
 - [ ] The 30-day arc is clean, with drift curves recorded.
 - [ ] The GMAT budget holds for both propagators.
 - [ ] `VERIFICATION.md` has no rows left marked **to build**.

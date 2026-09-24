@@ -18,8 +18,13 @@ worth keeping a number for.)*
 
 ## What to do
 
-The full sweep from M1-48 — ASan, Linux clang with ASan and UBSan, gcc-14, TSan,
-GPU-assisted validation, synchronization validation — plus:
+The full sweep from M1-48 — ASan, **`windows-msvc`**, Linux clang with ASan and
+UBSan, gcc-14, TSan, GPU-assisted validation, synchronization validation —
+plus:
+
+*(`windows-msvc` added 2026-09-24. It was missing here because it was missing
+from M1-48, whose list this one inherits by name — the third implementation,
+and the only preset that builds the renderer against a second compiler.)*
 
 - **Five fuzz targets** now: `fuzz_orbit`, `fuzz_time`, `fuzz_ktx2`,
   `fuzz_ztree` (which reaches the DDS and `.elv` parsers) and
@@ -50,7 +55,7 @@ GPU-assisted validation, synchronization validation — plus:
 
 ## What to record
 
-In `PROJECT_STATE.md`: assertion counts per toolchain; four fuzzing totals; the
+In `PROJECT_STATE.md`: assertion counts per toolchain; five fuzzing totals; the
 soak result including memory figures; the streaming numbers from the descent;
 the frame-time table at every preset; the coverage table; and every golden with
 its approval date. The list of golden images is now long enough to deserve its
@@ -58,8 +63,8 @@ own short section.
 
 ## Done when
 
-- [ ] Every toolchain passes, counts matching.
-- [ ] Four fuzzers clean.
+- [ ] Every toolchain passes, counts matching — `windows-msvc` included.
+- [ ] Five fuzzers clean.
 - [ ] The thirty-minute soak is clean, with bounded memory.
 - [ ] `PROJECT_STATE.md` is current.
 - [ ] The renderer is done for this milestone, and the remaining phases are

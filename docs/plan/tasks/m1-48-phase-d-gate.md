@@ -14,8 +14,14 @@ about.
 
 ## What to do
 
-The full sweep from M1-38 — ASan, Linux clang with ASan and UBSan, gcc-14, TSan,
-and the three fuzzers — plus what phase D introduces:
+The full sweep from M1-38 — ASan, **`windows-msvc`**, Linux clang with ASan and
+UBSan, gcc-14, TSan, and the four fuzzers — plus what phase D introduces:
+
+*(Both corrections made 2026-09-24. This said "the three fuzzers" while citing
+M1-38, which says four in the same breath: phase D adds no target of its own,
+so the count it inherits is M1-38's. And `windows-msvc` was missing outright —
+it joined the mandated sweep on 2026-09-14, and dropping it here is what
+carried the omission into M1-61, which inherits this list by name.)*
 
 - **GPU-assisted validation**, enabled through `vkconfig` for one manual run.
   The base validation layers do not check descriptor indexing bounds at runtime;
@@ -53,8 +59,8 @@ propagators.
 
 ## Done when
 
-- [ ] Every toolchain passes, counts matching.
-- [ ] Three fuzzers clean.
+- [ ] Every toolchain passes, counts matching — `windows-msvc` included.
+- [ ] Four fuzzers clean.
 - [ ] GPU-assisted and synchronization validation both run clean by hand.
 - [ ] All ten probes are deterministic.
 - [ ] `PROJECT_STATE.md` is current, and phase C starts with a known frame-time

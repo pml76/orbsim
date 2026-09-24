@@ -272,6 +272,19 @@ failure you cannot fix.
 asserts the one thing a fuzzer can know without knowing the right answer: a
 reported failure is always acceptable, but a **success must not be NaN**.
 
+**There are two targets, not one.** `tests/fuzz_time.cpp` joined on 2026-09-18
+with [M1-04](plan/tasks/m1-04-leap-seconds.md), decision 41, and throws
+arbitrary bytes at the calendar, the Julian date and the scale conversions;
+[M1-05](plan/tasks/m1-05-tdb-and-ut1.md) and
+[M1-86](plan/tasks/m1-86-ut1-from-tt.md) each added claims to it, and
+**M1-86's** found a precondition in `utcFromTai` that a caller could reach,
+turned into a report on 2026-09-20. *(Said
+here 2026-09-24. Until then this rule opened as though `fuzz_orbit` were the
+only target and Part 4's row named only that file, while `fuzz_time` appeared
+exactly once in this document — in a line of run totals. The same pass corrected
+four gate tasks that were counting fuzzers one short, and this is the same
+defect in the document that governs them.)*
+
 **Moved to Windows, 2026-09-12.** It ran under WSL only, on the claim that
 clang's libFuzzer has no MSVC-ABI target. That was false — it builds there, it
 runs, and both sanitizers are live, proven with planted bugs rather than
@@ -724,7 +737,7 @@ rules a machine checks and which depend on a person remembering.
 | 10 Small commits | `scripts/git-hooks/pre-commit`, partially | partial |
 | 11 Property tests | `check` — reversal, composition, scale invariance, conservation | **done** |
 | 12 Seeded sweeps | `check` — already live | **done** |
-| 13 Fuzzing | `tests/fuzz_orbit.cpp`, run deliberately with a time budget | **done** |
+| 13 Fuzzing | `tests/fuzz_orbit.cpp` **and `tests/fuzz_time.cpp`**, run deliberately with a time budget. *(This row named only the first until 2026-09-24, although the second landed on 2026-09-18 — the same omission the four gate tasks had, in the table that exists to be the honest accounting.)* | **done** |
 | 14 Differential testing | `check` — live for the two propagators, but they share a solver since 2026-09-12, so see rule 2 | **weakened** |
 | 15 Runtime monitors | `check` in the Debug tree, via assertions | **to build** |
 | 16 Determinism | `check` — `TEST_CASE("propagation is bit-identical across runs")`, over 100 steps | **done** |

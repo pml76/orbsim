@@ -18,7 +18,12 @@ costs — so the sequencing can be argued about with numbers instead of
 enthusiasm.
 
 It is deliberately not a schedule. [`milestone-1-earth.md`](milestone-1-earth.md)
-is the schedule, and section 5 says what this changes about it.
+is the schedule for milestone 1, and section 5 says what this changes about it.
+**The schedule past it is [`milestones.md`](milestones.md)**, which is
+`Status: proposed` — added 2026-09-24, and it carries the list of what *this*
+document does not cover, which is the vessel, persistence, replay, docking,
+aerodynamic flight, surface operations, instruments and audio. *(Until that
+day this sentence named one schedule, because there was only one.)*
 
 ---
 
