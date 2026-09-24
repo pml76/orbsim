@@ -303,12 +303,34 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
 // bounds, which is the construction -Wunsafe-buffer-usage-in-container
 // reports; and std::fputs is a C library function taking an unbounded string,
 // which is what -Wunsafe-buffer-usage-in-libc-call reports.
+// _set_abort_behavior and its two flags are the Windows C runtime's, declared
+// in its <stdlib.h> itself -- <cstdlib> reaches them only through that header,
+// which misc-include-cleaner rightly does not count as providing them. So the
+// header that declares them is the one included, and the check that wants
+// <cstdlib> instead is silenced for this line alone: it is right for the
+// standard names, which this line is not here for. Granted by the owner,
+// 2026-09-24 (register decision 155).
+#ifdef _WIN32
+// NOLINTNEXTLINE(modernize-deprecated-headers)
+#include <stdlib.h>
+#endif
+
 #ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-container"
 #pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-libc-call"
 #endif
 int main(int argc, char** argv) {
+#ifdef _WIN32
+    // A failed assertion ends the process rather than asking a question. The
+    // Windows debug runtime otherwise turns abort's message into a modal
+    // dialog, and the process sits there alive: orbsim_smoke then hangs until
+    // CTest's timeout instead of failing. The mutation pass found that on
+    // 2026-09-24, when a mutant tripped an assertion in the renderer -- the
+    // same thing tests/AbortBehaviour.cpp does for every suite, for the same
+    // reason, and the same call.
+    static_cast<void>(_set_abort_behavior(0, _CALL_REPORTFAULT | _WRITE_ABORT_MSG));
+#endif
     const std::span<char* const> args(argv, static_cast<std::size_t>(argc));
     try {
         return run(args);
