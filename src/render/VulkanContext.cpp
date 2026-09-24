@@ -724,13 +724,17 @@ void VulkanContext::beginRendering(VkCommandBuffer cmd, uint32_t imageIndex) con
     };
     vkCmdBeginRendering(cmd, &rendering);
 
-    // Viewport is flipped vertically so that +Y is up in clip space, matching
-    // the maths convention used throughout the sim rather than Vulkan's.
+    // **Not flipped.** The one vertical flip lives in the projection matrix,
+    // as a single negated entry (view/Projection.hpp, which says so and is
+    // tested for it). This viewport used to flip as well, with a negative
+    // height, and the two together would have drawn every frame upside down
+    // -- invisible while nothing was drawn, and found by reading the two side
+    // by side before M1-19 draws the first line (register decision 154).
     const VkViewport viewport{
         .x = 0.0F,
-        .y = static_cast<float>(swapchainExtent_.height),
+        .y = 0.0F,
         .width = static_cast<float>(swapchainExtent_.width),
-        .height = -static_cast<float>(swapchainExtent_.height),
+        .height = static_cast<float>(swapchainExtent_.height),
         .minDepth = 0.0F,
         .maxDepth = 1.0F,
     };
