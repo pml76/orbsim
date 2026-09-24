@@ -27,8 +27,8 @@
     {
       "name": "the addition's condition is inverted",
       "file": "src/core/Scalar.hpp",
-      "find": "        const bool wouldWrap = other.value_ > kCountMaximum - value_;",
-      "replace": "        const bool wouldWrap = other.value_ < kCountMaximum - value_;",
+      "find": "        const bool wouldWrap = other.value_ > kMaximum - value_;",
+      "replace": "        const bool wouldWrap = other.value_ < kMaximum - value_;",
       "suites": [
         "test_render_quality"
       ],
@@ -37,8 +37,8 @@
     {
       "name": "the addition's condition is one off, and refuses a sum that exactly fits",
       "file": "src/core/Scalar.hpp",
-      "find": "        const bool wouldWrap = other.value_ > kCountMaximum - value_;",
-      "replace": "        const bool wouldWrap = other.value_ >= kCountMaximum - value_;",
+      "find": "        const bool wouldWrap = other.value_ > kMaximum - value_;",
+      "replace": "        const bool wouldWrap = other.value_ >= kMaximum - value_;",
       "suites": [
         "test_render_quality"
       ],
@@ -48,8 +48,8 @@
     {
       "name": "the multiplication's condition is inverted",
       "file": "src/core/Scalar.hpp",
-      "find": "        const bool wouldWrap = scale != 0U && value_ > kCountMaximum / scale;",
-      "replace": "        const bool wouldWrap = scale != 0U && value_ < kCountMaximum / scale;",
+      "find": "        const bool wouldWrap = widened != 0U && value_ > kMaximum / widened;",
+      "replace": "        const bool wouldWrap = widened != 0U && value_ < kMaximum / widened;",
       "suites": [
         "test_render_quality"
       ],
@@ -75,8 +75,8 @@
     {
       "name": "the addition keeps only the compile-time half of its guard",
       "file": "src/core/Scalar.hpp",
-      "find": "        const bool wouldWrap = other.value_ > kCountMaximum - value_;\n        ORBSIM_EXPECTS(!wouldWrap);\n        if (wouldWrap) stopConstantEvaluation();",
-      "replace": "        const bool wouldWrap = other.value_ > kCountMaximum - value_;\n        if (wouldWrap) stopConstantEvaluation();",
+      "find": "        const bool wouldWrap = other.value_ > kMaximum - value_;\n        ORBSIM_EXPECTS(!wouldWrap);\n        if (wouldWrap) stopConstantEvaluation();",
+      "replace": "        const bool wouldWrap = other.value_ > kMaximum - value_;\n        if (wouldWrap) stopConstantEvaluation();",
       "suites": [
         "test_render_quality"
       ],
@@ -92,8 +92,8 @@
     {
       "name": "the multiplication keeps only the compile-time half of its guard",
       "file": "src/core/Scalar.hpp",
-      "find": "        const bool wouldWrap = scale != 0U && value_ > kCountMaximum / scale;\n        ORBSIM_EXPECTS(!wouldWrap);\n        if (wouldWrap) stopConstantEvaluation();",
-      "replace": "        const bool wouldWrap = scale != 0U && value_ > kCountMaximum / scale;\n        if (wouldWrap) stopConstantEvaluation();",
+      "find": "        const bool wouldWrap = widened != 0U && value_ > kMaximum / widened;\n        ORBSIM_EXPECTS(!wouldWrap);\n        if (wouldWrap) stopConstantEvaluation();",
+      "replace": "        const bool wouldWrap = widened != 0U && value_ > kMaximum / widened;\n        if (wouldWrap) stopConstantEvaluation();",
       "suites": [
         "test_render_quality"
       ],
@@ -109,8 +109,8 @@
     {
       "name": "the limit is not the last value the type holds",
       "file": "src/core/Scalar.hpp",
-      "find": "inline constexpr std::uint32_t kCountMaximum = std::numeric_limits<std::uint32_t>::max();",
-      "replace": "inline constexpr std::uint32_t kCountMaximum = std::numeric_limits<std::uint32_t>::max() - 1U;",
+      "find": "    static constexpr Rep kMaximum = std::numeric_limits<Rep>::max();",
+      "replace": "    static constexpr Rep kMaximum = std::numeric_limits<Rep>::max() - Rep{1};",
       "suites": [
         "test_render_quality"
       ],
@@ -139,8 +139,8 @@
     {
       "name": "the multiplication is an addition",
       "file": "src/core/Scalar.hpp",
-      "find": "        if (wouldWrap) stopConstantEvaluation();\n        return Derived{value_ * scale};",
-      "replace": "        if (wouldWrap) stopConstantEvaluation();\n        return Derived{value_ + scale};",
+      "find": "        if (wouldWrap) stopConstantEvaluation();\n        return Derived{value_ * widened};",
+      "replace": "        if (wouldWrap) stopConstantEvaluation();\n        return Derived{value_ + widened};",
       "suites": [
         "test_render_quality"
       ],
@@ -170,8 +170,8 @@
     {
       "name": "a count's scale accepts any type at all, so a fractional one silently means its floor",
       "file": "src/core/Scalar.hpp",
-      "find": "    template <std::same_as<std::uint32_t> Scale>\n    [[nodiscard]] constexpr Derived operator*(Scale scale) const noexcept {",
-      "replace": "    template <typename Scale>\n    [[nodiscard]] constexpr Derived operator*(Scale scale) const noexcept {",
+      "find": "    template <std::unsigned_integral Scale>\n        requires(sizeof(Scale) <= sizeof(Rep))\n    [[nodiscard]] constexpr Derived operator*(Scale scale) const noexcept {",
+      "replace": "    template <std::unsigned_integral Scale>\n    [[nodiscard]] constexpr Derived operator*(Scale scale) const noexcept {",
       "suites": [
         "test_render_quality"
       ],
@@ -216,6 +216,69 @@
         "test_render_quality"
       ],
       "expect": "caught"
+    },
+    {
+      "name": "aligning up rounds down instead",
+      "file": "src/core/Scalar.hpp",
+      "find": "        if (remainder == 0U) return *this;",
+      "replace": "        if (remainder == 0U) return *this;\n        return *this - Bytes{remainder};",
+      "suites": [
+        "test_render_quality"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "aligning up uses the wrong complement, so it lands a step too far",
+      "file": "src/core/Scalar.hpp",
+      "find": "        return *this + Bytes{step - remainder};",
+      "replace": "        return *this + Bytes{step};",
+      "suites": [
+        "test_render_quality"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "an alignment of zero, or one that is not a power of two, is accepted",
+      "file": "src/core/Scalar.hpp",
+      "find": "        const bool usable = step != 0U && (step & (step - 1U)) == 0U;",
+      "replace": "        const bool usable = step != 0U;",
+      "suites": [
+        "test_render_quality"
+      ],
+      "expect": "caught",
+      "why": "The power-of-two half. **It survived the first run**, on 2026-09-24, and the reason is worth keeping: no run-time case can make this claim, because the suite can only pass alignments that *are* powers of two -- anything else is forbidden -- so dropping the requirement changes nothing any case observes. What kills it is a compile-time refusal, and those four assertions exist because this mutant found they did not."
+    },
+    {
+      "name": "how many fit rounds up instead of dropping the remainder",
+      "file": "src/core/Scalar.hpp",
+      "find": "        return value() / size;",
+      "replace": "        return (value() + size - 1U) / size;",
+      "suites": [
+        "test_render_quality"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "mebibytes convert without widening first",
+      "file": "src/core/Scalar.hpp",
+      "find": "    return Bytes{std::uint64_t{mebibytes.value()} * kBytesPerMebibyte};",
+      "replace": "    return Bytes{std::uint64_t{mebibytes.value() * static_cast<std::uint32_t>(kBytesPerMebibyte)}};",
+      "suites": [
+        "test_render_quality"
+      ],
+      "expect": "caught",
+      "why": "The defect the named conversion exists to prevent: 4,096 MiB is exactly 2^32 bytes, so a 32-bit multiplication gives zero. The probe table crosses that value deliberately."
+    },
+    {
+      "name": "a byte count is built on the 32-bit representation after all",
+      "file": "src/core/Scalar.hpp",
+      "find": "struct Bytes : Count<Bytes, std::uint64_t> {\n    constexpr Bytes() noexcept = default;\n    explicit constexpr Bytes(std::uint64_t v) noexcept : Count{v} {}",
+      "replace": "struct Bytes : Count<Bytes, std::uint32_t> {\n    constexpr Bytes() noexcept = default;\n    explicit constexpr Bytes(std::uint32_t v) noexcept : Count{v} {}",
+      "suites": [
+        "test_render_quality"
+      ],
+      "expect": "caught",
+      "why": "The whole reason decision 140 widened the base. If this survives, nothing in the suite actually depends on a byte count reaching past four billion."
     }
   ]
 }

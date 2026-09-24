@@ -81,17 +81,18 @@ enum class Operation : std::uint8_t {
         break;
     }
     case Operation::Add: {
-        std::printf("provoking %u + %u, which must not be allowed to wrap\n", kCountMaximum, small);
+        std::printf(
+            "provoking %u + %u, which must not be allowed to wrap\n", Texels::kMaximum, small);
         std::fflush(stdout);
-        const Texels sum = Texels{kCountMaximum} + Texels{small};
+        const Texels sum = Texels{Texels::kMaximum} + Texels{small};
         std::printf("the guard did not fire: the sum came back as %u\n", sum.value());
         break;
     }
     case Operation::Multiply: {
         std::printf(
-            "provoking %u * %u, which must not be allowed to wrap\n", kCountMaximum, larger);
+            "provoking %u * %u, which must not be allowed to wrap\n", Texels::kMaximum, larger);
         std::fflush(stdout);
-        const Texels product = Texels{kCountMaximum} * larger;
+        const Texels product = Texels{Texels::kMaximum} * larger;
         std::printf("the guard did not fire: the product came back as %u\n", product.value());
         break;
     }

@@ -266,15 +266,10 @@ static_assert(!isFinite(absOf(-std::numeric_limits<f64>::infinity())),
 // The largest number a count can hold. Named once, because it appears both in
 // the guards below and in the proofs of them, and a limit written twice is one
 // fact with two chances to rot.
-inline constexpr std::uint32_t kCountMaximum = std::numeric_limits<std::uint32_t>::max();
-
-// And it really is the last value the type holds, checked against the
-// language's own wrapping rule rather than against the definition one line
-// above -- which would be the code agreeing with itself. Written because
-// preparing the mutation pass found that nothing else here would notice a
-// limit that was one too small: every guard and every proof of a guard reads
-// this constant, so they all move together and all keep agreeing.
-static_assert(kCountMaximum + 1U == 0U, "one past the limit is where an unsigned count wraps");
+// *(A namespace-scope `kCountMaximum` stood here until 2026-09-24. It was one
+// `std::uint32_t`, which stopped being enough when `Bytes` arrived on a 64-bit
+// representation; the limit is `Count::kMaximum` now, per representation, and
+// each concrete type asserts its own below.)*
 
 // Half of what a count's arithmetic does instead of wrapping round: the half
 // that speaks to the compiler. The other half is the ORBSIM_EXPECTS beside
@@ -342,8 +337,16 @@ inline void stopConstantEvaluation() noexcept {}
 //     makes an error; `* 1.5` does not compile either, which is the point --
 //     the implicit f64-to-unsigned narrowing would have given 1.
 //   * **Nothing wraps round.** See stopConstantEvaluation above.
-template <typename Derived> struct Count {
-    [[nodiscard]] constexpr std::uint32_t value() const noexcept { return value_; }
+template <typename Derived, typename Rep = std::uint32_t>
+    requires std::unsigned_integral<Rep>
+struct Count {
+    // The last value this representation holds. A member rather than one
+    // namespace-scope constant, since 2026-09-24 and `Bytes`: a 32-bit limit
+    // in a 64-bit type's guard would have refused every value above four
+    // billion, which is most of what a byte count is for.
+    static constexpr Rep kMaximum = std::numeric_limits<Rep>::max();
+
+    [[nodiscard]] constexpr Rep value() const noexcept { return value_; }
 
     // The defaulted <=> gives <, >, <= and >=, and brings a defaulted == with
     // it. See the note above for why this base has one where Quantity does not.
@@ -356,7 +359,7 @@ template <typename Derived> struct Count {
     // refuses the expression while the compiler is evaluating it. See
     // stopConstantEvaluation above for why neither does the other's job.
     [[nodiscard]] constexpr Derived operator+(Derived other) const noexcept {
-        const bool wouldWrap = other.value_ > kCountMaximum - value_;
+        const bool wouldWrap = other.value_ > kMaximum - value_;
         ORBSIM_EXPECTS(!wouldWrap);
         if (wouldWrap) stopConstantEvaluation();
         return Derived{value_ + other.value_};
@@ -368,26 +371,32 @@ template <typename Derived> struct Count {
         return Derived{value_ - other.value_};
     }
 
-    // The test is written so that it cannot itself overflow: kCountMaximum
+    // The test is written so that it cannot itself overflow: kMaximum
     // divided by the scale is the largest value that still fits, so the product
     // is checked without ever forming it. A scale of zero is separated out
     // because dividing by it is undefined behaviour, and because zero is the
     // one scale that can never overflow.
     //
-    // Constrained to std::uint32_t exactly rather than taking one: a parameter
-    // of that type would accept an f64 or an int through an implicit
-    // conversion, and `Texels{2} * 1.5` would compile and mean `* 1`.
-    template <std::same_as<std::uint32_t> Scale>
+    // Constrained rather than taking a plain parameter: one of that type would
+    // accept an f64 or an int through an implicit conversion, and
+    // `Texels{2} * 1.5` would compile and mean `* 1`. Any unsigned integer no
+    // wider than the representation is allowed, so `Bytes{n} * 2U` reads
+    // naturally without anybody having to write `2ULL`, and widening it is
+    // lossless by construction.
+    template <std::unsigned_integral Scale>
+        requires(sizeof(Scale) <= sizeof(Rep))
     [[nodiscard]] constexpr Derived operator*(Scale scale) const noexcept {
-        const bool wouldWrap = scale != 0U && value_ > kCountMaximum / scale;
+        const Rep widened = scale;
+        const bool wouldWrap = widened != 0U && value_ > kMaximum / widened;
         ORBSIM_EXPECTS(!wouldWrap);
         if (wouldWrap) stopConstantEvaluation();
-        return Derived{value_ * scale};
+        return Derived{value_ * widened};
     }
 
     // The mirrored spelling, so `4U * Texels{16}` reads as it should. Routed
     // through the member, so the guard lives in one place.
-    template <std::same_as<std::uint32_t> Scale>
+    template <std::unsigned_integral Scale>
+        requires(sizeof(Scale) <= sizeof(Rep))
     [[nodiscard]] friend constexpr Derived operator*(Scale scale, Derived count) noexcept {
         return count * scale;
     }
@@ -402,13 +411,13 @@ template <typename Derived> struct Count {
     }
 
 private:
-    std::uint32_t value_{};
+    Rep value_{};
 
     // Only the named derived type may construct its base, which is what stops
     // `struct Other : Count<Texels>` from compiling by accident.
     friend Derived;
     constexpr Count() noexcept = default;
-    explicit constexpr Count(std::uint32_t v) noexcept : value_(v) {}
+    explicit constexpr Count(Rep v) noexcept : value_(v) {}
 
     [[nodiscard]] constexpr Derived& derived() noexcept { return static_cast<Derived&>(*this); }
 };
@@ -430,6 +439,93 @@ struct Mebibytes : Count<Mebibytes> {
     constexpr Mebibytes() noexcept = default;
     explicit constexpr Mebibytes(std::uint32_t v) noexcept : Count{v} {}
 };
+
+// A number of bytes, on a **64-bit** representation (register decision 140).
+//
+// **Why it is not 32 bits, unlike its two siblings.** A texel count and a
+// mebibyte budget are comfortable in 32 bits -- four billion texels is not a
+// texture and four million mebibytes is four tebibytes. A byte count is not:
+// `VkDeviceSize` is a `uint64_t`, checked in the pinned header; a KTX2 file
+// carries 64-bit offsets and lengths; and M1-26 parses those **from an
+// untrusted file**, where a silent 32-bit truncation of a 64-bit field is not
+// an inconvenience but the memory-safety defect the task exists to prevent.
+//
+// **Why it is a Count at all**, when Count forbids division and byte
+// arithmetic is exactly where integer division is meant: because the rule is
+// worth keeping and the two operations that need it are worth naming.
+// alignedUpTo and howManyFit are below, each with its own precondition, which
+// is the same answer toRadians gives to "a conversion is a named function".
+struct Bytes : Count<Bytes, std::uint64_t> {
+    constexpr Bytes() noexcept = default;
+    explicit constexpr Bytes(std::uint64_t v) noexcept : Count{v} {}
+
+    // The next multiple of `alignment` at or above this value.
+    //
+    // A member rather than a free `alignUp(Bytes, Bytes)`, and that is not
+    // only taste: two adjacent parameters of one type are what non-negotiable
+    // 1 forbids and bugprone-easily-swappable-parameters reports, and
+    // `offset.alignedUpTo(step)` cannot be written backwards.
+    //
+    // The alignment must be a power of two and not zero. That is asserted
+    // rather than made unrepresentable, because every alignment in sight is
+    // either a literal or a device limit read once at start-up; the day one
+    // arrives from a configuration file is the day it earns a validated type
+    // of its own (ADR 0022).
+    [[nodiscard]] constexpr Bytes alignedUpTo(Bytes alignment) const noexcept {
+        const std::uint64_t step = alignment.value();
+        const bool usable = step != 0U && (step & (step - 1U)) == 0U;
+        ORBSIM_EXPECTS(usable);
+        if (!usable) stopConstantEvaluation();
+        // **Masks, not a modulo**, and that is not a micro-optimisation: under
+        // NDEBUG the assertion above is gone, so a step of zero would reach a
+        // `%` and divide by zero, which is undefined behaviour rather than
+        // merely a wrong answer. `clang-analyzer-core.DivideZero` said so on
+        // 2026-09-24 and was right. An alignment is a power of two, so the
+        // masking form is the natural one anyway -- and with a step of zero it
+        // produces a carry that the guarded `+` below refuses, which is a
+        // defined wrong answer loudly refused rather than an undefined one.
+        const std::uint64_t mask = step - 1U;
+        const std::uint64_t remainder = value() & mask;
+        if (remainder == 0U) return *this;
+        // The rounding up can itself carry past the end, and does not get to
+        // do so quietly: `Bytes{kMaximum}.alignedUpTo(Bytes{16})` has no
+        // answer, and says so rather than returning a small number.
+        return *this + Bytes{step - remainder};
+    }
+
+    // How many blocks of `each` fit in this many bytes, as a plain number --
+    // the answer is a count of things, not a quantity of bytes.
+    //
+    // This is the division Count refuses, given a name and a precondition, so
+    // that the refusal stays the rule and the exception is visible.
+    [[nodiscard]] constexpr std::uint64_t howManyFit(Bytes each) const noexcept {
+        const std::uint64_t size = each.value();
+        const bool usable = size != 0U;
+        ORBSIM_EXPECTS(usable);
+        if (!usable) stopConstantEvaluation();
+        // **The early return is not the third option ADR 0002 forbids**, and
+        // the distinction is worth stating because it looks exactly like it.
+        // A block size of zero is refused twice already: at compile time by the
+        // line above, and at run time by the assertion wherever assertions
+        // live. This line exists only for a release build that has reached here
+        // with a defect anyway, and its job is to make that path **defined**:
+        // `clang-analyzer-core.DivideZero` pointed out on 2026-09-24 that
+        // without it the division is undefined behaviour under NDEBUG, which
+        // is strictly worse than a wrong number. Nothing here is silent.
+        if (!usable) return 0U;
+        return value() / size;
+    }
+};
+
+// Mebibytes to bytes, **widening before it multiplies**, which is the whole
+// reason it is a named function rather than a multiplication at each call
+// site: 4,096 MiB is exactly 2^32 bytes, so the obvious
+// `Mebibytes{4096}.value() * 1048576U` is a 32-bit multiplication that
+// produces **zero**. M1-34's tile cache is where that would have bitten.
+[[nodiscard]] constexpr Bytes toBytes(Mebibytes mebibytes) noexcept {
+    constexpr std::uint64_t kBytesPerMebibyte = 1024ULL * 1024ULL;
+    return Bytes{std::uint64_t{mebibytes.value()} * kBytesPerMebibyte};
+}
 
 // Compile-time proofs of the properties the rest of the codebase relies on.
 static_assert(sizeof(Tolerance) == sizeof(f64), "a strong type must cost nothing");
@@ -468,7 +564,49 @@ concept divisible = requires(const A& x, const B& y) { x / y; };
 template <typename A, typename B>
 concept multipliable = requires(const A& x, const B& y) { x * y; };
 
+// Each representation's limit really is the last value it holds, checked
+// against the language's own wrapping rule rather than against the definition
+// -- which would be the code agreeing with itself. Preparing M1-12's mutation
+// pass found that nothing else here would notice a limit one too small, since
+// every guard and every proof of a guard reads it.
+static_assert(Texels::kMaximum + 1U == 0U, "one past the limit is where an unsigned count wraps");
+static_assert(Mebibytes::kMaximum + 1U == 0U);
+static_assert(Bytes::kMaximum + 1U == 0U, "and the same for the 64-bit representation");
+
 static_assert(sizeof(Texels) == sizeof(std::uint32_t), "a strong type must cost nothing");
+static_assert(sizeof(Bytes) == sizeof(std::uint64_t), "and a byte count is the wider one");
+static_assert(std::is_trivially_copyable_v<Bytes>);
+static_assert(!std::is_convertible_v<std::uint64_t, Bytes>, "construction must be explicit");
+static_assert(!std::is_convertible_v<Bytes, std::uint64_t>);
+static_assert(!std::is_constructible_v<Bytes, Texels>, "and no count converts into another");
+static_assert(!std::is_constructible_v<Texels, Bytes>);
+static_assert(!std::is_constructible_v<Bytes, Mebibytes>,
+              "not even the one a conversion exists for: toBytes says it by name");
+
+// The wider representation is what this type was added for, so the claim is
+// made where 32 bits would have failed.
+static_assert((Bytes{4'294'967'296ULL} + Bytes{1ULL}).value() == 4'294'967'297ULL,
+              "a byte count passes four billion without wrapping");
+static_assert(toBytes(Mebibytes{4096U}).value() == 4'294'967'296ULL,
+              "and 4,096 MiB is exactly 2^32 bytes, which a 32-bit multiply makes zero");
+static_assert(toBytes(Mebibytes{512U}).value() == 536'870'912ULL);
+
+// The two named operations, and the rule they are the exception to.
+static_assert(Bytes{1000U}.alignedUpTo(Bytes{256U}).value() == 1024U);
+static_assert(Bytes{1024U}.alignedUpTo(Bytes{256U}).value() == 1024U, "already aligned, unchanged");
+static_assert(Bytes{0U}.alignedUpTo(Bytes{16U}).value() == 0U);
+static_assert(Bytes{1000U}.howManyFit(Bytes{256U}) == 3U, "how many whole blocks fit, not four");
+static_assert(Bytes{1024U}.howManyFit(Bytes{256U}) == 4U);
+static_assert(!divisible<Bytes, Bytes>, "division is still not an operator, only a named function");
+
+// A scale may be any unsigned integer no wider than the representation, so a
+// byte count scales without anybody writing `2ULL`, and a 32-bit count cannot
+// be scaled by a 64-bit number.
+static_assert((Bytes{8U} * 2U).value() == 16U);
+static_assert(!multipliable<Texels, std::uint64_t>,
+              "a wider scale than the representation must not compile");
+static_assert(!multipliable<Bytes, f64>);
+static_assert(!multipliable<Bytes, int>);
 static_assert(sizeof(Mebibytes) == sizeof(std::uint32_t));
 static_assert(std::is_trivially_copyable_v<Texels>);
 static_assert(std::is_trivially_copyable_v<Mebibytes>);
@@ -510,9 +648,9 @@ concept constantEvaluable = requires { typename std::bool_constant<(F{}(), true)
 static_assert(!constantEvaluable<decltype([] { return (Texels{1U} - Texels{2U}).value(); })>,
               "a subtraction that would go below zero is refused as the compiler evaluates it");
 static_assert(
-    !constantEvaluable<decltype([] { return (Texels{kCountMaximum} + Texels{1U}).value(); })>,
+    !constantEvaluable<decltype([] { return (Texels{Texels::kMaximum} + Texels{1U}).value(); })>,
     "and an addition that would carry past the end");
-static_assert(!constantEvaluable<decltype([] { return (Texels{kCountMaximum} * 2U).value(); })>,
+static_assert(!constantEvaluable<decltype([] { return (Texels{Texels::kMaximum} * 2U).value(); })>,
               "and a product that would not fit");
 // **The positive control**, and it is not decoration: without it, "this is not
 // a constant expression" and "this proof is broken" are the same answer, which
@@ -520,6 +658,24 @@ static_assert(!constantEvaluable<decltype([] { return (Texels{kCountMaximum} * 2
 // 2026-09-23, where the same concept answered yes.
 static_assert(constantEvaluable<decltype([] { return (Texels{1024U} - Texels{24U}).value(); })>,
               "while every operation that does fit is still a constant expression");
+// **The preconditions of the two named operations, proved where they bite.**
+// A run-time case cannot make these claims: the suite can only pass alignments
+// that are powers of two, because anything else is forbidden, so dropping the
+// power-of-two requirement changes nothing any case can see. M1-12's mutation
+// pass found exactly that -- the mutant survived until these four lines
+// existed. What refuses a bad alignment is the same mechanism that refuses a
+// wraparound: a call the compiler cannot evaluate.
+static_assert(
+    !constantEvaluable<decltype([] { return Bytes{100U}.alignedUpTo(Bytes{3U}).value(); })>,
+    "an alignment that is not a power of two is refused as the compiler evaluates it");
+static_assert(
+    !constantEvaluable<decltype([] { return Bytes{100U}.alignedUpTo(Bytes{0U}).value(); })>,
+    "and so is an alignment of zero");
+static_assert(!constantEvaluable<decltype([] { return Bytes{100U}.howManyFit(Bytes{0U}); })>,
+              "and a block size of zero, which would otherwise divide by it");
+static_assert(
+    constantEvaluable<decltype([] { return Bytes{100U}.alignedUpTo(Bytes{16U}).value(); })>,
+    "-- the control, without which these three say nothing");
 
 } // namespace orb
 
