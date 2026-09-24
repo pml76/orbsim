@@ -609,25 +609,37 @@ target_link_libraries(test_render_quality PRIVATE orbsim_view)
 
 # The run-time half of Count's wraparound guard (M1-12, register decision 136).
 #
-# Its own program, because the claim is that an assertion fires and an assertion
-# that fires calls abort -- which Catch2 cannot survive, taking the reporter and
-# every case that had not run yet with it. The script decides which way round
-# the exit code means, and reports SKIPPED rather than passing in a tree where
-# assertions are not live. See cmake/VerifyCountWraparound.cmake.
-add_executable(count_wraparound_probe tests/count_wraparound_probe.cpp)
-target_link_libraries(count_wraparound_probe PRIVATE
-        orbsim_core
-        orbsim_warnings
-        orbsim_sanitizers
-)
-add_test(NAME count_wraparound_aborts
-        COMMAND ${CMAKE_COMMAND}
-                -DPROBE=$<TARGET_FILE:count_wraparound_probe>
-                -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/VerifyCountWraparound.cmake
-)
-set_tests_properties(count_wraparound_aborts PROPERTIES
-        SKIP_REGULAR_EXPRESSION "SKIPPED:"
-)
+# Programs of their own, because the claim is that an assertion fires and an
+# assertion that fires calls abort -- which Catch2 cannot survive, taking the
+# reporter and every case that had not run yet with it. The script decides which
+# way round the exit code means, and reports SKIPPED rather than passing in a
+# tree where assertions are not live. See cmake/VerifyCountWraparound.cmake.
+#
+# **One per operation**, because a program can only abort once. There was a
+# single probe for one day and it covered the subtraction only; deleting the
+# run-time guard from `operator+` then passed the whole of `check` -- 200 tests,
+# exit 0. Decision 125 guards three operations, so three probes.
+set(ORBSIM_COUNT_WRAPAROUND_OPERATIONS subtraction addition multiplication)
+foreach(operation IN LISTS ORBSIM_COUNT_WRAPAROUND_OPERATIONS)
+    add_executable(count_wraparound_${operation} tests/count_wraparound_${operation}.cpp)
+    # The repository root, for `#include "tests/CountWraparound.hpp"`. These
+    # deliberately do not link orbsim_test_support -- they need none of it, and
+    # not linking it keeps Catch2 out of a program whose whole job is to abort.
+    target_include_directories(count_wraparound_${operation} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(count_wraparound_${operation} PRIVATE
+            orbsim_core
+            orbsim_warnings
+            orbsim_sanitizers
+    )
+    add_test(NAME count_wraparound_${operation}_aborts
+            COMMAND ${CMAKE_COMMAND}
+                    -DPROBE=$<TARGET_FILE:count_wraparound_${operation}>
+                    -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/VerifyCountWraparound.cmake
+    )
+    set_tests_properties(count_wraparound_${operation}_aborts PROPERTIES
+            SKIP_REGULAR_EXPRESSION "SKIPPED:"
+    )
+endforeach()
 
 # The generated reference data is the data the error budgets were measured
 # against, or `check` says otherwise (M1-06, register decision 44). Horizons
@@ -959,6 +971,7 @@ orbsim_add_header_selfcheck(orbsim_view_header_selfcheck orbsim_view
         view/RenderQuality.hpp
 )
 orbsim_add_header_selfcheck(orbsim_test_header_selfcheck orbsim_test_support
+        tests/CountWraparound.hpp
         tests/FixtureFile.hpp
         tests/OrbitTestSupport.hpp
 )
@@ -1194,7 +1207,9 @@ add_custom_target(check
 )
 add_dependencies(check
         ${ORBSIM_TESTS}
-        count_wraparound_probe
+        count_wraparound_subtraction
+        count_wraparound_addition
+        count_wraparound_multiplication
         t_erfa_c
         t_erfa_c_extra
         orbsim_header_selfcheck

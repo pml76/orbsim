@@ -64,7 +64,29 @@
         "test_render_quality"
       ],
       "expect": "survives",
-      "why": "It survives *this harness*, and does not survive the suite as a whole. The property is checked by the CTest entry count_wraparound_aborts, which this harness structurally cannot run: the probe's success is a non-zero exit -- the assertion firing -- and run_mutant reads any non-zero exit as a kill, so listing it here would report every mutant as caught. Teaching mutate.py an inverted expectation would close that gap and is the owner's call, not this task's. **Measured 2026-09-24, and the first answer was wrong**: this field previously claimed the CTest entry catches it, on reasoning rather than a run. It did not. The probe reported the wraparound correctly and returned 1, and cmake/VerifyCountWraparound.cmake only failed on exit 0, so the entry that exists to close this survivor reported green against a tree carrying it. The script reads the probe's own verdict now, and all three cases were run: healthy Debug passes, release skips, and a tree carrying this mutant fails."
+      "why": "A declared survivor **of this harness**, not of the suite. `count_wraparound_subtraction_aborts` catches it -- measured 2026-09-24 by deleting each of the three guards in turn and running all three entries: each deletion failed exactly its own entry and no other, and a healthy tree passed all three. The harness cannot run those entries, because a probe's success is a non-zero exit -- the assertion firing -- and run_mutant reads any non-zero exit as a kill, so listing one here would report every mutant as caught. Teaching mutate.py an inverted expectation would close that gap and is the owner's call. **This field was wrong for a day**: it claimed the CTest entry caught it, from reasoning rather than a run. It did not -- the probe returned 1 and the script failed only on exit 0. Both were fixed on 2026-09-24."
+    },
+    {
+      "name": "the addition keeps only the compile-time half of its guard",
+      "file": "src/core/Scalar.hpp",
+      "find": "        const bool wouldWrap = other.value_ > kCountMaximum - value_;\n        ORBSIM_EXPECTS(!wouldWrap);\n        if (wouldWrap) stopConstantEvaluation();",
+      "replace": "        const bool wouldWrap = other.value_ > kCountMaximum - value_;\n        if (wouldWrap) stopConstantEvaluation();",
+      "suites": [
+        "test_render_quality"
+      ],
+      "expect": "survives",
+      "why": "A declared survivor **of this harness**, not of the suite. `count_wraparound_addition_aborts` catches it -- measured 2026-09-24 by deleting each of the three guards in turn and running all three entries: each deletion failed exactly its own entry and no other, and a healthy tree passed all three. The harness cannot run those entries, because a probe's success is a non-zero exit -- the assertion firing -- and run_mutant reads any non-zero exit as a kill, so listing one here would report every mutant as caught. Teaching mutate.py an inverted expectation would close that gap and is the owner's call. **Listed since 2026-09-24.** Until then only the subtraction's version existed, and deleting this guard passed the whole of `check` -- 200 tests, exit 0 -- because nothing anywhere provoked this operation at run time."
+    },
+    {
+      "name": "the multiplication keeps only the compile-time half of its guard",
+      "file": "src/core/Scalar.hpp",
+      "find": "        const bool wouldWrap = scale != 0U && value_ > kCountMaximum / scale;\n        ORBSIM_EXPECTS(!wouldWrap);\n        if (wouldWrap) stopConstantEvaluation();",
+      "replace": "        const bool wouldWrap = scale != 0U && value_ > kCountMaximum / scale;\n        if (wouldWrap) stopConstantEvaluation();",
+      "suites": [
+        "test_render_quality"
+      ],
+      "expect": "survives",
+      "why": "A declared survivor **of this harness**, not of the suite. `count_wraparound_multiplication_aborts` catches it -- measured 2026-09-24 by deleting each of the three guards in turn and running all three entries: each deletion failed exactly its own entry and no other, and a healthy tree passed all three. The harness cannot run those entries, because a probe's success is a non-zero exit -- the assertion firing -- and run_mutant reads any non-zero exit as a kill, so listing one here would report every mutant as caught. Teaching mutate.py an inverted expectation would close that gap and is the owner's call. **Listed since 2026-09-24.** Until then only the subtraction's version existed, and deleting this guard passed the whole of `check` -- 200 tests, exit 0 -- because nothing anywhere provoked this operation at run time."
     },
     {
       "name": "the limit is not the last value the type holds",

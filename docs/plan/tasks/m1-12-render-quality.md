@@ -174,10 +174,19 @@ of them in `tests/`.)*
       shipping target does** -- until this task only three test suites did, so
       the camera and the projection had existed for three days without the
       application being able to see them.
-- [x] The run-time half of the guard has a test of its own,
-      `count_wraparound_aborts` (decision 136), which **passes in `debug` and
-      is reported skipped in `relwithdebinfo`** rather than passing there
-      without checking anything. Both trees list 200 CTest entries now.
+- [x] The run-time half of the guard has tests of its own (decision 136):
+      **three of them**, one per guarded operation, which **pass in `debug` and
+      are reported skipped in `relwithdebinfo`** rather than passing there
+      without checking anything. Both trees list 202 CTest entries now.
+
+      **There was one of them for a day, and one was not enough.** It covered
+      the subtraction; decision 125 guards three operations. Deleting the
+      run-time guard from `operator+` then passed the *entire* `check` -- 200
+      tests, exit 0, measured -- because nothing anywhere provoked an addition
+      that overflowed. Each operation now has a probe of its own, because a
+      program can only abort once, and the three were measured to be
+      independent: deleting each guard in turn fails **exactly** its own entry
+      and no other, and a healthy tree passes all three.
 - [x] The mutation pass, **run twice, and the second time in two trees**:
       nineteen mutants, **18 caught, 1 declared survivor, none invalid, none
       hung**. In `build/debug`, 17 mutants and 16 caught -- 13 at compile time
