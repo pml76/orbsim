@@ -36,6 +36,14 @@ can be tested without a GPU:
   matrix and a tint.
 - Draw takes a `RenderQuality` by value, like everything else, and ignores it.
 
+**A survivor M1-14 hands this task** *(added 2026-09-24, register decision
+166)*: building the scene pipelines for the swapchain's format instead of
+`kHdrFormat` survives every test until something is drawn, because Vulkan
+compares a pipeline's formats with the attachments only at a draw. The first
+line drawn here kills it; re-run it from `scripts/mutants/m1-14.json` and
+remove the declaration -- beside M1-13's depth-comparison survivor, which
+this task kills the same way.
+
 ## Out of scope
 
 Thick lines, screen-space width, dashes, anti-aliasing. Depth-sorted

@@ -38,6 +38,13 @@ and in `THIRD_PARTY.md`.
 **`src/view/Tonemap.hpp`** mirrors AgX on the CPU with the same constants, for
 the probe comparison in M1-18 and for the golden-image tooling.
 
+**Settle the scene's clear colour** *(added 2026-09-24 by M1-14, register
+decision 163)*. `src/view/SceneClear.hpp` clears the HDR target to the old
+display colour decoded to linear light, so that M1-14 changed nothing
+visible. Once exposure multiplies the target, that number is a tuning
+constant of exactly the kind ADR 0014 forbids, and this task decides what
+replaces it -- black, or a background radiance with a source.
+
 ## Out of scope
 
 Auto-exposure — deferred, and when it lands it must be pinned in probe mode or

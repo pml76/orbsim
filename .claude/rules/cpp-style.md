@@ -77,8 +77,9 @@ cmake -S coding-guidelines-example -B coding-guidelines-example/build -G Ninja \
   producing a diff in which every line changed.
 - The physics test suites are under `tests/` and link only `orbsim_core`;
   `tests/test_view_math.cpp`, `tests/test_projection.cpp`,
-  `tests/test_camera.cpp`, `tests/test_render_quality.cpp` and
-  `tests/test_pipeline_inputs.cpp` additionally link `orbsim_view`, which links
+  `tests/test_camera.cpp`, `tests/test_render_quality.cpp`,
+  `tests/test_pipeline_inputs.cpp` and `tests/test_srgb.cpp` (M1-14)
+  additionally link `orbsim_view`, which links
   `orbsim_core` and nothing else. *(The fourth was added to `CMakeLists.txt` by
   M1-12 on 2026-09-24 and to this list on the same day, by a consistency pass
   rather than by the task — an enumeration kept "so the exception set is

@@ -1220,6 +1220,17 @@ catch this class of thing. Run all six before pushing a change to `core/`.
   read out of the raw page. Quote a number from the source, not from a tool's
   account of it.
 
+- **vk-bootstrap does not refuse a swapchain format it was not asked for.**
+  `set_desired_format` and `add_fallback_format` build a preference list, and
+  when the surface offers none of it, `find_best_surface_format` (v1.3.302)
+  quietly takes the driver's *first* format -- which may be `_SRGB`, and would
+  then apply the sRGB encode a second time on top of `tonemap.frag`'s, with no
+  error anywhere. `VulkanContext::createSwapchain` therefore checks what came
+  back against Vulkan-Utility-Libraries' format table and refuses anything
+  that is not UNORM in the sRGB colour space (M1-14, register decision 161).
+  Found by reading the library, not by a failure: both GPUs on this machine
+  list `B8G8R8A8_UNORM` first.
+
 ---
 
 ## 9. If you are picking this up cold

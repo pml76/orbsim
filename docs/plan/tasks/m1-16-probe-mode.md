@@ -58,6 +58,16 @@ run, pass or fail.**
   Trivial on purpose: it is the probe that fails when the machinery is broken
   rather than the scene.
 
+**Two things M1-14 hands this task** *(added 2026-09-24, register decisions
+166 and 167)*. The HDR target is created with `COLOR_ATTACHMENT` and
+`SAMPLED` usage only; the readback needs `TRANSFER_SRC` added in
+`VulkanContext::createHdrTarget`. And three of M1-14's declared survivors in
+`scripts/mutants/m1-14.json` are frames that draw the wrong thing -- the
+shader's encode with the wrong exponent, a resolve pass never drawn, a
+full-screen triangle a quarter the size -- which this task's `clear` probe is
+the first thing able to see. Re-run them when it lands, and remove each
+declaration it kills.
+
 ## Out of scope
 
 Comparing anything — M1-17. The radiometric assertions — M1-18. Headless
