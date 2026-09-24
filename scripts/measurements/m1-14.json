@@ -1,0 +1,208 @@
+{
+  "task": "M1-14",
+  "note": "What M1-14 -- the HDR target and the resolve pass -- costs per frame, and what each alternative the owner weighed on 2026-09-24 would have saved. docs/measurements/m1-14-frame-cost.md describes every variant and comparison. The edits add Vulkan timestamp queries and two environment switches to the named commits, in a disposable worktree; none of it is ever committed to the application.",
+  "seconds": 8,
+  "runs": 3,
+  "warmup_frames": 500,
+  "builds": {
+    "before": {
+      "commit": "d10cc40b8ff9763bb51c9239b73eb2495d3acc7e",
+      "edits": [
+        {
+          "file": "src/render/VulkanContext.hpp",
+          "why": "own the query pool, so it is destroyed before the device",
+          "find": "    UniqueAllocator allocator_;\n",
+          "replace": "    UniqueAllocator allocator_;\n    OwnedHandle<VkQueryPool, VkDevice, vkDestroyQueryPool> measurePool_; // MEASUREMENT ONLY\n"
+        },
+        {
+          "file": "src/render/VulkanContext.cpp",
+          "why": "silence the warnings the measurement code would raise",
+          "find": "#include \"render/VulkanContext.hpp\"\n",
+          "replace": "#pragma clang diagnostic ignored \"-Weverything\" // MEASUREMENT ONLY: never committed\n#include \"render/VulkanContext.hpp\"\n"
+        },
+        {
+          "file": "src/render/VulkanContext.cpp",
+          "why": "the timestamp state",
+          "find": "namespace orb::gfx {\nnamespace {\n",
+          "replace": "namespace orb::gfx {\n// MEASUREMENT ONLY (scripts/measure-frame-cost.py): Vulkan timestamp queries,\n// two per frame slot -- the start and the end of the frame's command buffer.\nstatic VkQueryPool gMeasurePool = VK_NULL_HANDLE;\nstatic double gMeasureNsPerTick = 0.0;\nstatic double gMeasureFrameNs = 0.0;\nstatic unsigned long long gMeasureSeen = 0;\nstatic unsigned long long gMeasureSamples = 0;\nstatic bool gMeasureWritten[2] = {false, false};\nnamespace {\n"
+        },
+        {
+          "file": "src/render/VulkanContext.cpp",
+          "why": "create the query pool and print the device",
+          "find": "    ctx.idleGuard_ = DeviceIdleGuard{ctx.device_.get()};\n",
+          "replace": "    ctx.idleGuard_ = DeviceIdleGuard{ctx.device_.get()};\n    {\n        VkPhysicalDeviceProperties props{};\n        vkGetPhysicalDeviceProperties(ctx.physicalDevice_, &props);\n        gMeasureNsPerTick = static_cast<double>(props.limits.timestampPeriod);\n        SDL_Log(\"MEASURE device vendor=0x%X driver=0x%X api=%u.%u.%u\", props.vendorID, props.driverVersion,\n                VK_API_VERSION_MAJOR(props.apiVersion), VK_API_VERSION_MINOR(props.apiVersion), VK_API_VERSION_PATCH(props.apiVersion));\n        const VkQueryPoolCreateInfo queries{.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,\n                                            .queryType = VK_QUERY_TYPE_TIMESTAMP, .queryCount = 4};\n        static_cast<void>(vkCreateQueryPool(ctx.device_.get(), &queries, nullptr, &gMeasurePool));\n        ctx.measurePool_ = OwnedHandle<VkQueryPool, VkDevice, vkDestroyQueryPool>{ctx.device_.get(), gMeasurePool};\n    }\n"
+        },
+        {
+          "file": "src/render/VulkanContext.cpp",
+          "why": "read the slot's timestamps once its fence has signalled",
+          "find": "        return std::unexpected(ok.error());\n    }\n\n    uint32_t imageIndex = 0;",
+          "replace": "        return std::unexpected(ok.error());\n    }\n    if (gMeasureWritten[frame]) {\n        unsigned long long t[2] = {};\n        if (vkGetQueryPoolResults(device_.get(), gMeasurePool, frame * 2, 2, sizeof(t), t, 8,\n                                  VK_QUERY_RESULT_64_BIT) == VK_SUCCESS && ++gMeasureSeen > 500) {\n            gMeasureFrameNs += static_cast<double>(t[1] - t[0]) * gMeasureNsPerTick;\n            if (++gMeasureSamples % 500 == 0) {\n                SDL_Log(\"MEASURE timing gpu_frame_us=%.3f samples=%llu\",\n                        gMeasureFrameNs / static_cast<double>(gMeasureSamples) / 1000.0, gMeasureSamples);\n            }\n        }\n    }\n\n    uint32_t imageIndex = 0;"
+        },
+        {
+          "file": "src/render/VulkanContext.cpp",
+          "why": "timestamp at the start of the frame",
+          "find": "    if (auto ok = beginOneTimeCommandBuffer(cmd); !ok) return std::unexpected(ok.error());\n",
+          "replace": "    if (auto ok = beginOneTimeCommandBuffer(cmd); !ok) return std::unexpected(ok.error());\n    vkCmdResetQueryPool(cmd, gMeasurePool, frame * 2, 2);\n    vkCmdWriteTimestamp2(cmd, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, gMeasurePool, frame * 2);\n    gMeasureWritten[frame] = true;\n"
+        },
+        {
+          "file": "src/render/VulkanContext.cpp",
+          "why": "timestamp at the end of the frame",
+          "find": "    if (auto ok = vkCheck(vkEndCommandBuffer(frame.cmd), \"vkEndCommandBuffer\"); !ok) return ok;",
+          "replace": "    vkCmdWriteTimestamp2(frame.cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, gMeasurePool, frame.frameIndex * 2 + 1);\n    if (auto ok = vkCheck(vkEndCommandBuffer(frame.cmd), \"vkEndCommandBuffer\"); !ok) return ok;"
+        }
+      ]
+    },
+    "after": {
+      "commit": "a89c194d89ed3f9a182b391f8b38aa5025a73b35",
+      "edits": [
+        {
+          "file": "src/render/VulkanContext.hpp",
+          "why": "own the query pool, so it is destroyed before the device",
+          "find": "    UniqueAllocator allocator_;\n",
+          "replace": "    UniqueAllocator allocator_;\n    OwnedHandle<VkQueryPool, VkDevice, vkDestroyQueryPool> measurePool_; // MEASUREMENT ONLY\n"
+        },
+        {
+          "file": "src/render/VulkanContext.cpp",
+          "why": "silence the warnings the measurement code would raise",
+          "find": "#include \"render/VulkanContext.hpp\"\n",
+          "replace": "#pragma clang diagnostic ignored \"-Weverything\" // MEASUREMENT ONLY: never committed\n#include <cstdlib>\n#include \"render/VulkanContext.hpp\"\n"
+        },
+        {
+          "file": "src/render/VulkanContext.cpp",
+          "why": "the timestamp state",
+          "find": "namespace orb::gfx {\nnamespace {\n",
+          "replace": "namespace orb::gfx {\n// MEASUREMENT ONLY (scripts/measure-frame-cost.py): Vulkan timestamp queries,\n// four per frame slot -- the start of the frame, the end of the scene, the end\n// of the resolve pass, and the end of the frame.\nstatic VkQueryPool gMeasurePool = VK_NULL_HANDLE;\nstatic double gMeasureNsPerTick = 0.0;\nstatic double gMeasureFrameNs = 0.0;\nstatic double gMeasureSceneNs = 0.0;\nstatic double gMeasureResolveNs = 0.0;\nstatic unsigned long long gMeasureSeen = 0;\nstatic unsigned long long gMeasureSamples = 0;\nstatic bool gMeasureWritten[2] = {false, false};\nnamespace {\n"
+        },
+        {
+          "file": "src/render/VulkanContext.cpp",
+          "why": "create the query pool and print the device",
+          "find": "    if (auto hdr = checkHdrFormat(ctx.physicalDevice_); !hdr) return std::unexpected(hdr.error());\n",
+          "replace": "    if (auto hdr = checkHdrFormat(ctx.physicalDevice_); !hdr) return std::unexpected(hdr.error());\n    {\n        VkPhysicalDeviceProperties props{};\n        vkGetPhysicalDeviceProperties(ctx.physicalDevice_, &props);\n        gMeasureNsPerTick = static_cast<double>(props.limits.timestampPeriod);\n        SDL_Log(\"MEASURE device vendor=0x%X driver=0x%X api=%u.%u.%u\", props.vendorID, props.driverVersion,\n                VK_API_VERSION_MAJOR(props.apiVersion), VK_API_VERSION_MINOR(props.apiVersion), VK_API_VERSION_PATCH(props.apiVersion));\n        const VkQueryPoolCreateInfo queries{.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,\n                                            .queryType = VK_QUERY_TYPE_TIMESTAMP, .queryCount = 8};\n        static_cast<void>(vkCreateQueryPool(ctx.device_.get(), &queries, nullptr, &gMeasurePool));\n        ctx.measurePool_ = OwnedHandle<VkQueryPool, VkDevice, vkDestroyQueryPool>{ctx.device_.get(), gMeasurePool};\n    }\n"
+        },
+        {
+          "file": "src/render/VulkanContext.cpp",
+          "why": "read the slot's timestamps once its fence has signalled",
+          "find": "        return std::unexpected(ok.error());\n    }\n\n    uint32_t imageIndex = 0;",
+          "replace": "        return std::unexpected(ok.error());\n    }\n    if (gMeasureWritten[frame]) {\n        unsigned long long t[4] = {};\n        if (vkGetQueryPoolResults(device_.get(), gMeasurePool, frame * 4, 4, sizeof(t), t, 8,\n                                  VK_QUERY_RESULT_64_BIT) == VK_SUCCESS && ++gMeasureSeen > 500) {\n            gMeasureFrameNs += static_cast<double>(t[3] - t[0]) * gMeasureNsPerTick;\n            gMeasureSceneNs += static_cast<double>(t[1] - t[0]) * gMeasureNsPerTick;\n            gMeasureResolveNs += static_cast<double>(t[2] - t[1]) * gMeasureNsPerTick;\n            if (++gMeasureSamples % 500 == 0) {\n                const double n = static_cast<double>(gMeasureSamples) * 1000.0;\n                SDL_Log(\"MEASURE timing gpu_frame_us=%.3f scene_us=%.3f resolve_us=%.3f samples=%llu\",\n                        gMeasureFrameNs / n, gMeasureSceneNs / n, gMeasureResolveNs / n, gMeasureSamples);\n            }\n        }\n    }\n\n    uint32_t imageIndex = 0;"
+        },
+        {
+          "file": "src/render/VulkanContext.cpp",
+          "why": "timestamp at the start of the frame",
+          "find": "    if (auto ok = beginOneTimeCommandBuffer(cmd); !ok) return std::unexpected(ok.error());\n",
+          "replace": "    if (auto ok = beginOneTimeCommandBuffer(cmd); !ok) return std::unexpected(ok.error());\n    vkCmdResetQueryPool(cmd, gMeasurePool, frame * 4, 4);\n    vkCmdWriteTimestamp2(cmd, VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT, gMeasurePool, frame * 4);\n    gMeasureWritten[frame] = true;\n"
+        },
+        {
+          "file": "src/render/VulkanContext.cpp",
+          "why": "timestamps either side of the resolve pass",
+          "find": "    vkCmdEndRendering(frame.cmd);\n    recordResolve(frame, resolve);\n",
+          "replace": "    vkCmdEndRendering(frame.cmd);\n    vkCmdWriteTimestamp2(frame.cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, gMeasurePool, frame.frameIndex * 4 + 1);\n    recordResolve(frame, resolve);\n    vkCmdWriteTimestamp2(frame.cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, gMeasurePool, frame.frameIndex * 4 + 2);\n"
+        },
+        {
+          "file": "src/render/VulkanContext.cpp",
+          "why": "timestamp at the end of the frame",
+          "find": "    if (auto ok = vkCheck(vkEndCommandBuffer(frame.cmd), \"vkEndCommandBuffer\"); !ok) return ok;",
+          "replace": "    vkCmdWriteTimestamp2(frame.cmd, VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT, gMeasurePool, frame.frameIndex * 4 + 3);\n    if (auto ok = vkCheck(vkEndCommandBuffer(frame.cmd), \"vkEndCommandBuffer\"); !ok) return ok;"
+        },
+        {
+          "file": "src/render/VulkanContext.cpp",
+          "why": "ORBSIM_MEASURE_DONT_CARE: the resolve pass does not clear the display image",
+          "find": "        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,\n        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,\n        .clearValue = {.color = {{0.0F, 0.0F, 0.0F, 1.0F}}},",
+          "replace": "        .loadOp = std::getenv(\"ORBSIM_MEASURE_DONT_CARE\") != nullptr ? VK_ATTACHMENT_LOAD_OP_DONT_CARE\n                                                                      : VK_ATTACHMENT_LOAD_OP_CLEAR,\n        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,\n        .clearValue = {.color = {{0.0F, 0.0F, 0.0F, 1.0F}}},"
+        },
+        {
+          "file": "src/render/VulkanContext.cpp",
+          "why": "ORBSIM_MEASURE_NO_SYNC: validation without synchronization validation",
+          "find": "                .add_validation_feature_enable(\n                    VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);",
+          "replace": ";\n            if (std::getenv(\"ORBSIM_MEASURE_NO_SYNC\") == nullptr) {\n                builder.add_validation_feature_enable(VK_VALIDATION_FEATURE_ENABLE_SYNCHRONIZATION_VALIDATION_EXT);\n            }"
+        },
+        {
+          "file": "src/render/ResolvePass.cpp",
+          "why": "silence the warnings the measurement code would raise",
+          "find": "#include \"render/ResolvePass.hpp\" // SF.5: own header, first\n",
+          "replace": "#pragma clang diagnostic ignored \"-Weverything\" // MEASUREMENT ONLY: never committed\n#include \"render/ResolvePass.hpp\" // SF.5: own header, first\n#include <SDL3/SDL_log.h>\n#include <chrono>\n"
+        },
+        {
+          "file": "src/render/ResolvePass.cpp",
+          "why": "CPU time of the per-frame descriptor rewrite",
+          "find": "    vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr);\n",
+          "replace": "    {\n        static double measureNs = 0.0;\n        static unsigned long long measureCalls = 0;\n        const auto measureStart = std::chrono::steady_clock::now();\n        vkUpdateDescriptorSets(device_, 1, &write, 0, nullptr);\n        measureNs += static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(\n            std::chrono::steady_clock::now() - measureStart).count());\n        if (++measureCalls % 500 == 0) {\n            SDL_Log(\"MEASURE cpu descriptor_update_us=%.4f calls=%llu\",\n                    measureNs / static_cast<double>(measureCalls) / 1000.0, measureCalls);\n        }\n    }\n"
+        }
+      ]
+    }
+  },
+  "variants": [
+    {
+      "name": "before: the frame without M1-14",
+      "build": "before",
+      "args": [
+        "--no-validate"
+      ]
+    },
+    {
+      "name": "after: the frame with M1-14",
+      "build": "after",
+      "args": [
+        "--no-validate"
+      ]
+    },
+    {
+      "name": "after: resolve pass without clearing the display",
+      "build": "after",
+      "args": [
+        "--no-validate"
+      ],
+      "env": {
+        "ORBSIM_MEASURE_DONT_CARE": "1"
+      }
+    },
+    {
+      "name": "after: validated, with synchronization validation",
+      "build": "after",
+      "args": [
+        "--validate"
+      ],
+      "seconds": 2
+    },
+    {
+      "name": "after: validated, without synchronization validation",
+      "build": "after",
+      "args": [
+        "--validate"
+      ],
+      "seconds": 2,
+      "env": {
+        "ORBSIM_MEASURE_NO_SYNC": "1"
+      }
+    }
+  ],
+  "comparisons": [
+    {
+      "name": "GPU time M1-14 adds to a frame",
+      "metric": "gpu_frame_us",
+      "unit": "us",
+      "of": "after: the frame with M1-14",
+      "minus": "before: the frame without M1-14"
+    },
+    {
+      "name": "GPU time the resolve pass's clear costs",
+      "metric": "resolve_us",
+      "unit": "us",
+      "of": "after: the frame with M1-14",
+      "minus": "after: resolve pass without clearing the display"
+    },
+    {
+      "name": "wall time synchronization validation adds to a 2-second validated run",
+      "metric": "wall_ms",
+      "unit": "ms",
+      "of": "after: validated, with synchronization validation",
+      "minus": "after: validated, without synchronization validation"
+    },
+    {
+      "name": "frame rate with M1-14, against without (application's own count)",
+      "metric": "fps",
+      "unit": "fps",
+      "of": "after: the frame with M1-14",
+      "minus": "before: the frame without M1-14"
+    }
+  ]
+}

@@ -1,0 +1,1130 @@
+{
+  "task": "M1-14",
+  "spec": "scripts/measurements/m1-14.json",
+  "date": "2026-09-24",
+  "machine": {
+    "gpu": "NVIDIA RTX A2000 8GB Laptop GPU",
+    "vendor_id": "0x10DE",
+    "driver_version": "582.53.0.0",
+    "driver_version_raw": "0x918D4000",
+    "vulkan_api": "1.4.312",
+    "swapchain": "1600x900",
+    "os": "Windows-11-10.0.26100-SP0",
+    "processor": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel"
+  },
+  "commits": {
+    "before": "d10cc40b8ff9763bb51c9239b73eb2495d3acc7e",
+    "after": "a89c194d89ed3f9a182b391f8b38aa5025a73b35"
+  },
+  "settings": {
+    "runs_per_variant": 3,
+    "seconds": 8,
+    "warmup_frames": 500
+  },
+  "summary": {
+    "before: the frame without M1-14": {
+      "fps": {
+        "median": 1900.8,
+        "min": 1759.8,
+        "max": 1909.8,
+        "n": 3
+      },
+      "gpu_frame_us": {
+        "median": 22.827,
+        "min": 22.707,
+        "max": 23.159,
+        "n": 3
+      },
+      "wall_ms": {
+        "median": 9360.7,
+        "min": 9287.0,
+        "max": 10620.0,
+        "n": 3
+      }
+    },
+    "after: the frame with M1-14": {
+      "descriptor_update_us": {
+        "median": 0.2476,
+        "min": 0.2242,
+        "max": 0.3278,
+        "n": 3
+      },
+      "fps": {
+        "median": 1857.2,
+        "min": 1750.2,
+        "max": 1885.1,
+        "n": 3
+      },
+      "gpu_frame_us": {
+        "median": 65.208,
+        "min": 65.057,
+        "max": 65.674,
+        "n": 3
+      },
+      "resolve_us": {
+        "median": 39.779,
+        "min": 39.711,
+        "max": 39.94,
+        "n": 3
+      },
+      "scene_us": {
+        "median": 19.287,
+        "min": 19.253,
+        "max": 19.469,
+        "n": 3
+      },
+      "wall_ms": {
+        "median": 9392.1,
+        "min": 9355.2,
+        "max": 10146.8,
+        "n": 3
+      }
+    },
+    "after: resolve pass without clearing the display": {
+      "descriptor_update_us": {
+        "median": 0.2433,
+        "min": 0.1936,
+        "max": 0.2915,
+        "n": 3
+      },
+      "fps": {
+        "median": 1883.4,
+        "min": 1801.4,
+        "max": 1983.0,
+        "n": 3
+      },
+      "gpu_frame_us": {
+        "median": 64.797,
+        "min": 64.484,
+        "max": 65.203,
+        "n": 3
+      },
+      "resolve_us": {
+        "median": 39.491,
+        "min": 39.343,
+        "max": 39.643,
+        "n": 3
+      },
+      "scene_us": {
+        "median": 19.225,
+        "min": 19.13,
+        "max": 19.375,
+        "n": 3
+      },
+      "wall_ms": {
+        "median": 9362.8,
+        "min": 9341.0,
+        "max": 9563.5,
+        "n": 3
+      }
+    },
+    "after: validated, with synchronization validation": {
+      "descriptor_update_us": {
+        "median": 6.142,
+        "min": 5.7758,
+        "max": 6.5579,
+        "n": 3
+      },
+      "fps": {
+        "median": 1762.5,
+        "min": 1692.0,
+        "max": 1801.6,
+        "n": 3
+      },
+      "gpu_frame_us": {
+        "median": 64.652,
+        "min": 64.435,
+        "max": 65.428,
+        "n": 3
+      },
+      "resolve_us": {
+        "median": 39.544,
+        "min": 39.432,
+        "max": 39.86,
+        "n": 3
+      },
+      "scene_us": {
+        "median": 19.104,
+        "min": 19.043,
+        "max": 19.37,
+        "n": 3
+      },
+      "wall_ms": {
+        "median": 3306.2,
+        "min": 3303.3,
+        "max": 3391.6,
+        "n": 3
+      }
+    },
+    "after: validated, without synchronization validation": {
+      "descriptor_update_us": {
+        "median": 6.025,
+        "min": 5.5417,
+        "max": 6.3081,
+        "n": 3
+      },
+      "fps": {
+        "median": 1734.5,
+        "min": 1714.5,
+        "max": 1818.0,
+        "n": 3
+      },
+      "gpu_frame_us": {
+        "median": 64.857,
+        "min": 64.545,
+        "max": 65.031,
+        "n": 3
+      },
+      "resolve_us": {
+        "median": 39.641,
+        "min": 39.523,
+        "max": 39.712,
+        "n": 3
+      },
+      "scene_us": {
+        "median": 19.185,
+        "min": 19.039,
+        "max": 19.226,
+        "n": 3
+      },
+      "wall_ms": {
+        "median": 3358.8,
+        "min": 3307.8,
+        "max": 3390.8,
+        "n": 3
+      }
+    }
+  },
+  "comparisons": [
+    {
+      "name": "GPU time M1-14 adds to a frame",
+      "metric": "gpu_frame_us",
+      "unit": "us",
+      "of": "after: the frame with M1-14",
+      "minus": "before: the frame without M1-14",
+      "difference_of_medians": 42.381
+    },
+    {
+      "name": "GPU time the resolve pass's clear costs",
+      "metric": "resolve_us",
+      "unit": "us",
+      "of": "after: the frame with M1-14",
+      "minus": "after: resolve pass without clearing the display",
+      "difference_of_medians": 0.2880000000000038
+    },
+    {
+      "name": "wall time synchronization validation adds to a 2-second validated run",
+      "metric": "wall_ms",
+      "unit": "ms",
+      "of": "after: validated, with synchronization validation",
+      "minus": "after: validated, without synchronization validation",
+      "difference_of_medians": -52.600000000000364
+    },
+    {
+      "name": "frame rate with M1-14, against without (application's own count)",
+      "metric": "fps",
+      "unit": "fps",
+      "of": "after: the frame with M1-14",
+      "minus": "before: the frame without M1-14",
+      "difference_of_medians": -43.59999999999991
+    }
+  ],
+  "runs": [
+    {
+      "exit": 0,
+      "wall_ms": 10620.0,
+      "metrics": {
+        "fps": 1909.8,
+        "gpu_frame_us": 22.827
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE timing gpu_frame_us=22.734 samples=500",
+        "MEASURE timing gpu_frame_us=22.834 samples=1000",
+        "MEASURE timing gpu_frame_us=22.785 samples=1500",
+        "MEASURE timing gpu_frame_us=22.793 samples=2000",
+        "MEASURE timing gpu_frame_us=22.812 samples=2500",
+        "MEASURE timing gpu_frame_us=22.859 samples=3000",
+        "MEASURE timing gpu_frame_us=22.829 samples=3500",
+        "MEASURE timing gpu_frame_us=22.799 samples=4000",
+        "MEASURE timing gpu_frame_us=22.792 samples=4500",
+        "MEASURE timing gpu_frame_us=22.809 samples=5000",
+        "MEASURE timing gpu_frame_us=22.796 samples=5500",
+        "MEASURE timing gpu_frame_us=22.776 samples=6000",
+        "MEASURE timing gpu_frame_us=22.777 samples=6500",
+        "MEASURE timing gpu_frame_us=22.781 samples=7000",
+        "MEASURE timing gpu_frame_us=22.771 samples=7500",
+        "MEASURE timing gpu_frame_us=22.761 samples=8000",
+        "MEASURE timing gpu_frame_us=22.756 samples=8500",
+        "MEASURE timing gpu_frame_us=22.779 samples=9000",
+        "MEASURE timing gpu_frame_us=22.782 samples=9500",
+        "MEASURE timing gpu_frame_us=22.784 samples=10000",
+        "MEASURE timing gpu_frame_us=22.783 samples=10500",
+        "MEASURE timing gpu_frame_us=22.783 samples=11000",
+        "MEASURE timing gpu_frame_us=22.786 samples=11500",
+        "MEASURE timing gpu_frame_us=22.805 samples=12000",
+        "MEASURE timing gpu_frame_us=22.800 samples=12500",
+        "MEASURE timing gpu_frame_us=22.804 samples=13000",
+        "MEASURE timing gpu_frame_us=22.803 samples=13500",
+        "MEASURE timing gpu_frame_us=22.800 samples=14000",
+        "MEASURE timing gpu_frame_us=22.827 samples=14500"
+      ],
+      "counts": {
+        "samples": 14500
+      },
+      "variant": "before: the frame without M1-14",
+      "round": 1
+    },
+    {
+      "exit": 0,
+      "wall_ms": 10146.8,
+      "metrics": {
+        "fps": 1885.1,
+        "descriptor_update_us": 0.2242,
+        "gpu_frame_us": 65.208,
+        "scene_us": 19.287,
+        "resolve_us": 39.779
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE cpu descriptor_update_us=0.1628 calls=500",
+        "MEASURE cpu descriptor_update_us=0.1658 calls=1000",
+        "MEASURE timing gpu_frame_us=64.667 scene_us=19.136 resolve_us=39.537 samples=500",
+        "MEASURE cpu descriptor_update_us=0.1672 calls=1500",
+        "MEASURE timing gpu_frame_us=64.850 scene_us=19.161 resolve_us=39.639 samples=1000",
+        "MEASURE cpu descriptor_update_us=0.1605 calls=2000",
+        "MEASURE timing gpu_frame_us=64.772 scene_us=19.131 resolve_us=39.609 samples=1500",
+        "MEASURE cpu descriptor_update_us=0.1668 calls=2500",
+        "MEASURE timing gpu_frame_us=64.753 scene_us=19.125 resolve_us=39.596 samples=2000",
+        "MEASURE cpu descriptor_update_us=0.1698 calls=3000",
+        "MEASURE timing gpu_frame_us=64.792 scene_us=19.140 resolve_us=39.612 samples=2500",
+        "MEASURE cpu descriptor_update_us=0.1749 calls=3500",
+        "MEASURE timing gpu_frame_us=64.858 scene_us=19.162 resolve_us=39.642 samples=3000",
+        "MEASURE cpu descriptor_update_us=0.1808 calls=4000",
+        "MEASURE timing gpu_frame_us=64.867 scene_us=19.170 resolve_us=39.645 samples=3500",
+        "MEASURE cpu descriptor_update_us=0.1800 calls=4500",
+        "MEASURE timing gpu_frame_us=64.838 scene_us=19.157 resolve_us=39.631 samples=4000",
+        "MEASURE cpu descriptor_update_us=0.1882 calls=5000",
+        "MEASURE timing gpu_frame_us=64.873 scene_us=19.169 resolve_us=39.645 samples=4500",
+        "MEASURE cpu descriptor_update_us=0.1901 calls=5500",
+        "MEASURE timing gpu_frame_us=64.940 scene_us=19.191 resolve_us=39.672 samples=5000",
+        "MEASURE cpu descriptor_update_us=0.1937 calls=6000",
+        "MEASURE timing gpu_frame_us=64.968 scene_us=19.203 resolve_us=39.684 samples=5500",
+        "MEASURE cpu descriptor_update_us=0.1988 calls=6500",
+        "MEASURE timing gpu_frame_us=65.035 scene_us=19.224 resolve_us=39.711 samples=6000",
+        "MEASURE cpu descriptor_update_us=0.2026 calls=7000",
+        "MEASURE timing gpu_frame_us=65.128 scene_us=19.258 resolve_us=39.746 samples=6500",
+        "MEASURE cpu descriptor_update_us=0.2049 calls=7500",
+        "MEASURE timing gpu_frame_us=65.136 scene_us=19.264 resolve_us=39.747 samples=7000",
+        "MEASURE cpu descriptor_update_us=0.2124 calls=8000",
+        "MEASURE timing gpu_frame_us=65.421 scene_us=19.365 resolve_us=39.860 samples=7500",
+        "MEASURE cpu descriptor_update_us=0.2168 calls=8500",
+        "MEASURE timing gpu_frame_us=65.422 scene_us=19.367 resolve_us=39.859 samples=8000",
+        "MEASURE cpu descriptor_update_us=0.2202 calls=9000",
+        "MEASURE timing gpu_frame_us=65.399 scene_us=19.358 resolve_us=39.850 samples=8500",
+        "MEASURE cpu descriptor_update_us=0.2200 calls=9500",
+        "MEASURE timing gpu_frame_us=65.361 scene_us=19.346 resolve_us=39.835 samples=9000",
+        "MEASURE cpu descriptor_update_us=0.2229 calls=10000",
+        "MEASURE timing gpu_frame_us=65.341 scene_us=19.338 resolve_us=39.829 samples=9500",
+        "MEASURE cpu descriptor_update_us=0.2226 calls=10500",
+        "MEASURE timing gpu_frame_us=65.316 scene_us=19.330 resolve_us=39.818 samples=10000",
+        "MEASURE cpu descriptor_update_us=0.2214 calls=11000",
+        "MEASURE timing gpu_frame_us=65.294 scene_us=19.321 resolve_us=39.810 samples=10500",
+        "MEASURE cpu descriptor_update_us=0.2209 calls=11500",
+        "MEASURE timing gpu_frame_us=65.265 scene_us=19.311 resolve_us=39.800 samples=11000",
+        "MEASURE cpu descriptor_update_us=0.2195 calls=12000",
+        "MEASURE timing gpu_frame_us=65.251 scene_us=19.305 resolve_us=39.794 samples=11500",
+        "MEASURE cpu descriptor_update_us=0.2182 calls=12500",
+        "MEASURE timing gpu_frame_us=65.224 scene_us=19.295 resolve_us=39.784 samples=12000",
+        "MEASURE cpu descriptor_update_us=0.2166 calls=13000",
+        "MEASURE timing gpu_frame_us=65.203 scene_us=19.288 resolve_us=39.776 samples=12500",
+        "MEASURE cpu descriptor_update_us=0.2149 calls=13500",
+        "MEASURE timing gpu_frame_us=65.191 scene_us=19.282 resolve_us=39.772 samples=13000",
+        "MEASURE cpu descriptor_update_us=0.2128 calls=14000",
+        "MEASURE timing gpu_frame_us=65.164 scene_us=19.273 resolve_us=39.761 samples=13500",
+        "MEASURE cpu descriptor_update_us=0.2171 calls=14500",
+        "MEASURE timing gpu_frame_us=65.178 scene_us=19.278 resolve_us=39.766 samples=14000",
+        "MEASURE cpu descriptor_update_us=0.2242 calls=15000",
+        "MEASURE timing gpu_frame_us=65.208 scene_us=19.287 resolve_us=39.779 samples=14500"
+      ],
+      "counts": {
+        "calls": 15000,
+        "samples": 14500
+      },
+      "variant": "after: the frame with M1-14",
+      "round": 1
+    },
+    {
+      "exit": 0,
+      "wall_ms": 9563.5,
+      "metrics": {
+        "fps": 1983.0,
+        "descriptor_update_us": 0.1936,
+        "gpu_frame_us": 64.484,
+        "scene_us": 19.13,
+        "resolve_us": 39.343
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE cpu descriptor_update_us=0.1820 calls=500",
+        "MEASURE cpu descriptor_update_us=0.1957 calls=1000",
+        "MEASURE timing gpu_frame_us=64.956 scene_us=19.294 resolve_us=39.559 samples=500",
+        "MEASURE cpu descriptor_update_us=0.1782 calls=1500",
+        "MEASURE timing gpu_frame_us=64.692 scene_us=19.211 resolve_us=39.432 samples=1000",
+        "MEASURE cpu descriptor_update_us=0.1771 calls=2000",
+        "MEASURE timing gpu_frame_us=64.699 scene_us=19.199 resolve_us=39.440 samples=1500",
+        "MEASURE cpu descriptor_update_us=0.1774 calls=2500",
+        "MEASURE timing gpu_frame_us=64.662 scene_us=19.189 resolve_us=39.417 samples=2000",
+        "MEASURE cpu descriptor_update_us=0.1824 calls=3000",
+        "MEASURE timing gpu_frame_us=64.650 scene_us=19.177 resolve_us=39.415 samples=2500",
+        "MEASURE cpu descriptor_update_us=0.1850 calls=3500",
+        "MEASURE timing gpu_frame_us=64.620 scene_us=19.175 resolve_us=39.397 samples=3000",
+        "MEASURE cpu descriptor_update_us=0.1809 calls=4000",
+        "MEASURE timing gpu_frame_us=64.607 scene_us=19.168 resolve_us=39.392 samples=3500",
+        "MEASURE cpu descriptor_update_us=0.1830 calls=4500",
+        "MEASURE timing gpu_frame_us=64.571 scene_us=19.154 resolve_us=39.382 samples=4000",
+        "MEASURE cpu descriptor_update_us=0.1902 calls=5000",
+        "MEASURE timing gpu_frame_us=64.670 scene_us=19.186 resolve_us=39.426 samples=4500",
+        "MEASURE cpu descriptor_update_us=0.1905 calls=5500",
+        "MEASURE timing gpu_frame_us=64.642 scene_us=19.175 resolve_us=39.418 samples=5000",
+        "MEASURE cpu descriptor_update_us=0.1922 calls=6000",
+        "MEASURE timing gpu_frame_us=64.636 scene_us=19.176 resolve_us=39.414 samples=5500",
+        "MEASURE cpu descriptor_update_us=0.1912 calls=6500",
+        "MEASURE timing gpu_frame_us=64.616 scene_us=19.172 resolve_us=39.404 samples=6000",
+        "MEASURE cpu descriptor_update_us=0.1929 calls=7000",
+        "MEASURE timing gpu_frame_us=64.610 scene_us=19.170 resolve_us=39.401 samples=6500",
+        "MEASURE cpu descriptor_update_us=0.1911 calls=7500",
+        "MEASURE timing gpu_frame_us=64.599 scene_us=19.166 resolve_us=39.396 samples=7000",
+        "MEASURE cpu descriptor_update_us=0.1888 calls=8000",
+        "MEASURE timing gpu_frame_us=64.589 scene_us=19.162 resolve_us=39.391 samples=7500",
+        "MEASURE cpu descriptor_update_us=0.1881 calls=8500",
+        "MEASURE timing gpu_frame_us=64.596 scene_us=19.163 resolve_us=39.395 samples=8000",
+        "MEASURE cpu descriptor_update_us=0.1877 calls=9000",
+        "MEASURE timing gpu_frame_us=64.582 scene_us=19.159 resolve_us=39.389 samples=8500",
+        "MEASURE cpu descriptor_update_us=0.1870 calls=9500",
+        "MEASURE timing gpu_frame_us=64.566 scene_us=19.155 resolve_us=39.382 samples=9000",
+        "MEASURE cpu descriptor_update_us=0.1857 calls=10000",
+        "MEASURE timing gpu_frame_us=64.554 scene_us=19.151 resolve_us=39.377 samples=9500",
+        "MEASURE cpu descriptor_update_us=0.1844 calls=10500",
+        "MEASURE timing gpu_frame_us=64.535 scene_us=19.148 resolve_us=39.367 samples=10000",
+        "MEASURE cpu descriptor_update_us=0.1846 calls=11000",
+        "MEASURE timing gpu_frame_us=64.533 scene_us=19.149 resolve_us=39.364 samples=10500",
+        "MEASURE cpu descriptor_update_us=0.1833 calls=11500",
+        "MEASURE timing gpu_frame_us=64.515 scene_us=19.142 resolve_us=39.357 samples=11000",
+        "MEASURE cpu descriptor_update_us=0.1820 calls=12000",
+        "MEASURE timing gpu_frame_us=64.504 scene_us=19.136 resolve_us=39.353 samples=11500",
+        "MEASURE cpu descriptor_update_us=0.1815 calls=12500",
+        "MEASURE timing gpu_frame_us=64.492 scene_us=19.132 resolve_us=39.346 samples=12000",
+        "MEASURE cpu descriptor_update_us=0.1855 calls=13000",
+        "MEASURE timing gpu_frame_us=64.493 scene_us=19.133 resolve_us=39.345 samples=12500",
+        "MEASURE cpu descriptor_update_us=0.1883 calls=13500",
+        "MEASURE timing gpu_frame_us=64.492 scene_us=19.133 resolve_us=39.343 samples=13000",
+        "MEASURE cpu descriptor_update_us=0.1902 calls=14000",
+        "MEASURE timing gpu_frame_us=64.491 scene_us=19.134 resolve_us=39.344 samples=13500",
+        "MEASURE cpu descriptor_update_us=0.1902 calls=14500",
+        "MEASURE timing gpu_frame_us=64.485 scene_us=19.132 resolve_us=39.341 samples=14000",
+        "MEASURE cpu descriptor_update_us=0.1919 calls=15000",
+        "MEASURE timing gpu_frame_us=64.488 scene_us=19.132 resolve_us=39.344 samples=14500",
+        "MEASURE cpu descriptor_update_us=0.1936 calls=15500",
+        "MEASURE timing gpu_frame_us=64.484 scene_us=19.130 resolve_us=39.343 samples=15000"
+      ],
+      "counts": {
+        "calls": 15500,
+        "samples": 15000
+      },
+      "variant": "after: resolve pass without clearing the display",
+      "round": 1
+    },
+    {
+      "exit": 0,
+      "wall_ms": 3303.3,
+      "metrics": {
+        "fps": 1801.6,
+        "descriptor_update_us": 5.7758,
+        "gpu_frame_us": 64.435,
+        "scene_us": 19.043,
+        "resolve_us": 39.432
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE cpu descriptor_update_us=5.8218 calls=500",
+        "MEASURE cpu descriptor_update_us=5.8674 calls=1000",
+        "MEASURE timing gpu_frame_us=64.361 scene_us=19.036 resolve_us=39.389 samples=500",
+        "MEASURE cpu descriptor_update_us=5.7663 calls=1500",
+        "MEASURE timing gpu_frame_us=64.443 scene_us=19.066 resolve_us=39.436 samples=1000",
+        "MEASURE cpu descriptor_update_us=5.7616 calls=2000",
+        "MEASURE timing gpu_frame_us=64.438 scene_us=19.057 resolve_us=39.432 samples=1500",
+        "MEASURE cpu descriptor_update_us=5.7363 calls=2500",
+        "MEASURE timing gpu_frame_us=64.434 scene_us=19.055 resolve_us=39.413 samples=2000",
+        "MEASURE cpu descriptor_update_us=5.8166 calls=3000",
+        "MEASURE timing gpu_frame_us=64.438 scene_us=19.049 resolve_us=39.424 samples=2500",
+        "MEASURE cpu descriptor_update_us=5.7758 calls=3500",
+        "MEASURE timing gpu_frame_us=64.435 scene_us=19.043 resolve_us=39.432 samples=3000"
+      ],
+      "counts": {
+        "calls": 3500,
+        "samples": 3000
+      },
+      "variant": "after: validated, with synchronization validation",
+      "round": 1
+    },
+    {
+      "exit": 0,
+      "wall_ms": 3358.8,
+      "metrics": {
+        "fps": 1818.0,
+        "descriptor_update_us": 5.5417,
+        "gpu_frame_us": 64.545,
+        "scene_us": 19.039,
+        "resolve_us": 39.523
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE cpu descriptor_update_us=5.1932 calls=500",
+        "MEASURE cpu descriptor_update_us=5.3046 calls=1000",
+        "MEASURE timing gpu_frame_us=64.592 scene_us=19.050 resolve_us=39.571 samples=500",
+        "MEASURE cpu descriptor_update_us=5.4312 calls=1500",
+        "MEASURE timing gpu_frame_us=64.544 scene_us=19.036 resolve_us=39.536 samples=1000",
+        "MEASURE cpu descriptor_update_us=5.6010 calls=2000",
+        "MEASURE timing gpu_frame_us=64.623 scene_us=19.059 resolve_us=39.558 samples=1500",
+        "MEASURE cpu descriptor_update_us=5.5949 calls=2500",
+        "MEASURE timing gpu_frame_us=64.573 scene_us=19.035 resolve_us=39.549 samples=2000",
+        "MEASURE cpu descriptor_update_us=5.6073 calls=3000",
+        "MEASURE timing gpu_frame_us=64.547 scene_us=19.038 resolve_us=39.525 samples=2500",
+        "MEASURE cpu descriptor_update_us=5.5417 calls=3500",
+        "MEASURE timing gpu_frame_us=64.545 scene_us=19.039 resolve_us=39.523 samples=3000"
+      ],
+      "counts": {
+        "calls": 3500,
+        "samples": 3000
+      },
+      "variant": "after: validated, without synchronization validation",
+      "round": 1
+    },
+    {
+      "exit": 0,
+      "wall_ms": 9287.0,
+      "metrics": {
+        "fps": 1900.8,
+        "gpu_frame_us": 22.707
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE timing gpu_frame_us=22.571 samples=500",
+        "MEASURE timing gpu_frame_us=22.512 samples=1000",
+        "MEASURE timing gpu_frame_us=22.543 samples=1500",
+        "MEASURE timing gpu_frame_us=22.556 samples=2000",
+        "MEASURE timing gpu_frame_us=22.573 samples=2500",
+        "MEASURE timing gpu_frame_us=22.582 samples=3000",
+        "MEASURE timing gpu_frame_us=22.571 samples=3500",
+        "MEASURE timing gpu_frame_us=22.570 samples=4000",
+        "MEASURE timing gpu_frame_us=22.582 samples=4500",
+        "MEASURE timing gpu_frame_us=22.605 samples=5000",
+        "MEASURE timing gpu_frame_us=22.586 samples=5500",
+        "MEASURE timing gpu_frame_us=22.595 samples=6000",
+        "MEASURE timing gpu_frame_us=22.584 samples=6500",
+        "MEASURE timing gpu_frame_us=22.590 samples=7000",
+        "MEASURE timing gpu_frame_us=22.588 samples=7500",
+        "MEASURE timing gpu_frame_us=22.601 samples=8000",
+        "MEASURE timing gpu_frame_us=22.611 samples=8500",
+        "MEASURE timing gpu_frame_us=22.642 samples=9000",
+        "MEASURE timing gpu_frame_us=22.642 samples=9500",
+        "MEASURE timing gpu_frame_us=22.678 samples=10000",
+        "MEASURE timing gpu_frame_us=22.669 samples=10500",
+        "MEASURE timing gpu_frame_us=22.689 samples=11000",
+        "MEASURE timing gpu_frame_us=22.692 samples=11500",
+        "MEASURE timing gpu_frame_us=22.692 samples=12000",
+        "MEASURE timing gpu_frame_us=22.680 samples=12500",
+        "MEASURE timing gpu_frame_us=22.674 samples=13000",
+        "MEASURE timing gpu_frame_us=22.677 samples=13500",
+        "MEASURE timing gpu_frame_us=22.688 samples=14000",
+        "MEASURE timing gpu_frame_us=22.707 samples=14500"
+      ],
+      "counts": {
+        "samples": 14500
+      },
+      "variant": "before: the frame without M1-14",
+      "round": 2
+    },
+    {
+      "exit": 0,
+      "wall_ms": 9355.2,
+      "metrics": {
+        "fps": 1750.2,
+        "descriptor_update_us": 0.3278,
+        "gpu_frame_us": 65.674,
+        "scene_us": 19.469,
+        "resolve_us": 39.94
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE cpu descriptor_update_us=0.1512 calls=500",
+        "MEASURE cpu descriptor_update_us=0.1479 calls=1000",
+        "MEASURE timing gpu_frame_us=64.758 scene_us=19.190 resolve_us=39.518 samples=500",
+        "MEASURE cpu descriptor_update_us=0.1739 calls=1500",
+        "MEASURE timing gpu_frame_us=64.876 scene_us=19.211 resolve_us=39.609 samples=1000",
+        "MEASURE cpu descriptor_update_us=0.4585 calls=2000",
+        "MEASURE timing gpu_frame_us=67.884 scene_us=20.165 resolve_us=40.758 samples=1500",
+        "MEASURE cpu descriptor_update_us=0.4199 calls=2500",
+        "MEASURE timing gpu_frame_us=67.804 scene_us=20.150 resolve_us=40.745 samples=2000",
+        "MEASURE cpu descriptor_update_us=0.3920 calls=3000",
+        "MEASURE timing gpu_frame_us=67.283 scene_us=19.981 resolve_us=40.537 samples=2500",
+        "MEASURE cpu descriptor_update_us=0.3717 calls=3500",
+        "MEASURE timing gpu_frame_us=66.900 scene_us=19.862 resolve_us=40.391 samples=3000",
+        "MEASURE cpu descriptor_update_us=0.3608 calls=4000",
+        "MEASURE timing gpu_frame_us=66.734 scene_us=19.808 resolve_us=40.341 samples=3500",
+        "MEASURE cpu descriptor_update_us=0.3467 calls=4500",
+        "MEASURE timing gpu_frame_us=66.549 scene_us=19.755 resolve_us=40.264 samples=4000",
+        "MEASURE cpu descriptor_update_us=0.3312 calls=5000",
+        "MEASURE timing gpu_frame_us=66.383 scene_us=19.696 resolve_us=40.205 samples=4500",
+        "MEASURE cpu descriptor_update_us=0.3235 calls=5500",
+        "MEASURE timing gpu_frame_us=66.214 scene_us=19.640 resolve_us=40.141 samples=5000",
+        "MEASURE cpu descriptor_update_us=0.3107 calls=6000",
+        "MEASURE timing gpu_frame_us=66.097 scene_us=19.601 resolve_us=40.098 samples=5500",
+        "MEASURE cpu descriptor_update_us=0.3049 calls=6500",
+        "MEASURE timing gpu_frame_us=66.022 scene_us=19.576 resolve_us=40.072 samples=6000",
+        "MEASURE cpu descriptor_update_us=0.2942 calls=7000",
+        "MEASURE timing gpu_frame_us=65.918 scene_us=19.540 resolve_us=40.032 samples=6500",
+        "MEASURE cpu descriptor_update_us=0.2855 calls=7500",
+        "MEASURE timing gpu_frame_us=65.828 scene_us=19.509 resolve_us=39.999 samples=7000",
+        "MEASURE cpu descriptor_update_us=0.2779 calls=8000",
+        "MEASURE timing gpu_frame_us=65.751 scene_us=19.483 resolve_us=39.969 samples=7500",
+        "MEASURE cpu descriptor_update_us=0.2808 calls=8500",
+        "MEASURE timing gpu_frame_us=65.719 scene_us=19.474 resolve_us=39.959 samples=8000",
+        "MEASURE cpu descriptor_update_us=0.2897 calls=9000",
+        "MEASURE timing gpu_frame_us=65.727 scene_us=19.481 resolve_us=39.960 samples=8500",
+        "MEASURE cpu descriptor_update_us=0.2980 calls=9500",
+        "MEASURE timing gpu_frame_us=65.688 scene_us=19.467 resolve_us=39.946 samples=9000",
+        "MEASURE cpu descriptor_update_us=0.3181 calls=10000",
+        "MEASURE timing gpu_frame_us=65.785 scene_us=19.504 resolve_us=39.982 samples=9500",
+        "MEASURE cpu descriptor_update_us=0.3286 calls=10500",
+        "MEASURE timing gpu_frame_us=65.757 scene_us=19.498 resolve_us=39.971 samples=10000",
+        "MEASURE cpu descriptor_update_us=0.3378 calls=11000",
+        "MEASURE timing gpu_frame_us=65.755 scene_us=19.498 resolve_us=39.970 samples=10500",
+        "MEASURE cpu descriptor_update_us=0.3392 calls=11500",
+        "MEASURE timing gpu_frame_us=65.755 scene_us=19.499 resolve_us=39.969 samples=11000",
+        "MEASURE cpu descriptor_update_us=0.3434 calls=12000",
+        "MEASURE timing gpu_frame_us=65.765 scene_us=19.502 resolve_us=39.975 samples=11500",
+        "MEASURE cpu descriptor_update_us=0.3433 calls=12500",
+        "MEASURE timing gpu_frame_us=65.768 scene_us=19.503 resolve_us=39.976 samples=12000",
+        "MEASURE cpu descriptor_update_us=0.3371 calls=13000",
+        "MEASURE timing gpu_frame_us=65.732 scene_us=19.490 resolve_us=39.963 samples=12500",
+        "MEASURE cpu descriptor_update_us=0.3336 calls=13500",
+        "MEASURE timing gpu_frame_us=65.705 scene_us=19.479 resolve_us=39.952 samples=13000",
+        "MEASURE cpu descriptor_update_us=0.3278 calls=14000",
+        "MEASURE timing gpu_frame_us=65.674 scene_us=19.469 resolve_us=39.940 samples=13500"
+      ],
+      "counts": {
+        "calls": 14000,
+        "samples": 13500
+      },
+      "variant": "after: the frame with M1-14",
+      "round": 2
+    },
+    {
+      "exit": 0,
+      "wall_ms": 9341.0,
+      "metrics": {
+        "fps": 1883.4,
+        "descriptor_update_us": 0.2433,
+        "gpu_frame_us": 64.797,
+        "scene_us": 19.225,
+        "resolve_us": 39.491
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE cpu descriptor_update_us=0.1790 calls=500",
+        "MEASURE cpu descriptor_update_us=0.1844 calls=1000",
+        "MEASURE timing gpu_frame_us=64.790 scene_us=19.233 resolve_us=39.469 samples=500",
+        "MEASURE cpu descriptor_update_us=0.1959 calls=1500",
+        "MEASURE timing gpu_frame_us=64.863 scene_us=19.273 resolve_us=39.485 samples=1000",
+        "MEASURE cpu descriptor_update_us=0.2786 calls=2000",
+        "MEASURE timing gpu_frame_us=65.010 scene_us=19.318 resolve_us=39.570 samples=1500",
+        "MEASURE cpu descriptor_update_us=0.2787 calls=2500",
+        "MEASURE timing gpu_frame_us=64.917 scene_us=19.286 resolve_us=39.533 samples=2000",
+        "MEASURE cpu descriptor_update_us=0.2697 calls=3000",
+        "MEASURE timing gpu_frame_us=64.862 scene_us=19.269 resolve_us=39.502 samples=2500",
+        "MEASURE cpu descriptor_update_us=0.2674 calls=3500",
+        "MEASURE timing gpu_frame_us=64.872 scene_us=19.275 resolve_us=39.506 samples=3000",
+        "MEASURE cpu descriptor_update_us=0.2686 calls=4000",
+        "MEASURE timing gpu_frame_us=64.978 scene_us=19.298 resolve_us=39.550 samples=3500",
+        "MEASURE cpu descriptor_update_us=0.2678 calls=4500",
+        "MEASURE timing gpu_frame_us=64.992 scene_us=19.302 resolve_us=39.561 samples=4000",
+        "MEASURE cpu descriptor_update_us=0.2661 calls=5000",
+        "MEASURE timing gpu_frame_us=65.012 scene_us=19.309 resolve_us=39.570 samples=4500",
+        "MEASURE cpu descriptor_update_us=0.2622 calls=5500",
+        "MEASURE timing gpu_frame_us=65.008 scene_us=19.309 resolve_us=39.568 samples=5000",
+        "MEASURE cpu descriptor_update_us=0.2584 calls=6000",
+        "MEASURE timing gpu_frame_us=64.962 scene_us=19.291 resolve_us=39.552 samples=5500",
+        "MEASURE cpu descriptor_update_us=0.2556 calls=6500",
+        "MEASURE timing gpu_frame_us=64.955 scene_us=19.287 resolve_us=39.550 samples=6000",
+        "MEASURE cpu descriptor_update_us=0.2512 calls=7000",
+        "MEASURE timing gpu_frame_us=64.915 scene_us=19.272 resolve_us=39.537 samples=6500",
+        "MEASURE cpu descriptor_update_us=0.2508 calls=7500",
+        "MEASURE timing gpu_frame_us=64.918 scene_us=19.271 resolve_us=39.539 samples=7000",
+        "MEASURE cpu descriptor_update_us=0.2448 calls=8000",
+        "MEASURE timing gpu_frame_us=64.880 scene_us=19.259 resolve_us=39.524 samples=7500",
+        "MEASURE cpu descriptor_update_us=0.2435 calls=8500",
+        "MEASURE timing gpu_frame_us=64.865 scene_us=19.254 resolve_us=39.517 samples=8000",
+        "MEASURE cpu descriptor_update_us=0.2419 calls=9000",
+        "MEASURE timing gpu_frame_us=64.841 scene_us=19.245 resolve_us=39.509 samples=8500",
+        "MEASURE cpu descriptor_update_us=0.2388 calls=9500",
+        "MEASURE timing gpu_frame_us=64.835 scene_us=19.240 resolve_us=39.508 samples=9000",
+        "MEASURE cpu descriptor_update_us=0.2377 calls=10000",
+        "MEASURE timing gpu_frame_us=64.813 scene_us=19.231 resolve_us=39.501 samples=9500",
+        "MEASURE cpu descriptor_update_us=0.2350 calls=10500",
+        "MEASURE timing gpu_frame_us=64.800 scene_us=19.225 resolve_us=39.498 samples=10000",
+        "MEASURE cpu descriptor_update_us=0.2318 calls=11000",
+        "MEASURE timing gpu_frame_us=64.781 scene_us=19.218 resolve_us=39.489 samples=10500",
+        "MEASURE cpu descriptor_update_us=0.2417 calls=11500",
+        "MEASURE timing gpu_frame_us=64.783 scene_us=19.218 resolve_us=39.491 samples=11000",
+        "MEASURE cpu descriptor_update_us=0.2387 calls=12000",
+        "MEASURE timing gpu_frame_us=64.766 scene_us=19.210 resolve_us=39.484 samples=11500",
+        "MEASURE cpu descriptor_update_us=0.2402 calls=12500",
+        "MEASURE timing gpu_frame_us=64.770 scene_us=19.214 resolve_us=39.484 samples=12000",
+        "MEASURE cpu descriptor_update_us=0.2428 calls=13000",
+        "MEASURE timing gpu_frame_us=64.772 scene_us=19.216 resolve_us=39.483 samples=12500",
+        "MEASURE cpu descriptor_update_us=0.2476 calls=13500",
+        "MEASURE timing gpu_frame_us=64.804 scene_us=19.227 resolve_us=39.495 samples=13000",
+        "MEASURE cpu descriptor_update_us=0.2458 calls=14000",
+        "MEASURE timing gpu_frame_us=64.795 scene_us=19.223 resolve_us=39.491 samples=13500",
+        "MEASURE cpu descriptor_update_us=0.2436 calls=14500",
+        "MEASURE timing gpu_frame_us=64.787 scene_us=19.220 resolve_us=39.488 samples=14000",
+        "MEASURE cpu descriptor_update_us=0.2433 calls=15000",
+        "MEASURE timing gpu_frame_us=64.797 scene_us=19.225 resolve_us=39.491 samples=14500"
+      ],
+      "counts": {
+        "calls": 15000,
+        "samples": 14500
+      },
+      "variant": "after: resolve pass without clearing the display",
+      "round": 2
+    },
+    {
+      "exit": 0,
+      "wall_ms": 3306.2,
+      "metrics": {
+        "fps": 1692.0,
+        "descriptor_update_us": 6.5579,
+        "gpu_frame_us": 65.428,
+        "scene_us": 19.37,
+        "resolve_us": 39.86
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE cpu descriptor_update_us=5.9970 calls=500",
+        "MEASURE cpu descriptor_update_us=6.0322 calls=1000",
+        "MEASURE timing gpu_frame_us=65.172 scene_us=19.295 resolve_us=39.786 samples=500",
+        "MEASURE cpu descriptor_update_us=6.2881 calls=1500",
+        "MEASURE timing gpu_frame_us=66.079 scene_us=19.578 resolve_us=40.152 samples=1000",
+        "MEASURE cpu descriptor_update_us=6.3386 calls=2000",
+        "MEASURE timing gpu_frame_us=65.631 scene_us=19.433 resolve_us=39.941 samples=1500",
+        "MEASURE cpu descriptor_update_us=6.5554 calls=2500",
+        "MEASURE timing gpu_frame_us=65.487 scene_us=19.388 resolve_us=39.883 samples=2000",
+        "MEASURE cpu descriptor_update_us=6.5579 calls=3000",
+        "MEASURE timing gpu_frame_us=65.428 scene_us=19.370 resolve_us=39.860 samples=2500"
+      ],
+      "counts": {
+        "calls": 3000,
+        "samples": 2500
+      },
+      "variant": "after: validated, with synchronization validation",
+      "round": 2
+    },
+    {
+      "exit": 0,
+      "wall_ms": 3390.8,
+      "metrics": {
+        "fps": 1714.5,
+        "descriptor_update_us": 6.025,
+        "gpu_frame_us": 64.857,
+        "scene_us": 19.185,
+        "resolve_us": 39.641
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE cpu descriptor_update_us=5.8626 calls=500",
+        "MEASURE cpu descriptor_update_us=6.0962 calls=1000",
+        "MEASURE timing gpu_frame_us=64.924 scene_us=19.215 resolve_us=39.653 samples=500",
+        "MEASURE cpu descriptor_update_us=6.0920 calls=1500",
+        "MEASURE timing gpu_frame_us=64.840 scene_us=19.168 resolve_us=39.652 samples=1000",
+        "MEASURE cpu descriptor_update_us=5.9665 calls=2000",
+        "MEASURE timing gpu_frame_us=64.781 scene_us=19.167 resolve_us=39.615 samples=1500",
+        "MEASURE cpu descriptor_update_us=5.9881 calls=2500",
+        "MEASURE timing gpu_frame_us=64.924 scene_us=19.218 resolve_us=39.665 samples=2000",
+        "MEASURE cpu descriptor_update_us=6.0250 calls=3000",
+        "MEASURE timing gpu_frame_us=64.857 scene_us=19.185 resolve_us=39.641 samples=2500"
+      ],
+      "counts": {
+        "calls": 3000,
+        "samples": 2500
+      },
+      "variant": "after: validated, without synchronization validation",
+      "round": 2
+    },
+    {
+      "exit": 0,
+      "wall_ms": 9360.7,
+      "metrics": {
+        "fps": 1759.8,
+        "gpu_frame_us": 23.159
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE timing gpu_frame_us=22.908 samples=500",
+        "MEASURE timing gpu_frame_us=22.806 samples=1000",
+        "MEASURE timing gpu_frame_us=23.361 samples=1500",
+        "MEASURE timing gpu_frame_us=23.508 samples=2000",
+        "MEASURE timing gpu_frame_us=23.342 samples=2500",
+        "MEASURE timing gpu_frame_us=23.299 samples=3000",
+        "MEASURE timing gpu_frame_us=23.230 samples=3500",
+        "MEASURE timing gpu_frame_us=23.140 samples=4000",
+        "MEASURE timing gpu_frame_us=23.087 samples=4500",
+        "MEASURE timing gpu_frame_us=23.089 samples=5000",
+        "MEASURE timing gpu_frame_us=23.058 samples=5500",
+        "MEASURE timing gpu_frame_us=23.019 samples=6000",
+        "MEASURE timing gpu_frame_us=23.003 samples=6500",
+        "MEASURE timing gpu_frame_us=23.008 samples=7000",
+        "MEASURE timing gpu_frame_us=22.983 samples=7500",
+        "MEASURE timing gpu_frame_us=22.972 samples=8000",
+        "MEASURE timing gpu_frame_us=22.974 samples=8500",
+        "MEASURE timing gpu_frame_us=22.999 samples=9000",
+        "MEASURE timing gpu_frame_us=23.028 samples=9500",
+        "MEASURE timing gpu_frame_us=23.072 samples=10000",
+        "MEASURE timing gpu_frame_us=23.096 samples=10500",
+        "MEASURE timing gpu_frame_us=23.125 samples=11000",
+        "MEASURE timing gpu_frame_us=23.145 samples=11500",
+        "MEASURE timing gpu_frame_us=23.153 samples=12000",
+        "MEASURE timing gpu_frame_us=23.148 samples=12500",
+        "MEASURE timing gpu_frame_us=23.169 samples=13000",
+        "MEASURE timing gpu_frame_us=23.159 samples=13500"
+      ],
+      "counts": {
+        "samples": 13500
+      },
+      "variant": "before: the frame without M1-14",
+      "round": 3
+    },
+    {
+      "exit": 0,
+      "wall_ms": 9392.1,
+      "metrics": {
+        "fps": 1857.2,
+        "descriptor_update_us": 0.2476,
+        "gpu_frame_us": 65.057,
+        "scene_us": 19.253,
+        "resolve_us": 39.711
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE cpu descriptor_update_us=0.1766 calls=500",
+        "MEASURE cpu descriptor_update_us=0.1797 calls=1000",
+        "MEASURE timing gpu_frame_us=65.396 scene_us=19.339 resolve_us=39.860 samples=500",
+        "MEASURE cpu descriptor_update_us=0.1843 calls=1500",
+        "MEASURE timing gpu_frame_us=65.043 scene_us=19.236 resolve_us=39.708 samples=1000",
+        "MEASURE cpu descriptor_update_us=0.1832 calls=2000",
+        "MEASURE timing gpu_frame_us=64.989 scene_us=19.219 resolve_us=39.678 samples=1500",
+        "MEASURE cpu descriptor_update_us=0.2235 calls=2500",
+        "MEASURE timing gpu_frame_us=64.967 scene_us=19.203 resolve_us=39.677 samples=2000",
+        "MEASURE cpu descriptor_update_us=0.2174 calls=3000",
+        "MEASURE timing gpu_frame_us=64.921 scene_us=19.191 resolve_us=39.658 samples=2500",
+        "MEASURE cpu descriptor_update_us=0.2103 calls=3500",
+        "MEASURE timing gpu_frame_us=64.883 scene_us=19.184 resolve_us=39.642 samples=3000",
+        "MEASURE cpu descriptor_update_us=0.2099 calls=4000",
+        "MEASURE timing gpu_frame_us=64.866 scene_us=19.179 resolve_us=39.633 samples=3500",
+        "MEASURE cpu descriptor_update_us=0.2069 calls=4500",
+        "MEASURE timing gpu_frame_us=64.875 scene_us=19.185 resolve_us=39.637 samples=4000",
+        "MEASURE cpu descriptor_update_us=0.2075 calls=5000",
+        "MEASURE timing gpu_frame_us=64.925 scene_us=19.207 resolve_us=39.657 samples=4500",
+        "MEASURE cpu descriptor_update_us=0.2065 calls=5500",
+        "MEASURE timing gpu_frame_us=64.916 scene_us=19.205 resolve_us=39.649 samples=5000",
+        "MEASURE cpu descriptor_update_us=0.2067 calls=6000",
+        "MEASURE timing gpu_frame_us=64.898 scene_us=19.199 resolve_us=39.639 samples=5500",
+        "MEASURE cpu descriptor_update_us=0.2176 calls=6500",
+        "MEASURE timing gpu_frame_us=64.900 scene_us=19.201 resolve_us=39.642 samples=6000",
+        "MEASURE cpu descriptor_update_us=0.2159 calls=7000",
+        "MEASURE timing gpu_frame_us=64.919 scene_us=19.209 resolve_us=39.652 samples=6500",
+        "MEASURE cpu descriptor_update_us=0.2152 calls=7500",
+        "MEASURE timing gpu_frame_us=64.919 scene_us=19.210 resolve_us=39.652 samples=7000",
+        "MEASURE cpu descriptor_update_us=0.2163 calls=8000",
+        "MEASURE timing gpu_frame_us=64.942 scene_us=19.217 resolve_us=39.662 samples=7500",
+        "MEASURE cpu descriptor_update_us=0.2174 calls=8500",
+        "MEASURE timing gpu_frame_us=64.978 scene_us=19.226 resolve_us=39.679 samples=8000",
+        "MEASURE cpu descriptor_update_us=0.2276 calls=9000",
+        "MEASURE timing gpu_frame_us=65.003 scene_us=19.235 resolve_us=39.688 samples=8500",
+        "MEASURE cpu descriptor_update_us=0.2396 calls=9500",
+        "MEASURE timing gpu_frame_us=65.011 scene_us=19.238 resolve_us=39.690 samples=9000",
+        "MEASURE cpu descriptor_update_us=0.2482 calls=10000",
+        "MEASURE timing gpu_frame_us=65.060 scene_us=19.259 resolve_us=39.708 samples=9500",
+        "MEASURE cpu descriptor_update_us=0.2500 calls=10500",
+        "MEASURE timing gpu_frame_us=65.078 scene_us=19.263 resolve_us=39.716 samples=10000",
+        "MEASURE cpu descriptor_update_us=0.2498 calls=11000",
+        "MEASURE timing gpu_frame_us=65.066 scene_us=19.259 resolve_us=39.711 samples=10500",
+        "MEASURE cpu descriptor_update_us=0.2490 calls=11500",
+        "MEASURE timing gpu_frame_us=65.052 scene_us=19.254 resolve_us=39.706 samples=11000",
+        "MEASURE cpu descriptor_update_us=0.2482 calls=12000",
+        "MEASURE timing gpu_frame_us=65.048 scene_us=19.252 resolve_us=39.707 samples=11500",
+        "MEASURE cpu descriptor_update_us=0.2517 calls=12500",
+        "MEASURE timing gpu_frame_us=65.056 scene_us=19.254 resolve_us=39.710 samples=12000",
+        "MEASURE cpu descriptor_update_us=0.2485 calls=13000",
+        "MEASURE timing gpu_frame_us=65.048 scene_us=19.252 resolve_us=39.706 samples=12500",
+        "MEASURE cpu descriptor_update_us=0.2486 calls=13500",
+        "MEASURE timing gpu_frame_us=65.041 scene_us=19.250 resolve_us=39.703 samples=13000",
+        "MEASURE cpu descriptor_update_us=0.2496 calls=14000",
+        "MEASURE timing gpu_frame_us=65.067 scene_us=19.259 resolve_us=39.713 samples=13500",
+        "MEASURE cpu descriptor_update_us=0.2476 calls=14500",
+        "MEASURE timing gpu_frame_us=65.057 scene_us=19.253 resolve_us=39.711 samples=14000"
+      ],
+      "counts": {
+        "calls": 14500,
+        "samples": 14000
+      },
+      "variant": "after: the frame with M1-14",
+      "round": 3
+    },
+    {
+      "exit": 0,
+      "wall_ms": 9362.8,
+      "metrics": {
+        "fps": 1801.4,
+        "descriptor_update_us": 0.2915,
+        "gpu_frame_us": 65.203,
+        "scene_us": 19.375,
+        "resolve_us": 39.643
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE cpu descriptor_update_us=0.1638 calls=500",
+        "MEASURE cpu descriptor_update_us=0.1806 calls=1000",
+        "MEASURE timing gpu_frame_us=64.476 scene_us=19.133 resolve_us=39.318 samples=500",
+        "MEASURE cpu descriptor_update_us=0.1772 calls=1500",
+        "MEASURE timing gpu_frame_us=64.440 scene_us=19.127 resolve_us=39.320 samples=1000",
+        "MEASURE cpu descriptor_update_us=0.2134 calls=2000",
+        "MEASURE timing gpu_frame_us=65.115 scene_us=19.343 resolve_us=39.592 samples=1500",
+        "MEASURE cpu descriptor_update_us=0.2306 calls=2500",
+        "MEASURE timing gpu_frame_us=65.447 scene_us=19.442 resolve_us=39.740 samples=2000",
+        "MEASURE cpu descriptor_update_us=0.2302 calls=3000",
+        "MEASURE timing gpu_frame_us=65.270 scene_us=19.392 resolve_us=39.673 samples=2500",
+        "MEASURE cpu descriptor_update_us=0.2256 calls=3500",
+        "MEASURE timing gpu_frame_us=65.245 scene_us=19.382 resolve_us=39.664 samples=3000",
+        "MEASURE cpu descriptor_update_us=0.2326 calls=4000",
+        "MEASURE timing gpu_frame_us=65.231 scene_us=19.380 resolve_us=39.652 samples=3500",
+        "MEASURE cpu descriptor_update_us=0.2298 calls=4500",
+        "MEASURE timing gpu_frame_us=65.144 scene_us=19.352 resolve_us=39.612 samples=4000",
+        "MEASURE cpu descriptor_update_us=0.2365 calls=5000",
+        "MEASURE timing gpu_frame_us=65.127 scene_us=19.347 resolve_us=39.602 samples=4500",
+        "MEASURE cpu descriptor_update_us=0.2460 calls=5500",
+        "MEASURE timing gpu_frame_us=65.155 scene_us=19.355 resolve_us=39.614 samples=5000",
+        "MEASURE cpu descriptor_update_us=0.2572 calls=6000",
+        "MEASURE timing gpu_frame_us=65.192 scene_us=19.370 resolve_us=39.630 samples=5500",
+        "MEASURE cpu descriptor_update_us=0.2578 calls=6500",
+        "MEASURE timing gpu_frame_us=65.145 scene_us=19.353 resolve_us=39.613 samples=6000",
+        "MEASURE cpu descriptor_update_us=0.2594 calls=7000",
+        "MEASURE timing gpu_frame_us=65.114 scene_us=19.344 resolve_us=39.599 samples=6500",
+        "MEASURE cpu descriptor_update_us=0.2641 calls=7500",
+        "MEASURE timing gpu_frame_us=65.176 scene_us=19.366 resolve_us=39.621 samples=7000",
+        "MEASURE cpu descriptor_update_us=0.2650 calls=8000",
+        "MEASURE timing gpu_frame_us=65.170 scene_us=19.366 resolve_us=39.614 samples=7500",
+        "MEASURE cpu descriptor_update_us=0.2765 calls=8500",
+        "MEASURE timing gpu_frame_us=65.179 scene_us=19.369 resolve_us=39.618 samples=8000",
+        "MEASURE cpu descriptor_update_us=0.2913 calls=9000",
+        "MEASURE timing gpu_frame_us=65.273 scene_us=19.398 resolve_us=39.660 samples=8500",
+        "MEASURE cpu descriptor_update_us=0.3076 calls=9500",
+        "MEASURE timing gpu_frame_us=65.433 scene_us=19.457 resolve_us=39.725 samples=9000",
+        "MEASURE cpu descriptor_update_us=0.3063 calls=10000",
+        "MEASURE timing gpu_frame_us=65.387 scene_us=19.441 resolve_us=39.706 samples=9500",
+        "MEASURE cpu descriptor_update_us=0.3055 calls=10500",
+        "MEASURE timing gpu_frame_us=65.350 scene_us=19.427 resolve_us=39.693 samples=10000",
+        "MEASURE cpu descriptor_update_us=0.3041 calls=11000",
+        "MEASURE timing gpu_frame_us=65.321 scene_us=19.414 resolve_us=39.685 samples=10500",
+        "MEASURE cpu descriptor_update_us=0.3006 calls=11500",
+        "MEASURE timing gpu_frame_us=65.292 scene_us=19.407 resolve_us=39.674 samples=11000",
+        "MEASURE cpu descriptor_update_us=0.2969 calls=12000",
+        "MEASURE timing gpu_frame_us=65.260 scene_us=19.397 resolve_us=39.660 samples=11500",
+        "MEASURE cpu descriptor_update_us=0.2935 calls=12500",
+        "MEASURE timing gpu_frame_us=65.240 scene_us=19.390 resolve_us=39.654 samples=12000",
+        "MEASURE cpu descriptor_update_us=0.2985 calls=13000",
+        "MEASURE timing gpu_frame_us=65.250 scene_us=19.391 resolve_us=39.662 samples=12500",
+        "MEASURE cpu descriptor_update_us=0.2952 calls=13500",
+        "MEASURE timing gpu_frame_us=65.225 scene_us=19.383 resolve_us=39.650 samples=13000",
+        "MEASURE cpu descriptor_update_us=0.2915 calls=14000",
+        "MEASURE timing gpu_frame_us=65.203 scene_us=19.375 resolve_us=39.643 samples=13500"
+      ],
+      "counts": {
+        "calls": 14000,
+        "samples": 13500
+      },
+      "variant": "after: resolve pass without clearing the display",
+      "round": 3
+    },
+    {
+      "exit": 0,
+      "wall_ms": 3391.6,
+      "metrics": {
+        "fps": 1762.5,
+        "descriptor_update_us": 6.142,
+        "gpu_frame_us": 64.652,
+        "scene_us": 19.104,
+        "resolve_us": 39.544
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE cpu descriptor_update_us=5.8274 calls=500",
+        "MEASURE cpu descriptor_update_us=5.7035 calls=1000",
+        "MEASURE timing gpu_frame_us=64.921 scene_us=19.187 resolve_us=39.666 samples=500",
+        "MEASURE cpu descriptor_update_us=5.8937 calls=1500",
+        "MEASURE timing gpu_frame_us=64.915 scene_us=19.182 resolve_us=39.656 samples=1000",
+        "MEASURE cpu descriptor_update_us=5.9196 calls=2000",
+        "MEASURE timing gpu_frame_us=64.762 scene_us=19.131 resolve_us=39.599 samples=1500",
+        "MEASURE cpu descriptor_update_us=5.9668 calls=2500",
+        "MEASURE timing gpu_frame_us=64.686 scene_us=19.119 resolve_us=39.564 samples=2000",
+        "MEASURE cpu descriptor_update_us=6.1111 calls=3000",
+        "MEASURE timing gpu_frame_us=64.681 scene_us=19.112 resolve_us=39.555 samples=2500",
+        "MEASURE cpu descriptor_update_us=6.1420 calls=3500",
+        "MEASURE timing gpu_frame_us=64.652 scene_us=19.104 resolve_us=39.544 samples=3000"
+      ],
+      "counts": {
+        "calls": 3500,
+        "samples": 3000
+      },
+      "variant": "after: validated, with synchronization validation",
+      "round": 3
+    },
+    {
+      "exit": 0,
+      "wall_ms": 3307.8,
+      "metrics": {
+        "fps": 1734.5,
+        "descriptor_update_us": 6.3081,
+        "gpu_frame_us": 65.031,
+        "scene_us": 19.226,
+        "resolve_us": 39.712
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE cpu descriptor_update_us=5.4596 calls=500",
+        "MEASURE cpu descriptor_update_us=6.2412 calls=1000",
+        "MEASURE timing gpu_frame_us=65.528 scene_us=19.360 resolve_us=39.959 samples=500",
+        "MEASURE cpu descriptor_update_us=6.0896 calls=1500",
+        "MEASURE timing gpu_frame_us=64.986 scene_us=19.199 resolve_us=39.716 samples=1000",
+        "MEASURE cpu descriptor_update_us=6.1776 calls=2000",
+        "MEASURE timing gpu_frame_us=65.009 scene_us=19.221 resolve_us=39.709 samples=1500",
+        "MEASURE cpu descriptor_update_us=6.2146 calls=2500",
+        "MEASURE timing gpu_frame_us=64.926 scene_us=19.189 resolve_us=39.662 samples=2000",
+        "MEASURE cpu descriptor_update_us=6.3081 calls=3000",
+        "MEASURE timing gpu_frame_us=65.031 scene_us=19.226 resolve_us=39.712 samples=2500"
+      ],
+      "counts": {
+        "calls": 3000,
+        "samples": 2500
+      },
+      "variant": "after: validated, without synchronization validation",
+      "round": 3
+    }
+  ]
+}
