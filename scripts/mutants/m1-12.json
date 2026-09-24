@@ -8,7 +8,9 @@
       "file": "src/core/Scalar.hpp",
       "find": "        const bool wouldWrap = other.value_ > value_;",
       "replace": "        const bool wouldWrap = other.value_ < value_;",
-      "suites": ["test_render_quality"],
+      "suites": [
+        "test_render_quality"
+      ],
       "expect": "caught"
     },
     {
@@ -16,7 +18,9 @@
       "file": "src/core/Scalar.hpp",
       "find": "        const bool wouldWrap = other.value_ > value_;",
       "replace": "        const bool wouldWrap = other.value_ >= value_;",
-      "suites": ["test_render_quality"],
+      "suites": [
+        "test_render_quality"
+      ],
       "expect": "caught",
       "why": "Decisive only here. In the release tree the assertion is gone, the marker call does nothing at run time, and the subtraction goes on to give the right answer, so nothing would notice."
     },
@@ -25,7 +29,9 @@
       "file": "src/core/Scalar.hpp",
       "find": "        const bool wouldWrap = other.value_ > kCountMaximum - value_;",
       "replace": "        const bool wouldWrap = other.value_ < kCountMaximum - value_;",
-      "suites": ["test_render_quality"],
+      "suites": [
+        "test_render_quality"
+      ],
       "expect": "caught"
     },
     {
@@ -33,7 +39,9 @@
       "file": "src/core/Scalar.hpp",
       "find": "        const bool wouldWrap = other.value_ > kCountMaximum - value_;",
       "replace": "        const bool wouldWrap = other.value_ >= kCountMaximum - value_;",
-      "suites": ["test_render_quality"],
+      "suites": [
+        "test_render_quality"
+      ],
       "expect": "caught",
       "why": "Decisive only here, for the reason the subtraction's one-off mutant gives."
     },
@@ -42,7 +50,9 @@
       "file": "src/core/Scalar.hpp",
       "find": "        const bool wouldWrap = scale != 0U && value_ > kCountMaximum / scale;",
       "replace": "        const bool wouldWrap = scale != 0U && value_ < kCountMaximum / scale;",
-      "suites": ["test_render_quality"],
+      "suites": [
+        "test_render_quality"
+      ],
       "expect": "caught"
     },
     {
@@ -50,16 +60,20 @@
       "file": "src/core/Scalar.hpp",
       "find": "        const bool wouldWrap = other.value_ > value_;\n        ORBSIM_EXPECTS(!wouldWrap);\n        if (wouldWrap) stopConstantEvaluation();",
       "replace": "        const bool wouldWrap = other.value_ > value_;\n        if (wouldWrap) stopConstantEvaluation();",
-      "suites": ["test_render_quality"],
+      "suites": [
+        "test_render_quality"
+      ],
       "expect": "survives",
-      "why": "It survives *this harness*, and does not survive the suite. The property is checked by the CTest entry count_wraparound_aborts, which this harness structurally cannot run: the probe's success is a non-zero exit -- the assertion firing -- and run_mutant reads any non-zero exit as a kill, so listing it here would report every mutant as caught. Removing the ORBSIM_EXPECTS makes the probe return 1 instead of aborting with 3, which cmake/VerifyCountWraparound.cmake calls a failure and this file cannot. Teaching mutate.py an inverted expectation would close the gap and is the owner's call, not this task's."
+      "why": "It survives *this harness*, and does not survive the suite as a whole. The property is checked by the CTest entry count_wraparound_aborts, which this harness structurally cannot run: the probe's success is a non-zero exit -- the assertion firing -- and run_mutant reads any non-zero exit as a kill, so listing it here would report every mutant as caught. Teaching mutate.py an inverted expectation would close that gap and is the owner's call, not this task's. **Measured 2026-09-24, and the first answer was wrong**: this field previously claimed the CTest entry catches it, on reasoning rather than a run. It did not. The probe reported the wraparound correctly and returned 1, and cmake/VerifyCountWraparound.cmake only failed on exit 0, so the entry that exists to close this survivor reported green against a tree carrying it. The script reads the probe's own verdict now, and all three cases were run: healthy Debug passes, release skips, and a tree carrying this mutant fails."
     },
     {
       "name": "the limit is not the last value the type holds",
       "file": "src/core/Scalar.hpp",
       "find": "inline constexpr std::uint32_t kCountMaximum = std::numeric_limits<std::uint32_t>::max();",
       "replace": "inline constexpr std::uint32_t kCountMaximum = std::numeric_limits<std::uint32_t>::max() - 1U;",
-      "suites": ["test_render_quality"],
+      "suites": [
+        "test_render_quality"
+      ],
       "expect": "caught"
     },
     {
@@ -67,7 +81,9 @@
       "file": "src/core/Scalar.hpp",
       "find": "        if (wouldWrap) stopConstantEvaluation();\n        return Derived{value_ - other.value_};",
       "replace": "        if (wouldWrap) stopConstantEvaluation();\n        return Derived{other.value_ - value_};",
-      "suites": ["test_render_quality"],
+      "suites": [
+        "test_render_quality"
+      ],
       "expect": "caught"
     },
     {
@@ -75,7 +91,9 @@
       "file": "src/core/Scalar.hpp",
       "find": "        if (wouldWrap) stopConstantEvaluation();\n        return Derived{value_ + other.value_};",
       "replace": "        if (wouldWrap) stopConstantEvaluation();\n        return Derived{value_ - other.value_};",
-      "suites": ["test_render_quality"],
+      "suites": [
+        "test_render_quality"
+      ],
       "expect": "caught"
     },
     {
@@ -83,7 +101,9 @@
       "file": "src/core/Scalar.hpp",
       "find": "        if (wouldWrap) stopConstantEvaluation();\n        return Derived{value_ * scale};",
       "replace": "        if (wouldWrap) stopConstantEvaluation();\n        return Derived{value_ + scale};",
-      "suites": ["test_render_quality"],
+      "suites": [
+        "test_render_quality"
+      ],
       "expect": "caught"
     },
     {
@@ -91,7 +111,9 @@
       "file": "src/core/Scalar.hpp",
       "find": "        return count * scale;",
       "replace": "        return count;",
-      "suites": ["test_render_quality"],
+      "suites": [
+        "test_render_quality"
+      ],
       "expect": "caught"
     },
     {
@@ -99,7 +121,9 @@
       "file": "src/core/Scalar.hpp",
       "find": "        derived() = derived() + other;",
       "replace": "        derived() = derived() - other;",
-      "suites": ["test_render_quality"],
+      "suites": [
+        "test_render_quality"
+      ],
       "expect": "caught",
       "why": "This read `derived() = derived();` on 2026-09-23 and was INVALID rather than a kill: dropping `other` left the parameter unused, which -Wunused-parameter reports and ADR 0017 makes an error. A mutant that does not compile proves nothing, so it now uses the parameter and changes the operation instead."
     },
@@ -108,7 +132,9 @@
       "file": "src/core/Scalar.hpp",
       "find": "    template <std::same_as<std::uint32_t> Scale>\n    [[nodiscard]] constexpr Derived operator*(Scale scale) const noexcept {",
       "replace": "    template <typename Scale>\n    [[nodiscard]] constexpr Derived operator*(Scale scale) const noexcept {",
-      "suites": ["test_render_quality"],
+      "suites": [
+        "test_render_quality"
+      ],
       "expect": "caught"
     },
     {
@@ -116,7 +142,9 @@
       "file": "src/core/Scalar.hpp",
       "find": "    explicit constexpr Texels(std::uint32_t v) noexcept : Count{v} {}",
       "replace": "    constexpr Texels(std::uint32_t v) noexcept : Count{v} {}",
-      "suites": ["test_render_quality"],
+      "suites": [
+        "test_render_quality"
+      ],
       "expect": "caught"
     },
     {
@@ -124,7 +152,9 @@
       "file": "src/core/Units.hpp",
       "find": "using Pixels = Scalar<units::kPixel>;",
       "replace": "using Pixels = Scalar<mp_units::one>;",
-      "suites": ["test_render_quality"],
+      "suites": [
+        "test_render_quality"
+      ],
       "expect": "caught"
     },
     {
@@ -132,7 +162,9 @@
       "file": "src/core/Units.hpp",
       "find": "    return Pixels{static_cast<f64>(v)};",
       "replace": "    return Pixels{static_cast<f64>(v) * 2.0};",
-      "suites": ["test_render_quality"],
+      "suites": [
+        "test_render_quality"
+      ],
       "expect": "caught"
     },
     {
@@ -140,7 +172,9 @@
       "file": "src/view/RenderQuality.hpp",
       "find": "    [[nodiscard]] static constexpr RenderQuality low() noexcept { return RenderQuality{}; }",
       "replace": "    [[nodiscard]] static RenderQuality low() noexcept { return RenderQuality{}; }",
-      "suites": ["test_render_quality"],
+      "suites": [
+        "test_render_quality"
+      ],
       "expect": "caught"
     }
   ]

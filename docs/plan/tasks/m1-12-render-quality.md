@@ -214,6 +214,19 @@ of them in `tests/`.)*
       the property is checked by `count_wraparound_aborts`, which this harness
       structurally cannot run, because that probe's success is a non-zero exit.
 
+      **That claim was false for a day, and only a direct question found it.**
+      It was written from reasoning rather than from a run. Measured 2026-09-24
+      by applying the survivor to the tree by hand: the probe detected the
+      wraparound correctly and returned **1**, and
+      `cmake/VerifyCountWraparound.cmake` failed only on exit **0** -- so the
+      test whose entire purpose is to close this survivor reported **green
+      against a tree carrying it**. The script reads the probe's own verdict
+      now, and all three outcomes were run rather than argued: a healthy Debug
+      tree passes, the release tree skips, and a tree carrying the mutant
+      fails. A check that has silently stopped checking looks exactly like one
+      that passes (`VERIFICATION.md` rule 23), and this one looked like it from
+      the moment it was written.
+
       **And the pass hung the machine before it ran clean**, twice in one run,
       which produced the other two changes. A mutant that trips an assertion
       inside a Catch2 case calls abort, and the Windows debug runtime turns

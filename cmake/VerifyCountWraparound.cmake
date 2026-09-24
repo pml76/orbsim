@@ -34,10 +34,26 @@ if(stdout_text MATCHES "SKIPPED:")
     return()
 endif()
 
+# **The probe's own verdict is read first, and this is the half that was
+# missing.** Written on 2026-09-23 with only the exit-code test below, which
+# was wrong in the one case that matters: the probe says "the guard did not
+# fire" and returns **1**, and a check for `EQUAL 0` calls that a pass. So the
+# test that exists to close M1-12's declared survivor reported green against a
+# tree carrying that very survivor -- measured 2026-09-24, by applying the
+# mutant by hand and running this entry, which is the only reason it was found.
+#
+# A check that silently stops checking looks exactly like one that passes
+# (VERIFICATION.md rule 23), and this one looked like it for a day.
+if(stdout_text MATCHES "the guard did not fire")
+    message(FATAL_ERROR
+            "the count wraparound subtracted below zero and nothing stopped it. "
+            "The probe's own report:\n${stdout_text}${stderr_text}")
+endif()
+
 if(exit_code EQUAL 0)
     message(FATAL_ERROR
-            "the count wraparound probe returned normally, so nothing refused the "
-            "wraparound at run time. Its output was:\n${stdout_text}${stderr_text}")
+            "the count wraparound probe returned normally and said nothing about "
+            "why, which it should never do. Its output was:\n${stdout_text}${stderr_text}")
 endif()
 
 # `exit_code` is a signal name on POSIX and a number on Windows; either is worth
