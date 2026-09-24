@@ -6,6 +6,7 @@
 #include "view/PushConstants.hpp"
 #include "view/VertexLayout.hpp"
 
+#include <vulkan/utility/vk_format_utils.h>
 #include <vulkan/vk_enum_string_helper.h>
 #include <vulkan/vulkan_core.h>
 
@@ -166,10 +167,24 @@ toVulkan(std::span<const view::VertexAttribute> attributes) {
     std::vector<VkVertexInputAttributeDescription> result;
     result.reserve(attributes.size());
     for (const view::VertexAttribute& attribute : attributes) {
+        const VkFormat format = toVulkan(attribute.format);
+        // **The translation above, against Vulkan's own format table.** No
+        // validation layer can catch a wrong entry there: Vulkan lets a shader
+        // read a vec4 from a three-component format and supplies the missing
+        // alpha as 1.0, so describing a colour as three floats is a valid
+        // pipeline that draws the wrong thing. The mutation pass found exactly
+        // that surviving on 2026-09-24. Vulkan-Utility-Libraries' table is an
+        // opinion formed without this code, so the component count and the
+        // width are checked against it -- asserted, because a disagreement can
+        // only be a mistake in the switch (ADR 0002).
+        [[maybe_unused]] const bool agrees =
+            vkuFormatComponentCount(format) == static_cast<std::uint32_t>(attribute.format) &&
+            vkuFormatElementSize(format) == view::sizeOf(attribute.format).value();
+        ORBSIM_EXPECTS(agrees);
         result.push_back(VkVertexInputAttributeDescription{
             .location = attribute.location.value,
             .binding = 0,
-            .format = toVulkan(attribute.format),
+            .format = format,
             .offset = vulkanBytes(attribute.offset),
         });
     }
