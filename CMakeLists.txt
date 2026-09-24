@@ -586,8 +586,13 @@ set(ORBSIM_TESTS
         test_units_validated
         test_view_math
 )
+# tests/AbortBehaviour.cpp is compiled into every suite rather than linked in
+# from orbsim_test_support, and the difference matters: a Catch2 listener in a
+# static library is only pulled in if something already references that library,
+# and test_render_quality references none of the support code. It would have
+# linked clean and silently lost the behaviour. See the file for what it is for.
 foreach(test_name IN LISTS ORBSIM_TESTS)
-    add_executable(${test_name} tests/${test_name}.cpp)
+    add_executable(${test_name} tests/${test_name}.cpp tests/AbortBehaviour.cpp)
     target_link_libraries(${test_name} PRIVATE orbsim_test_support)
     # One CTest test per TEST_CASE, so `ctest -R` can select a single case and
     # a failure names the case rather than the executable.

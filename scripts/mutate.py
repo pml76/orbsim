@@ -70,6 +70,23 @@ DEFAULT_CMAKE = (
     r"C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe"
 )
 
+# **Nothing here waits forever**, added 2026-09-24 after a pass hung twice in
+# one run. A mutant makes the code wrong on purpose, and wrong code can hang:
+# on Windows the debug C runtime used to turn a failed assertion into a modal
+# dialog, so the suite sat there alive and the pass sat there with it, with a
+# box on the screen of whoever was running it. `tests/AbortBehaviour.cpp` stops
+# that particular cause; these stop the harness being at the mercy of the next
+# one, whatever it turns out to be.
+#
+# Generous on purpose -- the point is to bound a hang, not to police a slow
+# machine. The slowest suite in a Debug tree runs in about twenty seconds and
+# a full rebuild of one suite in about two minutes, so each limit is an order
+# of magnitude clear of anything healthy. A mutant that trips one is reported
+# as HUNG, which is neither a kill nor a survivor: it means the harness could
+# not decide, and the run fails so that somebody looks.
+SUITE_TIMEOUT_SECONDS = 300
+BUILD_TIMEOUT_SECONDS = 1800
+
 
 def repo_root() -> Path:
     out = subprocess.run(
@@ -130,8 +147,12 @@ def run_mutant(root: Path, cmake: str, tree: str, mutant: dict) -> tuple:
     path.write_text(text.replace(mutant["find"], mutant["replace"]),
                     encoding="utf-8", newline="\n")
 
-    build = subprocess.run([cmake, "--build", tree, "--target", *mutant["suites"]],
-                           cwd=root, capture_output=True, text=True)
+    try:
+        build = subprocess.run([cmake, "--build", tree, "--target", *mutant["suites"]],
+                               cwd=root, capture_output=True, text=True,
+                               timeout=BUILD_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        return "HUNG", f"the build did not finish in {BUILD_TIMEOUT_SECONDS} s"
     if build.returncode != 0:
         output = build.stdout + build.stderr
         fired = static_assert_message(output)
@@ -141,8 +162,15 @@ def run_mutant(root: Path, cmake: str, tree: str, mutant: dict) -> tuple:
 
     caught = []
     for suite in mutant["suites"]:
-        run = subprocess.run([str(root / tree / f"{suite}.exe")],
-                             cwd=root, capture_output=True, text=True)
+        try:
+            run = subprocess.run([str(root / tree / f"{suite}.exe")],
+                                 cwd=root, capture_output=True, text=True,
+                                 timeout=SUITE_TIMEOUT_SECONDS)
+        except subprocess.TimeoutExpired:
+            # Deliberately not counted as a kill. A hung suite has told us
+            # nothing about whether the mutant was detected, and calling it
+            # caught would turn a broken run into a green one.
+            return "HUNG", f"{suite} did not finish in {SUITE_TIMEOUT_SECONDS} s"
         if run.returncode != 0:
             cases = failing_cases(run.stdout)
             caught.append(f"{suite}: " + ("; ".join(cases) if cases else "nonzero exit"))
@@ -245,10 +273,14 @@ def main(argv: list) -> int:
     caught = sum(1 for _, v, _ in results if v.startswith("CAUGHT"))
     survived = sum(1 for _, v, _ in results if v == "SURVIVED")
     invalid = sum(1 for _, v, _ in results if v == "INVALID")
-    print(f"{caught} caught, {survived} survived, {invalid} invalid")
+    hung = sum(1 for _, v, _ in results if v == "HUNG")
+    print(f"{caught} caught, {survived} survived, {invalid} invalid, {hung} hung")
     if invalid:
         print("an invalid mutant is not a kill: rewrite it so that it compiles")
-    return 1 if (bad or invalid) else 0
+    if hung:
+        print("a hung mutant is not a kill either: the harness could not decide, "
+              "so find out why before believing anything else in this run")
+    return 1 if (bad or invalid or hung) else 0
 
 
 if __name__ == "__main__":
