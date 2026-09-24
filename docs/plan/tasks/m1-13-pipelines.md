@@ -1,6 +1,6 @@
 # M1-13 — Graphics pipelines and shader modules
 
-Phase: A | Status: **committed, 2026-09-24; the mutation pass is not yet closed**
+Phase: A | Status: **done, 2026-09-24**
 Prerequisites: M1-01, M1-09 *(Corrected 2026-09-21: the queue says each task lists its true
 prerequisites so that a reordering can be reasoned about, and this task tests its pure
 functions -- the vertex input description and the push-constant range -- in
@@ -130,9 +130,13 @@ times:
    application, and the Windows debug runtime turned the abort into a modal
    dialog, so `orbsim_smoke` waited for a click until the harness gave up. A
    hung mutant is not a kill. The fix -- the same `_set_abort_behavior` call
-   every suite makes -- needs a lint suppression the owner has not yet ruled
-   on; `docs/STATUS.md` has the question.
-3. Waits on that ruling.
+   every suite makes -- needed a one-line lint suppression, which the owner
+   granted (decision 155); finding it also found four test sources that had
+   never been linted (decision 156).
+3. **17 caught, 1 survived, 0 invalid, 0 hung.** The survivor is the declared
+   one, the known gap at the top of this document. M1-12's pass was re-run
+   the same day, because decision 156 changed the script that judges its
+   probes: 26 of 26 caught, as before.
 
 ## Done when
 
