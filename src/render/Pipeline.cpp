@@ -243,7 +243,12 @@ rasterization(const GraphicsPipelineDesc& desc) noexcept {
 // they are dynamic here. Baked in, every resize of the window would need every
 // pipeline rebuilt -- the thing this file's header says never happens during
 // a frame.
-constexpr std::array kDynamicStates{VK_DYNAMIC_STATE_VIEWPORT, VK_DYNAMIC_STATE_SCISSOR};
+constexpr std::array<VkDynamicState, 2> kDynamicStates{
+    {
+        VK_DYNAMIC_STATE_VIEWPORT,
+        VK_DYNAMIC_STATE_SCISSOR,
+    },
+};
 
 // The states every pipeline here shares, as values. What they point at is
 // constant and lives at namespace scope, so returning them is safe.

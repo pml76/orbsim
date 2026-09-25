@@ -106,9 +106,9 @@ private:
     [[nodiscard]] static constexpr Bytes
     widthOfFirst(const std::array<AttributeFormat, kCount>& formats, std::size_t count) noexcept {
         return std::ranges::fold_left(
-            formats | std::views::take(count), Bytes{0U}, [](Bytes sum, AttributeFormat format) {
-                return sum + sizeOf(format);
-            });
+            formats | std::views::take(count),
+            Bytes{0U},
+            [](Bytes sum, AttributeFormat format) noexcept { return sum + sizeOf(format); });
     }
 
     // Every attribute built in one expansion, so the array is initialised
@@ -119,11 +119,13 @@ private:
     build(const std::array<AttributeFormat, kCount>& formats,
           std::index_sequence<kIndex...> /*positions*/) noexcept {
         return VertexLayout{
-            {VertexAttribute{
-                .location = ShaderLocation{static_cast<std::uint32_t>(kIndex)},
-                .format = std::get<kIndex>(formats),
-                .offset = widthOfFirst(formats, kIndex),
-            }...},
+            {
+                {VertexAttribute{
+                    .location = ShaderLocation{static_cast<std::uint32_t>(kIndex)},
+                    .format = std::get<kIndex>(formats),
+                    .offset = widthOfFirst(formats, kIndex),
+                }...},
+            },
             widthOfFirst(formats, kCount),
         };
     }
@@ -150,8 +152,10 @@ struct LineVertex {
 };
 
 inline constexpr VertexLayout<2> kLineVertexLayout = VertexLayout<2>::packed({
-    AttributeFormat::Float32x3,
-    AttributeFormat::Float32x4,
+    {
+        AttributeFormat::Float32x3,
+        AttributeFormat::Float32x4,
+    },
 });
 
 // What body.vert reads: a position on a unit sphere, which is also its
@@ -159,7 +163,7 @@ inline constexpr VertexLayout<2> kLineVertexLayout = VertexLayout<2>::packed({
 using BodyVertex = Vec3f;
 
 inline constexpr VertexLayout<1> kBodyVertexLayout =
-    VertexLayout<1>::packed({AttributeFormat::Float32x3});
+    VertexLayout<1>::packed({{AttributeFormat::Float32x3}});
 
 // The guaranteed minimum of maxVertexInputBindingStride, from the Required
 // Limits table of the Vulkan specification. Every attribute ends inside the

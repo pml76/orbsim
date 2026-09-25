@@ -142,9 +142,11 @@ TEST_CASE("a packed layout numbers its attributes in order and adds up their wid
     // each gives a different number. Worked by hand: 0, 16, 16 + 12 = 28, and
     // a stride of 28 + 16 = 44.
     const auto layout = VertexLayout<3>::packed({
-        AttributeFormat::Float32x4,
-        AttributeFormat::Float32x3,
-        AttributeFormat::Float32x4,
+        {
+            AttributeFormat::Float32x4,
+            AttributeFormat::Float32x3,
+            AttributeFormat::Float32x4,
+        },
     });
     REQUIRE(layout.stride().value() == 44U);
     const auto& attributes = layout.attributes();
