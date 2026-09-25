@@ -15,6 +15,8 @@ push-constant sizes come from -- were raised before the code that needed them,
 because the first round had missed them. One changes what this document says,
 and is marked where it does.
 
+> **Amended 2026-09-25 (register decision 172): gcc-14 and MSVC rejected this task's `view/VertexLayout.hpp`** -- missing brace pairs and a lambda gcc wants `noexcept` -- which neither had seen, because this task left them to M1-23's gate. M1-14 ran them early and found it; under MSVC the application did not build at all. Fixed in its own commit, and both pass everything.
+
 ## Purpose
 
 `PROJECT_STATE.md`: *"No pipelines, no drawing."* Four shaders have compiled to

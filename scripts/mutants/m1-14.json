@@ -1,7 +1,7 @@
 {
   "task": "M1-14",
   "tree": "build/debug",
-  "note": "The HDR render target and the resolve pass. Two halves, judged two ways. The orbsim_view half -- the sRGB transfer function and the scene's clear colour -- is judged by test_srgb against 50-digit references. The src/render half and the shaders cannot be reached from tests/, so their mutants build the application and are judged by orbsim_smoke, which since M1-14 runs synchronization validation as well as the base layers. **Several render mutants are declared survivors, and they share one cause**: nothing reads a pixel back before M1-16, so a resolve pass that draws the wrong thing -- or nothing -- is a valid Vulkan program. The shader's encode and the two 'not supported' paths were accepted in advance by the owner on 2026-09-24 (M1-14 question 10); the other survivors of the same cause were found by this pass and raised with the task's report. M1-16's probe frames and M1-18's port check are what must kill them, and whoever closes those tasks re-runs these mutants and removes the declarations. **Run once on 2026-09-24: 10 caught, 6 survived as declared, 0 invalid, 2 hung.** The two hung mutants make renderer start-up fail, and a failed start-up opens a message box that waits for a click, so orbsim_smoke hangs rather than fails -- a defect older than M1-14 that nothing had reached before. They are left expecting 'caught' until the owner rules how start-up failure should behave, so this file fails until that ruling is carried out.",
+  "note": "The HDR render target and the resolve pass. Two halves, judged two ways. The orbsim_view half -- the sRGB transfer function and the scene's clear colour -- is judged by test_srgb against 50-digit references. The src/render half and the shaders cannot be reached from tests/, so their mutants build the application and are judged by orbsim_smoke, which since M1-14 runs synchronization validation as well as the base layers. **Several render mutants are declared survivors, and they share one cause**: nothing reads a pixel back before M1-16, so a resolve pass that draws the wrong thing -- or nothing -- is a valid Vulkan program. The shader's encode and the two 'not supported' paths were accepted in advance by the owner on 2026-09-24 (M1-14 question 10); the other survivors of the same cause were found by this pass and accepted by the owner on 2026-09-25 (decision 171). M1-16's probe frames and M1-18's port check are what must kill them, and whoever closes those tasks re-runs these mutants and removes the declarations. **Run once on 2026-09-24: 10 caught, 6 survived as declared, 0 invalid, 2 hung.** The two hung mutants make renderer start-up fail, and a failed start-up opens a message box that waits for a click, so orbsim_smoke hangs rather than fails -- a defect older than M1-14 that nothing had reached before. The owner ruled on 2026-09-25 (decision 170) that an automated run -- one with --seconds -- shows no dialog; the pass was then run again.",
   "mutants": [
     {
       "name": "the power segment uses the gamma-2.2 exponent",
@@ -205,7 +205,7 @@
         "orbsim_smoke"
       ],
       "expect": "survives",
-      "why": "Vulkan compares a pipeline's formats with the attachments only when it draws, and nothing is drawn before M1-19. This is exactly the edit kHdrFormat's named constant exists to make unlikely; M1-19's first draw kills it. Found by this pass, 2026-09-24, and raised with M1-14's report: same cause as the accepted gaps, not itself ruled on."
+      "why": "Vulkan compares a pipeline's formats with the attachments only when it draws, and nothing is drawn before M1-19. This is exactly the edit kHdrFormat's named constant exists to make unlikely; M1-19's first draw kills it. Found by this pass on 2026-09-24 and accepted by the owner on 2026-09-25 (register decision 171), on the same grounds as the gaps accepted in advance."
     },
     {
       "name": "the resolve pass is never drawn",
@@ -220,7 +220,7 @@
         "orbsim_smoke"
       ],
       "expect": "survives",
-      "why": "The display is then cleared to black and nothing else: a valid program, and nothing reads a pixel back before M1-16, whose tonemapped PNG kills it. Found by this pass, 2026-09-24, and raised with M1-14's report: same cause as the accepted gaps, not itself ruled on."
+      "why": "The display is then cleared to black and nothing else: a valid program, and nothing reads a pixel back before M1-16, whose tonemapped PNG kills it. Found by this pass on 2026-09-24 and accepted by the owner on 2026-09-25 (register decision 171), on the same grounds as the gaps accepted in advance."
     },
     {
       "name": "the full-screen triangle covers a quarter of the screen",
@@ -235,7 +235,7 @@
         "orbsim_smoke"
       ],
       "expect": "survives",
-      "why": "A smaller triangle is valid Vulkan, and the uncovered part is the resolve pass's black clear; nothing reads a pixel back before M1-16, whose probe frames kill it. Found by this pass, 2026-09-24, and raised with M1-14's report: same cause as the accepted gaps, not itself ruled on."
+      "why": "A smaller triangle is valid Vulkan, and the uncovered part is the resolve pass's black clear; nothing reads a pixel back before M1-16, whose probe frames kill it. Found by this pass on 2026-09-24 and accepted by the owner on 2026-09-25 (register decision 171), on the same grounds as the gaps accepted in advance."
     }
   ]
 }

@@ -4,7 +4,7 @@ Phase: A | Status: **done, 2026-09-24**
 Prerequisites: M1-13
 Decided by: [ADR 0014](../../adr/0014-radiometric-chain.md)
 
-> **KNOWN GAPS, declared in `scripts/mutants/m1-14.json`: nothing reads a pixel back before M1-16, so a resolve pass that draws the wrong thing is a valid program.** Accepted by the owner in advance on 2026-09-24: the shader's encode is not checked numerically until M1-18 compares it with `view/Srgb.hpp`, and the two refusals -- a device without the HDR format's features, a surface with no UNORM sRGB format -- cannot be reached on this machine. **Found by the mutation pass and not yet ruled on** (register decision 166): scene pipelines built for the swapchain's format, a resolve pass never drawn, and a full-screen triangle a quarter the size all survive every test. **M1-16's probe frames and M1-19's first draw are what kill them**, and whoever closes those tasks re-runs the mutants and removes the declarations.
+> **KNOWN GAPS, declared in `scripts/mutants/m1-14.json`: nothing reads a pixel back before M1-16, so a resolve pass that draws the wrong thing is a valid program.** Accepted by the owner in advance on 2026-09-24: the shader's encode is not checked numerically until M1-18 compares it with `view/Srgb.hpp`, and the two refusals -- a device without the HDR format's features, a surface with no UNORM sRGB format -- cannot be reached on this machine. **Found by the mutation pass and accepted by the owner on 2026-09-25** (register decision 171): scene pipelines built for the swapchain's format, a resolve pass never drawn, and a full-screen triangle a quarter the size all survive every test. **M1-16's probe frames and M1-19's first draw are what kill them**, and whoever closes those tasks re-runs the mutants and removes the declarations.
 
 **Twelve questions went up before any code was written and were ruled the same
 day**: decisions 157-168 of the [register](../milestone-1-decisions.md). The
@@ -157,21 +157,21 @@ describes each test and holds the results; on this machine, medians of three:
 
 ## The mutation pass
 
-**Eighteen mutants in `build/debug`, run once on 2026-09-24: 10 caught,
-6 survived as declared, 0 invalid, 2 hung.** All six sRGB mutants die in
-`test_srgb`; four render mutants -- a missing layout transition, a barrier that
-waits for nothing, the idle guard removed, the wrong descriptor layout -- die in
-`orbsim_smoke`, the barrier one only because synchronization validation is on.
+**Eighteen mutants in `build/debug`, run twice.** All six sRGB mutants die in
+`test_srgb`; the render mutants -- a missing layout transition, a barrier
+that waits for nothing, the idle guard removed, the wrong descriptor layout,
+and the two checks made to refuse what the device supports -- die in
+`orbsim_smoke`, the barrier one only because synchronization validation is
+on. Six survive, as declared: the known gaps at the top of this document.
 
-**The two hung mutants found a defect that predates M1-14.** Both make
-renderer start-up fail -- the HDR format check refusing a supported format,
-the swapchain check refusing a UNORM one -- and a failed start-up calls
-`SDL_ShowSimpleMessageBox`, which waits for a click. `orbsim_smoke` therefore
-hangs until CTest's timeout on *any* start-up failure instead of failing. It
-was never reached before, because nothing had made start-up fail. **How the
-application should behave is the owner's to rule**, and the pass is not closed
-until it is: the two mutants are left expecting "caught", so the file fails
-until the ruling is carried out.
+1. **2026-09-24: 10 caught, 6 survived, 0 invalid, 2 hung.** The two hung
+   mutants made renderer start-up fail, and a failed start-up opened
+   `SDL_ShowSimpleMessageBox`, which waits for a click -- so `orbsim_smoke`
+   hung until CTest's timeout on *any* start-up failure instead of failing.
+   Older than M1-14; nothing had made start-up fail before.
+2. **2026-09-25, after the owner's ruling (decision 170) -- a run with
+   `--seconds` shows no dialog: 12 caught, 6 survived as declared, 0 invalid,
+   0 hung.**
 
 ## Other compilers
 
@@ -183,12 +183,12 @@ Run now rather than at M1-23's gate (decision 168), and both found something
   2026-09-22; fixed with the brace pair all three compilers accept. Linked by
   hand past the blocked header self-check, the suite passes under gcc: 61 of
   61, so the 8-ulp budget holds on a second maths library.
-- **Both gcc-14 and MSVC reject M1-13's `view/VertexLayout.hpp`** (missing
+- **Both gcc-14 and MSVC rejected M1-13's `view/VertexLayout.hpp`** (missing
   braces, and a lambda gcc wants `noexcept`), and under MSVC every renderer
-  file includes it, so the application does not build there at all. With the
-  mechanical fix applied temporarily and then reverted, MSVC builds the whole
-  tree with no warning and passes 225 of 225, and gcc 223 of 223. The fix is
-  outside M1-14 and is the owner's to grant; `STATUS.md`'s open row carries it.
+  file includes it, so the application did not build there at all. The fix
+  was measured before it was proposed -- applied temporarily and reverted --
+  and granted by the owner on 2026-09-25 (decision 172): with it, MSVC builds
+  the whole tree with no warning and passes 225 of 225, and gcc 223 of 223.
 - **A trap in the measuring, recorded so it is not walked into again**: the
   first MSVC run "passed 210 of 210" because the configure had failed and the
   tests ran the stale binaries of an earlier build. In one `cmd` line,
