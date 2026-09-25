@@ -1232,23 +1232,21 @@ endif()
 # nothing reads a pixel back until M1-18 (M1-15, register decision 182). This
 # holds the shader's constants to the CPU's, reading GLSL's matrices column by
 # column, so a constant copied wrongly, or a matrix transposed, fails `check`
-# three tasks before the port check could see it. Milliseconds; its
-# --self-test shows it reporting each of those faults.
+# three tasks before the port check could see it. Milliseconds. A CTest test
+# rather than a custom target, so that the mutation pass can name it as the
+# judge of a shader mutant: the harness reads a failed build as a mutant that
+# does not compile, and a failed test as a kill.
 if(ORBSIM_PYTHON)
-    add_custom_target(tonemap-constants
+    add_test(NAME tonemap_constants
             COMMAND ${ORBSIM_PYTHON}
                     ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-tonemap-constants.py
                     ${CMAKE_CURRENT_SOURCE_DIR}
-            COMMENT "tonemap-constants: the shader's AgX constants are the CPU's"
-            VERBATIM
     )
 else()
-    add_custom_target(tonemap-constants
-            COMMAND ${CMAKE_COMMAND} -E false
-            COMMENT "python was not found on PATH; tonemap-constants cannot run"
-            VERBATIM
-    )
+    add_test(NAME tonemap_constants COMMAND ${CMAKE_COMMAND} -E false)
 endif()
+set_tests_properties(tonemap_constants PROPERTIES LABELS fixtures)
+
 # And the check on the check, as a test: the self-test alters copies of the two
 # real files and fails unless each alteration is reported, so an edit that
 # blinds the script -- a constant renamed, a layout it no longer parses -- fails
@@ -1304,7 +1302,6 @@ add_dependencies(check
         format-check
         doc-links
         mutant-anchors
-        tonemap-constants
 )
 if(ORBSIM_BUILD_APP)
     add_dependencies(check orbsim orbsim_render_header_selfcheck)

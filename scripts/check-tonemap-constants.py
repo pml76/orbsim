@@ -11,7 +11,8 @@ into one of them would pass every test, and the likeliest slip is not a typo
 but a **transposed matrix**: GLSL's mat3() takes its arguments column by
 column, and the C++ writes the rows. This compares every AgX constant in the
 two files, numerically and exactly, reading the GLSL matrices as columns.
-Register decision 182; `check` runs it as the `tonemap-constants` target.
+Register decision 182; `check` runs it as the CTest test `tonemap_constants`,
+and its self-test as `tonemap_constants_self_test`.
 
 It compares the *text* of the literals, as exact decimals, rather than their
 rounded values: the claim is that the same numbers were written down, and a

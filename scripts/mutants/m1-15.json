@@ -1,0 +1,337 @@
+{
+  "task": "M1-15",
+  "tree": "build/debug",
+  "note": "Exposure and the AgX tonemap. Three halves, judged three ways. view/Exposure.hpp by test_exposure and view/Tonemap.hpp by test_tonemap, both against scripts/tonemap-reference.py's 50-digit values. The shader's constants by the CTest test tonemap_constants, which holds them to view/Tonemap.hpp's; its operations cannot be judged before a pixel is read back (M1-16), so those mutants are declared survivors, killed by M1-18's port check. The render mutants build the application and are judged by orbsim_smoke under the validation layers. **Run once on 2026-09-25: 25 caught, 4 survived as declared, 0 invalid, 0 hung** -- 8 of the 25 by a static_assert before a test ran (the 1.2 of ISO 12232 catching both of its factors, the curve's two ends catching a coefficient and a wrong Horner step, the settings' refusals, the efficacy, and the zero clear colour). Two render mutants are caught by orbsim_smoke's validation layers: a push-constant range declared for the wrong stage, and an exposure that is never pushed. The three shader-operation survivors wait for M1-18's port check; the fourth, the floor before log2, is equivalent on the CPU by construction and is put to the owner with the task's report.",
+  "mutants": [
+    {
+      "name": "EV100 takes N rather than N squared",
+      "file": "src/view/Exposure.hpp",
+      "find": "std::log2(n * n / t * (kReferenceSpeed / s))",
+      "replace": "std::log2(n / t * (kReferenceSpeed / s))",
+      "suites": [
+        "test_exposure"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the ISO speed enters EV100 upside down",
+      "file": "src/view/Exposure.hpp",
+      "find": "std::log2(n * n / t * (kReferenceSpeed / s))",
+      "replace": "std::log2(n * n / t * (s / kReferenceSpeed))",
+      "suites": [
+        "test_exposure"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the saturation constant is 100 rather than ISO 12232's 78",
+      "file": "src/view/Exposure.hpp",
+      "find": "inline constexpr f64 kSaturationSpeedConstant = 78.0;",
+      "replace": "inline constexpr f64 kSaturationSpeedConstant = 100.0;",
+      "suites": [
+        "test_exposure"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the lens attenuation is 0.6 rather than 0.65",
+      "file": "src/view/Exposure.hpp",
+      "find": "inline constexpr f64 kLensAttenuation = 0.65;",
+      "replace": "inline constexpr f64 kLensAttenuation = 0.6;",
+      "suites": [
+        "test_exposure"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the exposure factor is the saturating luminance, not its reciprocal",
+      "file": "src/view/Exposure.hpp",
+      "find": "    return PerLuminance{1.0 / maximumLuminance};",
+      "replace": "    return PerLuminance{maximumLuminance};",
+      "suites": [
+        "test_exposure"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "2^EV100 is computed as e^EV100",
+      "file": "src/view/Exposure.hpp",
+      "find": "* std::exp2(ev.stops());",
+      "replace": "* std::exp(ev.stops());",
+      "suites": [
+        "test_exposure"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the efficacy is Radiance's 179 lm/W rather than sunlight's",
+      "file": "src/view/Exposure.hpp",
+      "find": "inline constexpr LuminousEfficacy kSunlightLuminousEfficacy{98.9225};",
+      "replace": "inline constexpr LuminousEfficacy kSunlightLuminousEfficacy{179.0};",
+      "suites": [
+        "test_exposure"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "a setting of zero is accepted",
+      "file": "src/view/Exposure.hpp",
+      "find": "    return isFinite(value) && !(value <= 0.0);",
+      "replace": "    return isFinite(value) && !(value < 0.0);",
+      "suites": [
+        "test_exposure"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "an ISO speed is refused under the aperture's name",
+      "file": "src/view/Exposure.hpp",
+      "find": "            return std::unexpected(ExposureError::InvalidSensitivity);",
+      "replace": "            return std::unexpected(ExposureError::InvalidAperture);",
+      "suites": [
+        "test_exposure"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the shader's exposure is narrowed from half the value",
+      "file": "src/view/Exposure.hpp",
+      "find": "    return static_cast<f32>(value);",
+      "replace": "    return static_cast<f32>(value / 2.0);",
+      "suites": [
+        "test_exposure"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the inset's second row is its second column (a transposed element pair)",
+      "file": "src/view/Tonemap.hpp",
+      "find": "        {{0.0423282422610123, 0.878468636469772, 0.0791661274605434}},",
+      "replace": "        {{0.0784335999999992, 0.878468636469772, 0.0791661274605434}},",
+      "suites": [
+        "test_tonemap"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the outset's second row carries a sign error",
+      "file": "src/view/Tonemap.hpp",
+      "find": "        {{-0.0528968517574562, 1.15190312990417, -0.0989611768448433}},",
+      "replace": "        {{0.0528968517574562, 1.15190312990417, -0.0989611768448433}},",
+      "suites": [
+        "test_tonemap"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the log range starts at -12 rather than -12.47393",
+      "file": "src/view/Tonemap.hpp",
+      "find": "inline constexpr f64 kMinEv = -12.47393;",
+      "replace": "inline constexpr f64 kMinEv = -12.0;",
+      "suites": [
+        "test_tonemap"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the log range ends at 4.5 rather than 4.026069",
+      "file": "src/view/Tonemap.hpp",
+      "find": "inline constexpr f64 kMaxEv = 4.026069;",
+      "replace": "inline constexpr f64 kMaxEv = 4.5;",
+      "suites": [
+        "test_tonemap"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "a curve coefficient has two digits swapped",
+      "file": "src/view/Tonemap.hpp",
+      "find": "    {15.5, -40.14, 31.96, -6.868, 0.4298, 0.1191, -0.00232},",
+      "replace": "    {15.5, -40.41, 31.96, -6.868, 0.4298, 0.1191, -0.00232},",
+      "suites": [
+        "test_tonemap"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "Horner's rule adds before it multiplies",
+      "file": "src/view/Tonemap.hpp",
+      "find": "        result = (result * x) + coefficient;",
+      "replace": "        result = (result + coefficient) * x;",
+      "suites": [
+        "test_tonemap"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the log is not clamped at the top of the range",
+      "file": "src/view/Tonemap.hpp",
+      "find": "    const f64 stops = std::clamp(std::log2(floored), kMinEv, kMaxEv);",
+      "replace": "    const f64 stops = std::max(std::log2(floored), kMinEv);",
+      "suites": [
+        "test_tonemap"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the output is not clamped before the 2.2 power",
+      "file": "src/view/Tonemap.hpp",
+      "find": "        return LinearValue{std::pow(std::clamp(encoded, 0.0, 1.0), agx::kDisplayExponent)};",
+      "replace": "        return LinearValue{std::pow(encoded, agx::kDisplayExponent)};",
+      "suites": [
+        "test_tonemap"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "negative red light is not clamped",
+      "file": "src/view/Tonemap.hpp",
+      "find": "{std::max(exposed.red, 0.0), std::max(exposed.green, 0.0)",
+      "replace": "{exposed.red, std::max(exposed.green, 0.0)",
+      "suites": [
+        "test_tonemap"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the display exponent is 2.4 rather than 2.2",
+      "file": "src/view/Tonemap.hpp",
+      "find": "inline constexpr f64 kDisplayExponent = 2.2;",
+      "replace": "inline constexpr f64 kDisplayExponent = 2.4;",
+      "suites": [
+        "test_tonemap"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the floor before log2 is removed",
+      "file": "src/view/Tonemap.hpp",
+      "find": "    const f64 floored = std::max(working, std::exp2(kMinEv));",
+      "replace": "    const f64 floored = working;",
+      "suites": [
+        "test_tonemap"
+      ],
+      "expect": "survives",
+      "why": "Equivalent on the CPU, by construction: C++'s log2(0) is -infinity under IEEE 754, and the clamp on the next line maps it to kMinEv, which is what the floor produces. The guard exists for GLSL, where log2(0) is undefined (register decision 174); it is kept on the CPU so the two implementations are the same steps. Recorded by the assistant on 2026-09-25 and put to the owner with M1-15's report."
+    },
+    {
+      "name": "the shader's log range ends at 4.5",
+      "file": "shaders/tonemap.frag",
+      "find": "const float kAgxMaxEv = 4.026069;",
+      "replace": "const float kAgxMaxEv = 4.5;",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "ctest": [
+        "tonemap_constants",
+        "orbsim_smoke"
+      ]
+    },
+    {
+      "name": "the shader's inset has one element pair transposed",
+      "file": "shaders/tonemap.frag",
+      "find": "    0.0784335999999992, 0.878468636469772, 0.0784336,",
+      "replace": "    0.0423282422610123, 0.878468636469772, 0.0784336,",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "ctest": [
+        "tonemap_constants",
+        "orbsim_smoke"
+      ]
+    },
+    {
+      "name": "the shader does not apply the exposure",
+      "file": "shaders/tonemap.frag",
+      "find": "    vec3 exposed = radiance * exposure.radianceExposure;",
+      "replace": "    vec3 exposed = radiance;",
+      "expect": "survives",
+      "why": "Nothing reads a pixel back before M1-16, so a resolve pass that computes the wrong display value is a valid Vulkan program; M1-18's port check compares the shader with view/Tonemap.hpp to 1/255 and is what must kill it. Accepted in advance by the owner on 2026-09-25 (M1-15 question 11, register decision 182).",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "ctest": [
+        "tonemap_constants",
+        "orbsim_smoke"
+      ]
+    },
+    {
+      "name": "the shader does not clamp negative light before the inset",
+      "file": "shaders/tonemap.frag",
+      "find": "    vec3 v = kAgxInset * max(exposed, vec3(0.0));",
+      "replace": "    vec3 v = kAgxInset * exposed;",
+      "expect": "survives",
+      "why": "Nothing reads a pixel back before M1-16, so a resolve pass that computes the wrong display value is a valid Vulkan program; M1-18's port check compares the shader with view/Tonemap.hpp to 1/255 and is what must kill it. Accepted in advance by the owner on 2026-09-25 (M1-15 question 11, register decision 182).",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "ctest": [
+        "tonemap_constants",
+        "orbsim_smoke"
+      ]
+    },
+    {
+      "name": "the shader does not clamp before the 2.2 power",
+      "file": "shaders/tonemap.frag",
+      "find": "    return pow(clamp(v, 0.0, 1.0), vec3(kAgxDisplayExponent));",
+      "replace": "    return pow(v, vec3(kAgxDisplayExponent));",
+      "expect": "survives",
+      "why": "Nothing reads a pixel back before M1-16, so a resolve pass that computes the wrong display value is a valid Vulkan program; M1-18's port check compares the shader with view/Tonemap.hpp to 1/255 and is what must kill it. Accepted in advance by the owner on 2026-09-25 (M1-15 question 11, register decision 182).",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "ctest": [
+        "tonemap_constants",
+        "orbsim_smoke"
+      ]
+    },
+    {
+      "name": "the push-constant range is declared for the vertex stage",
+      "file": "src/view/PushConstants.hpp",
+      "find": "    PushConstantRange::wholeBlock<TonemapPushConstants>(ShaderStages::Fragment).value();",
+      "replace": "    PushConstantRange::wholeBlock<TonemapPushConstants>(ShaderStages::Vertex).value();",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "ctest": [
+        "tonemap_constants",
+        "orbsim_smoke"
+      ]
+    },
+    {
+      "name": "the exposure is never pushed",
+      "file": "src/render/ResolvePass.cpp",
+      "find": "    vkCmdPushConstants(cmd,",
+      "replace": "    if (frameIndex > kFramesInFlight) vkCmdPushConstants(cmd,",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "ctest": [
+        "tonemap_constants",
+        "orbsim_smoke"
+      ]
+    },
+    {
+      "name": "the scene clears to a grey radiance",
+      "file": "src/view/SceneClear.hpp",
+      "find": "    .red = 0.0F,",
+      "replace": "    .red = 0.004F,",
+      "suites": [],
+      "targets": [
+        "orbsim_view_header_selfcheck"
+      ],
+      "expect": "caught"
+    }
+  ]
+}
