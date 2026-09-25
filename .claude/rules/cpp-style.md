@@ -63,11 +63,15 @@ cmake -S coding-guidelines-example -B coding-guidelines-example/build -G Ninja \
   `std::expected<Camera, CameraError>`, and is still trivially copyable. A type
   whose members have physical bounds gets the same treatment as a scalar whose
   value does.
-- **`f64` becomes `f32` in exactly one function**, `toRenderSpace` in
-  `src/view/Camera.cpp`. `grep static_cast<f32> src/` is the audit and it should
-  find three casts in one place; a fourth anywhere else is a jitter bug waiting
-  to be filed. Narrowing needs a camera-relative subtraction in `f64` before it,
-  which is the whole point of the function.
+- **`f64` becomes `f32` in exactly two functions**: `toRenderSpace` in
+  `src/view/Camera.cpp`, for positions, and `toShaderExposure` in
+  `src/view/Exposure.hpp`, for the one exposure factor the resolve pass reads
+  (M1-15, register decision 179). `grep static_cast<f32> src/` is the audit and
+  it should find four casts in those two places; a fifth anywhere else is a
+  defect waiting to be filed. A position needs a camera-relative subtraction
+  in `f64` before it narrows, which is the whole point of `toRenderSpace`; a
+  scale factor does not, since a float's relative precision is the same at
+  every magnitude.
 - Decisions that span files go in [`docs/adr/`](../../docs/adr/) as short
   records: what was decided, what was considered, why. Read the relevant one
   before changing anything it covers.
@@ -78,7 +82,8 @@ cmake -S coding-guidelines-example -B coding-guidelines-example/build -G Ninja \
 - The physics test suites are under `tests/` and link only `orbsim_core`;
   `tests/test_view_math.cpp`, `tests/test_projection.cpp`,
   `tests/test_camera.cpp`, `tests/test_render_quality.cpp`,
-  `tests/test_pipeline_inputs.cpp` and `tests/test_srgb.cpp` (M1-14)
+  `tests/test_pipeline_inputs.cpp`, `tests/test_srgb.cpp` (M1-14),
+  `tests/test_exposure.cpp` and `tests/test_tonemap.cpp` (M1-15)
   additionally link `orbsim_view`, which links
   `orbsim_core` and nothing else. *(The fourth was added to `CMakeLists.txt` by
   M1-12 on 2026-09-24 and to this list on the same day, by a consistency pass

@@ -54,7 +54,14 @@ Any scene with more than one surface. Auto-exposure.
   architecture of the chain, asserted once.
 - **cos θ**: the patch tilted 60° from the Sun reads back half the radiance.
 - **The tonemap port check** from M1-15: the PNG's centre pixel matches
-  `view/Tonemap.hpp` applied to the HDR value, to 1/255.
+  `view/Tonemap.hpp` applied to the HDR value, to 1/255. *(Added 2026-09-25 by
+  M1-15: the CPU chain is `view::radianceExposure` for the probe's pinned
+  camera, then `view::agxTonemap`, then `view::srgbEncode` -- the shader's
+  order. This is the check that kills the three shader-operation survivors
+  declared in `scripts/mutants/m1-15.json`; re-run them when it lands and
+  remove each declaration it kills. The analytic 129.97 W/(m^2 sr) is
+  unchanged by M1-15, which replaced 179 lm/W with sunlight's 98.9225 lm/W
+  after the radiance, not before it -- register decision 175.)*
 
 ## Error budget
 

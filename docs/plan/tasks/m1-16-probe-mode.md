@@ -68,6 +68,15 @@ full-screen triangle a quarter the size -- which this task's `clear` probe is
 the first thing able to see. Re-run them when it lands, and remove each
 declaration it kills.
 
+**Two things M1-15 hands this task** *(added 2026-09-25, register decisions
+179 and 182)*. The exposure is fixed when `render/ResolvePass` is created --
+`ResolvePass::create` takes a `view::PerRadiance` -- so a probe pins its own
+exposure by creating the pass with it, and the sidecar records the three
+camera settings. And three of M1-15's declared survivors in
+`scripts/mutants/m1-15.json` -- a shader that skips the exposure or either of
+its two clamps -- become visible once a frame is read back; the port check
+that kills them is M1-18's, and the `clear` probe is where they first show.
+
 ## Out of scope
 
 Comparing anything — M1-17. The radiometric assertions — M1-18. Headless

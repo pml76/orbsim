@@ -28,7 +28,10 @@ write display-ready colour. The chain that replaces it:
   Luminance comes from the luminance-weighted channel sum through a **luminous
   efficacy of 179 lm/W**, the convention *Radiance* uses, cited by name. Every
   number downstream of exposure depends on that one line, so it is a paragraph
-  in a header rather than a constant in a shader.
+  in a header rather than a constant in a shader. *(Amended 2026-09-25 by
+  M1-15, register decision 175: the efficacy is **sunlight's, 98.9225 lm/W**,
+  not 179. See the update at the end of this record; the paragraph is in
+  [`src/view/Exposure.hpp`](../../src/view/Exposure.hpp).)*
 - **The tonemap is AgX**, implemented from the MIT-licensed minimal
   implementation (Benjamin Wrensch; the constants derive from Troy Sobotka's
   OCIO configuration), attributed in the shader header and in
@@ -103,3 +106,37 @@ is a tuning constant wearing a unit.
   display side of the line above.
 - **The display transfer function beyond sRGB.** HDR output to an HDR monitor
   is a later question and does not disturb anything before the resolve pass.
+
+## Update, 2026-09-25: the chain is built, and its one physical constant changed
+
+[M1-15](../plan/tasks/m1-15-exposure-and-agx.md) built the chain this record
+describes, and the owner ruled twelve questions before any code (register
+decisions 173-184). One of them changes this record.
+
+**The efficacy is sunlight's, not 179 lm/W** (decision 175). *Radiance*'s own
+source defines 179 as the efficacy of "equal energy white 380-780nm"
+(its `color.h`, in the LBNL-ETA/Radiance repository): its watts are counted over the visible band only. This
+renderer's radiance comes from the *total* solar irradiance, 1361 W/m^2, so
+179 would have made every sunlit luminance 1.81 times too bright -- a hidden
+0.86-stop error, which is exactly the "tuning constant wearing a unit" the
+section above warns against. The replacement is the SI definition applied to
+the Sun's spectrum, as pbrt-v4 and Bruneton's precomputed atmosphere derive
+photometric quantities: 683 lm/W times the CIE 1924 luminous efficiency
+function over the TSIS-1 Hybrid Solar Reference Spectrum, **98.9225 lm/W**,
+with a worst-case uncertainty of 0.30 %, reproducible with
+[`scripts/solar-efficacy.py`](../../scripts/solar-efficacy.py). The weights of
+the channel sum are Rec. 709's. The paragraph this record asks for is in
+[`src/view/Exposure.hpp`](../../src/view/Exposure.hpp), with its limit: the
+efficacy is sunlight's, and a source of another spectrum states its own.
+
+**Nothing else here changed.** The order is exposure, then AgX, then the sRGB
+encode (decision 173: AgX's output is undone with its 2.2 curve and then
+encoded, as Filament and Wrensch do). Exposure is ISO 12232's saturation-based
+convention (decision 177), with three validated settings (decision 178). AgX is
+the minimal implementation with three guards where GLSL leaves it undefined
+(decision 174), mirrored on the CPU in
+[`src/view/Tonemap.hpp`](../../src/view/Tonemap.hpp). No tuning constant: the
+scene clears to zero radiance (decision 181), and the default exposure is the
+published "sunny 16" rule (decision 176), which this record had left open.
+The 0.5 % budget for M1-18 is unchanged, and so is its analytic 129.97
+W/(m^2 sr).
