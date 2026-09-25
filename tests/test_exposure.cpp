@@ -10,15 +10,18 @@
 // rather than from the formula the code uses.
 //
 // **The budget is the task's: exact to 1e-12** against the reference, which
-// is loose -- the worst measured was one unit in the last place, 1.8e-15 --
-// and deliberately so, because it is the task's stated number and a stop is a
-// photographer's unit: 1e-12 of one is nothing a picture can show. The stop
-// relations are asserted to the same 1e-12 rather than "exactly", because
-// exactly is not what floating point gives: halving the shutter time raises
-// the computed EV by exactly 1 in only about 90 % of cases, measured over a
-// sweep, and by 1 plus or minus one unit in the last place in the rest. That
-// is the rounding of log2, not a wrong exponent -- a wrong exponent is off by
-// a whole stop or by a factor, which is what these cases catch.
+// is loose -- measured with the budget set to zero, every EV100 reference
+// point is exact, the sunlit patch is one unit in the last place out, and the
+// stop relations over the grid below are at worst 3.55e-15, two units in the
+// last place of an EV near 16 -- and deliberately so, because it is the task's
+// stated number and a stop is a photographer's unit: 1e-12 of one is nothing
+// a picture can show. The stop relations are asserted to the same 1e-12
+// rather than "exactly", because exactly is not what floating point gives:
+// halving the shutter time raises the computed EV by exactly 1 in only about
+// 90 % of cases, measured over a sweep, and by 1 plus or minus a unit or two in
+// the last place in the rest. That is the rounding of log2, not a wrong
+// exponent -- a wrong exponent is off by a whole stop or by a factor, which is
+// what these cases catch.
 //
 #include "core/Scalar.hpp"
 #include "core/Units.hpp"
@@ -51,14 +54,16 @@ struct Setting {
     f64 speed{};
 };
 
+// Every setting a case builds is a valid one, so each is unwrapped with
+// value(): a refusal throws std::bad_expected_access, which Catch2 reports as a
+// failure of the case that asked. Not REQUIRE, which the stop-relation grid
+// would count 768,000 times without checking anything new.
 [[nodiscard]] CameraSettings settings(const Setting& setting) {
-    const auto aperture = Aperture::from(setting.fNumber);
-    const auto shutter = ShutterTime::from(Seconds{setting.shutterSeconds});
-    const auto iso = Iso::from(setting.speed);
-    REQUIRE(aperture.has_value());
-    REQUIRE(shutter.has_value());
-    REQUIRE(iso.has_value());
-    return CameraSettings{.aperture = *aperture, .shutterTime = *shutter, .iso = *iso};
+    return CameraSettings{
+        .aperture = Aperture::from(setting.fNumber).value(),
+        .shutterTime = ShutterTime::from(Seconds{setting.shutterSeconds}).value(),
+        .iso = Iso::from(setting.speed).value(),
+    };
 }
 
 // One row from scripts/tonemap-reference.py: three settings and EV100.
