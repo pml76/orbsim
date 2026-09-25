@@ -4,7 +4,7 @@ Phase: A | Status: **done, 2026-09-25**
 Prerequisites: M1-14
 Decided by: [ADR 0014](../../adr/0014-radiometric-chain.md)
 
-> **KNOWN GAPS, declared in `scripts/mutants/m1-15.json`: nothing reads a pixel back before M1-16, so the shader's operations cannot be checked.** Accepted by the owner in advance on 2026-09-25 (register decision 182): a shader that skips the exposure, or either of the two clamps, is a valid program. **Its constants are checked**, by the CTest test `tonemap_constants`, against `view/Tonemap.hpp`. M1-18's port check is what kills the three operation survivors, and whoever closes it re-runs them and removes the declarations. **A fourth survivor is put to the owner with this task's report**: removing the floor before `log2` changes nothing on the CPU, where `log2(0)` is minus infinity and the clamp that follows puts it back; the guard is there for GLSL.
+> **KNOWN GAPS, declared in `scripts/mutants/m1-15.json`: nothing reads a pixel back before M1-16, so the shader's operations cannot be checked.** Accepted by the owner in advance on 2026-09-25 (register decision 182): a shader that skips the exposure, or either of the two clamps, is a valid program. **Its constants are checked**, by the CTest test `tonemap_constants`, against `view/Tonemap.hpp`. M1-18's port check is what kills the three operation survivors, and whoever closes it re-runs them and removes the declarations. **A fourth survivor was accepted by the owner on 2026-09-25** (register decision 185): removing the floor before `log2` changes nothing on the CPU, where `log2(0)` is minus infinity and the clamp that follows puts it back; the guard is there for GLSL.
 
 **Twelve questions went up before any code was written and were ruled the
 same day**: decisions 173-184 of the [register](../milestone-1-decisions.md).
@@ -208,13 +208,16 @@ Run now rather than at M1-23's gate (decision 184).
   the pass itself reported the same 25 caught and 4 declared survivors on its
   second run. A mutation pass owns the working tree for as long as it runs.
 
-## Found on the way, and left for the owner
+## Found on the way
 
-**`src/view/Camera.cpp` is not linted.** The lint list names the core, test and
-application sources, and not `ORBSIM_VIEW_SOURCES`, so the one `.cpp` file of
-`orbsim_view` has never been through clang-tidy -- the shape decision 156
-closed for four test files. M1-15 added no `.cpp` to `orbsim_view`, keeping its
-code in headers, which are linted through the suites that include them.
-Whether to add the view sources to the lint list is the owner's decision, and
-[`../../STATUS.md`](../../STATUS.md) carries it as open.
+**`src/view/Camera.cpp` was not linted.** The lint list named the core, test
+and application sources, and not `ORBSIM_VIEW_SOURCES`, so the one `.cpp` file
+of `orbsim_view` had never been through clang-tidy since M1-11 -- the shape
+decision 156 closed for four test files. **Added on the owner's ruling
+(decision 185)**, and its first run found two findings, both one missing
+include of `view/Frame.hpp` for `kView` and `kWorld`, fixed in the code.
+
+**What M1-15's report asked, and the answers** (decision 185, 2026-09-25): the
+AgX licence confirmed on the blog page; the floor survivor accepted; the view
+sources linted; and the assistant's choices within the rulings accepted.
 
