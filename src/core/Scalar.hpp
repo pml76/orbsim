@@ -26,6 +26,7 @@
 #include <expected>
 #include <limits>
 #include <numbers>
+#include <string_view>
 #include <type_traits>
 
 namespace orb {
@@ -456,19 +457,28 @@ enum class CountError : std::uint8_t {
     ZeroBlockSize, // no number of empty blocks fills anything
 };
 
-// **No `describe()` yet, deliberately, and this is the one place this header
-// departs from ADR 0002's shape.** Every other error enum in the project has
-// one, written as a `switch` with no `default:` so that adding an enumerator
-// is a -Wswitch error rather than a silent "unknown". With a single
-// enumerator that switch is what `readability-trivial-switch` reports, and
-// register decision 91 ruled that exact case for `describe(EphemerisError)`:
-// the answer there was a suppression at the one line, which is the owner's to
-// grant and has not been asked for here.
+// A switch with one case, deliberately, and the check that objects is off at
+// this line alone (register decision 186, as decision 91 ruled for
+// `describe(EphemerisError)`; CLAUDE.md working agreement 7).
 //
-// Nothing is lost while the enum has one value -- the name says what the
-// failure is, and there is no caller wanting text. Whoever adds the second
-// enumerator writes `describe()` then, and by then the switch is not trivial.
-// Recorded in docs/STATUS.md so it is not left to memory.
+// readability-trivial-switch is right that a one-case switch reads oddly and
+// wrong about what this one is for. Every describe() in this project is a
+// switch with no `default`, so that adding a value to the enum is a -Wswitch
+// compile error *here*, at the function that must then be updated. Written as
+// an `if`, a second error value would instead return "unknown count error" in
+// silence, and nothing would point at this function. *(Until 2026-09-25 this
+// enum was the one without a describe(), waiting for a second value to make
+// the switch non-trivial; the owner chose to write it now.)*
+[[nodiscard]] constexpr std::string_view describe(CountError error) noexcept {
+    // NOLINTNEXTLINE(readability-trivial-switch)
+    switch (error) {
+    case CountError::ZeroBlockSize:
+        return "a block size of zero cannot hold anything";
+    }
+    return "unknown count error";
+}
+
+static_assert(!describe(CountError::ZeroBlockSize).empty(), "every error says what it is");
 
 // A number of bytes, on a **64-bit** representation (register decision 140).
 //
