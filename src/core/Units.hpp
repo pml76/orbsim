@@ -54,6 +54,7 @@ inline constexpr auto kMetre = mp_units::si::metre;
 inline constexpr auto kSecond = mp_units::si::second;
 inline constexpr auto kRadian = mp_units::angular::radian;
 inline constexpr auto kDegree = mp_units::angular::degree;
+inline constexpr auto kSteradian = mp_units::angular::steradian;
 
 // **A length on the screen gets a dimension of its own** (M1-12, register
 // decision 137), which is the one thing in this header mp-units does not
@@ -434,6 +435,33 @@ using PerSecond = Scalar<mp_units::one / units::kSecond>;
 // W/(m^2 sr), which is the mistake this domain actually makes.
 using Irradiance = Scalar<mp_units::si::watt / mp_units::pow<2>(units::kMetre)>;
 
+// **The renderer's three photometric quantities** (M1-15, register decisions
+// 175 and 178). The HDR target holds radiance; a camera's exposure is defined
+// on luminance; a luminous efficacy converts one into the other. Named, so
+// that the conversion view/Exposure.hpp states in prose is also checked by the
+// dimension system: a radiance times an efficacy is a luminance, and the
+// assertions at the foot of this header say so.
+//
+// Radiant flux per unit area and solid angle, W/(m^2 sr): what a surface sends
+// towards the eye, and what every shader writes into the HDR target (ADR 0014).
+//
+// **The steradian is the angular system's, as the radian is.** mp-units' SI
+// steradian is m^2/m^2 and has no dimension, so over it an irradiance would
+// convert explicitly into a radiance -- a W/m^2 read as a W/(m^2 sr) is the
+// mistake this domain actually makes, and it was measured compiling on
+// 2026-09-25 before this was changed. `angular::steradian` is the square of
+// `angular::radian`, which `kRadian` already uses for the same reason.
+using Radiance = Scalar<mp_units::si::watt / (mp_units::pow<2>(units::kMetre) * units::kSteradian)>;
+// Luminous intensity per unit area, cd/m^2: radiance weighted by the eye.
+using Luminance = Scalar<mp_units::si::candela / mp_units::pow<2>(units::kMetre)>;
+// Luminous flux per unit radiant flux, lm/W: how much of a watt the eye sees,
+// which depends on the spectrum -- 683 lm/W at 555 nm by the definition of the
+// candela, and far less for broadband light. Spelled cd sr / W rather than
+// `si::lumen / si::watt`, because mp-units' lumen is built on the
+// dimensionless SI steradian, and a lumen over the angular one would leave a
+// solid angle behind in every luminance.
+using LuminousEfficacy = Scalar<mp_units::si::candela * units::kSteradian / mp_units::si::watt>;
+
 // Standard gravitational parameter GM of a central body, m^3/s^2.
 //
 // **Validated at construction** (M1-87, decision 108). A mu that is not
@@ -697,6 +725,22 @@ static_assert(nearlyEqual((Irradiance{1361.0} * (Metres{2.0} * Metres{3.0}))
                           8166.0,
                           Tolerance{0.0}),
               "an irradiance over an area is a power");
+
+// The photometric conversion, which is the one line of the radiometric chain
+// that ADR 0014 calls "the smallest and most easily lost". A radiance times a
+// luminous efficacy is a luminance -- an efficacy is cd sr / W, so the watt
+// and the steradian cancel -- and the number is the plain product, with no
+// hidden factor from the library.
+static_assert(nearlyEqual(Luminance{Radiance{2.0} * LuminousEfficacy{100.0}}.value(),
+                          200.0,
+                          Tolerance{0.0}),
+              "a radiance times a luminous efficacy is a luminance");
+static_assert(!std::is_constructible_v<Luminance, Radiance>,
+              "and a radiance is not a luminance until an efficacy says how much of it "
+              "the eye sees");
+static_assert(!std::is_constructible_v<Radiance, Irradiance>,
+              "nor is an irradiance a radiance: the solid angle is the difference");
+static_assert(!addable<Radiance, Luminance>, "a radiometric and a photometric quantity");
 
 // **Two units of one dimension must not add either.** Both of these are
 // angles, so mp-units' own operator+ is perfectly willing; the deleted
