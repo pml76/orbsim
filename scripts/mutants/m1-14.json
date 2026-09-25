@@ -1,7 +1,7 @@
 {
   "task": "M1-14",
   "tree": "build/debug",
-  "note": "The HDR render target and the resolve pass. Two halves, judged two ways. The orbsim_view half -- the sRGB transfer function and the scene's clear colour -- is judged by test_srgb against 50-digit references. The src/render half and the shaders cannot be reached from tests/, so their mutants build the application and are judged by orbsim_smoke, which since M1-14 runs synchronization validation as well as the base layers. **Several render mutants are declared survivors, and they share one cause**: nothing reads a pixel back before M1-16, so a resolve pass that draws the wrong thing -- or nothing -- is a valid Vulkan program. The shader's encode and the two 'not supported' paths were accepted in advance by the owner on 2026-09-24 (M1-14 question 10); the other survivors of the same cause were found by this pass and accepted by the owner on 2026-09-25 (decision 171). M1-16's probe frames and M1-18's port check are what must kill them, and whoever closes those tasks re-runs these mutants and removes the declarations. **Run once on 2026-09-24: 10 caught, 6 survived as declared, 0 invalid, 2 hung.** The two hung mutants make renderer start-up fail, and a failed start-up opens a message box that waits for a click, so orbsim_smoke hangs rather than fails -- a defect older than M1-14 that nothing had reached before. The owner ruled on 2026-09-25 (decision 170) that an automated run -- one with --seconds -- shows no dialog; the pass was then run again.",
+  "note": "The HDR render target and the resolve pass. Two halves, judged two ways. The orbsim_view half -- the sRGB transfer function and the scene's clear colour -- is judged by test_srgb against 50-digit references. The src/render half and the shaders cannot be reached from tests/, so their mutants build the application and are judged by orbsim_smoke, which since M1-14 runs synchronization validation as well as the base layers. **Several render mutants are declared survivors, and they share one cause**: nothing reads a pixel back before M1-16, so a resolve pass that draws the wrong thing -- or nothing -- is a valid Vulkan program. The shader's encode and the two 'not supported' paths were accepted in advance by the owner on 2026-09-24 (M1-14 question 10); the other survivors of the same cause were found by this pass and accepted by the owner on 2026-09-25 (decision 171). M1-16's probe frames and M1-18's port check are what must kill them, and whoever closes those tasks re-runs these mutants and removes the declarations. **Run once on 2026-09-24: 10 caught, 6 survived as declared, 0 invalid, 2 hung.** The two hung mutants make renderer start-up fail, and a failed start-up opens a message box that waits for a click, so orbsim_smoke hangs rather than fails -- a defect older than M1-14 that nothing had reached before. The owner ruled on 2026-09-25 (decision 170) that an automated run -- one with --seconds -- shows no dialog; the pass was then run again. **One mutant removed on 2026-09-25 by M1-15** (register decision 181): 'the scene clears to the display value instead of the light' mutated the decoded clear colour in view/SceneClear.hpp, which M1-15 replaced with zero radiance, and was caught by the test_srgb case M1-15 removed with it. With the code and its test both gone there is nothing left for it to mutate; M1-15's own pass mutates the new clear.",
   "mutants": [
     {
       "name": "the power segment uses the gamma-2.2 exponent",
@@ -48,16 +48,6 @@
       "file": "src/view/Srgb.hpp",
       "find": "    const f64 x = std::clamp(linear.value(), 0.0, 1.0);",
       "replace": "    const f64 x = std::clamp(linear.value(), -1.0, 1.0);",
-      "suites": [
-        "test_srgb"
-      ],
-      "expect": "caught"
-    },
-    {
-      "name": "the scene clears to the display value instead of the light",
-      "file": "src/view/SceneClear.hpp",
-      "find": "    .red = 3.0959752e-4F,   // decode(0.004)",
-      "replace": "    .red = 0.004F,   // decode(0.004)",
       "suites": [
         "test_srgb"
       ],

@@ -575,6 +575,7 @@ set(ORBSIM_TESTS
         test_camera
         test_double_double
         test_earth_orientation
+        test_exposure
         test_fixture_file
         test_math
         test_orbit
@@ -585,6 +586,7 @@ set(ORBSIM_TESTS
         test_srgb
         test_sun
         test_time
+        test_tonemap
         test_units_validated
         test_view_math
 )
@@ -610,6 +612,8 @@ target_link_libraries(test_camera PRIVATE orbsim_view)
 target_link_libraries(test_render_quality PRIVATE orbsim_view)
 target_link_libraries(test_pipeline_inputs PRIVATE orbsim_view)
 target_link_libraries(test_srgb PRIVATE orbsim_view)
+target_link_libraries(test_exposure PRIVATE orbsim_view)
+target_link_libraries(test_tonemap PRIVATE orbsim_view)
 
 # The run-time half of Count's wraparound guard (M1-12, register decision 136).
 #
@@ -986,6 +990,7 @@ orbsim_add_header_selfcheck(orbsim_header_selfcheck orbsim_core
 )
 orbsim_add_header_selfcheck(orbsim_view_header_selfcheck orbsim_view
         view/Camera.hpp
+        view/Exposure.hpp
         view/Frame.hpp
         view/Mat4.hpp
         view/Projection.hpp
@@ -993,6 +998,7 @@ orbsim_add_header_selfcheck(orbsim_view_header_selfcheck orbsim_view
         view/RenderQuality.hpp
         view/SceneClear.hpp
         view/Srgb.hpp
+        view/Tonemap.hpp
         view/VertexLayout.hpp
 )
 orbsim_add_header_selfcheck(orbsim_test_header_selfcheck orbsim_test_support
@@ -1007,6 +1013,8 @@ add_dependencies(test_camera orbsim_view_header_selfcheck)
 add_dependencies(test_render_quality orbsim_view_header_selfcheck)
 add_dependencies(test_pipeline_inputs orbsim_view_header_selfcheck)
 add_dependencies(test_srgb orbsim_view_header_selfcheck)
+add_dependencies(test_exposure orbsim_view_header_selfcheck)
+add_dependencies(test_tonemap orbsim_view_header_selfcheck)
 
 if(ORBSIM_BUILD_APP)
     orbsim_add_header_selfcheck(orbsim_render_header_selfcheck orbsim_render_deps
@@ -1220,6 +1228,41 @@ else()
     )
 endif()
 
+# AgX is written twice -- shaders/tonemap.frag and src/view/Tonemap.hpp -- and
+# nothing reads a pixel back until M1-18 (M1-15, register decision 182). This
+# holds the shader's constants to the CPU's, reading GLSL's matrices column by
+# column, so a constant copied wrongly, or a matrix transposed, fails `check`
+# three tasks before the port check could see it. Milliseconds; its
+# --self-test shows it reporting each of those faults.
+if(ORBSIM_PYTHON)
+    add_custom_target(tonemap-constants
+            COMMAND ${ORBSIM_PYTHON}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-tonemap-constants.py
+                    ${CMAKE_CURRENT_SOURCE_DIR}
+            COMMENT "tonemap-constants: the shader's AgX constants are the CPU's"
+            VERBATIM
+    )
+else()
+    add_custom_target(tonemap-constants
+            COMMAND ${CMAKE_COMMAND} -E false
+            COMMENT "python was not found on PATH; tonemap-constants cannot run"
+            VERBATIM
+    )
+endif()
+# And the check on the check, as a test: the self-test alters copies of the two
+# real files and fails unless each alteration is reported, so an edit that
+# blinds the script -- a constant renamed, a layout it no longer parses -- fails
+# `check` rather than turning it into a comparison of nothing.
+if(ORBSIM_PYTHON)
+    add_test(NAME tonemap_constants_self_test
+            COMMAND ${ORBSIM_PYTHON}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-tonemap-constants.py --self-test
+    )
+else()
+    add_test(NAME tonemap_constants_self_test COMMAND ${CMAKE_COMMAND} -E false)
+endif()
+set_tests_properties(tonemap_constants_self_test PROPERTIES LABELS fixtures)
+
 # The Horizons converter's golden test (M1-06). The converter sits in the
 # provenance chain of every Horizons fixture, so it is tested in `check` like
 # anything else: a synthetic response must convert to a known text, convert
@@ -1261,6 +1304,7 @@ add_dependencies(check
         format-check
         doc-links
         mutant-anchors
+        tonemap-constants
 )
 if(ORBSIM_BUILD_APP)
     add_dependencies(check orbsim orbsim_render_header_selfcheck)

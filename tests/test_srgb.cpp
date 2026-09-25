@@ -1,6 +1,8 @@
 //
-// Tests for view/Srgb.hpp and view/SceneClear.hpp: the sRGB transfer function
-// on the CPU, and the colour the HDR target is cleared to (M1-14; ADR 0014).
+// Tests for view/Srgb.hpp: the sRGB transfer function on the CPU (M1-14;
+// ADR 0014). *(Until M1-15 this suite also held the scene's clear colour to
+// the old display colour it replaced; M1-15 made the clear zero radiance,
+// which has nothing to hold, and removed that case -- register decision 181.)*
 //
 // **Where the expected numbers come from.** Not from this code.
 // scripts/srgb-reference.py evaluates IEC 61966-2-1's definition in 50-digit
@@ -29,7 +31,6 @@
 // scripts/mutants/m1-14.json.
 //
 #include "core/Scalar.hpp"
-#include "view/SceneClear.hpp"
 #include "view/Srgb.hpp"
 
 #include <catch2/catch_message.hpp>
@@ -38,7 +39,6 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
-#include <cstddef>
 #include <cstdint>
 #include <limits>
 
@@ -272,37 +272,4 @@ TEST_CASE("the window at the knee is where the standard puts it, and no wider") 
     // and more than the budget outside, or there would be no window at all.
     CHECK(sweep.worstInside() <= kDecodeJumpAtKnee + 1e-15);
     CHECK(sweep.worstInside() > kRoundTripBudget);
-}
-
-TEST_CASE("the scene clear is the old display colour decoded, and displays as it did") {
-    // The three display values the scene was cleared to before M1-14, and
-    // the 8-bit codes a display showed for them.
-    constexpr std::array<f64, 3> kDisplayValues{{0.004, 0.006, 0.012}};
-    const std::array<f32, 3> cleared{{kSceneClear.red, kSceneClear.green, kSceneClear.blue}};
-
-    for (std::size_t i = 0; i < kDisplayValues.size(); ++i) {
-        const f64 display = kDisplayValues.at(i);
-        const f64 decoded = srgbDecode(EncodedValue{display}).value();
-        const f32 literal = cleared.at(i);
-        CAPTURE(display, decoded, literal);
-        // The literal is the float nearest the decoded value -- the one a
-        // correct narrowing would produce, written without a cast in src/.
-        CHECK(bitsOf(static_cast<f32>(decoded)) == bitsOf(literal));
-        // The HDR target then holds it as a 16-bit float, which keeps 11
-        // significant bits, so it is stored to within a relative 2^-11 either
-        // way -- a bound rather than the exact half, which the standard
-        // library cannot yet produce on every toolchain here. At both ends of
-        // that bound, encoded and quantised to 8 bits, it lands on the code
-        // the display value itself did: nothing visible changes.
-        constexpr f64 kHalfPrecision = 0x1p-11;
-        for (const f64 stored : {
-                 static_cast<f64>(literal) * (1.0 - kHalfPrecision),
-                 static_cast<f64>(literal) * (1.0 + kHalfPrecision),
-             }) {
-            const f64 shown = srgbEncode(LinearValue{stored}).value();
-            CAPTURE(stored, shown);
-            CHECK(std::lround(shown * 255.0) == std::lround(display * 255.0));
-        }
-    }
-    CHECK(ulpDistance({.got = static_cast<f64>(kSceneClear.alpha), .expected = 1.0}) == 0);
 }

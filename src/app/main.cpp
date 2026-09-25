@@ -10,6 +10,7 @@
 #include "render/ResolvePass.hpp"
 #include "render/VulkanContext.hpp"
 #include "render/VulkanHandle.hpp"
+#include "view/Exposure.hpp"
 #include "view/RenderQuality.hpp"
 
 #include <SDL3/SDL_events.h>
@@ -52,6 +53,20 @@ constexpr std::string_view kUsage =
 constexpr int kExitFailure = 1;
 constexpr int kExitUsage = 2;
 constexpr int kExitValidationErrors = 3;
+
+// The camera the application exposes the scene with (M1-15, register decision
+// 176): **f/16, 1/125 s, ISO 100 -- the "sunny 16" rule**, a photographer's
+// setting for a subject in direct sunlight, which is what milestone 1 draws.
+// A sunlit surface of albedo 0.3 lands 0.89 stops above a metered mid-grey
+// (tests/test_exposure.cpp). Not a tuning constant: it is a published rule
+// with a stated purpose, and ADR 0014 leaves the choice of default open. The
+// probes of M1-16 pin their own. Unwrapping a refused setting is not a
+// constant expression, so a bad value here fails the build.
+constexpr orb::view::CameraSettings kDefaultCamera{
+    .aperture = orb::view::Aperture::from(16.0).value(),
+    .shutterTime = orb::view::ShutterTime::from(Seconds{1.0 / 125.0}).value(),
+    .iso = orb::view::Iso::from(100.0).value(),
+};
 
 // How long to sleep when there is no frame to draw (minimised, or mid-rebuild):
 // about one frame at 60 Hz, long enough not to spin a core, short enough that
@@ -268,11 +283,14 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
         return kExitFailure;
     }
 
-    // The resolve pass: the one draw that writes the display, encoding the
-    // HDR target once at the end of every frame (M1-14, ADR 0014). After the
-    // scene pipelines, so a missing shader directory still names
-    // line.vert.spv first, which shader_missing_is_reported checks.
-    const auto resolve = orb::gfx::ResolvePass::create(gfx, options.shaderDirectory);
+    // The resolve pass: the one draw that writes the display -- exposure, AgX
+    // and the sRGB encode, once at the end of every frame (M1-14, M1-15,
+    // ADR 0014). After the scene pipelines, so a missing shader directory
+    // still names line.vert.spv first, which shader_missing_is_reported checks.
+    const auto resolve = orb::gfx::ResolvePass::create(
+        gfx,
+        options.shaderDirectory,
+        orb::view::radianceExposure(orb::view::exposureValue100(kDefaultCamera)));
     if (!resolve) {
         std::print(stderr, "Resolve pass could not be created: {}\n", resolve.error().message);
         return kExitFailure;

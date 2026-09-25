@@ -161,6 +161,13 @@ struct BodyPushConstants {
     Vec4f colour{};
 };
 
+// tonemap.frag's block (M1-15): the one number the resolve pass multiplies a
+// radiance by, narrowed from view/Exposure.hpp's radianceExposure by
+// toShaderExposure.
+struct TonemapPushConstants {
+    f32 radianceExposure{};
+};
+
 inline constexpr PushConstantRange kLinePushConstantRange =
     PushConstantRange::wholeBlock<LinePushConstants>(ShaderStages::Vertex).value();
 
@@ -174,7 +181,8 @@ inline constexpr PushConstantRange kBodyPushConstantRange =
 
 // The blocks against the shaders, read from the compiled modules with
 // `spirv-cross --reflect` on 2026-09-24: line.vert's members at 0 and 64, 80
-// bytes; body.vert's and body.frag's at 0, 64 and 80, 96 bytes. These are the
+// bytes; body.vert's and body.frag's at 0, 64 and 80, 96 bytes. And on
+// 2026-09-25, tonemap.frag's: one float at 0, 4 bytes. These are the
 // compiler's sizeof and offsetof, so a member added, dropped or moved on the
 // C++ side fails the build. A change on the GLSL side is not seen here -- the
 // numbers were copied from it -- and is what the validation layers report.
@@ -187,6 +195,14 @@ static_assert(sizeof(BodyPushConstants) == 96U &&
                   offsetof(BodyPushConstants, sunDirection) == 64U &&
                   offsetof(BodyPushConstants, colour) == 80U,
               "body's block: a mat4 at 0 and vec4s at 64 and 80");
+static_assert(std::is_standard_layout_v<TonemapPushConstants> &&
+                  sizeof(TonemapPushConstants) == 4U &&
+                  offsetof(TonemapPushConstants, radianceExposure) == 0U,
+              "tonemap.frag's block: one float at 0");
+
+// Fragment only: nothing before the resolve pass's fragment shader reads it.
+inline constexpr PushConstantRange kTonemapPushConstantRange =
+    PushConstantRange::wholeBlock<TonemapPushConstants>(ShaderStages::Fragment).value();
 
 // The rules, while the compiler runs. Unwrapping a refused range is not a
 // constant expression, so these are also what make a constant like the two

@@ -3,6 +3,8 @@
 #include "render/Pipeline.hpp"
 #include "render/VulkanContext.hpp"
 #include "render/VulkanHandle.hpp"
+#include "view/Exposure.hpp"
+#include "view/PushConstants.hpp"
 
 #include <vulkan/vk_enum_string_helper.h>
 #include <vulkan/vulkan_core.h>
@@ -107,7 +109,8 @@ allocateSets(VkDevice device, VkDescriptorPool pool, VkDescriptorSetLayout layou
 }
 
 // fullscreen.vert and tonemap.frag, into the swapchain's format, with no
-// vertex buffer, no depth attachment and no push constants. The modules are
+// vertex buffer, no depth attachment, and tonemap.frag's one push constant,
+// the exposure (view/PushConstants.hpp). The modules are
 // destroyed on return; the pipeline keeps what it compiled from them.
 [[nodiscard]] std::expected<GraphicsPipeline, RenderError>
 createPipeline(const VulkanContext& context,
@@ -119,6 +122,7 @@ createPipeline(const VulkanContext& context,
     if (!fragment) return std::unexpected(fragment.error());
 
     const std::array setLayouts{setLayout};
+    const std::array pushConstants{view::kTonemapPushConstantRange};
     return GraphicsPipeline::create(
         context.device(),
         {
@@ -131,7 +135,7 @@ createPipeline(const VulkanContext& context,
             .cullMode = CullMode::None,
             .depth = {.test = DepthTest::Disabled, .write = DepthWrite::Disabled},
             .attachments = {.colour = context.swapchainFormat(), .depth = VK_FORMAT_UNDEFINED},
-            .pushConstants = {},
+            .pushConstants = pushConstants,
             .descriptorSetLayouts = setLayouts,
         });
 }
@@ -143,10 +147,13 @@ ResolvePass::ResolvePass(Parts parts) noexcept
       setLayout_(std::move(parts.setLayout)),
       pool_(std::move(parts.pool)),
       sets_(parts.sets),
-      pipeline_(std::move(parts.pipeline)) {}
+      pipeline_(std::move(parts.pipeline)),
+      pushConstants_(parts.pushConstants) {}
 
 std::expected<ResolvePass, RenderError>
-ResolvePass::create(const VulkanContext& context, const std::filesystem::path& shaderDirectory) {
+ResolvePass::create(const VulkanContext& context,
+                    const std::filesystem::path& shaderDirectory,
+                    view::PerRadiance exposure) {
     VkDevice device = context.device();
     auto setLayout = createSetLayout(device);
     if (!setLayout) return std::unexpected(setLayout.error());
@@ -163,6 +170,7 @@ ResolvePass::create(const VulkanContext& context, const std::filesystem::path& s
         .pool = std::move(*pool),
         .sets = *sets,
         .pipeline = std::move(*pipeline),
+        .pushConstants = {.radianceExposure = view::toShaderExposure(exposure)},
     }};
 }
 
@@ -187,6 +195,12 @@ void ResolvePass::record(VkCommandBuffer cmd,
     vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_.pipeline());
     vkCmdBindDescriptorSets(
         cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipeline_.layout(), 0, 1, &set, 0, nullptr);
+    vkCmdPushConstants(cmd,
+                       pipeline_.layout(),
+                       VK_SHADER_STAGE_FRAGMENT_BIT,
+                       0,
+                       sizeof(pushConstants_),
+                       &pushConstants_);
     // Three vertices, one instance: the triangle fullscreen.vert builds from
     // gl_VertexIndex alone.
     vkCmdDraw(cmd, 3, 1, 0, 0);

@@ -885,9 +885,9 @@ VulkanContext::beginFrame(orb::view::RenderQuality quality) {
 // two jobs, and only the first of them can fail. F.2 -- a function does one
 // thing.
 void VulkanContext::beginSceneRendering(VkCommandBuffer cmd) const {
-    // The scene clears to light, not to a display colour: view/SceneClear.hpp
-    // holds the old display colour decoded through sRGB, so the frame shows
-    // exactly what it showed before the HDR target existed.
+    // The scene clears to radiance, not to a display colour: zero, where
+    // nothing is drawn (view/SceneClear.hpp says why it is not a tuning
+    // constant).
     constexpr orb::view::LinearRgba kClear = orb::view::kSceneClear;
     const VkRenderingAttachmentInfo colorAttachment{
         .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,

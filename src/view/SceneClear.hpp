@@ -1,36 +1,33 @@
 #ifndef ORBSIM_VIEW_SCENECLEAR_HPP
 #define ORBSIM_VIEW_SCENECLEAR_HPP
 //
-// The colour the HDR target is cleared to before the scene is drawn (M1-14).
+// The radiance the HDR target is cleared to before the scene is drawn
+// (M1-14; settled by M1-15, register decision 181).
 //
-// **A linear value that shows exactly what the display showed before.** Until
-// M1-14 the scene was cleared straight into the 8-bit display image to
-// (0.004, 0.006, 0.012) -- "deep space is not pure black" -- which a display
-// shows as the 8-bit codes (1, 2, 3). The HDR target holds *linear* light and
-// is encoded once at the end, so the same three numbers stored there would
-// come out as (13, 18, 29), a visibly lighter blue-grey. Stored instead are
-// those display values decoded through sRGB (view/Srgb.hpp), the nearest
-// floats to 0.004/12.92, 0.006/12.92 and 0.012/12.92, which survive the 16-bit
-// target and the encode and land back on (1, 2, 3). tests/test_srgb.cpp
-// asserts both: that these are the decoded values, and that the codes do not
-// move. M1-14 is meant to change nothing visible, so that if the image changes
-// there is exactly one candidate for why.
+// **Zero: where nothing is drawn, no light arrives.** Until M1-15 this held
+// the old display colour decoded to linear light, so that M1-14 changed
+// nothing visible; ADR 0014 allows no tuning constant in the chain, and once
+// exposure multiplies the target, a number chosen by eye stops meaning
+// anything. The alternative was a background radiance with a source -- the
+// zodiacal light and the integrated starlight -- and it would render
+// identically: at the application's exposure, anything dimmer than about
+// 8 cd/m^2 lands on display code 0 (AgX is exactly black below an exposed
+// 2.17e-4, view/Tonemap.hpp, times the 38 400 cd/m^2 that saturate the sensor
+// at f/16, 1/125 s, ISO 100). A dark-sky background of 22 magnitudes per
+// square arcsecond is 1.7e-4 cd/m^2 (10.8e4 * 10^(-0.4 * 22)), some forty
+// thousand times dimmer. Stars, when a task draws them, are sources and not a
+// clear colour.
 //
-// **This is a tuning constant, and M1-15 has to settle it.** ADR 0014 allows
-// none anywhere in the chain, and once exposure multiplies the HDR target a
-// number chosen by eye stops meaning anything. It stays here, stated, rather
-// than being quietly carried into the exposed chain.
-//
-// **f32 literals, not a narrowing of the decoded doubles.** VkClearColorValue
-// takes floats, and view/Camera.cpp's toRenderSpace is the one place src/
-// narrows a double (`grep static_cast<f32> src/` is the audit); a literal
-// needs no cast, and the test holds it to the decode.
+// **Float literals, not a narrowing.** VkClearColorValue takes floats; a
+// literal needs no cast, so `grep static_cast<f32> src/` still finds only the
+// two narrowing functions.
 //
 #include "core/Scalar.hpp"
 
 namespace orb::view {
 
-// One linear colour with coverage, in the channel order Vulkan clears in.
+// One radiance per channel, in W/(m^2 sr), with coverage, in the channel order
+// Vulkan clears in.
 struct LinearRgba {
     f32 red{};
     f32 green{};
@@ -39,11 +36,20 @@ struct LinearRgba {
 };
 
 inline constexpr LinearRgba kSceneClear{
-    .red = 3.0959752e-4F,   // decode(0.004)
-    .green = 4.6439628e-4F, // decode(0.006)
-    .blue = 9.2879257e-4F,  // decode(0.012)
+    .red = 0.0F,
+    .green = 0.0F,
+    .blue = 0.0F,
     .alpha = 1.0F,
 };
+
+// The ruling, held where the constant is: a clear colour that is not zero is a
+// radiance somebody chose by eye, which ADR 0014 forbids. Changing it is a
+// decision to revisit, not a number to tune, and this is where that shows.
+static_assert(bitsOf(kSceneClear.red) == bitsOf(0.0F) &&
+                  bitsOf(kSceneClear.green) == bitsOf(0.0F) &&
+                  bitsOf(kSceneClear.blue) == bitsOf(0.0F),
+              "where nothing is drawn, no light arrives (register decision 181)");
+static_assert(bitsOf(kSceneClear.alpha) == bitsOf(1.0F), "and the frame is opaque");
 
 } // namespace orb::view
 

@@ -6,11 +6,17 @@
 // The scene is drawn into the linear HDR target (kHdrFormat, in
 // render/VulkanContext.hpp). This pass then covers the screen with a single
 // triangle -- shaders/fullscreen.vert, no vertex buffer -- and
-// shaders/tonemap.frag reads the HDR target and writes the swapchain image.
-// **In M1-14 it does only the sRGB encode**, the one place in the renderer
-// that turns linear light into display values; exposure and AgX join it in
-// M1-15, in that order, before the encode. VulkanContext::endFrame records it,
-// and a frame cannot be presented without it.
+// shaders/tonemap.frag reads the HDR target and writes the swapchain image:
+// the exposure multiply, AgX and the sRGB encode, in that order, the one place
+// in the renderer that turns light into display values (M1-15).
+// VulkanContext::endFrame records it, and a frame cannot be presented without
+// it.
+//
+// **The exposure is fixed when the pass is created** (M1-15), and reaches the
+// shader as a four-byte push constant on every draw. Nothing in milestone 1
+// changes it while the application runs, and a probe (M1-16) that wants
+// another creates the pass with another; auto-exposure, when it comes, is the
+// moment to make it per frame (ADR 0014).
 //
 // **The HDR target is read at the fragment's own pixel** (texelFetch at
 // gl_FragCoord), not sampled at a texture coordinate. The two images are the
@@ -32,6 +38,8 @@
 #include "render/Pipeline.hpp"
 #include "render/VulkanContext.hpp"
 #include "render/VulkanHandle.hpp"
+#include "view/Exposure.hpp"
+#include "view/PushConstants.hpp"
 
 #include <array>
 #include <cstdint>
@@ -43,7 +51,9 @@ namespace orb::gfx {
 class ResolvePass {
 public:
     [[nodiscard]] static std::expected<ResolvePass, RenderError>
-    create(const VulkanContext& context, const std::filesystem::path& shaderDirectory);
+    create(const VulkanContext& context,
+           const std::filesystem::path& shaderDirectory,
+           view::PerRadiance exposure);
 
     // Records the full-screen draw into the attachment currently being
     // rendered, reading `hdrTarget`, which must already be in
@@ -60,6 +70,7 @@ private:
         UniqueDescriptorPool pool;
         std::array<VkDescriptorSet, kFramesInFlight> sets{};
         GraphicsPipeline pipeline;
+        view::TonemapPushConstants pushConstants;
     };
     explicit ResolvePass(Parts parts) noexcept;
 
@@ -70,6 +81,7 @@ private:
     UniqueDescriptorPool pool_;
     std::array<VkDescriptorSet, kFramesInFlight> sets_{}; // freed with pool_
     GraphicsPipeline pipeline_;
+    view::TonemapPushConstants pushConstants_;
 };
 
 } // namespace orb::gfx
