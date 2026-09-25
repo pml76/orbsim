@@ -98,6 +98,13 @@ struct Options {
     std::filesystem::path shaderDirectory{pathFromUtf8(ORBSIM_SHADER_DIR)};
 };
 
+// Whether a person is at the window: a run without --seconds goes on until
+// somebody quits it, and every automated run -- orbsim_smoke, the mutation
+// pass, the measurement script -- passes --seconds.
+[[nodiscard]] bool isInteractive(const Options& options) noexcept {
+    return !(options.runFor.value() > 0.0);
+}
+
 // std::from_chars rather than std::stod: a malformed argument is a user error
 // to explain, not a std::invalid_argument to terminate on.
 [[nodiscard]] std::expected<Seconds, SdlError> parseSeconds(std::string_view text) {
@@ -232,10 +239,17 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
     if (!created) {
         const std::string& message = created.error().message;
         std::print(stderr, "Renderer initialisation failed: {}\n", message);
-        // stderr already has the message, so a message box that cannot be
-        // shown loses nothing worth reporting.
-        static_cast<void>(
-            SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "orbsim", message.c_str(), window));
+        // A dialog is for a person, and a run with --seconds is not one: it is
+        // orbsim_smoke, a mutation pass or the measurement script, and a dialog
+        // there waits for a click nobody gives. M1-14's mutation pass found
+        // exactly that -- a failed start-up hung orbsim_smoke until CTest's
+        // timeout instead of failing it (register decision 170). stderr
+        // already has the message, so a message box that cannot be shown
+        // loses nothing worth reporting either.
+        if (isInteractive(options)) {
+            static_cast<void>(
+                SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_ERROR, "orbsim", message.c_str(), window));
+        }
         return kExitFailure;
     }
     orb::gfx::VulkanContext gfx = std::move(*created);
