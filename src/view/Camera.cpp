@@ -3,6 +3,7 @@
 #include "core/Math.hpp"
 #include "core/Scalar.hpp"
 #include "core/Units.hpp"
+#include "view/Frame.hpp"
 #include "view/Mat4.hpp"
 #include "view/Projection.hpp"
 

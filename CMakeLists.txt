@@ -1058,6 +1058,11 @@ endforeach()
 # src/app/main.cpp and met a lint conflict there that it had never met here
 # (register decision 156).
 list(APPEND ORBSIM_LINT_SOURCES tests/AbortBehaviour.cpp)
+# The render-side maths library's own sources, which were not linted until
+# 2026-09-25: the list named the core, test and application sources and not
+# these, so src/view/Camera.cpp had never been through clang-tidy since M1-11
+# added it. Found by M1-15; added on the owner's ruling (register decision 185).
+list(APPEND ORBSIM_LINT_SOURCES ${ORBSIM_VIEW_SOURCES})
 foreach(operation IN LISTS ORBSIM_COUNT_WRAPAROUND_OPERATIONS)
     list(APPEND ORBSIM_LINT_SOURCES tests/count_wraparound_${operation}.cpp)
 endforeach()
