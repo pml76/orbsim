@@ -280,7 +280,7 @@ constexpr f64 kReferenceBudget = 1e-14;
 }
 
 [[nodiscard]] bool isBlack(const std::array<f64, 3>& rgb) {
-    return std::ranges::all_of(rgb, [](f64 c) { return bitsOf(c) == bitsOf(0.0); });
+    return std::ranges::all_of(rgb, [](f64 c) noexcept { return bitsOf(c) == bitsOf(0.0); });
 }
 
 } // namespace
@@ -372,7 +372,8 @@ TEST_CASE("a large input saturates, and never wraps or becomes NaN") {
     // One channel huge and the others dark is still a finite colour.
     const std::array<f64, 3> red = channels(
         agxTonemap({.red = std::numeric_limits<f64>::infinity(), .green = 0.0, .blue = 0.0}));
-    CHECK(std::ranges::all_of(red, [](f64 c) { return isFinite(c) && c >= 0.0 && c <= 1.0; }));
+    CHECK(std::ranges::all_of(red,
+                              [](f64 c) noexcept { return isFinite(c) && c >= 0.0 && c <= 1.0; }));
 }
 
 TEST_CASE("mid-grey reaches the display as code 128") {
