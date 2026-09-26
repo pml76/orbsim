@@ -1,0 +1,560 @@
+{
+  "task": "M1-16",
+  "spec": "scripts/measurements/m1-16.json",
+  "date": "2026-09-26",
+  "machine": {
+    "gpu": "NVIDIA RTX A2000 8GB Laptop GPU",
+    "vendor_id": "0x10DE",
+    "driver_version": "582.53.0.0",
+    "driver_version_raw": "0x918D4000",
+    "vulkan_api": "1.4.312",
+    "swapchain": "1600x900",
+    "os": "Windows-11-10.0.26100-SP0",
+    "processor": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel"
+  },
+  "commits": {
+    "before": "4ef3f35e504156ee7c119582ebb649472a08acdb",
+    "after": "3511065e31504cd68ae283d71fede23c97ea6e17"
+  },
+  "settings": {
+    "runs_per_variant": 7,
+    "seconds": 30,
+    "warmup_frames": 500
+  },
+  "summary": {
+    "before: M1-15's frame": {
+      "fps": {
+        "median": 120.4,
+        "min": 120.0,
+        "max": 121.0,
+        "n": 7
+      },
+      "gpu_frame_us": {
+        "median": 381.941,
+        "min": 374.867,
+        "max": 384.873,
+        "n": 7
+      },
+      "resolve_us": {
+        "median": 280.356,
+        "min": 275.325,
+        "max": 282.664,
+        "n": 7
+      },
+      "scene_us": {
+        "median": 80.068,
+        "min": 78.616,
+        "max": 80.667,
+        "n": 7
+      },
+      "wall_ms": {
+        "median": 31454.5,
+        "min": 31199.1,
+        "max": 32720.8,
+        "n": 7
+      }
+    },
+    "after: M1-16's frame": {
+      "fps": {
+        "median": 120.5,
+        "min": 120.0,
+        "max": 120.8,
+        "n": 7
+      },
+      "gpu_frame_us": {
+        "median": 375.934,
+        "min": 369.819,
+        "max": 380.966,
+        "n": 7
+      },
+      "resolve_us": {
+        "median": 275.738,
+        "min": 271.289,
+        "max": 279.598,
+        "n": 7
+      },
+      "scene_us": {
+        "median": 78.687,
+        "min": 77.61,
+        "max": 79.844,
+        "n": 7
+      },
+      "wall_ms": {
+        "median": 31344.5,
+        "min": 31228.1,
+        "max": 32213.7,
+        "n": 7
+      }
+    }
+  },
+  "comparisons": [
+    {
+      "name": "GPU time M1-16 adds to a frame",
+      "metric": "gpu_frame_us",
+      "unit": "us",
+      "of": "after: M1-16's frame",
+      "minus": "before: M1-15's frame",
+      "difference_of_medians": -6.006999999999948
+    },
+    {
+      "name": "GPU time M1-16 adds to the scene",
+      "metric": "scene_us",
+      "unit": "us",
+      "of": "after: M1-16's frame",
+      "minus": "before: M1-15's frame",
+      "difference_of_medians": -1.3810000000000002
+    },
+    {
+      "name": "GPU time M1-16 adds to the resolve pass",
+      "metric": "resolve_us",
+      "unit": "us",
+      "of": "after: M1-16's frame",
+      "minus": "before: M1-15's frame",
+      "difference_of_medians": -4.617999999999995
+    },
+    {
+      "name": "frame rate with M1-16, against without (application's own count)",
+      "metric": "fps",
+      "unit": "fps",
+      "of": "after: M1-16's frame",
+      "minus": "before: M1-15's frame",
+      "difference_of_medians": 0.09999999999999432
+    }
+  ],
+  "runs": [
+    {
+      "exit": 0,
+      "wall_ms": 32720.8,
+      "metrics": {
+        "fps": 120.2,
+        "gpu_frame_us": 374.867,
+        "scene_us": 78.616,
+        "resolve_us": 275.325
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE timing gpu_frame_us=378.772 scene_us=79.143 resolve_us=278.694 samples=500",
+        "MEASURE timing gpu_frame_us=377.161 scene_us=78.897 resolve_us=277.268 samples=1000",
+        "MEASURE timing gpu_frame_us=376.411 scene_us=78.786 resolve_us=276.657 samples=1500",
+        "MEASURE timing gpu_frame_us=377.746 scene_us=79.015 resolve_us=277.723 samples=2000",
+        "MEASURE timing gpu_frame_us=375.808 scene_us=78.755 resolve_us=276.123 samples=2500",
+        "MEASURE timing gpu_frame_us=374.867 scene_us=78.616 resolve_us=275.325 samples=3000"
+      ],
+      "counts": {
+        "samples": 3000
+      },
+      "variant": "before: M1-15's frame",
+      "round": 1
+    },
+    {
+      "exit": 0,
+      "wall_ms": 32213.7,
+      "metrics": {
+        "fps": 120.1,
+        "gpu_frame_us": 374.079,
+        "scene_us": 78.075,
+        "resolve_us": 275.117
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE timing gpu_frame_us=389.116 scene_us=80.276 resolve_us=287.488 samples=500",
+        "MEASURE timing gpu_frame_us=380.284 scene_us=78.990 resolve_us=280.223 samples=1000",
+        "MEASURE timing gpu_frame_us=376.945 scene_us=78.472 resolve_us=277.501 samples=1500",
+        "MEASURE timing gpu_frame_us=375.597 scene_us=78.260 resolve_us=276.393 samples=2000",
+        "MEASURE timing gpu_frame_us=374.416 scene_us=78.099 resolve_us=275.404 samples=2500",
+        "MEASURE timing gpu_frame_us=374.079 scene_us=78.075 resolve_us=275.117 samples=3000"
+      ],
+      "counts": {
+        "samples": 3000
+      },
+      "variant": "after: M1-16's frame",
+      "round": 1
+    },
+    {
+      "exit": 0,
+      "wall_ms": 31756.1,
+      "metrics": {
+        "fps": 120.3,
+        "gpu_frame_us": 381.941,
+        "scene_us": 80.068,
+        "resolve_us": 280.356
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE timing gpu_frame_us=382.492 scene_us=79.655 resolve_us=281.893 samples=500",
+        "MEASURE timing gpu_frame_us=377.903 scene_us=79.062 resolve_us=277.840 samples=1000",
+        "MEASURE timing gpu_frame_us=377.819 scene_us=78.925 resolve_us=277.841 samples=1500",
+        "MEASURE timing gpu_frame_us=373.129 scene_us=78.205 resolve_us=273.939 samples=2000",
+        "MEASURE timing gpu_frame_us=375.711 scene_us=78.745 resolve_us=275.799 samples=2500",
+        "MEASURE timing gpu_frame_us=381.941 scene_us=80.068 resolve_us=280.356 samples=3000"
+      ],
+      "counts": {
+        "samples": 3000
+      },
+      "variant": "before: M1-15's frame",
+      "round": 2
+    },
+    {
+      "exit": 0,
+      "wall_ms": 31486.4,
+      "metrics": {
+        "fps": 120.2,
+        "gpu_frame_us": 373.863,
+        "scene_us": 78.178,
+        "resolve_us": 274.743
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE timing gpu_frame_us=388.376 scene_us=80.959 resolve_us=285.897 samples=500",
+        "MEASURE timing gpu_frame_us=380.465 scene_us=79.577 resolve_us=279.722 samples=1000",
+        "MEASURE timing gpu_frame_us=379.255 scene_us=79.200 resolve_us=278.934 samples=1500",
+        "MEASURE timing gpu_frame_us=375.087 scene_us=78.471 resolve_us=275.628 samples=2000",
+        "MEASURE timing gpu_frame_us=374.140 scene_us=78.246 resolve_us=274.961 samples=2500",
+        "MEASURE timing gpu_frame_us=373.863 scene_us=78.178 resolve_us=274.743 samples=3000"
+      ],
+      "counts": {
+        "samples": 3000
+      },
+      "variant": "after: M1-16's frame",
+      "round": 2
+    },
+    {
+      "exit": 0,
+      "wall_ms": 31325.9,
+      "metrics": {
+        "fps": 120.0,
+        "gpu_frame_us": 384.683,
+        "scene_us": 80.667,
+        "resolve_us": 282.344
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE timing gpu_frame_us=388.480 scene_us=81.718 resolve_us=284.836 samples=500",
+        "MEASURE timing gpu_frame_us=387.925 scene_us=81.075 resolve_us=285.208 samples=1000",
+        "MEASURE timing gpu_frame_us=385.609 scene_us=80.519 resolve_us=283.593 samples=1500",
+        "MEASURE timing gpu_frame_us=383.306 scene_us=80.042 resolve_us=281.897 samples=2000",
+        "MEASURE timing gpu_frame_us=380.904 scene_us=79.849 resolve_us=279.636 samples=2500",
+        "MEASURE timing gpu_frame_us=384.683 scene_us=80.667 resolve_us=282.344 samples=3000"
+      ],
+      "counts": {
+        "samples": 3000
+      },
+      "variant": "before: M1-15's frame",
+      "round": 3
+    },
+    {
+      "exit": 0,
+      "wall_ms": 31634.8,
+      "metrics": {
+        "fps": 120.8,
+        "gpu_frame_us": 375.934,
+        "scene_us": 78.959,
+        "resolve_us": 275.738
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE timing gpu_frame_us=377.676 scene_us=80.026 resolve_us=275.984 samples=500",
+        "MEASURE timing gpu_frame_us=375.995 scene_us=79.062 resolve_us=275.685 samples=1000",
+        "MEASURE timing gpu_frame_us=377.402 scene_us=79.244 resolve_us=276.889 samples=1500",
+        "MEASURE timing gpu_frame_us=376.538 scene_us=79.083 resolve_us=276.167 samples=2000",
+        "MEASURE timing gpu_frame_us=376.153 scene_us=78.984 resolve_us=275.889 samples=2500",
+        "MEASURE timing gpu_frame_us=375.934 scene_us=78.959 resolve_us=275.738 samples=3000"
+      ],
+      "counts": {
+        "samples": 3000
+      },
+      "variant": "after: M1-16's frame",
+      "round": 3
+    },
+    {
+      "exit": 0,
+      "wall_ms": 31513.1,
+      "metrics": {
+        "fps": 120.6,
+        "gpu_frame_us": 384.873,
+        "scene_us": 80.566,
+        "resolve_us": 282.664
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE timing gpu_frame_us=386.125 scene_us=80.058 resolve_us=284.932 samples=500",
+        "MEASURE timing gpu_frame_us=379.727 scene_us=79.096 resolve_us=279.525 samples=1000",
+        "MEASURE timing gpu_frame_us=375.414 scene_us=78.672 resolve_us=275.659 samples=1500",
+        "MEASURE timing gpu_frame_us=380.858 scene_us=79.985 resolve_us=279.315 samples=2000",
+        "MEASURE timing gpu_frame_us=383.980 scene_us=80.646 resolve_us=281.632 samples=2500",
+        "MEASURE timing gpu_frame_us=384.873 scene_us=80.566 resolve_us=282.664 samples=3000"
+      ],
+      "counts": {
+        "samples": 3000
+      },
+      "variant": "before: M1-15's frame",
+      "round": 4
+    },
+    {
+      "exit": 0,
+      "wall_ms": 31228.1,
+      "metrics": {
+        "fps": 120.7,
+        "gpu_frame_us": 369.819,
+        "scene_us": 77.61,
+        "resolve_us": 271.289
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE timing gpu_frame_us=372.629 scene_us=78.241 resolve_us=273.328 samples=500",
+        "MEASURE timing gpu_frame_us=374.073 scene_us=78.292 resolve_us=274.830 samples=1000",
+        "MEASURE timing gpu_frame_us=373.353 scene_us=78.216 resolve_us=274.136 samples=1500",
+        "MEASURE timing gpu_frame_us=370.743 scene_us=77.803 resolve_us=271.982 samples=2000",
+        "MEASURE timing gpu_frame_us=368.549 scene_us=77.304 resolve_us=270.406 samples=2500",
+        "MEASURE timing gpu_frame_us=369.819 scene_us=77.610 resolve_us=271.289 samples=3000"
+      ],
+      "counts": {
+        "samples": 3000
+      },
+      "variant": "after: M1-16's frame",
+      "round": 4
+    },
+    {
+      "exit": 0,
+      "wall_ms": 31272.3,
+      "metrics": {
+        "fps": 120.6,
+        "gpu_frame_us": 380.679,
+        "scene_us": 79.785,
+        "resolve_us": 279.524
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE timing gpu_frame_us=394.781 scene_us=81.623 resolve_us=291.428 samples=500",
+        "MEASURE timing gpu_frame_us=385.333 scene_us=79.961 resolve_us=284.005 samples=1000",
+        "MEASURE timing gpu_frame_us=381.342 scene_us=79.484 resolve_us=280.593 samples=1500",
+        "MEASURE timing gpu_frame_us=382.929 scene_us=80.093 resolve_us=281.367 samples=2000",
+        "MEASURE timing gpu_frame_us=379.430 scene_us=79.471 resolve_us=278.662 samples=2500",
+        "MEASURE timing gpu_frame_us=380.679 scene_us=79.785 resolve_us=279.524 samples=3000"
+      ],
+      "counts": {
+        "samples": 3000
+      },
+      "variant": "before: M1-15's frame",
+      "round": 5
+    },
+    {
+      "exit": 0,
+      "wall_ms": 31247.8,
+      "metrics": {
+        "fps": 120.5,
+        "gpu_frame_us": 376.285,
+        "scene_us": 78.687,
+        "resolve_us": 276.483
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE timing gpu_frame_us=385.376 scene_us=80.486 resolve_us=283.259 samples=500",
+        "MEASURE timing gpu_frame_us=380.893 scene_us=79.409 resolve_us=280.196 samples=1000",
+        "MEASURE timing gpu_frame_us=377.390 scene_us=78.888 resolve_us=277.281 samples=1500",
+        "MEASURE timing gpu_frame_us=375.660 scene_us=78.601 resolve_us=275.937 samples=2000",
+        "MEASURE timing gpu_frame_us=375.296 scene_us=78.529 resolve_us=275.646 samples=2500",
+        "MEASURE timing gpu_frame_us=376.285 scene_us=78.687 resolve_us=276.483 samples=3000"
+      ],
+      "counts": {
+        "samples": 3000
+      },
+      "variant": "after: M1-16's frame",
+      "round": 5
+    },
+    {
+      "exit": 0,
+      "wall_ms": 31454.5,
+      "metrics": {
+        "fps": 120.4,
+        "gpu_frame_us": 381.629,
+        "scene_us": 79.962,
+        "resolve_us": 279.985
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE timing gpu_frame_us=384.681 scene_us=79.627 resolve_us=283.814 samples=500",
+        "MEASURE timing gpu_frame_us=377.164 scene_us=78.484 resolve_us=277.514 samples=1000",
+        "MEASURE timing gpu_frame_us=378.625 scene_us=79.464 resolve_us=277.546 samples=1500",
+        "MEASURE timing gpu_frame_us=386.139 scene_us=80.876 resolve_us=283.322 samples=2000",
+        "MEASURE timing gpu_frame_us=384.540 scene_us=80.462 resolve_us=282.285 samples=2500",
+        "MEASURE timing gpu_frame_us=381.629 scene_us=79.962 resolve_us=279.985 samples=3000"
+      ],
+      "counts": {
+        "samples": 3000
+      },
+      "variant": "before: M1-15's frame",
+      "round": 6
+    },
+    {
+      "exit": 0,
+      "wall_ms": 31344.5,
+      "metrics": {
+        "fps": 120.8,
+        "gpu_frame_us": 376.257,
+        "scene_us": 78.979,
+        "resolve_us": 276.056
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE timing gpu_frame_us=359.137 scene_us=75.401 resolve_us=263.309 samples=500",
+        "MEASURE timing gpu_frame_us=363.488 scene_us=76.460 resolve_us=266.410 samples=1000",
+        "MEASURE timing gpu_frame_us=368.385 scene_us=77.484 resolve_us=269.995 samples=1500",
+        "MEASURE timing gpu_frame_us=375.329 scene_us=78.926 resolve_us=275.155 samples=2000",
+        "MEASURE timing gpu_frame_us=377.028 scene_us=79.168 resolve_us=276.601 samples=2500",
+        "MEASURE timing gpu_frame_us=376.257 scene_us=78.979 resolve_us=276.056 samples=3000"
+      ],
+      "counts": {
+        "samples": 3000
+      },
+      "variant": "after: M1-16's frame",
+      "round": 6
+    },
+    {
+      "exit": 0,
+      "wall_ms": 31199.1,
+      "metrics": {
+        "fps": 121.0,
+        "gpu_frame_us": 382.695,
+        "scene_us": 80.539,
+        "resolve_us": 280.503
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE timing gpu_frame_us=386.675 scene_us=80.284 resolve_us=285.057 samples=500",
+        "MEASURE timing gpu_frame_us=377.643 scene_us=79.534 resolve_us=276.815 samples=1000",
+        "MEASURE timing gpu_frame_us=378.696 scene_us=79.728 resolve_us=277.587 samples=1500",
+        "MEASURE timing gpu_frame_us=379.490 scene_us=79.860 resolve_us=278.157 samples=2000",
+        "MEASURE timing gpu_frame_us=381.780 scene_us=80.372 resolve_us=279.808 samples=2500",
+        "MEASURE timing gpu_frame_us=382.695 scene_us=80.539 resolve_us=280.503 samples=3000"
+      ],
+      "counts": {
+        "samples": 3000
+      },
+      "variant": "before: M1-15's frame",
+      "round": 7
+    },
+    {
+      "exit": 0,
+      "wall_ms": 31243.8,
+      "metrics": {
+        "fps": 120.0,
+        "gpu_frame_us": 380.966,
+        "scene_us": 79.844,
+        "resolve_us": 279.598
+      },
+      "device": {
+        "name": "NVIDIA RTX A2000 8GB Laptop GPU",
+        "swapchain": "1600x900",
+        "vendor": "0x10DE",
+        "driver": "0x918D4000",
+        "api": "1.4.312"
+      },
+      "trace": [
+        "MEASURE device vendor=0x10DE driver=0x918D4000 api=1.4.312",
+        "MEASURE timing gpu_frame_us=395.059 scene_us=83.187 resolve_us=289.294 samples=500",
+        "MEASURE timing gpu_frame_us=388.719 scene_us=81.229 resolve_us=285.552 samples=1000",
+        "MEASURE timing gpu_frame_us=384.835 scene_us=80.405 resolve_us=282.738 samples=1500",
+        "MEASURE timing gpu_frame_us=382.275 scene_us=79.969 resolve_us=280.806 samples=2000",
+        "MEASURE timing gpu_frame_us=379.181 scene_us=79.459 resolve_us=278.330 samples=2500",
+        "MEASURE timing gpu_frame_us=380.966 scene_us=79.844 resolve_us=279.598 samples=3000"
+      ],
+      "counts": {
+        "samples": 3000
+      },
+      "variant": "after: M1-16's frame",
+      "round": 7
+    }
+  ]
+}

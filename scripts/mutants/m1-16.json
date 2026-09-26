@@ -274,7 +274,7 @@
         "below the bands nothing is drawn, and every pixel is opaque"
       ],
       "expect": "survives",
-      "why": "Without the barrier the host may read the readback buffers before the transfer's writes are visible to it. On this machine it cannot be seen: the fence wait and host-coherent memory make the values arrive anyway, and the validation layers do not check host access. A real gap, not an equivalent mutant; found by this pass on 2026-09-26 and put to the owner with the task's report."
+      "why": "Without the barrier the host may read the readback buffers before the transfer's writes are visible to it. On this machine it cannot be seen: the fence wait and host-coherent memory make the values arrive anyway, and the validation layers do not check host access. A real gap, not an equivalent mutant; found by this pass on 2026-09-26 and accepted by the owner as a declared survivor the same day (register decision 206), since no test found can see it on this hardware."
     },
     {
       "name": "--probe-out is ignored",

@@ -7,12 +7,13 @@ fixed epoch as a `TimePoint` (M1-03), a fixed camera pose (M1-11) and a fixed
 `RenderQuality` preset (M1-12). None of the three changes the running order.)*
 Decided by: [ADR 0008](../../adr/0008-renderer-verification.md), [ADR 0014](../../adr/0014-radiometric-chain.md)
 
-> **A KNOWN GAP, found by this task's mutation pass and not yet ruled on**:
+> **A KNOWN GAP, found by this task's mutation pass and accepted by the owner**
+> **on 2026-09-26 (register decision 206)**:
 > the barrier that makes the probe's readback copies visible to the host
 > (`makeWritesVisibleToHost` in `render/VulkanContext.cpp`) can be removed with
 > nothing noticing on this machine, whose readback memory is host-coherent;
 > the validation layers do not check host access. Declared in
-> `scripts/mutants/m1-16.json` and put to the owner with the task's report.
+> `scripts/mutants/m1-16.json`; no test found can see it on this hardware.
 > **Six survivors handed to this task still survive**, because they act after
 > the HDR target its numeric check reads; each now names the task that kills
 > it (M1-17, M1-18, M1-19).
@@ -200,7 +201,7 @@ ones to `test_probe_clear`'s band check, `--probe-out` ignored to
 `probe_clear_determinism`, and an HDR target without `TRANSFER_SRC` to
 `probe_clear`'s validation layers.
 
-**The survivor is a real gap, not yet ruled on**: the barrier that makes the
+**The survivor is a real gap, accepted by the owner as a declared one** (decision 206): the barrier that makes the
 readback copies visible to the host can be removed with nothing noticing --
 the memory here is host-coherent, the fence wait does the rest, and the
 validation layers do not check host access.
@@ -230,13 +231,23 @@ replaced by `terminateInvocation`.
 
 ## What it costs
 
-**Not measured, and the window's frame is not expected to change**: the probe
-runs only under `--probe`, and what the window's path gained is one image
-usage flag on the HDR target (`TRANSFER_SRC`, decision 188) and a constant
-depth in `fullscreen.vert`. A usage flag can in principle cost a GPU its
-compression of that image, so this is put to the owner with the task's report
-rather than assumed; `scripts/measure-frame-cost.py` is how it would be
-measured.
+**Nothing this measurement can see** -- measured on the owner's request
+(decision 206) with `scripts/measure-frame-cost.py
+scripts/measurements/m1-16.json`, against M1-15's last commit.
+[`../../measurements/m1-16-frame-cost.md`](../../measurements/m1-16-frame-cost.md)
+has the method and the results. The window's frame gained one usage flag on
+the HDR target and a constant depth, and on this machine:
+
+| | |
+|---|---|
+| GPU frame, seven rounds of 30 s | 381.94 -> 375.93 us, **-6.0 us** |
+| the same, three rounds of 30 s | 376.97 -> 384.92 us, **+8.0 us** |
+
+The two disagree in sign and each variant's runs spread over 10 to 11 us, so
+any cost is below about 2 % of the frame. **The application ran at about
+120 fps that day**, against M1-15's 600 to 1,400, for a reason not found; the
+GPU times are about four times M1-15's, so they are compared only with each
+other.
 
 ## Other compilers
 
