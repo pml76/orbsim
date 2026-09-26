@@ -1986,6 +1986,12 @@ What was checked, with the numbers:
   `linux-gcc`: every test passing, both with the flags on 433 of 433 compile
   commands and warnings as errors. The worked example: both trees, no
   warning, its tests passing.
+- **BMI2, added after the first commit**: OpenEXR's bundled zstd defines
+  `STATIC_BMI2` wherever `_MSC_VER` and `__AVX2__` are both defined, so the
+  build stopped on `_bzhi_u64` once AVX2 was on; the owner chose to add BMI2
+  to the list (decision 203) over switching zstd's assumption off. Both trees
+  re-verified with it the same way, counts unchanged, and `linux-sanitize`
+  and `linux-gcc` passing with it.
 - **F16C, measured on the way**: without it, clang on Windows cannot link a
   `_Float16` conversion at all (`__extendhfsf2` is undefined) unless its
   builtins library is named; with it, the conversion is one instruction, which

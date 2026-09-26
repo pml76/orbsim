@@ -39,10 +39,12 @@ set(FETCHCONTENT_QUIET OFF)
 # ---------------------------------------------------------------------------
 # The processor this project assumes (ADR 0023, register decisions 200-201).
 #
-# x86-64 with MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, FMA3, AVX, AVX2 and
-# F16C -- what this machine's Intel Core i9-12900H and AMD's Zen 2 have in
-# common (register decision 202 added F16C, the hardware conversion between
-# 16- and 32-bit floats). Set for **every file compiled** -- ours and every
+# x86-64 with MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, FMA3, AVX, AVX2,
+# F16C and BMI2 -- all of which this machine's Intel Core i9-12900H and AMD's
+# Zen 2 have (decision 202 added F16C, the hardware conversion between 16- and
+# 32-bit floats; decision 203 added BMI2, bit-manipulation instructions,
+# because zstd inside OpenEXR assumes them wherever a compiler presents itself
+# as Microsoft's with AVX2 on). Set for **every file compiled** -- ours and every
 # dependency's, which is why
 # this comes before the first target and the first FetchContent: a directory's
 # compile options reach the subprojects added below it. The owner's list also
@@ -62,7 +64,7 @@ set(FETCHCONTENT_QUIET OFF)
 # ---------------------------------------------------------------------------
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     add_compile_options(
-            -mmmx -msse -msse2 -msse3 -mssse3 -msse4.1 -msse4.2 -mfma -mavx -mavx2 -mf16c
+            -mmmx -msse -msse2 -msse3 -mssse3 -msse4.1 -msse4.2 -mfma -mavx -mavx2 -mf16c -mbmi2
             -ffp-contract=off)
 elseif(MSVC)
     add_compile_options(/arch:AVX2 /fp:precise)

@@ -38,7 +38,7 @@ usually enough.
 | [0020](0020-transforms-carry-their-units.md) | A transform carries the units of both spaces it maps between | accepted; frames clause superseded by 0021 | 2026-09-20 |
 | [0021](0021-transforms-carry-their-frames.md) | A transform carries the frames it maps between, and the transpose is a dual map | accepted | 2026-09-20 |
 | [0022](0022-a-bounded-scalar-validates-itself.md) | A scalar with a physical bound validates itself | accepted | 2026-09-22 |
-| [0023](0023-the-processor-we-assume.md) | The processor this project assumes: x86-64 with SSE4.2, FMA3, AVX2 and F16C, set for every file compiled | accepted | 2026-09-26 |
+| [0023](0023-the-processor-we-assume.md) | The processor this project assumes: x86-64 with SSE4.2, FMA3, AVX2, F16C and BMI2, set for every file compiled | accepted | 2026-09-26 |
 
 **0008 to 0015 record the decisions taken on 2026-09-08**, before milestone 1
 started. All twenty-six of those decisions are in

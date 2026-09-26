@@ -1,19 +1,19 @@
 # ADR 0023: The processor this project assumes
 
 Status: **accepted** (2026-09-26), asked for by the owner during
-[M1-16](../plan/tasks/m1-16-probe-mode.md). Register decisions 200, 201 and 202.
+[M1-16](../plan/tasks/m1-16-probe-mode.md). Register decisions 200 to 203.
 
 ## Decision
 
 **orbsim is built for an x86-64 processor with MMX, SSE, SSE2, SSE3, SSSE3,
-SSE4.1, SSE4.2, FMA3, AVX, AVX2 and F16C** -- what this project's development
+SSE4.1, SSE4.2, FMA3, AVX, AVX2, F16C and BMI2** -- what this project's development
 machine, an Intel Core i9-12900H, and AMD's Zen 2 have in common -- and the
 compiler is told so for every file it compiles, this project's and every
 dependency's:
 
 | Compiler | Flags |
 |---|---|
-| clang, gcc | `-mmmx -msse -msse2 -msse3 -mssse3 -msse4.1 -msse4.2 -mfma -mavx -mavx2 -mf16c -ffp-contract=off` |
+| clang, gcc | `-mmmx -msse -msse2 -msse3 -mssse3 -msse4.1 -msse4.2 -mfma -mavx -mavx2 -mf16c -mbmi2 -ffp-contract=off` |
 | MSVC | `/arch:AVX2 /fp:precise` |
 
 They are set with `add_compile_options` near the top of `CMakeLists.txt`,
@@ -21,7 +21,7 @@ before the first target and the first `FetchContent`, because a directory's
 compile options reach only the targets and subprojects added after them. The
 worked example sets the same flags in its own `CMakeLists.txt`.
 
-Four things about the list are part of the decision.
+Five things about the list are part of the decision.
 
 **SSE4A is left out, although the owner's list named it.** It is AMD's
 extension -- LLVM's model of Zen 2 has it and of Alder Lake does not -- and this project's development
@@ -42,6 +42,15 @@ half-float conversion was being written: it is the hardware conversion between
 Zen 2's defines `__SSE4A__`, which is the reason above in one line). MSVC's
 `/arch:AVX2` covers it. Worth knowing: the hardware conversion turns a
 signalling NaN quiet, where a software conversion keeps its bits.
+
+**BMI2 was added the same day** (decision 203), when OpenEXR's build stopped:
+the zstd library it bundles assumes BMI2's bit-manipulation instructions
+wherever a compiler presents itself as Microsoft's with AVX2 on, and this
+project's clang does both. Under MSVC itself zstd would have emitted them
+without asking. Both processors have it -- LLVM's models define `__BMI2__` for
+`-march=znver2` and `-march=alderlake`, and this machine's `/proc/cpuinfo`
+lists `bmi2`. The alternative put to the owner, telling zstd not to assume it
+for OpenEXR's library alone, was declined in favour of stating it here.
 
 **There is no run-time check.** On a processor without these extensions the
 program stops with an illegal instruction rather than a message, and that is
@@ -73,7 +82,7 @@ three compilers.
 project built for until this record. The owner chose to assume the newer set.
 
 **`-march=x86-64-v3`**, the standard level that roughly matches the list. It
-also enables BMI1, BMI2, LZCNT and MOVBE, which the owner did not name,
+also enables BMI1, LZCNT and MOVBE, which the owner did not name,
 so the extensions are listed one by one instead.
 
 **Setting SSE4A as named**, which risks an illegal instruction on this machine,
