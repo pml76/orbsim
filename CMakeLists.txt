@@ -606,6 +606,7 @@ set(ORBSIM_VIEW_SOURCES
         src/view/Camera.cpp
         src/view/ImageFiles.cpp
         src/view/ProbeImage.cpp
+        src/view/ProbeSidecar.cpp
 )
 add_library(orbsim_view STATIC ${ORBSIM_VIEW_SOURCES})
 # Privately, since M1-16: the PNG and EXR encoders' two libraries, seen by
@@ -714,6 +715,7 @@ set(ORBSIM_TESTS
         test_orbit
         test_orbit_scales
         test_pipeline_inputs
+        test_probe_sidecar
         test_projection
         test_render_quality
         test_srgb
@@ -749,6 +751,7 @@ target_link_libraries(test_exposure PRIVATE orbsim_view)
 target_link_libraries(test_tonemap PRIVATE orbsim_view)
 target_link_libraries(test_half PRIVATE orbsim_view)
 target_link_libraries(test_hdr_dump PRIVATE orbsim_view)
+target_link_libraries(test_probe_sidecar PRIVATE orbsim_view)
 # And OpenEXR itself: the EXR is read back through the reference
 # implementation's own decoder, which is the check that the file is one.
 target_link_libraries(test_image_files PRIVATE orbsim_view OpenEXR::OpenEXRCore)
@@ -995,6 +998,7 @@ set(SHADER_SOURCES
         shaders/body.frag
         shaders/fullscreen.vert
         shaders/tonemap.frag
+        shaders/probe_gradient.frag
 )
 
 set(SPIRV_OUTPUTS "")
@@ -1041,7 +1045,9 @@ target_link_libraries(orbsim_render_deps INTERFACE
 
 set(ORBSIM_APP_SOURCES
         src/app/main.cpp
+        src/app/ProbeMode.cpp
         src/render/Pipeline.cpp
+        src/render/Probes.cpp
         src/render/ResolvePass.cpp
         src/render/VulkanContext.cpp
 )
@@ -1055,9 +1061,14 @@ target_link_libraries(orbsim PRIVATE
         ${Vulkan_LIBRARY}
 )
 
+# Where probes write by default -- the build tree, register decision 192 --
+# and which configuration built the binary, for the probe's sidecar.
+set(ORBSIM_PROBE_DIR "${CMAKE_CURRENT_BINARY_DIR}/probes")
 target_compile_definitions(orbsim PRIVATE
         ORBSIM_SHADER_DIR="${SHADER_OUT_DIR}"
         ORBSIM_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data"
+        ORBSIM_PROBE_DIR="${ORBSIM_PROBE_DIR}"
+        ORBSIM_BUILD_CONFIG="$<CONFIG>"
 )
 
 # SDL3 is built as a DLL; put it next to the executable so the app runs from
@@ -1076,6 +1087,41 @@ add_custom_command(TARGET orbsim POST_BUILD
 # docs/STATUS.md says what each list comes to.
 add_test(NAME orbsim_smoke COMMAND orbsim --validate --seconds 2)
 set_tests_properties(orbsim_smoke PROPERTIES LABELS gpu)
+
+# The probes (M1-16; ADR 0008; register decisions 192-194).
+#
+# probe_clear renders `clear` under the validation layers into the build
+# tree's probes/, where the owner looks at clear.png, and requires exit code 0
+# and all five files present and non-empty -- the files checked whatever the
+# exit code, so a failing run is seen to have written them too (decision 193).
+# probe_clear_determinism renders it again into probes-rerun/ and requires the
+# two HDR dumps byte-identical (VERIFICATION.md rule 16). Both are the fixture
+# test_probe_clear reads the frame from.
+add_test(NAME probe_clear
+        COMMAND ${CMAKE_COMMAND}
+                -DORBSIM=$<TARGET_FILE:orbsim>
+                -DPROBE=clear
+                -DOUT=${ORBSIM_PROBE_DIR}
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/RunProbe.cmake)
+add_test(NAME probe_clear_determinism
+        COMMAND ${CMAKE_COMMAND}
+                -DORBSIM=$<TARGET_FILE:orbsim>
+                -DPROBE=clear
+                -DOUT=${CMAKE_CURRENT_BINARY_DIR}/probes-rerun
+                -DCOMPARE_WITH=${ORBSIM_PROBE_DIR}
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/RunProbe.cmake)
+set_tests_properties(probe_clear PROPERTIES LABELS gpu FIXTURES_SETUP probe_clear_frame)
+set_tests_properties(probe_clear_determinism PROPERTIES
+        LABELS gpu FIXTURES_REQUIRED probe_clear_frame)
+
+# The frame read back and checked number by number (decision 194): an
+# ordinary suite of the tests' own, linking no Vulkan, that runs after
+# probe_clear has written the dump. The pattern M1-18's numeric probes copy.
+add_executable(test_probe_clear tests/test_probe_clear.cpp tests/AbortBehaviour.cpp)
+target_link_libraries(test_probe_clear PRIVATE orbsim_test_support)
+target_compile_definitions(test_probe_clear PRIVATE ORBSIM_PROBE_DIR="${ORBSIM_PROBE_DIR}")
+catch_discover_tests(test_probe_clear
+        PROPERTIES FIXTURES_REQUIRED probe_clear_frame LABELS gpu)
 
 # A build tree whose shaders are missing is reported, by path, and the
 # application exits 1 rather than starting (M1-13, register decision 148). It
@@ -1134,7 +1180,9 @@ orbsim_add_header_selfcheck(orbsim_view_header_selfcheck orbsim_view
         view/ImageFiles.hpp
         view/Mat4.hpp
         view/Projection.hpp
+        view/ProbeGradient.hpp
         view/ProbeImage.hpp
+        view/ProbeSidecar.hpp
         view/PushConstants.hpp
         view/RenderQuality.hpp
         view/SceneClear.hpp
@@ -1160,13 +1208,17 @@ add_dependencies(test_tonemap orbsim_view_header_selfcheck)
 add_dependencies(test_half orbsim_view_header_selfcheck)
 add_dependencies(test_hdr_dump orbsim_view_header_selfcheck)
 add_dependencies(test_image_files orbsim_view_header_selfcheck)
+add_dependencies(test_probe_sidecar orbsim_view_header_selfcheck)
 
 if(ORBSIM_BUILD_APP)
     orbsim_add_header_selfcheck(orbsim_render_header_selfcheck orbsim_render_deps
             render/Pipeline.hpp
+            render/Probes.hpp
             render/ResolvePass.hpp
             render/VulkanHandle.hpp
             render/VulkanContext.hpp
+            app/ExitCodes.hpp
+            app/ProbeMode.hpp
             app/SdlHandle.hpp
     )
     add_dependencies(orbsim orbsim_render_header_selfcheck)
@@ -1212,7 +1264,7 @@ foreach(operation IN LISTS ORBSIM_COUNT_WRAPAROUND_OPERATIONS)
     list(APPEND ORBSIM_LINT_SOURCES tests/count_wraparound_${operation}.cpp)
 endforeach()
 if(ORBSIM_BUILD_APP)
-    list(APPEND ORBSIM_LINT_SOURCES ${ORBSIM_APP_SOURCES})
+    list(APPEND ORBSIM_LINT_SOURCES ${ORBSIM_APP_SOURCES} tests/test_probe_clear.cpp)
 endif()
 
 # Formatting covers everything that is ours, whether or not it is built in
@@ -1454,5 +1506,8 @@ add_dependencies(check
         mutant-anchors
 )
 if(ORBSIM_BUILD_APP)
-    add_dependencies(check orbsim orbsim_render_header_selfcheck)
+    # test_probe_clear with the application it checks: a suite `check` does
+    # not build is one ctest reports as NOT_BUILT (M1-16, found the first time
+    # a fresh tree ran it).
+    add_dependencies(check orbsim orbsim_render_header_selfcheck test_probe_clear)
 endif()

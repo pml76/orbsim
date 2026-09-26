@@ -20,7 +20,7 @@
 //
 // **Float literals, not a narrowing.** VkClearColorValue takes floats; a
 // literal needs no cast, so `grep static_cast<f32> src/` still finds only the
-// two narrowing functions.
+// narrowing functions (three since M1-16: see view/Camera.hpp).
 //
 #include "core/Scalar.hpp"
 

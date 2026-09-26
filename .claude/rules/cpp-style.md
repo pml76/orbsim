@@ -63,12 +63,13 @@ cmake -S coding-guidelines-example -B coding-guidelines-example/build -G Ninja \
   `std::expected<Camera, CameraError>`, and is still trivially copyable. A type
   whose members have physical bounds gets the same treatment as a scalar whose
   value does.
-- **`f64` becomes `f32` in exactly two functions**: `toRenderSpace` in
-  `src/view/Camera.cpp`, for positions, and `toShaderExposure` in
+- **`f64` becomes `f32` in exactly three functions**: `toRenderSpace` in
+  `src/view/Camera.cpp`, for positions; `toShaderExposure` in
   `src/view/Exposure.hpp`, for the one exposure factor the resolve pass reads
-  (M1-15, register decision 179). `grep static_cast<f32> src/` is the audit and
-  it should find four casts in those two places; a fifth anywhere else is a
-  defect waiting to be filed. A position needs a camera-relative subtraction
+  (M1-15, register decision 179); and `toShaderRamp` in
+  `src/view/ProbeGradient.hpp`, for the `clear` probe's ramp (M1-16).
+  `grep static_cast<f32> src/` is the audit and it should find eight casts in
+  those three places; a ninth anywhere else is a defect waiting to be filed. A position needs a camera-relative subtraction
   in `f64` before it narrows, which is the whole point of `toRenderSpace`; a
   scale factor does not, since a float's relative precision is the same at
   every magnitude.

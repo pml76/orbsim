@@ -46,6 +46,13 @@ Any scene with more than one surface. Auto-exposure.
   0.05 % relative precision at this magnitude, so the 0.5 % budget is testing
   the chain rather than the format — asserted by confirming the dump's values
   land on representable `f16` neighbours of the expected value.
+  *(Added 2026-09-26 by M1-16: **either** neighbour, not the nearest. The
+  Vulkan specification leaves the rounding of a float written to RGBA16F
+  undefined, and this machine's GPU was measured rounding toward zero -- every
+  value of a 1,280-pixel row of the `clear` probe landed on the lower
+  neighbour, up to 9.4e-4 below the exact value. So the floor is up to 0.1 %,
+  not 0.05 %; the 0.5 % budget still tests the chain, five times over.
+  `tests/test_probe_clear.cpp` has the check in the shape this one can copy.)*
 - **The inverse-square law, on the GPU path**: the same patch at 0.5 AU and at
   2 AU reads back 4× and ¼× the radiance, to the same 0.5 %. A hard-coded
   irradiance passes the first test and fails this one.

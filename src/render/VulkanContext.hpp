@@ -24,6 +24,7 @@
 #include <cstdint>
 #include <expected>
 #include <filesystem>
+#include <functional>
 #include <optional>
 #include <span>
 #include <string>
@@ -71,9 +72,27 @@ inline constexpr VkCompareOp kDepthCompareOp = VK_COMPARE_OP_GREATER;
 // for the swapchain's format by mistake -- a mismatch Vulkan only reports
 // once something is drawn.
 //
-// Sixteen bits per channel: 11 significant bits, 0.05 % relative, which is
-// the quantisation floor M1-18's 0.5 % radiometry budget is stated against.
+// Sixteen bits per channel: 11 significant bits, a step of 0.05 % to 0.1 %
+// of the value. **Writes round to one neighbour or the other, not necessarily
+// the nearest**: the specification leaves the mode undefined, and this
+// machine's GPU was measured on 2026-09-26 rounding toward zero (M1-16's
+// `clear` probe), so the quantisation floor M1-18's 0.5 % radiometry budget
+// is stated against is up to 0.1 %, where it said 0.05 % until then.
 inline constexpr VkFormat kHdrFormat = VK_FORMAT_R16G16B16A16_SFLOAT;
+
+// The two display formats a probe's frame is resolved into (M1-16, register
+// decision 191): 8 bits per channel, what the window shows and what M1-17's
+// goldens compare, and 16 bits, the same resolve at a precision where banding
+// can be told from the 8-bit display's steps. UNORM, never _SRGB, for the
+// reason kPresentableFormats in VulkanContext.cpp gives: tonemap.frag encodes.
+//
+// The 8-bit format is mandatory as a colour attachment in the Vulkan
+// specification; the 16-bit one is not, though Khronos's desktop baseline
+// profiles 2022 to 2026 require it (checked 2026-09-26 against the SDK's
+// profile files). renderOffscreen asks the device for both and reports a
+// missing one by name.
+inline constexpr VkFormat kProbeDisplayFormat8 = VK_FORMAT_R8G8B8A8_UNORM;
+inline constexpr VkFormat kProbeDisplayFormat16 = VK_FORMAT_R16G16B16A16_UNORM;
 
 // Not booleans. `create(window, true)` and `createBuffer(size, usage, true)`
 // were mysteries at the call site, patched with /*name=*/ comments that the
@@ -85,8 +104,9 @@ enum class Validation : std::uint8_t {
 };
 
 enum class Memory : std::uint8_t {
-    DeviceLocal, // fastest for the GPU; needs a staging copy to write
-    HostVisible, // mappable, so the CPU can write it directly
+    DeviceLocal,  // fastest for the GPU; needs a staging copy to write
+    HostVisible,  // mappable, so the CPU can write it directly
+    HostReadback, // mappable and cached, so the CPU can read what the GPU wrote (M1-16)
 };
 
 // Why a string here, when the orbital core reports an enum: renderer failures
@@ -99,6 +119,58 @@ struct RenderError {
 };
 
 class ResolvePass; // render/ResolvePass.hpp; endFrame records it
+
+// An image and the view onto all of it, owned together: the image declared
+// first, so the view is destroyed first.
+struct ImageAndView {
+    UniqueImage image;
+    UniqueImageView view;
+};
+
+// What an image is created as. A struct rather than four parameters: the
+// usage and aspect are both unsigned flag words and convert into one another
+// (non-negotiable 1).
+struct ImageRequest {
+    VkFormat format{VK_FORMAT_UNDEFINED};
+    VkExtent2D extent{};
+    VkImageUsageFlags usage{};
+    VkImageAspectFlags aspect{};
+};
+
+// A probe's frame as read back to the CPU (M1-16), each buffer RGBA, rows top
+// to bottom, pixels left to right, exactly the extent it was rendered at.
+struct OffscreenFrame {
+    std::vector<std::uint16_t> hdrHalf;   // the HDR target: binary16 bit patterns
+    std::vector<std::uint8_t> display8;   // the resolve into kProbeDisplayFormat8
+    std::vector<std::uint16_t> display16; // the resolve into kProbeDisplayFormat16
+};
+
+// The two resolve passes a probe's frame is displayed with, one built for each
+// display format. Observers, not owners: the caller keeps both alive across
+// renderOffscreen. By name rather than as two parameters of one type, which
+// reversed would put each display in the other's format (non-negotiable 1).
+struct ProbeResolves {
+    const ResolvePass* eightBit{};
+    const ResolvePass* sixteenBit{};
+};
+
+// What a probe draws: its commands, recorded into the HDR target's rendering,
+// which renderOffscreen has begun and ends.
+using SceneRecorder = std::function<void(VkCommandBuffer)>;
+
+// The device, as a probe's sidecar records it (M1-16): enough to say which
+// GPU and which driver drew a frame. The driver's own name and version text
+// come from VkPhysicalDeviceDriverProperties, core since Vulkan 1.2, because
+// the raw driverVersion is packed differently by every vendor.
+struct DeviceDescription {
+    std::string name;
+    std::uint32_t vendorId{};
+    std::uint32_t deviceId{};
+    std::string driverName;
+    std::string driverInfo;
+    std::uint32_t driverVersion{};
+    std::uint32_t apiVersion{};
+};
 
 // Everything a frame needs to record its commands. Handed out by beginFrame.
 // What is recorded into `cmd` between beginFrame and endFrame draws into the
@@ -193,6 +265,23 @@ public:
 
     [[nodiscard]] std::expected<void, RenderError> waitIdle() const;
 
+    // Renders one frame at `extent`, independently of the window and its
+    // swapchain, and reads it back (M1-16, register decision 187). The scene
+    // is drawn into an HDR target and a depth image made exactly as the
+    // window's are, then resolved twice -- once into each probe display
+    // format -- and all three images are copied to host-readable memory in
+    // the same submission, which is waited for before this returns.
+    //
+    // Nothing here reads a clock or depends on the frame before: the targets
+    // are made for this call, cleared, and discarded with it.
+    [[nodiscard]] std::expected<OffscreenFrame, RenderError>
+    renderOffscreen(VkExtent2D extent, const SceneRecorder& scene, const ProbeResolves& resolves);
+
+    // What one probe frame is drawn into and read back through. Declared here
+    // and defined in VulkanContext.cpp, so nothing outside that file can make
+    // or read one; public only so that file's own helpers can name it.
+    struct OffscreenTargets;
+
     // Marks the swapchain for rebuild at the next beginFrame. Called on resize.
     void requestSwapchainRebuild() noexcept { swapchainDirty_ = true; }
 
@@ -232,6 +321,8 @@ public:
     [[nodiscard]] const std::string& deviceName() const noexcept ORBSIM_LIFETIMEBOUND {
         return deviceName_;
     }
+    // The device and its driver, asked of the device when called.
+    [[nodiscard]] DeviceDescription deviceDescription() const;
 
 private:
     VulkanContext() = default;
@@ -240,11 +331,16 @@ private:
     [[nodiscard]] std::expected<void, RenderError> createFrameResources();
     [[nodiscard]] std::expected<void, RenderError> createUploadContext();
     [[nodiscard]] std::expected<void, RenderError> createSwapchain();
+    [[nodiscard]] std::expected<ImageAndView, RenderError>
+    createImage(const ImageRequest& request) const;
     [[nodiscard]] std::expected<void, RenderError> createDepthAttachment();
     [[nodiscard]] std::expected<void, RenderError> createHdrTarget();
+    [[nodiscard]] std::expected<void, RenderError>
+    submitImmediate(const std::function<void(VkCommandBuffer)>& record);
+    [[nodiscard]] std::expected<OffscreenTargets, RenderError>
+    createOffscreenTargets(VkExtent2D extent);
     void releaseSizedResources() noexcept;
     [[nodiscard]] std::expected<void, RenderError> recreateSwapchain();
-    void beginSceneRendering(VkCommandBuffer cmd) const;
     void recordResolve(const FrameContext& frame, const ResolvePass& resolve) const;
 
     // Non-owning: SDL owns the window, and it outlives this object.
@@ -270,15 +366,13 @@ private:
     std::vector<UniqueImageView> swapchainViews_;
     bool swapchainDirty_{false};
 
-    UniqueImage depthImage_;
-    UniqueImageView depthView_;
+    ImageAndView depth_;
 
     // The linear HDR target: swapchain-sized, recreated with it, and one for
     // all frames in flight, as the depth image is -- the barriers order the
     // frames on the one queue, so a second image would buy only overlap that
     // those barriers already give away.
-    UniqueImage hdrImage_;
-    UniqueImageView hdrView_;
+    ImageAndView hdr_;
 
     // Per frame in flight. std::array, not a C array: it knows its own size,
     // and .at() bounds-checks the handful of runtime-indexed accesses in the
@@ -293,7 +387,7 @@ private:
     // image count is not necessarily kFramesInFlight.
     std::vector<UniqueSemaphore> renderFinished_;
 
-    // Immediate-submit context for uploads.
+    // Immediate-submit context: uploads, and since M1-16 a probe's frame.
     UniqueCommandPool uploadPool_;
     VkCommandBuffer uploadCmd_{VK_NULL_HANDLE}; // freed with uploadPool_
     UniqueFence uploadFence_;

@@ -12,8 +12,17 @@
 // No texture coordinates are passed on. tonemap.frag reads the HDR target at
 // the fragment's own pixel, so nothing here can flip the image or shift it.
 
+// **Depth 0.5, not 0** (M1-16, register decision 194). The resolve pass tests
+// no depth, so there it is ignored. The `clear` probe draws its gradient with
+// this triangle *with* the scene's depth test, and 0.5 is what makes that
+// test decide something: reverse-Z clears depth to 0 (ADR 0003), so the
+// triangle passes the project's GREATER comparison and would fail a LESS --
+// the one way to get the comparison wrong now draws nothing, and the probe's
+// numeric check sees it.
+const float kDepth = 0.5;
+
 void main() {
     // Vertex 0, 1, 2 -> (0,0), (2,0), (0,2), then scaled to (-1,-1), (3,-1), (-1,3).
     vec2 corner = vec2(float((gl_VertexIndex << 1) & 2), float(gl_VertexIndex & 2));
-    gl_Position = vec4(corner * 2.0 - 1.0, 0.0, 1.0);
+    gl_Position = vec4(corner * 2.0 - 1.0, kDepth, 1.0);
 }

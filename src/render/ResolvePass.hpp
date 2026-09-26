@@ -50,10 +50,15 @@ namespace orb::gfx {
 
 class ResolvePass {
 public:
+    // `target` is the format of the image the pass draws into: the
+    // swapchain's for the window, or a probe display format (M1-16). A
+    // pipeline is built for one colour format and Vulkan reports a mismatch
+    // only when it draws, so the caller says which.
     [[nodiscard]] static std::expected<ResolvePass, RenderError>
     create(const VulkanContext& context,
            const std::filesystem::path& shaderDirectory,
-           view::PerRadiance exposure);
+           view::PerRadiance exposure,
+           VkFormat target);
 
     // Records the full-screen draw into the attachment currently being
     // rendered, reading `hdrTarget`, which must already be in

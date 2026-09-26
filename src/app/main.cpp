@@ -4,9 +4,12 @@
 // Current milestone: bring up the window, device and swapchain, and prove the
 // frame loop runs. The simulation and renderer land on top of this next.
 //
+#include "app/ExitCodes.hpp"
+#include "app/ProbeMode.hpp"
 #include "app/SdlHandle.hpp"
 #include "core/Units.hpp"
 #include "render/Pipeline.hpp"
+#include "render/Probes.hpp"
 #include "render/ResolvePass.hpp"
 #include "render/VulkanContext.hpp"
 #include "render/VulkanHandle.hpp"
@@ -44,15 +47,15 @@ namespace {
 using orb::Seconds;
 using orb::app::SdlError;
 
-constexpr std::string_view kUsage =
-    "usage: orbsim [--validate | --no-validate] [--seconds <n>] [--shader-dir <path>]\n";
+using orb::app::kExitFailure;
+using orb::app::kExitUsage;
+using orb::app::kExitValidationErrors;
 
-// Exit codes. 0 is a clean run; anything else says which kind of failure, so
-// that a script (the smoke test, CI) can tell a usage error from a lost device
-// from a validation layer complaint without parsing the log.
-constexpr int kExitFailure = 1;
-constexpr int kExitUsage = 2;
-constexpr int kExitValidationErrors = 3;
+constexpr std::string_view kUsage =
+    "usage: orbsim [--validate | --no-validate] [--seconds <n>] [--shader-dir <path>]\n"
+    "       orbsim [--validate | --no-validate] --probe <name> [--probe-out <dir>] "
+    "[--shader-dir <path>]\n"
+    "       orbsim --probe-list\n";
 
 // The camera the application exposes the scene with (M1-15, register decision
 // 176): **f/16, 1/125 s, ISO 100 -- the "sunny 16" rule**, a photographer's
@@ -91,7 +94,18 @@ constexpr Uint32 kIdleDelayMs = 16;
     return std::filesystem::path{utf8};
 }
 
+// What a run is for (M1-16): the interactive window, one probe's frame, or
+// the list of probes. An enum rather than two booleans, which could both be
+// set (non-negotiable 2).
+enum class Mode : std::uint8_t {
+    Window,
+    Probe,
+    ListProbes,
+};
+
 struct Options {
+    Mode mode{Mode::Window};
+
     // Validation defaults on in a debug build, but stays reachable from a
     // release build too: most Vulkan synchronisation bugs only reproduce at
     // release timings, and needing a separate build to see them wastes time.
@@ -111,6 +125,11 @@ struct Options {
     // elsewhere -- and so that a directory with no shaders in it can be
     // tested for being reported by name (register decision 148).
     std::filesystem::path shaderDirectory{pathFromUtf8(ORBSIM_SHADER_DIR)};
+
+    // --probe's name, and where its files go: the build tree's probes/ by
+    // default, where CMake points ORBSIM_PROBE_DIR (register decision 192).
+    std::string probe;
+    std::filesystem::path probeOut{pathFromUtf8(ORBSIM_PROBE_DIR)};
 };
 
 // Whether a person is at the window: a run without --seconds goes on until
@@ -134,6 +153,28 @@ struct Options {
         });
     }
     return Seconds{value};
+}
+
+// The combinations a probe run refuses (register decision 192). A probe is one
+// frame and exits, so a running time means nothing to it; and a name must be
+// one the registry knows, which is said here with the list rather than
+// discovered after a window and a device have been made.
+[[nodiscard]] std::expected<Options, SdlError> checkProbeOptions(Options options) {
+    if (options.mode != Mode::Probe) return options;
+    if (options.runFor.value() > 0.0) {
+        return std::unexpected(
+            SdlError{.message = "--probe renders one frame; --seconds does not apply"});
+    }
+    if (!orb::gfx::findProbe(options.probe)) {
+        std::string names;
+        for (const orb::gfx::Probe& probe : orb::gfx::kProbes) {
+            names += (names.empty() ? "" : ", ") + std::string(probe.name);
+        }
+        return std::unexpected(SdlError{
+            .message = "no probe named '" + options.probe + "'; the probes are: " + names,
+        });
+    }
+    return options;
 }
 
 // The arguments arrive as a span rather than the (int, char**) pair main is
@@ -162,12 +203,25 @@ struct Options {
                 return std::unexpected(SdlError{.message = "--shader-dir needs a path"});
             }
             options.shaderDirectory = pathFromUtf8(tokens.at(++i));
+        } else if (arg == "--probe") {
+            if (i + 1 >= tokens.size()) {
+                return std::unexpected(SdlError{.message = "--probe needs a probe's name"});
+            }
+            options.mode = Mode::Probe;
+            options.probe = std::string(tokens.at(++i));
+        } else if (arg == "--probe-out") {
+            if (i + 1 >= tokens.size()) {
+                return std::unexpected(SdlError{.message = "--probe-out needs a directory"});
+            }
+            options.probeOut = pathFromUtf8(tokens.at(++i));
+        } else if (arg == "--probe-list") {
+            options.mode = Mode::ListProbes;
         } else {
             return std::unexpected(
                 SdlError{.message = "unknown argument '" + std::string(arg) + "'"});
         }
     }
-    return options;
+    return checkProbeOptions(options);
 }
 
 // Drains the event queue. Returns false once the user has asked to quit.
@@ -290,7 +344,8 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
     const auto resolve = orb::gfx::ResolvePass::create(
         gfx,
         options.shaderDirectory,
-        orb::view::radianceExposure(orb::view::exposureValue100(kDefaultCamera)));
+        orb::view::radianceExposure(orb::view::exposureValue100(kDefaultCamera)),
+        gfx.swapchainFormat());
     if (!resolve) {
         std::print(stderr, "Resolve pass could not be created: {}\n", resolve.error().message);
         return kExitFailure;
@@ -318,6 +373,11 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
         return kExitUsage;
     }
 
+    if (options->mode == Mode::ListProbes) {
+        orb::app::listProbes();
+        return 0;
+    }
+
     // Declaration order is teardown order, reversed: the window goes before
     // SDL_Quit, and the renderer -- inside runRenderer -- before both.
     const auto sdl = orb::app::SdlRuntime::init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD);
@@ -326,11 +386,16 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
         return kExitFailure;
     }
 
+    // A probe's window is hidden: it is created, so that there is one device
+    // path rather than two, and never presented (ADR 0008), and a window
+    // flashing up during a test run would only be a distraction. Measured on
+    // 2026-09-26 that a swapchain builds on a hidden SDL window here.
+    const SDL_WindowFlags hidden = options->mode == Mode::Probe ? SDL_WINDOW_HIDDEN : 0;
     const auto window = orb::app::createWindow({
         .title = "orbsim",
         .width = 1600,
         .height = 900,
-        .flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY,
+        .flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | hidden,
     });
     if (!window) {
         std::print(stderr, "{}\n", window.error().message);
@@ -340,9 +405,17 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
     // Counted outside the renderer's lifetime, because teardown is where
     // validation errors hide and the count has to survive it.
     std::atomic<uint32_t> validationErrors{0};
-    if (const int status = runRenderer(window->get(), *options, validationErrors); status != 0) {
-        return status;
-    }
+    const int status = options->mode == Mode::Probe
+                           ? orb::app::runProbe(window->get(),
+                                                {
+                                                    .probe = options->probe,
+                                                    .outDirectory = options->probeOut,
+                                                    .shaderDirectory = options->shaderDirectory,
+                                                    .validation = options->validation,
+                                                },
+                                                validationErrors)
+                           : runRenderer(window->get(), *options, validationErrors);
+    if (status != 0) return status;
     if (const uint32_t errors = validationErrors.load(); errors > 0) {
         std::print(stderr, "orbsim: {} validation error(s) reported; see the log above\n", errors);
         return kExitValidationErrors;

@@ -56,8 +56,8 @@
     {
       "name": "the HDR target is left as a colour attachment for the resolve pass",
       "file": "src/render/VulkanContext.cpp",
-      "find": "                        .to = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,",
-      "replace": "                        .to = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,",
+      "find": "                    hdr_.image.get(),\n                    {\n                        .from = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,\n                        .to = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,",
+      "replace": "                    hdr_.image.get(),\n                    {\n                        .from = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,\n                        .to = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,",
       "suites": [],
       "targets": [
         "orbsim"
@@ -200,8 +200,8 @@
     {
       "name": "the resolve pass is never drawn",
       "file": "src/render/VulkanContext.cpp",
-      "find": "    resolve.record(frame.cmd, frame.frameIndex, hdrView_.get());",
-      "replace": "    static_cast<void>(resolve);",
+      "find": "    resolve.record(cmd, frameIndex, target.hdr);",
+      "replace": "    static_cast<void>(resolve);\n    static_cast<void>(frameIndex);",
       "suites": [],
       "targets": [
         "orbsim"

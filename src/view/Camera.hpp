@@ -12,9 +12,11 @@
 // a world coordinate directly and it lands on a half-metre lattice; subtract
 // the camera position in 64 bits first and only the small difference is
 // narrowed, where the gap is centimetres. `toRenderSpace` below is the only
-// place in `src/` that narrows a position -- the one other narrowing is
+// place in `src/` that narrows a position -- the two other narrowings are
 // view/Exposure.hpp's `toShaderExposure`, a scale factor (M1-15, register
-// decision 179) -- and `grep static_cast<f32> src/` is the audit.
+// decision 179), and view/ProbeGradient.hpp's `toShaderRamp`, the `clear`
+// probe's logarithm and counts (M1-16) -- and `grep static_cast<f32> src/` is
+// the audit.
 //
 // **What that buys, as a law rather than as one number.** The screen-space
 // error of the narrowing is
@@ -240,8 +242,9 @@ static_assert(!isNarrowable(1.0e39) && !isNarrowable(-1.0e39),
 // Three `static_cast<f32>` in one function, exactly as
 // `coding-guidelines-example/src/render/PathUpload.cpp` does it. Anything else
 // in `src/` that narrows is a defect, and `-Wconversion` is what finds it --
-// except view/Exposure.hpp's `toShaderExposure`, the one other narrowing
-// function, which carries a scale factor rather than a position.
+// except view/Exposure.hpp's `toShaderExposure` and view/ProbeGradient.hpp's
+// `toShaderRamp`, the two other narrowing functions, which carry a scale
+// factor and a probe's ramp rather than a position.
 //
 // **A span overload belongs here when M1-19 needs one**, beside this function
 // rather than anywhere else, so that the narrowing stays greppable in one

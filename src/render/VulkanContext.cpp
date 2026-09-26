@@ -1,4 +1,5 @@
 #include "render/VulkanContext.hpp"
+#include "core/Contract.hpp"
 #include "render/ResolvePass.hpp"
 #include "render/VulkanHandle.hpp"
 #include "view/RenderQuality.hpp"
@@ -14,6 +15,7 @@
 #include <vulkan/vk_platform.h>
 #include <vulkan/vulkan_core.h>
 
+#include <algorithm>
 #include <array>
 #include <atomic>
 #include <cstddef>
@@ -22,8 +24,10 @@
 #include <expected>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <ios>
 #include <optional>
+#include <ranges>
 #include <span>
 #include <string>
 #include <string_view>
@@ -368,6 +372,31 @@ struct DeviceBundle {
         return fail(std::string("The GPU cannot read ") + string_VkFormat(kHdrFormat) +
                     " in a shader, which the Vulkan specification makes mandatory");
     }
+    // Since M1-16 the target is also copied out, by a probe's readback
+    // (register decision 188).
+    if (lacks(VK_FORMAT_FEATURE_TRANSFER_SRC_BIT)) {
+        return fail(std::string("The GPU cannot copy out of ") + string_VkFormat(kHdrFormat) +
+                    ", which a probe's readback needs");
+    }
+    return {};
+}
+
+// Whether the device can draw into a probe display format and copy it out
+// (M1-16). kProbeDisplayFormat8's uses are mandatory in the specification and
+// kProbeDisplayFormat16's are not, so both are asked, and a missing one is
+// reported by name rather than drawn wrong.
+[[nodiscard]] std::expected<void, RenderError>
+checkProbeDisplayFormat(VkPhysicalDevice physicalDevice, VkFormat format) {
+    VkFormatProperties properties{};
+    vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &properties);
+    const VkFormatFeatureFlags have = properties.optimalTilingFeatures;
+    const auto has = [have](VkFormatFeatureFlagBits feature) {
+        return (have & static_cast<VkFormatFeatureFlags>(feature)) != 0;
+    };
+    if (!has(VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT) || !has(VK_FORMAT_FEATURE_TRANSFER_SRC_BIT)) {
+        return fail(std::string("The GPU cannot render into and copy out of ") +
+                    string_VkFormat(format) + ", which a probe's display image needs");
+    }
     return {};
 }
 
@@ -446,6 +475,181 @@ void setFullViewport(VkCommandBuffer cmd, VkExtent2D extent) {
     const VkRect2D scissor{.offset = {.x = 0, .y = 0}, .extent = extent};
     vkCmdSetViewport(cmd, 0, 1, &viewport);
     vkCmdSetScissor(cmd, 0, 1, &scissor);
+}
+
+// What the scene draws into: an HDR target and a depth image of one extent.
+// The window's frame and a probe's both begin their scene with this, so the
+// two are cleared and set up by the same code (register decision 187).
+struct SceneTargets {
+    VkImageView hdr{VK_NULL_HANDLE};
+    VkImageView depth{VK_NULL_HANDLE};
+    VkExtent2D extent{};
+};
+
+// Begins the scene's rendering, both attachments already in their attachment
+// layouts, and sets the viewport over the whole target.
+void beginSceneRendering(VkCommandBuffer cmd, const SceneTargets& targets) {
+    // The scene clears to radiance, not to a display colour: zero, where
+    // nothing is drawn (view/SceneClear.hpp says why it is not a tuning
+    // constant).
+    constexpr orb::view::LinearRgba kClear = orb::view::kSceneClear;
+    const VkRenderingAttachmentInfo colorAttachment{
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        .imageView = targets.hdr,
+        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .clearValue = {.color = {{kClear.red, kClear.green, kClear.blue, kClear.alpha}}},
+    };
+    const VkRenderingAttachmentInfo depthAttachment{
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        .imageView = targets.depth,
+        .imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+        .clearValue = {.depthStencil = {.depth = kDepthClear, .stencil = 0}},
+    };
+
+    const VkRenderingInfo rendering{
+        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+        .renderArea = {.offset = {.x = 0, .y = 0}, .extent = targets.extent},
+        .layerCount = 1,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &colorAttachment,
+        .pDepthAttachment = &depthAttachment,
+    };
+    vkCmdBeginRendering(cmd, &rendering);
+    setFullViewport(cmd, targets.extent);
+}
+
+// The scene's two images, by name: both are VkImage, and reversed each would
+// be moved into the other's layout (non-negotiable 1).
+struct SceneImages {
+    VkImage hdr{VK_NULL_HANDLE};
+    VkImage depth{VK_NULL_HANDLE};
+};
+
+// The HDR target and the depth image, from nothing into their attachment
+// layouts. From UNDEFINED, because the scene clears both: what a target held
+// before is discarded, which is also what makes a frame independent of the
+// one before it.
+void prepareSceneTargets(VkCommandBuffer cmd, const SceneImages& images) {
+    transitionImage(cmd,
+                    images.hdr,
+                    {
+                        .from = VK_IMAGE_LAYOUT_UNDEFINED,
+                        .to = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                    });
+    transitionImage(cmd,
+                    images.depth,
+                    {
+                        .from = VK_IMAGE_LAYOUT_UNDEFINED,
+                        .to = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
+                    },
+                    VK_IMAGE_ASPECT_DEPTH_BIT);
+}
+
+// What one resolve draws into, and what it reads.
+struct ResolveTarget {
+    VkImage display{VK_NULL_HANDLE};
+    VkImageView displayView{VK_NULL_HANDLE};
+    VkImageView hdr{VK_NULL_HANDLE}; // already in SHADER_READ_ONLY_OPTIMAL
+    VkExtent2D extent{};
+};
+
+// One resolve: the display image from nothing into an attachment, cleared,
+// and covered by the resolve pass's triangle. The window's frame and a
+// probe's both display through this (register decision 187).
+void recordResolveInto(VkCommandBuffer cmd,
+                       const ResolveTarget& target,
+                       const ResolvePass& resolve,
+                       uint32_t frameIndex) {
+    transitionImage(cmd,
+                    target.display,
+                    {
+                        .from = VK_IMAGE_LAYOUT_UNDEFINED,
+                        .to = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                    });
+    // Cleared to black before the triangle covers it. The triangle writes
+    // every pixel, so the clear is never seen -- unless the triangle is ever
+    // wrong, and then the uncovered part is black on every frame rather than
+    // whatever the image last held.
+    const VkRenderingAttachmentInfo displayAttachment{
+        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
+        .imageView = target.displayView,
+        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
+        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
+        .clearValue = {.color = {{0.0F, 0.0F, 0.0F, 1.0F}}},
+    };
+    const VkRenderingInfo rendering{
+        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
+        .renderArea = {.offset = {.x = 0, .y = 0}, .extent = target.extent},
+        .layerCount = 1,
+        .colorAttachmentCount = 1,
+        .pColorAttachments = &displayAttachment,
+    };
+    vkCmdBeginRendering(cmd, &rendering);
+    setFullViewport(cmd, target.extent);
+    resolve.record(cmd, frameIndex, target.hdr);
+    vkCmdEndRendering(cmd);
+}
+
+// What a copy out reads and writes: the whole of a colour image, in the
+// layout it was left in, into a buffer tightly packed, rows top to bottom.
+// **The layout it is in is part of the request**, because moving an image to
+// TRANSFER_SRC_OPTIMAL from UNDEFINED would let the driver discard exactly the
+// contents about to be copied.
+struct CopyOut {
+    VkImage image{VK_NULL_HANDLE};
+    VkImageLayout layout{VK_IMAGE_LAYOUT_UNDEFINED};
+    VkBuffer buffer{VK_NULL_HANDLE};
+    VkExtent2D extent{};
+};
+
+void copyImageToBuffer(VkCommandBuffer cmd, const CopyOut& copy) {
+    transitionImage(cmd,
+                    copy.image,
+                    {
+                        .from = copy.layout,
+                        .to = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+                    });
+    const VkBufferImageCopy region{
+        .bufferOffset = 0,
+        .bufferRowLength = 0,   // 0: tightly packed, the image's own width
+        .bufferImageHeight = 0, // and its own height
+        .imageSubresource =
+            {
+                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
+                .mipLevel = 0,
+                .baseArrayLayer = 0,
+                .layerCount = 1,
+            },
+        .imageOffset = {.x = 0, .y = 0, .z = 0},
+        .imageExtent = {.width = copy.extent.width, .height = copy.extent.height, .depth = 1},
+    };
+    vkCmdCopyImageToBuffer(
+        cmd, copy.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, copy.buffer, 1, &region);
+}
+
+// The copies' writes made visible to the host. A fence's signal makes the
+// device's writes available but not visible to the host; this barrier is the
+// dependency the specification's synchronisation chapter asks for before the
+// host reads memory a transfer wrote.
+void makeWritesVisibleToHost(VkCommandBuffer cmd) {
+    const VkMemoryBarrier2 barrier{
+        .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
+        .srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT,
+        .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+        .dstStageMask = VK_PIPELINE_STAGE_2_HOST_BIT,
+        .dstAccessMask = VK_ACCESS_2_HOST_READ_BIT,
+    };
+    const VkDependencyInfo dep{
+        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .memoryBarrierCount = 1,
+        .pMemoryBarriers = &barrier,
+    };
+    vkCmdPipelineBarrier2(cmd, &dep);
 }
 
 } // namespace
@@ -661,46 +865,50 @@ std::expected<void, RenderError> VulkanContext::createSwapchain() {
     return {};
 }
 
-// Split out of createSwapchain: the swapchain and its depth buffer are two
-// resources with two failure modes, and one function doing both could only
-// report them with the same undifferentiated failure.
-std::expected<void, RenderError> VulkanContext::createDepthAttachment() {
-    const VkImageCreateInfo depthInfo{
+// An image of any format and size, device-local, with a view onto all of it.
+// The window's HDR target and depth image and a probe's own are all made
+// here, so a probe's are the window's, only sized differently (register
+// decision 187). Split out of createSwapchain long ago for the reason its
+// callers keep: each resource reports its own failure.
+std::expected<ImageAndView, RenderError>
+VulkanContext::createImage(const ImageRequest& request) const {
+    const VkImageCreateInfo imageInfo{
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType = VK_IMAGE_TYPE_2D,
-        .format = kDepthFormat,
-        .extent = {.width = swapchainExtent_.width, .height = swapchainExtent_.height, .depth = 1},
+        .format = request.format,
+        .extent = {.width = request.extent.width, .height = request.extent.height, .depth = 1},
         .mipLevels = 1,
         .arrayLayers = 1,
         .samples = VK_SAMPLE_COUNT_1_BIT,
         .tiling = VK_IMAGE_TILING_OPTIMAL,
-        .usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+        .usage = request.usage,
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     };
-    const VmaAllocationCreateInfo depthAlloc{
+    const VmaAllocationCreateInfo allocInfo{
         .usage = VMA_MEMORY_USAGE_AUTO,
         .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
     };
 
     VkImage image = VK_NULL_HANDLE;
     VmaAllocation allocation = nullptr;
+    const std::string what = std::string(" (") + string_VkFormat(request.format) + ")";
     if (auto ok = vkCheck(
-            vmaCreateImage(allocator_.get(), &depthInfo, &depthAlloc, &image, &allocation, nullptr),
-            "vmaCreateImage (depth)");
+            vmaCreateImage(allocator_.get(), &imageInfo, &allocInfo, &image, &allocation, nullptr),
+            "vmaCreateImage" + what);
         !ok) {
-        return ok;
+        return std::unexpected(ok.error());
     }
-    depthImage_ = UniqueImage{allocator_.get(), image, allocation};
+    ImageAndView made{.image = UniqueImage{allocator_.get(), image, allocation}, .view = {}};
 
-    const VkImageViewCreateInfo depthViewInfo{
+    const VkImageViewCreateInfo viewInfo{
         .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = depthImage_.get(),
+        .image = made.image.get(),
         .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = kDepthFormat,
+        .format = request.format,
         .subresourceRange =
             {
-                .aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+                .aspectMask = request.aspect,
                 .baseMipLevel = 0,
                 .levelCount = 1,
                 .baseArrayLayer = 0,
@@ -708,70 +916,69 @@ std::expected<void, RenderError> VulkanContext::createDepthAttachment() {
             },
     };
     VkImageView view = VK_NULL_HANDLE;
-    if (auto ok = vkCheck(vkCreateImageView(device_.get(), &depthViewInfo, nullptr, &view),
-                          "vkCreateImageView (depth)");
+    if (auto ok = vkCheck(vkCreateImageView(device_.get(), &viewInfo, nullptr, &view),
+                          "vkCreateImageView" + what);
         !ok) {
-        return ok;
+        return std::unexpected(ok.error());
     }
-    depthView_ = UniqueImageView{device_.get(), view};
+    made.view = UniqueImageView{device_.get(), view};
+    return made;
+}
 
+namespace {
+
+// The depth image's request, for any extent: 32-bit float, reverse-Z (ADR
+// 0003).
+[[nodiscard]] ImageRequest depthRequest(VkExtent2D extent) {
+    return {
+        .format = kDepthFormat,
+        .extent = extent,
+        .usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+        .aspect = VK_IMAGE_ASPECT_DEPTH_BIT,
+    };
+}
+
+// The HDR target's request, for any extent (ADR 0014): drawn into, read by the
+// resolve pass -- the two uses kHdrFormat's comment says the specification
+// guarantees -- and, since M1-16, copied out by a probe's readback. **One
+// description for the window's target and a probe's** (register decision
+// 188), so a probe reads back the application's HDR target and not a
+// look-alike.
+[[nodiscard]] ImageRequest hdrRequest(VkExtent2D extent) {
+    return {
+        .format = kHdrFormat,
+        .extent = extent,
+        .usage = VkImageUsageFlags{VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT} |
+                 VkImageUsageFlags{VK_IMAGE_USAGE_SAMPLED_BIT} |
+                 VkImageUsageFlags{VK_IMAGE_USAGE_TRANSFER_SRC_BIT},
+        .aspect = VK_IMAGE_ASPECT_COLOR_BIT,
+    };
+}
+
+// A probe's display image: drawn into by the resolve pass, then copied out.
+[[nodiscard]] ImageRequest probeDisplayRequest(VkFormat format, VkExtent2D extent) {
+    return {
+        .format = format,
+        .extent = extent,
+        .usage = VkImageUsageFlags{VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT} |
+                 VkImageUsageFlags{VK_IMAGE_USAGE_TRANSFER_SRC_BIT},
+        .aspect = VK_IMAGE_ASPECT_COLOR_BIT,
+    };
+}
+
+} // namespace
+
+std::expected<void, RenderError> VulkanContext::createDepthAttachment() {
+    auto depth = createImage(depthRequest(swapchainExtent_));
+    if (!depth) return std::unexpected(depth.error());
+    depth_ = std::move(*depth);
     return {};
 }
 
-// The linear HDR target the scene draws into (ADR 0014): the size of the
-// swapchain and rebuilt with it. Drawn into, then read by the resolve pass --
-// the two uses kHdrFormat's comment says the specification guarantees.
 std::expected<void, RenderError> VulkanContext::createHdrTarget() {
-    const VkImageCreateInfo hdrInfo{
-        .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-        .imageType = VK_IMAGE_TYPE_2D,
-        .format = kHdrFormat,
-        .extent = {.width = swapchainExtent_.width, .height = swapchainExtent_.height, .depth = 1},
-        .mipLevels = 1,
-        .arrayLayers = 1,
-        .samples = VK_SAMPLE_COUNT_1_BIT,
-        .tiling = VK_IMAGE_TILING_OPTIMAL,
-        .usage = VkImageUsageFlags{VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT} |
-                 VkImageUsageFlags{VK_IMAGE_USAGE_SAMPLED_BIT},
-        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
-        .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-    };
-    const VmaAllocationCreateInfo hdrAlloc{
-        .usage = VMA_MEMORY_USAGE_AUTO,
-        .requiredFlags = VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT,
-    };
-
-    VkImage image = VK_NULL_HANDLE;
-    VmaAllocation allocation = nullptr;
-    if (auto ok = vkCheck(
-            vmaCreateImage(allocator_.get(), &hdrInfo, &hdrAlloc, &image, &allocation, nullptr),
-            "vmaCreateImage (HDR target)");
-        !ok) {
-        return ok;
-    }
-    hdrImage_ = UniqueImage{allocator_.get(), image, allocation};
-
-    const VkImageViewCreateInfo hdrViewInfo{
-        .sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image = hdrImage_.get(),
-        .viewType = VK_IMAGE_VIEW_TYPE_2D,
-        .format = kHdrFormat,
-        .subresourceRange =
-            {
-                .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-                .baseMipLevel = 0,
-                .levelCount = 1,
-                .baseArrayLayer = 0,
-                .layerCount = 1,
-            },
-    };
-    VkImageView view = VK_NULL_HANDLE;
-    if (auto ok = vkCheck(vkCreateImageView(device_.get(), &hdrViewInfo, nullptr, &view),
-                          "vkCreateImageView (HDR target)");
-        !ok) {
-        return ok;
-    }
-    hdrView_ = UniqueImageView{device_.get(), view};
+    auto hdr = createImage(hdrRequest(swapchainExtent_));
+    if (!hdr) return std::unexpected(hdr.error());
+    hdr_ = std::move(*hdr);
     return {};
 }
 
@@ -784,10 +991,10 @@ std::expected<void, RenderError> VulkanContext::createHdrTarget() {
 void VulkanContext::releaseSizedResources() noexcept {
     swapchainViews_.clear();
     renderFinished_.clear();
-    depthView_.reset();
-    depthImage_.reset();
-    hdrView_.reset();
-    hdrImage_.reset();
+    depth_.view.reset();
+    depth_.image.reset();
+    hdr_.view.reset();
+    hdr_.image.reset();
 }
 
 std::expected<void, RenderError> VulkanContext::recreateSwapchain() {
@@ -853,24 +1060,13 @@ VulkanContext::beginFrame(orb::view::RenderQuality quality) {
     VkCommandBuffer cmd = commandBuffers_.at(frame);
     if (auto ok = beginOneTimeCommandBuffer(cmd); !ok) return std::unexpected(ok.error());
 
-    // From UNDEFINED, because the scene clears the target: last frame's
-    // contents are discarded rather than kept, which is also what makes a
-    // frame independent of the one before it.
-    transitionImage(cmd,
-                    hdrImage_.get(),
-                    {
-                        .from = VK_IMAGE_LAYOUT_UNDEFINED,
-                        .to = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                    });
-    transitionImage(cmd,
-                    depthImage_.get(),
-                    {
-                        .from = VK_IMAGE_LAYOUT_UNDEFINED,
-                        .to = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-                    },
-                    VK_IMAGE_ASPECT_DEPTH_BIT);
-
-    beginSceneRendering(cmd);
+    prepareSceneTargets(cmd, {.hdr = hdr_.image.get(), .depth = depth_.image.get()});
+    beginSceneRendering(cmd,
+                        {
+                            .hdr = hdr_.view.get(),
+                            .depth = depth_.view.get(),
+                            .extent = swapchainExtent_,
+                        });
 
     return FrameContext{
         .cmd = cmd,
@@ -881,84 +1077,26 @@ VulkanContext::beginFrame(orb::view::RenderQuality quality) {
     };
 }
 
-// Split out of beginFrame: acquiring an image and describing a render pass are
-// two jobs, and only the first of them can fail. F.2 -- a function does one
-// thing.
-void VulkanContext::beginSceneRendering(VkCommandBuffer cmd) const {
-    // The scene clears to radiance, not to a display colour: zero, where
-    // nothing is drawn (view/SceneClear.hpp says why it is not a tuning
-    // constant).
-    constexpr orb::view::LinearRgba kClear = orb::view::kSceneClear;
-    const VkRenderingAttachmentInfo colorAttachment{
-        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-        .imageView = hdrView_.get(),
-        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .clearValue = {.color = {{kClear.red, kClear.green, kClear.blue, kClear.alpha}}},
-    };
-    const VkRenderingAttachmentInfo depthAttachment{
-        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-        .imageView = depthView_.get(),
-        .imageLayout = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-        .clearValue = {.depthStencil = {.depth = kDepthClear, .stencil = 0}},
-    };
-
-    const VkRenderingInfo rendering{
-        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-        .renderArea = {.offset = {.x = 0, .y = 0}, .extent = swapchainExtent_},
-        .layerCount = 1,
-        .colorAttachmentCount = 1,
-        .pColorAttachments = &colorAttachment,
-        .pDepthAttachment = &depthAttachment,
-    };
-    vkCmdBeginRendering(cmd, &rendering);
-    setFullViewport(cmd, swapchainExtent_);
-}
-
 // The finished HDR target becomes an image a shader reads, and the swapchain
 // image becomes the one thing the resolve pass draws into. The first of these
 // barriers is the project's first read-after-write dependency between two
 // passes, which synchronization validation checks under --validate.
 void VulkanContext::recordResolve(const FrameContext& frame, const ResolvePass& resolve) const {
     transitionImage(frame.cmd,
-                    hdrImage_.get(),
+                    hdr_.image.get(),
                     {
                         .from = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
                         .to = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
                     });
-    transitionImage(frame.cmd,
-                    swapchainImages_.at(frame.imageIndex),
-                    {
-                        .from = VK_IMAGE_LAYOUT_UNDEFINED,
-                        .to = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                    });
-
-    // Cleared to black before the triangle covers it. The triangle writes
-    // every pixel, so the clear is never seen -- unless the triangle is ever
-    // wrong, and then the uncovered part is black on every frame rather than
-    // whatever the image last held.
-    const VkRenderingAttachmentInfo displayAttachment{
-        .sType = VK_STRUCTURE_TYPE_RENDERING_ATTACHMENT_INFO,
-        .imageView = swapchainViews_.at(frame.imageIndex).get(),
-        .imageLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-        .loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR,
-        .storeOp = VK_ATTACHMENT_STORE_OP_STORE,
-        .clearValue = {.color = {{0.0F, 0.0F, 0.0F, 1.0F}}},
-    };
-    const VkRenderingInfo rendering{
-        .sType = VK_STRUCTURE_TYPE_RENDERING_INFO,
-        .renderArea = {.offset = {.x = 0, .y = 0}, .extent = swapchainExtent_},
-        .layerCount = 1,
-        .colorAttachmentCount = 1,
-        .pColorAttachments = &displayAttachment,
-    };
-    vkCmdBeginRendering(frame.cmd, &rendering);
-    setFullViewport(frame.cmd, swapchainExtent_);
-    resolve.record(frame.cmd, frame.frameIndex, hdrView_.get());
-    vkCmdEndRendering(frame.cmd);
+    recordResolveInto(frame.cmd,
+                      {
+                          .display = swapchainImages_.at(frame.imageIndex),
+                          .displayView = swapchainViews_.at(frame.imageIndex).get(),
+                          .hdr = hdr_.view.get(),
+                          .extent = swapchainExtent_,
+                      },
+                      resolve,
+                      frame.frameIndex);
 }
 
 std::expected<void, RenderError> VulkanContext::endFrame(const FrameContext& frame,
@@ -1046,12 +1184,25 @@ std::expected<UniqueBuffer, RenderError> VulkanContext::createBuffer(const Buffe
         .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
     };
     VmaAllocationCreateInfo allocInfo{.usage = VMA_MEMORY_USAGE_AUTO};
-    if (memory == Memory::HostVisible) {
-        // As above: VmaAllocationCreateFlags is the unsigned type these bits
-        // are meant to be combined in; the FlagBits enum itself is signed.
+    // As above: VmaAllocationCreateFlags is the unsigned type these bits are
+    // meant to be combined in; the FlagBits enum itself is signed.
+    constexpr auto kMapped =
+        static_cast<VmaAllocationCreateFlags>(VMA_ALLOCATION_CREATE_MAPPED_BIT);
+    switch (memory) {
+    case Memory::DeviceLocal:
+        break;
+    case Memory::HostVisible:
         allocInfo.flags = static_cast<VmaAllocationCreateFlags>(
                               VMA_ALLOCATION_CREATE_HOST_ACCESS_SEQUENTIAL_WRITE_BIT) |
-                          static_cast<VmaAllocationCreateFlags>(VMA_ALLOCATION_CREATE_MAPPED_BIT);
+                          kMapped;
+        break;
+    case Memory::HostReadback:
+        // Random access, which VMA answers with cached memory where there is
+        // some: memory made for writing in sequence is slow to read back.
+        allocInfo.flags =
+            static_cast<VmaAllocationCreateFlags>(VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT) |
+            kMapped;
+        break;
     }
 
     VkBuffer buffer = VK_NULL_HANDLE;
@@ -1106,15 +1257,29 @@ std::expected<void, RenderError> VulkanContext::uploadBuffer(UniqueBuffer& dst,
 #pragma clang diagnostic pop
 #endif
 
+    // Complete before return, not merely submitted: the staging buffer
+    // destroys itself then.
+    const VkBufferCopy copy{.srcOffset = 0, .dstOffset = 0, .size = data.size()};
+    return submitImmediate(
+        [&](VkCommandBuffer cmd) { vkCmdCopyBuffer(cmd, staging->get(), dst.get(), 1, &copy); });
+}
+
+// Records into the immediate-submit command buffer, submits it alone, and
+// waits for it to finish. For uploads, and since M1-16 for a probe's frame:
+// work that must be complete, not merely submitted, when the caller goes on.
+// The fence is waited on without a timeout, for the reason beginFrame's is:
+// a lost device reports itself through the wait's result rather than a
+// timeout's guess, and nothing here reads a clock.
+std::expected<void, RenderError>
+VulkanContext::submitImmediate(const std::function<void(VkCommandBuffer)>& record) {
     VkFence fence = uploadFence_.get();
-    if (auto ok = vkCheck(vkResetFences(device_.get(), 1, &fence), "vkResetFences (upload)"); !ok) {
+    if (auto ok = vkCheck(vkResetFences(device_.get(), 1, &fence), "vkResetFences (immediate)");
+        !ok) {
         return ok;
     }
     if (auto ok = beginOneTimeCommandBuffer(uploadCmd_); !ok) return ok;
-
-    const VkBufferCopy copy{.srcOffset = 0, .dstOffset = 0, .size = data.size()};
-    vkCmdCopyBuffer(uploadCmd_, staging->get(), dst.get(), 1, &copy);
-    if (auto ok = vkCheck(vkEndCommandBuffer(uploadCmd_), "vkEndCommandBuffer (upload)"); !ok) {
+    record(uploadCmd_);
+    if (auto ok = vkCheck(vkEndCommandBuffer(uploadCmd_), "vkEndCommandBuffer (immediate)"); !ok) {
         return ok;
     }
 
@@ -1127,15 +1292,235 @@ std::expected<void, RenderError> VulkanContext::uploadBuffer(UniqueBuffer& dst,
         .commandBufferInfoCount = 1,
         .pCommandBufferInfos = &cmdInfo,
     };
-    if (auto ok =
-            vkCheck(vkQueueSubmit2(graphicsQueue_, 1, &submit, fence), "vkQueueSubmit2 (upload)");
+    if (auto ok = vkCheck(vkQueueSubmit2(graphicsQueue_, 1, &submit, fence),
+                          "vkQueueSubmit2 (immediate)");
         !ok) {
         return ok;
     }
-    // The staging buffer destroys itself on return, so the copy must be
-    // complete before then, not merely submitted.
     return vkCheck(vkWaitForFences(device_.get(), 1, &fence, VK_TRUE, UINT64_MAX),
-                   "vkWaitForFences (upload)");
+                   "vkWaitForFences (immediate)");
+}
+
+namespace {
+
+// The bytes of one pixel of each image a probe reads back, and so each
+// readback buffer's size per pixel.
+constexpr VkDeviceSize kHdrBytesPerPixel = 8;       // four binary16 channels
+constexpr VkDeviceSize kDisplay8BytesPerPixel = 4;  // four 8-bit channels
+constexpr VkDeviceSize kDisplay16BytesPerPixel = 8; // four 16-bit channels
+
+// A readback buffer's contents, once the GPU's writes are visible to the host
+// (makeWritesVisibleToHost, then the fence): invalidated first, because
+// memory that is not host-coherent may hold stale cache lines until it is,
+// and then copied out whole.
+template <typename Value>
+[[nodiscard]] std::expected<std::vector<Value>, RenderError> readBack(VmaAllocator allocator,
+                                                                      const UniqueBuffer& buffer) {
+    if (auto ok = vkCheck(vmaInvalidateAllocation(allocator, buffer.allocation(), 0, VK_WHOLE_SIZE),
+                          "vmaInvalidateAllocation (readback)");
+        !ok) {
+        return std::unexpected(ok.error());
+    }
+    if (buffer.mapped() == nullptr) return fail("Readback buffer was not mapped");
+    std::vector<Value> values(static_cast<std::size_t>(buffer.size()) / sizeof(Value));
+    // VMA hands mapped memory back as a bare pointer, and the way to read
+    // through one is a C library copy, which -Wunsafe-buffer-usage-in-libc-call
+    // reports; off for this copy, as for uploadBuffer's two (ADR 0017). The
+    // bound is the buffer's own size, which the vector was sized from.
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-libc-call"
+#endif
+    std::memcpy(values.data(), buffer.mapped(), values.size() * sizeof(Value));
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
+    return values;
+}
+
+} // namespace
+
+// Everything one probe frame is drawn into and read back through, made for
+// the frame and released with it.
+struct VulkanContext::OffscreenTargets {
+    ImageAndView hdr;
+    ImageAndView depth;
+    ImageAndView display8;
+    ImageAndView display16;
+    UniqueBuffer readHdr;
+    UniqueBuffer read8;
+    UniqueBuffer read16;
+};
+
+namespace {
+
+// The frame's commands: the scene, both resolves, and the three copies, in
+// one command buffer. Frame slot 0's descriptor set in each resolve pass,
+// which is safe because a probe's passes are its own and nothing else is in
+// flight.
+void recordOffscreen(VkCommandBuffer cmd,
+                     const VulkanContext::OffscreenTargets& targets,
+                     VkExtent2D extent,
+                     const SceneRecorder& scene,
+                     const ProbeResolves& resolves) {
+    prepareSceneTargets(cmd,
+                        {
+                            .hdr = targets.hdr.image.get(),
+                            .depth = targets.depth.image.get(),
+                        });
+    beginSceneRendering(cmd,
+                        {
+                            .hdr = targets.hdr.view.get(),
+                            .depth = targets.depth.view.get(),
+                            .extent = extent,
+                        });
+    scene(cmd);
+    vkCmdEndRendering(cmd);
+
+    transitionImage(cmd,
+                    targets.hdr.image.get(),
+                    {
+                        .from = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                        .to = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                    });
+    recordResolveInto(cmd,
+                      {
+                          .display = targets.display8.image.get(),
+                          .displayView = targets.display8.view.get(),
+                          .hdr = targets.hdr.view.get(),
+                          .extent = extent,
+                      },
+                      *resolves.eightBit,
+                      0);
+    recordResolveInto(cmd,
+                      {
+                          .display = targets.display16.image.get(),
+                          .displayView = targets.display16.view.get(),
+                          .hdr = targets.hdr.view.get(),
+                          .extent = extent,
+                      },
+                      *resolves.sixteenBit,
+                      0);
+
+    copyImageToBuffer(cmd,
+                      {
+                          .image = targets.hdr.image.get(),
+                          .layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+                          .buffer = targets.readHdr.get(),
+                          .extent = extent,
+                      });
+    copyImageToBuffer(cmd,
+                      {
+                          .image = targets.display8.image.get(),
+                          .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                          .buffer = targets.read8.get(),
+                          .extent = extent,
+                      });
+    copyImageToBuffer(cmd,
+                      {
+                          .image = targets.display16.image.get(),
+                          .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                          .buffer = targets.read16.get(),
+                          .extent = extent,
+                      });
+    makeWritesVisibleToHost(cmd);
+}
+
+} // namespace
+
+std::expected<VulkanContext::OffscreenTargets, RenderError>
+VulkanContext::createOffscreenTargets(VkExtent2D extent) {
+    auto hdr = createImage(hdrRequest(extent));
+    if (!hdr) return std::unexpected(hdr.error());
+    auto depth = createImage(depthRequest(extent));
+    if (!depth) return std::unexpected(depth.error());
+    auto display8 = createImage(probeDisplayRequest(kProbeDisplayFormat8, extent));
+    if (!display8) return std::unexpected(display8.error());
+    auto display16 = createImage(probeDisplayRequest(kProbeDisplayFormat16, extent));
+    if (!display16) return std::unexpected(display16.error());
+
+    const VkDeviceSize pixels = VkDeviceSize{extent.width} * extent.height;
+    const auto readback = [&](VkDeviceSize bytesPerPixel) {
+        return createBuffer({
+            .size = pixels * bytesPerPixel,
+            .usage = VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            .memory = Memory::HostReadback,
+        });
+    };
+    auto readHdr = readback(kHdrBytesPerPixel);
+    if (!readHdr) return std::unexpected(readHdr.error());
+    auto read8 = readback(kDisplay8BytesPerPixel);
+    if (!read8) return std::unexpected(read8.error());
+    auto read16 = readback(kDisplay16BytesPerPixel);
+    if (!read16) return std::unexpected(read16.error());
+
+    return OffscreenTargets{
+        .hdr = std::move(*hdr),
+        .depth = std::move(*depth),
+        .display8 = std::move(*display8),
+        .display16 = std::move(*display16),
+        .readHdr = std::move(*readHdr),
+        .read8 = std::move(*read8),
+        .read16 = std::move(*read16),
+    };
+}
+
+std::expected<OffscreenFrame, RenderError> VulkanContext::renderOffscreen(
+    VkExtent2D extent, const SceneRecorder& scene, const ProbeResolves& resolves) {
+    ORBSIM_EXPECTS(resolves.eightBit != nullptr && resolves.sixteenBit != nullptr);
+    ORBSIM_EXPECTS(extent.width > 0 && extent.height > 0);
+    for (const VkFormat format : {kProbeDisplayFormat8, kProbeDisplayFormat16}) {
+        if (auto ok = checkProbeDisplayFormat(physicalDevice_, format); !ok) {
+            return std::unexpected(ok.error());
+        }
+    }
+    auto targets = createOffscreenTargets(extent);
+    if (!targets) return std::unexpected(targets.error());
+
+    if (auto ok = submitImmediate(
+            [&](VkCommandBuffer cmd) { recordOffscreen(cmd, *targets, extent, scene, resolves); });
+        !ok) {
+        return std::unexpected(ok.error());
+    }
+
+    auto hdrHalf = readBack<std::uint16_t>(allocator_.get(), targets->readHdr);
+    if (!hdrHalf) return std::unexpected(hdrHalf.error());
+    auto eightBit = readBack<std::uint8_t>(allocator_.get(), targets->read8);
+    if (!eightBit) return std::unexpected(eightBit.error());
+    auto sixteenBit = readBack<std::uint16_t>(allocator_.get(), targets->read16);
+    if (!sixteenBit) return std::unexpected(sixteenBit.error());
+    return OffscreenFrame{
+        .hdrHalf = std::move(*hdrHalf),
+        .display8 = std::move(*eightBit),
+        .display16 = std::move(*sixteenBit),
+    };
+}
+
+DeviceDescription VulkanContext::deviceDescription() const {
+    // driverID is set to a value its enum defines, which zero is not; the
+    // query overwrites it.
+    VkPhysicalDeviceDriverProperties driver{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES,
+        .driverID = VK_DRIVER_ID_MAX_ENUM,
+    };
+    VkPhysicalDeviceProperties2 properties{
+        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+        .pNext = &driver,
+    };
+    vkGetPhysicalDeviceProperties2(physicalDevice_, &properties);
+    // The driver's two names are fixed-size, null-terminated char arrays.
+    const auto text = [](const auto& chars) {
+        return std::string(std::ranges::begin(chars), std::ranges::find(chars, '\0'));
+    };
+    return {
+        .name = text(properties.properties.deviceName),
+        .vendorId = properties.properties.vendorID,
+        .deviceId = properties.properties.deviceID,
+        .driverName = text(driver.driverName),
+        .driverInfo = text(driver.driverInfo),
+        .driverVersion = properties.properties.driverVersion,
+        .apiVersion = properties.properties.apiVersion,
+    };
 }
 
 std::expected<UniqueShaderModule, RenderError>

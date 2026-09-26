@@ -240,7 +240,8 @@ inline constexpr f64 kReferenceSpeed = 100.0; // the "100" in EV100
 
 // **The exposure narrowed for the shader: the second place in `src/` that
 // narrows to 32 bits** (register decision 179), beside view/Camera.hpp's
-// toRenderSpace. `grep static_cast<f32> src/` finds both, and a third is a
+// toRenderSpace. `grep static_cast<f32> src/` finds those two and, since
+// M1-16, view/ProbeGradient.hpp's toShaderRamp; a narrowing anywhere else is a
 // defect. Nothing is subtracted first because nothing needs to be: this is a
 // scale factor, typically 1e-6 to 1e-2, where a float's relative precision is
 // the same 6e-8 it is everywhere.

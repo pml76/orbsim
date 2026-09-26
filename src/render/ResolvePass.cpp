@@ -108,14 +108,15 @@ allocateSets(VkDevice device, VkDescriptorPool pool, VkDescriptorSetLayout layou
     return sets;
 }
 
-// fullscreen.vert and tonemap.frag, into the swapchain's format, with no
+// fullscreen.vert and tonemap.frag, into `target`'s format, with no
 // vertex buffer, no depth attachment, and tonemap.frag's one push constant,
 // the exposure (view/PushConstants.hpp). The modules are
 // destroyed on return; the pipeline keeps what it compiled from them.
 [[nodiscard]] std::expected<GraphicsPipeline, RenderError>
 createPipeline(const VulkanContext& context,
                const std::filesystem::path& shaderDirectory,
-               VkDescriptorSetLayout setLayout) {
+               VkDescriptorSetLayout setLayout,
+               VkFormat target) {
     auto vertex = context.loadShaderModule(shaderDirectory / "fullscreen.vert.spv");
     if (!vertex) return std::unexpected(vertex.error());
     auto fragment = context.loadShaderModule(shaderDirectory / "tonemap.frag.spv");
@@ -134,7 +135,7 @@ createPipeline(const VulkanContext& context,
             // irrelevant, and culling it by mistake would draw nothing.
             .cullMode = CullMode::None,
             .depth = {.test = DepthTest::Disabled, .write = DepthWrite::Disabled},
-            .attachments = {.colour = context.swapchainFormat(), .depth = VK_FORMAT_UNDEFINED},
+            .attachments = {.colour = target, .depth = VK_FORMAT_UNDEFINED},
             .pushConstants = pushConstants,
             .descriptorSetLayouts = setLayouts,
         });
@@ -153,7 +154,8 @@ ResolvePass::ResolvePass(Parts parts) noexcept
 std::expected<ResolvePass, RenderError>
 ResolvePass::create(const VulkanContext& context,
                     const std::filesystem::path& shaderDirectory,
-                    view::PerRadiance exposure) {
+                    view::PerRadiance exposure,
+                    VkFormat target) {
     VkDevice device = context.device();
     auto setLayout = createSetLayout(device);
     if (!setLayout) return std::unexpected(setLayout.error());
@@ -161,7 +163,7 @@ ResolvePass::create(const VulkanContext& context,
     if (!pool) return std::unexpected(pool.error());
     auto sets = allocateSets(device, pool->get(), setLayout->get());
     if (!sets) return std::unexpected(sets.error());
-    auto pipeline = createPipeline(context, shaderDirectory, setLayout->get());
+    auto pipeline = createPipeline(context, shaderDirectory, setLayout->get(), target);
     if (!pipeline) return std::unexpected(pipeline.error());
 
     return ResolvePass{Parts{
