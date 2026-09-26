@@ -1243,7 +1243,7 @@ Items marked ✅ are already on this machine.
 | **CMake** ✅ | Use the copy CLion bundles, not the older one on `PATH` — the build trees were configured with it. Versions: [`docs/STATUS.md`](docs/STATUS.md) |
 | **Ninja** ✅ | Fast, and the only generator worth using here |
 | **CMakePresets** ✅ | Already pinning clang. This is how you stop arguing about build flags |
-| **FetchContent** ✅ | Pulling all eight dependencies at a pinned tag: SDL3, vk-bootstrap, VMA, Vulkan-Headers, Vulkan-Utility-Libraries, Catch2, mp-units and ERFA. [`THIRD_PARTY.md`](THIRD_PARTY.md) has every pin and its licence |
+| **FetchContent** ✅ | Pulling all eleven dependencies at a pinned tag or commit: SDL3, vk-bootstrap, VMA, Vulkan-Headers, Vulkan-Utility-Libraries, Catch2, mp-units, ERFA, stb, lodepng and OpenEXR -- with Imath, which OpenEXR fetches, pinned as well. [`THIRD_PARTY.md`](THIRD_PARTY.md) has every pin and its licence |
 | **ccache** / **sccache** | Compile caching. You are rebuilding SDL3 from source; you will want this |
 | **CPM.cmake** | A nicer wrapper over FetchContent if dependency handling gets busy |
 

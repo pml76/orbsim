@@ -244,8 +244,9 @@ rather than the exact tag. `gcc-14` is the second *implementation* and is not
 tied to that number.
 
 Pinned dependencies: SDL3, vk-bootstrap, VMA, Vulkan-Headers,
-Vulkan-Utility-Libraries, Catch2, mp-units and ERFA — eight, all fetched at a
-pinned tag by `CMakeLists.txt`. **mp-units was the first one `orbsim_core`
+Vulkan-Utility-Libraries, Catch2, mp-units, ERFA, stb, lodepng and OpenEXR —
+eleven, all fetched at a pinned tag or commit by `CMakeLists.txt`, plus Imath,
+which OpenEXR fetches at the tag this project pins. **mp-units was the first one `orbsim_core`
 links**, header-only; **ERFA, since M1-05, is the first it needs at link
 time** -- a static C library our build compiles from its sources, so the
 headless core still needs nothing installed. Their licences, the ones decided

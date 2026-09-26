@@ -503,9 +503,94 @@ target_link_libraries(orbsim_core
 )
 
 # ---------------------------------------------------------------------------
+# Image files: stb, lodepng and OpenEXR (M1-16; register decisions 195-197).
+#
+# What a probe writes -- two PNGs and an EXR -- is encoded in orbsim_view, so
+# these are declared before it. All three are SYSTEM, so their headers are not
+# judged as ours, and none is built with this project's warning set: lodepng's
+# source raises 1,841 warnings under it and none under the compiler's defaults
+# (measured 2026-09-26), which is the same arrangement ERFA has.
+#
+# **stb** has no releases or tags, so it is pinned by commit (2026-08-02).
+# Only its decoder is used, and only by the tests, to read both PNGs back
+# independently of the encoder that wrote them; M1-17 uses it for goldens.
+# Header-only: there is nothing to build until a translation unit defines
+# STB_IMAGE_IMPLEMENTATION, which tests/StbImageImpl.cpp does.
+#
+# **lodepng** writes both PNGs, 8 and 16 bits per channel. No releases or tags
+# either, so pinned by commit (2026-05-28). Its file I/O is compiled out: paths
+# are written by the application through std::filesystem::path, which a C
+# library's `char*` cannot be trusted with on Windows (CODING_GUIDELINES
+# section 18). Its decoder is compiled out too -- this project only encodes
+# with it, and a decoder is the part of a PNG library that faces untrusted
+# bytes.
+#
+# **OpenEXR 3.5.1** writes the EXR, through its C library OpenEXRCore only.
+# It needs SSE4.1 under this project's clang, which ADR 0023 provides for
+# every file. Its own dependencies are the ones it vendors -- libdeflate,
+# OpenJPH and zstd -- forced to the vendored copies so that the build does not
+# change with whatever the machine has installed, and Imath, which it fetches
+# and which is pinned here at v3.2.3 rather than left at its default of
+# "main". Static, with its tools, examples, tests, installation and threading
+# off: one thread writes one file, and threads would only add a way for the
+# output to depend on timing. EXCLUDE_FROM_ALL, so only what orbsim_view links
+# is built.
+# ---------------------------------------------------------------------------
+FetchContent_Declare(stb
+        GIT_REPOSITORY https://github.com/nothings/stb.git
+        GIT_TAG        2c980bb59875b0d32144a71867fbdebb2f77cd20
+        SYSTEM
+)
+FetchContent_Declare(lodepng
+        GIT_REPOSITORY https://github.com/lvandeve/lodepng.git
+        GIT_TAG        ed6fe5825c6a4fbb7f58ab35a4231c7543cd452a
+        SYSTEM
+)
+# Neither has a CMakeLists.txt, so these only fetch; the targets are below.
+FetchContent_MakeAvailable(stb lodepng)
+
+add_library(orbsim_stb INTERFACE)
+target_include_directories(orbsim_stb SYSTEM INTERFACE "${stb_SOURCE_DIR}")
+
+add_library(orbsim_lodepng STATIC "${lodepng_SOURCE_DIR}/lodepng.cpp")
+target_include_directories(orbsim_lodepng SYSTEM PUBLIC "${lodepng_SOURCE_DIR}")
+target_compile_definitions(orbsim_lodepng PUBLIC LODEPNG_NO_COMPILE_DISK LODEPNG_NO_COMPILE_DECODER)
+
+set(OPENEXR_BUILD_TOOLS OFF CACHE BOOL "" FORCE)
+set(OPENEXR_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+set(OPENEXR_BUILD_PYTHON OFF CACHE BOOL "" FORCE)
+set(OPENEXR_INSTALL OFF CACHE BOOL "" FORCE)
+set(OPENEXR_INSTALL_TOOLS OFF CACHE BOOL "" FORCE)
+set(OPENEXR_INSTALL_PKG_CONFIG OFF CACHE BOOL "" FORCE)
+set(OPENEXR_TEST_LIBRARIES OFF CACHE BOOL "" FORCE)
+set(OPENEXR_TEST_TOOLS OFF CACHE BOOL "" FORCE)
+set(OPENEXR_TEST_PYTHON OFF CACHE BOOL "" FORCE)
+set(OPENEXR_ENABLE_THREADING OFF CACHE BOOL "" FORCE)
+set(OPENEXR_FORCE_INTERNAL_DEFLATE ON CACHE BOOL "" FORCE)
+set(OPENEXR_FORCE_INTERNAL_OPENJPH ON CACHE BOOL "" FORCE)
+set(OPENEXR_FORCE_INTERNAL_ZSTD ON CACHE BOOL "" FORCE)
+set(OPENEXR_FORCE_INTERNAL_IMATH ON CACHE BOOL "" FORCE)
+set(OPENEXR_IMATH_TAG v3.2.3 CACHE STRING "" FORCE)
+set(IMATH_INSTALL OFF CACHE BOOL "" FORCE)
+set(IMATH_INSTALL_PKG_CONFIG OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(openexr
+        GIT_REPOSITORY https://github.com/AcademySoftwareFoundation/openexr.git
+        GIT_TAG        v3.5.1
+        GIT_SHALLOW    TRUE
+        SYSTEM
+        EXCLUDE_FROM_ALL
+)
+# Static: a normal variable, which OpenEXR's option() leaves alone (CMP0077),
+# scoped to this call so that SDL's own choice below is untouched.
+set(BUILD_SHARED_LIBS OFF)
+FetchContent_MakeAvailable(openexr)
+unset(BUILD_SHARED_LIBS)
+
+# ---------------------------------------------------------------------------
 # orbsim_view -- the render-side maths that Vulkan never touches (ADR 0012).
 #
-# It links orbsim_core and nothing else. orbsim_render and the application
+# It links orbsim_core and, privately since M1-16, the two image libraries
+# below -- nothing graphical. orbsim_render and the application
 # link it; orbsim_core does not, and cannot, which is what makes "nothing
 # under tests/ includes a Vulkan or SDL header" a property of the link graph
 # rather than of anyone's memory.
@@ -513,16 +598,22 @@ target_link_libraries(orbsim_core
 # STATIC since M1-11, which added Camera.cpp. It was INTERFACE while M1-09 and
 # M1-10 left it header-only, because a sourceless static library does not
 # configure at all -- CMake stops with "No SOURCES given to target" (measured
-# 2026-09-20). Nothing else about it changed: it still links orbsim_core and
-# nothing else, and orbsim_core still cannot link it back.
+# 2026-09-20). Nothing else about it changed then: it linked orbsim_core and
+# nothing else until M1-16's image libraries, and orbsim_core still cannot
+# link it back.
 # ---------------------------------------------------------------------------
 set(ORBSIM_VIEW_SOURCES
         src/view/Camera.cpp
+        src/view/ImageFiles.cpp
+        src/view/ProbeImage.cpp
 )
 add_library(orbsim_view STATIC ${ORBSIM_VIEW_SOURCES})
+# Privately, since M1-16: the PNG and EXR encoders' two libraries, seen by
+# view/ImageFiles.cpp alone. Neither is a graphics library, so the claim above
+# -- nothing under tests/ reaches Vulkan or SDL through this target -- stands.
 target_link_libraries(orbsim_view
         PUBLIC orbsim_core
-        PRIVATE orbsim_warnings orbsim_sanitizers
+        PRIVATE orbsim_warnings orbsim_sanitizers orbsim_lodepng OpenEXR::OpenEXRCore
 )
 
 # The structural claim, checked rather than remembered (ADR 0012, and
@@ -588,7 +679,9 @@ include(Catch)
 # suite still gets the warnings and the sanitizers, and so does this source.
 set(ORBSIM_TEST_SUPPORT_SOURCES
         tests/FixtureFile.cpp
+        tests/HdrDumpFile.cpp
         tests/OrbitTestSupport.cpp
+        tests/StbImageImpl.cpp
 )
 add_library(orbsim_test_support STATIC ${ORBSIM_TEST_SUPPORT_SOURCES})
 target_include_directories(orbsim_test_support PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
@@ -596,6 +689,7 @@ target_link_libraries(orbsim_test_support PUBLIC
         orbsim_core
         orbsim_warnings
         orbsim_sanitizers
+        orbsim_stb
         Catch2::Catch2WithMain
 )
 # Where the suites find reference data: data/ in the source tree, named by the
@@ -613,6 +707,9 @@ set(ORBSIM_TESTS
         test_earth_orientation
         test_exposure
         test_fixture_file
+        test_half
+        test_hdr_dump
+        test_image_files
         test_math
         test_orbit
         test_orbit_scales
@@ -650,6 +747,11 @@ target_link_libraries(test_pipeline_inputs PRIVATE orbsim_view)
 target_link_libraries(test_srgb PRIVATE orbsim_view)
 target_link_libraries(test_exposure PRIVATE orbsim_view)
 target_link_libraries(test_tonemap PRIVATE orbsim_view)
+target_link_libraries(test_half PRIVATE orbsim_view)
+target_link_libraries(test_hdr_dump PRIVATE orbsim_view)
+# And OpenEXR itself: the EXR is read back through the reference
+# implementation's own decoder, which is the check that the file is one.
+target_link_libraries(test_image_files PRIVATE orbsim_view OpenEXR::OpenEXRCore)
 
 # The run-time half of Count's wraparound guard (M1-12, register decision 136).
 #
@@ -1028,8 +1130,11 @@ orbsim_add_header_selfcheck(orbsim_view_header_selfcheck orbsim_view
         view/Camera.hpp
         view/Exposure.hpp
         view/Frame.hpp
+        view/Half.hpp
+        view/ImageFiles.hpp
         view/Mat4.hpp
         view/Projection.hpp
+        view/ProbeImage.hpp
         view/PushConstants.hpp
         view/RenderQuality.hpp
         view/SceneClear.hpp
@@ -1040,6 +1145,7 @@ orbsim_add_header_selfcheck(orbsim_view_header_selfcheck orbsim_view
 orbsim_add_header_selfcheck(orbsim_test_header_selfcheck orbsim_test_support
         tests/CountWraparound.hpp
         tests/FixtureFile.hpp
+        tests/HdrDumpFile.hpp
         tests/OrbitTestSupport.hpp
 )
 add_dependencies(test_orbit orbsim_header_selfcheck orbsim_test_header_selfcheck)
@@ -1051,6 +1157,9 @@ add_dependencies(test_pipeline_inputs orbsim_view_header_selfcheck)
 add_dependencies(test_srgb orbsim_view_header_selfcheck)
 add_dependencies(test_exposure orbsim_view_header_selfcheck)
 add_dependencies(test_tonemap orbsim_view_header_selfcheck)
+add_dependencies(test_half orbsim_view_header_selfcheck)
+add_dependencies(test_hdr_dump orbsim_view_header_selfcheck)
+add_dependencies(test_image_files orbsim_view_header_selfcheck)
 
 if(ORBSIM_BUILD_APP)
     orbsim_add_header_selfcheck(orbsim_render_header_selfcheck orbsim_render_deps
