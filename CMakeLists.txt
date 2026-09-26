@@ -37,6 +37,38 @@ include(FetchContent)
 set(FETCHCONTENT_QUIET OFF)
 
 # ---------------------------------------------------------------------------
+# The processor this project assumes (ADR 0023, register decisions 200-201).
+#
+# x86-64 with MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, FMA3, AVX, AVX2 and
+# F16C -- what this machine's Intel Core i9-12900H and AMD's Zen 2 have in
+# common (register decision 202 added F16C, the hardware conversion between
+# 16- and 32-bit floats). Set for **every file compiled** -- ours and every
+# dependency's, which is why
+# this comes before the first target and the first FetchContent: a directory's
+# compile options reach the subprojects added below it. The owner's list also
+# named SSE4A, which is AMD's alone and absent from this machine's Intel Core
+# i9-12900H, so a build allowed to emit it could stop with an illegal
+# instruction here; "MMX-plus" is AMD's name for additions Intel ships inside
+# SSE, and has no flag of its own. MSVC has one switch for the whole set.
+#
+# **-ffp-contract=off goes everywhere with them, not only on orbsim_fp.** FMA3
+# lets the compiler fuse `a * b + c` into one instruction with one rounding,
+# and clang does so by default once -mfma is on (measured 2026-09-26: 0 fused
+# without it, 1 with it). Our own targets always forbade that; third-party
+# code -- Catch2's WithinAbs and WithinRel among it -- did not, and would
+# otherwise have changed its arithmetic with this flag. MSVC 19.51 does not
+# fuse under /fp:precise unless /fp:contract is given (measured the same day),
+# so /fp:precise is set for everything too, which is its default made explicit.
+# ---------------------------------------------------------------------------
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_compile_options(
+            -mmmx -msse -msse2 -msse3 -mssse3 -msse4.1 -msse4.2 -mfma -mavx -mavx2 -mf16c
+            -ffp-contract=off)
+elseif(MSVC)
+    add_compile_options(/arch:AVX2 /fp:precise)
+endif()
+
+# ---------------------------------------------------------------------------
 # Warnings: every one the compiler has, as errors.
 #
 # The owner's rule (ADR 0017): as many warnings as possible, as errors, to
@@ -173,7 +205,9 @@ endif()
 # at any optimisation level: orbitInfo() returns infinity on purpose.
 #
 # PUBLIC on orbsim_core below, so anything computing against the physics
-# inherits the same arithmetic.
+# inherits the same arithmetic. Since 2026-09-26 the same flags are also set
+# for every file compiled, beside the instruction set (see above); this target
+# stays, because it is where the physics states what arithmetic it relies on.
 # ---------------------------------------------------------------------------
 add_library(orbsim_fp INTERFACE)
 target_compile_options(orbsim_fp INTERFACE

@@ -713,6 +713,9 @@ Most projects can be sloppy here. Yours cannot.
 - **`-ffp-contract=off` is already set on `orbsim_core`, and that is correct.**
   FMA contraction reorders your arithmetic, and reordered arithmetic breaks the
   round-trip identities the tests depend on. Do not "clean up" that flag.
+  *(Since 2026-09-26 it is set for every file compiled, dependencies included,
+  because the build now assumes FMA3 and clang fuses `a * b + c` by default
+  once it may -- [ADR 0023](docs/adr/0023-the-processor-we-assume.md).)*
 - **Never turn on `-ffast-math`.** Not on the core, not on anything that touches
   it. It permits the compiler to assume no NaNs and no infinities, and your
   `orbitInfo()` returns infinity on purpose, for hyperbolic trajectories.

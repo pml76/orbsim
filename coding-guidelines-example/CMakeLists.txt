@@ -22,6 +22,18 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# The processor the parent project assumes (its docs/adr/0023), set the same
+# way here: for every file compiled, mp-units included, and before anything is
+# fetched. -ffp-contract=off travels with -mfma, because FMA3 otherwise lets
+# the compiler fuse `a * b + c` in code that does not link orbex_fp.
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_compile_options(
+            -mmmx -msse -msse2 -msse3 -mssse3 -msse4.1 -msse4.2 -mfma -mavx -mavx2 -mf16c
+            -ffp-contract=off)
+elseif(MSVC)
+    add_compile_options(/arch:AVX2 /fp:precise)
+endif()
+
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "" FORCE)
 endif()

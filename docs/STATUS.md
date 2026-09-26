@@ -19,7 +19,7 @@ A *dated* measurement is not a current claim and does not belong here: "the
 fuzzer ran 77.4 million executions clean on 2026-09-07" is a fact about that
 day and stays in [`HISTORY.md`](HISTORY.md).
 
-Last updated: 2026-09-25.
+Last updated: 2026-09-26.
 
 ## Contents
 
@@ -236,6 +236,7 @@ How to install and run any of it is
 | MSVC toolchain | **VS 18 Insiders, MSVC 14.51.36231** | clang targets the MSVC ABI and needs its headers and libs. Upgraded from VS2022 Community 14.44.35207 on 2026-09-13, and the 2022 install is gone: `C:\Program Files\Microsoft Visual Studio\18\Insiders\` is the only one on disk, so clang now emits `-fms-compatibility-version=19.51`. A new standard library is a full rebuild of every tree — the same argument as the clang-upgrade gotcha in [`PROJECT_STATE.md`](PROJECT_STATE.md) section 8 |
 | WSL 2 + Ubuntu | 26.04 LTS ("resolute") | Installed 2026-09-07. clang 23.1.1, gcc-14 14.3.0, cmake 4.2.3, ninja 1.13.2. This is where UBSan and the second compiler live |
 | GPU in use | NVIDIA RTX A2000 | The renderer requires a discrete GPU where one exists |
+| CPU | Intel Core i9-12900H | Every build assumes x86-64 with MMX, SSE to SSE4.2, FMA3, AVX, AVX2 and F16C -- what this CPU and AMD's Zen 2 share; SSE4A is left out because this CPU lacks it ([ADR 0023](adr/0023-the-processor-we-assume.md)) |
 
 **One clang version, everywhere: 23.1.** 23.1.0 on Windows, 23.1.1 in WSL from
 `apt.llvm.org` — the same release branch; apt.llvm.org publishes branch builds

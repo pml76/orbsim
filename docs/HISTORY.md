@@ -1946,6 +1946,52 @@ dead-ends only on a NaN or an infinity, about 0.02% of patterns. Afterwards, on
 a tree deleted and reconfigured first: `fuzz_orbit` 9,834,988 runs and
 `fuzz_time` 2,798,737 runs, 241 seconds each, zero findings.
 
+### The processor this project assumes, 2026-09-26
+
+Asked for by the owner while M1-16 was being planned: the build assumes x86-64
+with MMX, SSE, SSE2, SSE3, SSSE3, SSE4.1, SSE4.2, FMA3, AVX and AVX2, and F16C
+was added the same day ([ADR 0023](adr/0023-the-processor-we-assume.md),
+register decisions 200-202). The trigger was OpenEXR 3.5.1, which does not
+build under this project's clang without SSE4.1: `internal_zip.c` treats any
+compiler defining `_MSC_VER` as having it.
+
+**Two items on the owner's list could not be set as named, and one flag had to
+travel with the rest.** SSE4A is AMD's, and this machine's Intel Core
+i9-12900H does not have it -- read from Windows and from `/proc/cpuinfo` under
+WSL, and confirmed by LLVM's processor models, which define `__SSE4A__` for
+`-march=znver2` and not for `-march=alderlake`. "MMX-plus" is AMD's name for
+additions Intel ships inside SSE and has no flag. And once `-mfma` is on, clang
+fuses `a * b + c` by default (0 fused instructions without it, 1 with it), so
+`-ffp-contract=off` now applies to every file compiled rather than only to the
+targets linking `orbsim_fp` -- Catch2, whose `WithinAbs` and `WithinRel` are
+used 168 times, among the code that had no such protection. MSVC 19.51 fuses
+only under `/fp:contract` (0 without, 1 with), so `/arch:AVX2 /fp:precise` is
+the whole of its change.
+
+What was checked, with the numbers:
+
+- **The flags reach every compile**: 722 of the 722 C and C++ compile commands
+  in the Debug tree carry them (the one other entry is SDL's Windows resource
+  file), and 722 of 722 under MSVC carry `/arch:AVX2` and `/fp:precise`, none
+  `/fp:fast` or `/fp:contract`.
+- **They change the code**: `Orbit.cpp.obj` in `relwithdebinfo` went from 0
+  VEX-encoded (AVX) instructions to 3,321, with 0 fused multiply-adds; Catch2's
+  108 objects contain none either. The first control tried, a whole test
+  executable, was not clean -- 2,586 VEX instructions before the change, from
+  the runtime library -- so a single object of ours was used instead.
+- **They change no result**: `check` green in both trees before and after, 241
+  of 241, and every one of the 18 Catch2 suites reporting the same number of
+  assertions passed, in both trees. `windows-msvc`: 241 of 241, no warning.
+  `linux-sanitize` (clang with AddressSanitizer and UBSan): 239 of 239, and
+  `linux-gcc`: every test passing, both with the flags on 433 of 433 compile
+  commands and warnings as errors. The worked example: both trees, no
+  warning, its tests passing.
+- **F16C, measured on the way**: without it, clang on Windows cannot link a
+  `_Float16` conversion at all (`__extendhfsf2` is undefined) unless its
+  builtins library is named; with it, the conversion is one instruction, which
+  turns a signalling NaN quiet -- `0x7D01` became `0x7FE02000` -- where the
+  builtins library keeps the bits (`0x7FA02000`).
+
 ---
 
 ## 4. The bug that justified the session
