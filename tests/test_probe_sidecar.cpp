@@ -80,7 +80,7 @@ namespace {
 [[nodiscard]] std::string sidecarText() {
     const auto camera = Camera::from(Position{1.5, -2.0, 3.25}, Quat{}, Radians{0.5}, Metres{0.25});
     REQUIRE(camera.has_value());
-    const std::array<std::string_view, 2> files{"a.png", "a.exr"};
+    const std::array<std::string_view, 2> files{{"a.png", "a.exr"}};
     return formatSidecar({
         .probe = "clear",
         .description = "a description",
@@ -155,7 +155,10 @@ TEST_CASE("the sidecar's exposure agrees with its definitions") {
     const f64 factor = 98.9225 / (78.0 / 65.0 * std::exp2(ev100));
     const std::string factorText = valueOf(lines, "exposure.factor");
     REQUIRE(factorText.ends_with(" per W/(m^2 sr)"));
-    INFO("ev100 " << valueOf(lines, "exposure.ev100") << ", factor " << factorText);
-    REQUIRE(std::abs(leadingNumber(valueOf(lines, "exposure.ev100")) - ev100) <= 1e-12);
+    // Read before the message is built: MSVC warns (C4866) that it may not keep
+    // the order of a call inside a chain of operator<<.
+    const std::string ev100Text = valueOf(lines, "exposure.ev100");
+    INFO("ev100 " << ev100Text << ", factor " << factorText);
+    REQUIRE(std::abs(leadingNumber(ev100Text) - ev100) <= 1e-12);
     REQUIRE(std::abs((leadingNumber(factorText) / factor) - 1.0) <= 1e-12);
 }

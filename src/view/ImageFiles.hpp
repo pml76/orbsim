@@ -50,9 +50,21 @@ namespace orb::view {
 // fails for reasons it can explain (out of memory, a limit it enforces), and
 // its explanation is the useful part -- the reason RenderError carries a
 // string too (CODING_GUIDELINES section 7).
+// gcc's -Wabi-tag: std::string carries libstdc++'s "cxx11" ABI tag, and
+// gcc wants everything holding or returning one to carry it too. The tag
+// guards code shipped as a binary against the old string ABI; this project
+// builds everything from source with one ABI. Off at this site alone, for
+// gcc alone -- register decision 52's ruling and shape.
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wabi-tag"
+#endif
 struct ImageFileError {
     std::string message;
 };
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 // An 8-bit PNG from 8-bit RGBA, rows top to bottom. `rgba` must hold
 // pixelCount(size) * 4 values; that is asserted, as encodeHdrDump asserts it.

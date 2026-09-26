@@ -68,9 +68,13 @@ struct Entry {
 
 } // namespace
 
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wabi-tag"
+#endif
 std::string formatSidecar(const SidecarFields& fields) {
     const ExposureValue100 ev = exposureValue100(fields.exposure);
-    const std::array entries{
+    const auto entries = std::to_array<Entry>({
         Entry{.key = "probe", .value = std::string(fields.probe)},
         Entry{.key = "description", .value = std::string(fields.description)},
         Entry{.key = "outcome", .value = std::string(fields.outcome)},
@@ -114,7 +118,7 @@ std::string formatSidecar(const SidecarFields& fields) {
         Entry{.key = "build.compiler", .value = std::string(fields.build.compiler)},
         Entry{.key = "run.date", .value = std::string(fields.runDateUtc)},
         Entry{.key = "files", .value = joined(fields.files)},
-    };
+    });
 
     std::string text = "# orbsim probe sidecar (M1-16): what produced the files beside it\n";
     for (const Entry& entry : entries) {
@@ -123,5 +127,8 @@ std::string formatSidecar(const SidecarFields& fields) {
     }
     return text;
 }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 } // namespace orb::view

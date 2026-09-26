@@ -12,9 +12,16 @@
 
 namespace orb::view {
 
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wabi-tag"
+#endif
 std::string hdrDumpHeader(ImageSize size) {
     return std::format("orbsim-hdr-f32 v1 {} {}\n", size.width, size.height);
 }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 std::vector<std::byte> encodeHdrDump(ImageSize size, std::span<const std::uint16_t> rgbaHalf) {
     ORBSIM_EXPECTS(size.width > 0 && size.height > 0);
@@ -30,7 +37,7 @@ std::vector<std::byte> encodeHdrDump(ImageSize size, std::span<const std::uint16
     // than by copying the machine's own representation: the file then means
     // the same thing whichever machine wrote it.
     for (const std::uint16_t half : rgbaHalf) {
-        const std::uint32_t bits = bitsOf(halfToFloat(half));
+        const std::uint32_t bits = halfToFloatBits(half);
         bytes.push_back(static_cast<std::byte>(bits & 0xFFU));
         bytes.push_back(static_cast<std::byte>((bits >> 8U) & 0xFFU));
         bytes.push_back(static_cast<std::byte>((bits >> 16U) & 0xFFU));

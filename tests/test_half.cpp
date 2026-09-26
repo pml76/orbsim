@@ -115,3 +115,15 @@ TEST_CASE("the conversion agrees with the compiler's own _Float16") {
     REQUIRE(signalling == 1'022U);
 }
 #endif
+
+TEST_CASE("the bit pattern and the float are the same conversion") {
+    // halfToFloat is halfToFloatBits read as a float (decision 205). At run
+    // time a float keeps every bit -- signalling NaNs included -- on every
+    // compiler here; it is MSVC's compile-time evaluator that does not, which
+    // is why the NaN claim is asserted on the bit pattern.
+    for (std::uint32_t pattern = 0; pattern < kPatterns; ++pattern) {
+        const auto half = static_cast<std::uint16_t>(pattern);
+        INFO("pattern 0x" << std::hex << pattern);
+        REQUIRE(halfToFloatBits(half) == bitsOf(halfToFloat(half)));
+    }
+}

@@ -62,7 +62,19 @@ struct SidecarFields {
 };
 
 // The whole file's text, LF line endings, ending in a newline.
+// gcc's -Wabi-tag: std::string carries libstdc++'s "cxx11" ABI tag, and
+// gcc wants everything holding or returning one to carry it too. The tag
+// guards code shipped as a binary against the old string ABI; this project
+// builds everything from source with one ABI. Off at this site alone, for
+// gcc alone -- register decision 52's ruling and shape.
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wabi-tag"
+#endif
 [[nodiscard]] std::string formatSidecar(const SidecarFields& fields);
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 } // namespace orb::view
 

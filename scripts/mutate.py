@@ -87,11 +87,17 @@ DEFAULT_CMAKE = (
 SUITE_TIMEOUT_SECONDS = 300
 BUILD_TIMEOUT_SECONDS = 1800
 
+# Every child's output is decoded as UTF-8 with undecodable bytes replaced.
+# `text=True` alone decodes in the locale's code page -- cp1252 here -- and a
+# suite that prints one byte outside it (a mutated PNG test did, 2026-09-26)
+# made the reader thread fail, handed run_mutant `None` for stdout, and
+# stopped the whole pass. Replacement keeps every case name readable.
+
 
 def repo_root() -> Path:
     out = subprocess.run(
         ["git", "rev-parse", "--show-toplevel"],
-        capture_output=True, text=True, check=True,
+        capture_output=True, text=True, encoding="utf-8", errors="replace", check=True,
     )
     return Path(out.stdout.strip())
 
@@ -99,7 +105,7 @@ def repo_root() -> Path:
 def dirty_files(root: Path, files: set) -> list:
     out = subprocess.run(
         ["git", "status", "--porcelain", "--"] + sorted(files),
-        cwd=root, capture_output=True, text=True, check=True,
+        cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace", check=True,
     )
     return [line[3:] for line in out.stdout.splitlines() if line.strip()]
 
@@ -107,7 +113,7 @@ def dirty_files(root: Path, files: set) -> list:
 def restore(root: Path, files: set) -> None:
     if files:
         subprocess.run(["git", "checkout", "--"] + sorted(files),
-                       cwd=root, capture_output=True, text=True, check=False)
+                       cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
 
 
 def first_error(text: str) -> str:
@@ -150,7 +156,7 @@ def run_mutant(root: Path, cmake: str, tree: str, mutant: dict) -> tuple:
     targets = list(mutant["suites"]) + list(mutant.get("targets", []))
     try:
         build = subprocess.run([cmake, "--build", tree, "--target", *targets],
-                               cwd=root, capture_output=True, text=True,
+                               cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace",
                                timeout=BUILD_TIMEOUT_SECONDS)
     except subprocess.TimeoutExpired:
         return "HUNG", f"the build did not finish in {BUILD_TIMEOUT_SECONDS} s"
@@ -165,7 +171,7 @@ def run_mutant(root: Path, cmake: str, tree: str, mutant: dict) -> tuple:
     for suite in mutant["suites"]:
         try:
             run = subprocess.run([str(root / tree / f"{suite}.exe")],
-                                 cwd=root, capture_output=True, text=True,
+                                 cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace",
                                  timeout=SUITE_TIMEOUT_SECONDS)
         except subprocess.TimeoutExpired:
             # Deliberately not counted as a kill. A hung suite has told us
@@ -187,7 +193,7 @@ def run_mutant(root: Path, cmake: str, tree: str, mutant: dict) -> tuple:
     for entry in mutant.get("ctest", []):
         try:
             run = subprocess.run(["ctest", "-R", f"^{entry}$", "--output-on-failure"],
-                                 cwd=root / tree, capture_output=True, text=True,
+                                 cwd=root / tree, capture_output=True, text=True, encoding="utf-8", errors="replace",
                                  timeout=SUITE_TIMEOUT_SECONDS)
         except subprocess.TimeoutExpired:
             return "HUNG", f"ctest -R {entry} did not finish in {SUITE_TIMEOUT_SECONDS} s"
@@ -279,7 +285,7 @@ def main(argv: list) -> int:
     finally:
         restore(root, files)
         subprocess.run([args.cmake, "--build", tree], cwd=root,
-                       capture_output=True, text=True, check=False)
+                       capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
 
     print(f"\n==== {spec['task']}: {len(results)} mutants ====")
     bad = 0

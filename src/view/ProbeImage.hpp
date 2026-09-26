@@ -53,7 +53,19 @@ inline constexpr ImageSize kProbeImageSize{.width = 1280, .height = 720};
 inline constexpr std::size_t kChannelsPerPixel = 4;
 
 // The dump's header line, LF included: "orbsim-hdr-f32 v1 1280 720\n".
+// gcc's -Wabi-tag: std::string carries libstdc++'s "cxx11" ABI tag, and
+// gcc wants everything holding or returning one to carry it too. The tag
+// guards code shipped as a binary against the old string ABI; this project
+// builds everything from source with one ABI. Off at this site alone, for
+// gcc alone -- register decision 52's ruling and shape.
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wabi-tag"
+#endif
 [[nodiscard]] std::string hdrDumpHeader(ImageSize size);
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 // The whole dump: the header, then every binary16 value of `rgbaHalf`
 // converted exactly to binary32 (view/Half.hpp) and written little-endian.

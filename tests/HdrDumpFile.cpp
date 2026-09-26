@@ -33,7 +33,7 @@ constexpr std::size_t kBytesPerValue = 4;
 // no leading zero, positive, and at most kMaxDimension.
 [[nodiscard]] std::optional<std::uint32_t> parseDimension(std::string_view text) {
     if (text.empty() || text.front() == '0') return std::nullopt;
-    if (!std::ranges::all_of(text, [](char c) { return c >= '0' && c <= '9'; })) {
+    if (!std::ranges::all_of(text, [](char c) noexcept { return c >= '0' && c <= '9'; })) {
         return std::nullopt;
     }
     std::uint32_t value = 0;
@@ -52,9 +52,10 @@ constexpr std::size_t kBytesPerValue = 4;
     const auto newline = std::ranges::find(window, std::byte{'\n'});
     if (newline == window.end()) return std::nullopt;
     std::string text;
-    std::ranges::transform(window.begin(), newline, std::back_inserter(text), [](std::byte b) {
-        return static_cast<char>(b);
-    });
+    std::ranges::transform(window.begin(),
+                           newline,
+                           std::back_inserter(text),
+                           [](std::byte b) noexcept { return static_cast<char>(b); });
     return text;
 }
 
@@ -115,7 +116,8 @@ std::expected<HdrDump, HdrDumpError> readHdrDump(const std::filesystem::path& pa
     if (!file) return std::unexpected(HdrDumpError::FileNotFound);
     std::vector<char> text{std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
     std::vector<std::byte> bytes(text.size());
-    std::ranges::transform(text, bytes.begin(), [](char c) { return static_cast<std::byte>(c); });
+    std::ranges::transform(
+        text, bytes.begin(), [](char c) noexcept { return static_cast<std::byte>(c); });
     return parseHdrDump(bytes);
 }
 

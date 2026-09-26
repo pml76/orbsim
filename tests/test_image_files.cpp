@@ -89,14 +89,14 @@ template <std::uint32_t Limit> [[nodiscard]] std::uint32_t sampleAt(std::size_t 
 // every bit must come back.
 [[nodiscard]] std::vector<std::uint16_t> halfPattern() {
     std::vector<std::uint16_t> values = rgba16Pattern();
-    constexpr std::array<std::uint16_t, 6> kSpecial{
+    constexpr auto kSpecial = std::to_array<std::uint16_t>({
         0x0000U,
         0x8000U,
         0x0001U,
         0x7BFFU,
         0x7C00U,
         0x7E01U,
-    };
+    });
     std::ranges::copy(kSpecial, values.begin());
     return values;
 }
@@ -121,7 +121,7 @@ struct PngHeader {
 };
 
 [[nodiscard]] PngHeader pngHeaderOf(std::span<const std::byte> png) {
-    constexpr std::array<std::uint8_t, 8> kSignature{137, 80, 78, 71, 13, 10, 26, 10};
+    constexpr std::array<std::uint8_t, 8> kSignature{{137, 80, 78, 71, 13, 10, 26, 10}};
     REQUIRE(png.size() > 33);
     for (std::size_t i = 0; i < kSignature.size(); ++i) {
         REQUIRE(std::to_integer<std::uint8_t>(png.subspan(i, 1).front()) == kSignature.at(i));
@@ -153,7 +153,7 @@ template <typename Sample> [[nodiscard]] Decoded<Sample> decodePng(std::span<con
     Decoded<Sample> decoded;
     std::vector<stbi_uc> input(png.size());
     std::ranges::transform(
-        png, input.begin(), [](std::byte b) { return std::to_integer<stbi_uc>(b); });
+        png, input.begin(), [](std::byte b) noexcept { return std::to_integer<stbi_uc>(b); });
     const int length = static_cast<int>(input.size());
     std::unique_ptr<Sample, StbFree> pixels;
     if constexpr (sizeof(Sample) == 1) {
@@ -244,7 +244,7 @@ namespace {
     const std::u8string text = path.u8string();
     std::string utf8(text.size(), '\0');
     std::ranges::transform(
-        text, utf8.begin(), [](char8_t unit) { return static_cast<char>(unit); });
+        text, utf8.begin(), [](char8_t unit) noexcept { return static_cast<char>(unit); });
     return utf8;
 }
 
@@ -277,6 +277,11 @@ channelsOf(const exr_decode_pipeline_t& decoder) {
 // pointer set in its initialiser rather than assigned -- the union access
 // cppcoreguidelines-pro-type-union-access reports, answered as
 // view/ImageFiles.cpp answers it (register decision 204).
+// The same answer to gcc's -Wmissing-braces as view/ImageFiles.cpp's (ADR 0017).
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-braces"
+#endif
 [[nodiscard]] exr_coding_channel_info_t writingInto(const exr_coding_channel_info_t& channel,
                                                     std::span<std::uint8_t> plane,
                                                     std::uint32_t width) {
@@ -302,6 +307,9 @@ channelsOf(const exr_decode_pipeline_t& decoder) {
         .decode_to_ptr = plane.data(),
     };
 }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 // Every channel of the file, decoded to binary16, planar, by name. Each plane
 // holds the bytes OpenEXR wrote, two per value in the machine's own order.
@@ -313,7 +321,7 @@ struct DecodedExr {
 // The binary16 bit pattern of one pixel of one plane.
 [[nodiscard]] std::uint16_t halfAt(const std::vector<std::uint8_t>& plane, std::size_t pixel) {
     return std::bit_cast<std::uint16_t>(
-        std::array<std::uint8_t, 2>{plane.at(2 * pixel), plane.at((2 * pixel) + 1)});
+        std::array<std::uint8_t, 2>{{plane.at(2 * pixel), plane.at((2 * pixel) + 1)}});
 }
 
 // An OpenEXR call that must succeed. One REQUIRE here rather than one per
@@ -413,7 +421,7 @@ void requireExrLayout(exr_const_context_t context) {
 void requireExrColours(exr_const_context_t context) {
     exr_attr_chromaticities_t chroma{};
     requireOk(exr_attr_get_chromaticities(context, 0, "chromaticities", &chroma));
-    const std::array<std::uint32_t, 8> got{
+    const auto got = std::to_array<std::uint32_t>({
         bitsOfFloat(chroma.red_x),
         bitsOfFloat(chroma.red_y),
         bitsOfFloat(chroma.green_x),
@@ -422,8 +430,8 @@ void requireExrColours(exr_const_context_t context) {
         bitsOfFloat(chroma.blue_y),
         bitsOfFloat(chroma.white_x),
         bitsOfFloat(chroma.white_y),
-    };
-    const std::array<std::uint32_t, 8> want{
+    });
+    const auto want = std::to_array<std::uint32_t>({
         bitsOfFloat(0.640F),
         bitsOfFloat(0.330F),
         bitsOfFloat(0.300F),
@@ -432,7 +440,7 @@ void requireExrColours(exr_const_context_t context) {
         bitsOfFloat(0.060F),
         bitsOfFloat(0.3127F),
         bitsOfFloat(0.3290F),
-    };
+    });
     REQUIRE(got == want);
 }
 
@@ -447,7 +455,7 @@ void requireExrComment(exr_const_context_t context) {
 void requireExrPixels(const DecodedExr& decoded, const std::vector<std::uint16_t>& rgbaHalf) {
     // OpenEXR stores channels sorted by name; there is no alpha.
     REQUIRE(decoded.names == std::vector<std::string>{"B", "G", "R"});
-    constexpr std::array<std::size_t, 3> kOffsetInRgba{2, 1, 0}; // B, G, R
+    constexpr std::array<std::size_t, 3> kOffsetInRgba{{2, 1, 0}}; // B, G, R
     for (std::size_t c = 0; c < kOffsetInRgba.size(); ++c) {
         for (std::size_t pixel = 0; pixel < pixelCount(kSize); ++pixel) {
             INFO("channel " << decoded.names.at(c) << ", pixel " << pixel);

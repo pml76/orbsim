@@ -120,9 +120,9 @@ using Channel = HdrDump::Channel;
 
 // The columns checked: both edges, the middle pair, and quarters -- where a
 // shift, a mirror or a wrong width would show first.
-constexpr std::array<std::uint32_t, 7> kColumns{0, 1, 320, 639, 640, 960, 1279};
+constexpr auto kColumns = std::to_array<std::uint32_t>({0, 1, 320, 639, 640, 960, 1279});
 
-constexpr std::array<Channel, 3> kColour{Channel::Red, Channel::Green, Channel::Blue};
+constexpr auto kColour = std::to_array<Channel>({Channel::Red, Channel::Green, Channel::Blue});
 
 // One sample of one band: its channels either carry the ramp's radiance, to
 // one of the two binary16 neighbours, or are exactly zero.

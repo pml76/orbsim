@@ -42,7 +42,8 @@ encodePngRgb(ImageSize size, const std::vector<unsigned char>& rgb, unsigned bit
     const unsigned error = lodepng::encode(png, rgb, size.width, size.height, LCT_RGB, bitDepth);
     if (error != 0) return fail(std::string("PNG encoding failed: ") + lodepng_error_text(error));
     std::vector<std::byte> bytes(png.size());
-    std::ranges::transform(png, bytes.begin(), [](unsigned char c) { return std::byte{c}; });
+    std::ranges::transform(
+        png, bytes.begin(), [](unsigned char c) noexcept { return std::byte{c}; });
     return bytes;
 }
 
@@ -55,7 +56,7 @@ encodePngRgb(ImageSize size, const std::vector<unsigned char>& rgb, unsigned bit
     const std::u8string text = path.u8string();
     std::string utf8(text.size(), '\0');
     std::ranges::transform(
-        text, utf8.begin(), [](char8_t unit) { return static_cast<char>(unit); });
+        text, utf8.begin(), [](char8_t unit) noexcept { return static_cast<char>(unit); });
     return utf8;
 }
 
@@ -112,7 +113,7 @@ using ExrContext = std::unique_ptr<std::remove_pointer_t<exr_context_t>, ExrCont
     if (auto ok = exrCheck(
             exr_add_part(context, "probe", EXR_STORAGE_SCANLINE, &part), "exr_add_part", lastError);
         !ok) {
-        return ok;
+        return std::unexpected(ok.error());
     }
     if (auto ok = exrCheck(exr_initialize_required_attr_simple(context,
                                                                part,
@@ -122,7 +123,7 @@ using ExrContext = std::unique_ptr<std::remove_pointer_t<exr_context_t>, ExrCont
                            "exr_initialize_required_attr_simple",
                            lastError);
         !ok) {
-        return ok;
+        return std::unexpected(ok.error());
     }
     // Linear light is not perceptually linear, so the hint a lossy compressor
     // reads says "logarithmic"; ZIP is lossless and ignores it.
@@ -133,21 +134,21 @@ using ExrContext = std::unique_ptr<std::remove_pointer_t<exr_context_t>, ExrCont
                 "exr_add_channel",
                 lastError);
             !ok) {
-            return ok;
+            return std::unexpected(ok.error());
         }
     }
     if (auto ok = exrCheck(exr_attr_set_chromaticities(context, part, "chromaticities", &kRec709),
                            "exr_attr_set_chromaticities",
                            lastError);
         !ok) {
-        return ok;
+        return std::unexpected(ok.error());
     }
     const std::string commentText(comment);
     if (auto ok = exrCheck(exr_attr_set_string(context, part, "comments", commentText.c_str()),
                            "exr_attr_set_string",
                            lastError);
         !ok) {
-        return ok;
+        return std::unexpected(ok.error());
     }
     return exrCheck(exr_write_header(context), "exr_write_header", lastError);
 }
@@ -210,6 +211,13 @@ channelsOf(const exr_encode_pipeline_t& encoder) {
 // gives to choose a union's member without accessing one. Every field is
 // named, so -Wmissing-designated-field-initializers stops the build if
 // OpenEXR ever adds one this does not copy.
+// gcc's -Wmissing-braces wants the anonymous union's member braced, which a
+// designated initialiser cannot spell; the union is OpenEXR's, so the
+// warning is off for this function alone (ADR 0017).
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmissing-braces"
+#endif
 [[nodiscard]] exr_coding_channel_info_t reading(const exr_coding_channel_info_t& channel,
                                                 std::span<const std::uint8_t> plane,
                                                 std::uint32_t width) {
@@ -235,6 +243,9 @@ channelsOf(const exr_encode_pipeline_t& encoder) {
         .encode_from_ptr = plane.data(),
     };
 }
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
 
 // Every scanline chunk, top to bottom.
 [[nodiscard]] std::expected<void, ImageFileError>
@@ -248,7 +259,7 @@ writeExrPixels(exr_context_t context,
                            "exr_get_scanlines_per_chunk",
                            lastError);
         !ok) {
-        return ok;
+        return std::unexpected(ok.error());
     }
     ORBSIM_EXPECTS(rowsPerChunk > 0);
     // The pipeline lives on the stack; the guard frees what OpenEXR allocated
@@ -269,13 +280,15 @@ writeExrPixels(exr_context_t context,
                                "exr_write_scanline_chunk_info",
                                lastError);
             !ok) {
-            return ok;
+            return std::unexpected(ok.error());
         }
         const bool first = encoderGuard == nullptr;
         const exr_result_t started = first
                                          ? exr_encoding_initialize(context, kPart, &chunk, &encoder)
                                          : exr_encoding_update(context, kPart, &chunk, &encoder);
-        if (auto ok = exrCheck(started, "exr_encoding_initialize", lastError); !ok) return ok;
+        if (auto ok = exrCheck(started, "exr_encoding_initialize", lastError); !ok) {
+            return std::unexpected(ok.error());
+        }
         if (first) encoderGuard.reset(&encoder);
 
         const auto rows = static_cast<std::size_t>(std::min(rowsPerChunk, height - row));
@@ -293,13 +306,13 @@ writeExrPixels(exr_context_t context,
                                    "exr_encoding_choose_default_routines",
                                    lastError);
                 !ok) {
-                return ok;
+                return std::unexpected(ok.error());
             }
         }
         if (auto ok =
                 exrCheck(exr_encoding_run(context, kPart, &encoder), "exr_encoding_run", lastError);
             !ok) {
-            return ok;
+            return std::unexpected(ok.error());
         }
     }
     return {};
@@ -345,7 +358,18 @@ std::expected<void, ImageFileError> writeExr(const std::filesystem::path& path,
     ORBSIM_EXPECTS(rgbaHalf.size() == pixelCount(size) * kChannelsPerPixel);
     std::string lastError;
 
+    // OpenEXR's own initialiser writes its pointer fields as 0, which gcc's
+    // -Wzero-as-null-pointer-constant reports in our code where the macro is
+    // expanded (clang treats the macro as the system header's). A library's
+    // interface, so off at this line alone (ADR 0017).
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wzero-as-null-pointer-constant"
+#endif
     exr_context_initializer_t init = EXR_DEFAULT_CONTEXT_INITIALIZER;
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
     init.error_handler_fn = onExrError;
     init.user_data = &lastError;
 
@@ -355,11 +379,15 @@ std::expected<void, ImageFileError> writeExr(const std::filesystem::path& path,
                            "exr_start_write",
                            lastError);
         !ok) {
-        return ok;
+        return std::unexpected(ok.error());
     }
     ExrContext context{started};
-    if (auto ok = describeExrImage(context.get(), size, comment, lastError); !ok) return ok;
-    if (auto ok = writeExrPixels(context.get(), size, rgbaHalf, lastError); !ok) return ok;
+    if (auto ok = describeExrImage(context.get(), size, comment, lastError); !ok) {
+        return std::unexpected(ok.error());
+    }
+    if (auto ok = writeExrPixels(context.get(), size, rgbaHalf, lastError); !ok) {
+        return std::unexpected(ok.error());
+    }
     exr_context_t finishing = context.release();
     return exrCheck(exr_finish(&finishing), "exr_finish", lastError);
 }

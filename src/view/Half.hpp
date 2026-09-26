@@ -51,9 +51,17 @@ inline constexpr std::uint32_t kBiasDifference = 127U - 15U;
 
 } // namespace detail
 
-// The binary32 value of a binary16 bit pattern. Exact for every input,
-// signed zeros, subnormals, infinities and NaNs included.
-[[nodiscard]] constexpr f32 halfToFloat(std::uint16_t bits) noexcept {
+// The binary32 bit pattern of a binary16 bit pattern: the conversion itself,
+// exact for every input, signed zeros, subnormals, infinities and NaNs
+// included.
+//
+// **A bit pattern rather than a float, and that is measured, not taste**
+// (register decision 205). MSVC's compile-time evaluator turns a signalling
+// NaN quiet whenever it passes through a float -- 0x7FA02000 came back as
+// 0x7FE02000 at compile time and unchanged at run time, 2026-09-26; clang
+// keeps it in both. An integer cannot be quieted by anything, so the claim
+// about NaN payloads is made here, and the probe's dump is written from this.
+[[nodiscard]] constexpr std::uint32_t halfToFloatBits(std::uint16_t bits) noexcept {
     const std::uint32_t half = bits;
     const std::uint32_t sign = (half >> 15U) << 31U;
     const std::uint32_t exponent = (half >> detail::kHalfFractionBits) & detail::kHalfExponentMask;
@@ -63,16 +71,14 @@ inline constexpr std::uint32_t kBiasDifference = 127U - 15U;
         // Infinity for a zero fraction, NaN otherwise; the payload moves with
         // the fraction, so a quiet NaN stays quiet and a signalling one
         // signalling.
-        return std::bit_cast<f32>(sign |
-                                  (detail::kFloatExponentAllOnes << detail::kFloatFractionBits) |
-                                  (fraction << detail::kFractionShift));
+        return sign | (detail::kFloatExponentAllOnes << detail::kFloatFractionBits) |
+               (fraction << detail::kFractionShift);
     }
     if (exponent != 0) {
-        return std::bit_cast<f32>(
-            sign | ((exponent + detail::kBiasDifference) << detail::kFloatFractionBits) |
-            (fraction << detail::kFractionShift));
+        return sign | ((exponent + detail::kBiasDifference) << detail::kFloatFractionBits) |
+               (fraction << detail::kFractionShift);
     }
-    if (fraction == 0) return std::bit_cast<f32>(sign); // a signed zero
+    if (fraction == 0) return sign; // a signed zero
 
     // A subnormal: fraction * 2^-24, which is a normal binary32 number. Shift
     // the fraction until its leading one reaches bit 10, the implicit bit's
@@ -85,8 +91,13 @@ inline constexpr std::uint32_t kBiasDifference = 127U - 15U;
         static_cast<std::uint32_t>(std::countl_zero(static_cast<std::uint16_t>(fraction))) - 5U;
     const std::uint32_t normalised = (fraction << shift) & detail::kHalfFractionMask;
     const std::uint32_t floatExponent = detail::kBiasDifference + 1U - shift; // 2^(-14 - shift)
-    return std::bit_cast<f32>(sign | (floatExponent << detail::kFloatFractionBits) |
-                              (normalised << detail::kFractionShift));
+    return sign | (floatExponent << detail::kFloatFractionBits) |
+           (normalised << detail::kFractionShift);
+}
+
+// The binary32 value of a binary16 bit pattern: halfToFloatBits, as a float.
+[[nodiscard]] constexpr f32 halfToFloat(std::uint16_t bits) noexcept {
+    return std::bit_cast<f32>(halfToFloatBits(bits));
 }
 
 static_assert(std::numeric_limits<f32>::is_iec559, "the layouts above are IEEE 754's");
@@ -102,8 +113,10 @@ static_assert(bitsOf(halfToFloat(0x0001U)) == bitsOf(0x1p-24F), "the smallest su
 static_assert(bitsOf(halfToFloat(0x03FFU)) == bitsOf(0x1.ff8p-15F), "the largest subnormal half");
 static_assert(bitsOf(halfToFloat(0x7C00U)) == bitsOf(std::numeric_limits<f32>::infinity()),
               "infinity");
-static_assert(bitsOf(halfToFloat(0x7D01U)) == 0x7FA0'2000U,
-              "a signalling NaN keeps its payload and stays signalling");
+static_assert(halfToFloatBits(0x7D01U) == 0x7FA0'2000U,
+              "a signalling NaN keeps its payload and stays signalling -- asserted on the bit "
+              "pattern, which MSVC's compile-time evaluator cannot quiet (decision 205)");
+static_assert(halfToFloatBits(0x7E01U) == 0x7FC0'2000U, "and a quiet NaN stays quiet");
 
 } // namespace orb::view
 
