@@ -1,0 +1,299 @@
+{
+  "task": "M1-16",
+  "tree": "build/debug",
+  "note": "Probe mode (register decisions 187-204). Judged four ways: view/Half.hpp by its static_asserts and test_half; the dump by test_hdr_dump, whose writer-and-reader case ties the two implementations to one statement of the format; the PNG, EXR and sidecar encoders by test_image_files and test_probe_sidecar; and the GPU path -- shader, probe setup, offscreen rendering, command line -- by the probe's own CTest tests, which render the frame with the mutant and read it back. **Run 2026-09-26: 20 caught, 1 survived, 0 invalid, 0 hung** -- 3 by a static_assert before a test ran. Every kill was read, not counted: each fell to the judge it was aimed at, the GPU ones to test_probe_clear's band check, --probe-out to probe_clear_determinism, and the HDR target without TRANSFER_SRC to probe_clear's validation layers. The survivor -- the barrier that makes the copies visible to the host -- is a real gap this machine cannot show, declared and put to the owner. The first run stopped at the eighth mutant: mutate.py decoded a suite's output in the Windows code page, and one byte outside it crashed the reader; fixed to decode UTF-8 with replacement, and the whole pass re-run. **Run a third time the same day, on commit 26e207c**, after gcc-14 and MSVC had changed the code under several mutants (the conversion split into a bit pattern, decision 205): the same 20 caught and 1 survived, and the NaN mutant re-anchored to the bit-pattern function. **Inherited survivors re-run the same day** with the probe's tests as judges: M1-13's LESS depth comparison and M1-14's quarter-size triangle are caught and their declarations removed; the six that act after the HDR target (M1-14's resolve never drawn and 2.2 encode, M1-15's three shader operations) and M1-14's scene pipelines in the swapchain's format still survive, re-pointed at M1-17, M1-18 and M1-19.",
+  "mutants": [
+    {
+      "name": "the binary16 exponent bias is taken as 16",
+      "file": "src/view/Half.hpp",
+      "find": "inline constexpr std::uint32_t kBiasDifference = 127U - 15U;",
+      "replace": "inline constexpr std::uint32_t kBiasDifference = 127U - 16U;",
+      "suites": [
+        "test_half"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "a subnormal is shifted one place too few",
+      "file": "src/view/Half.hpp",
+      "find": "        static_cast<std::uint32_t>(std::countl_zero(static_cast<std::uint16_t>(fraction))) - 5U;",
+      "replace": "        static_cast<std::uint32_t>(std::countl_zero(static_cast<std::uint16_t>(fraction))) - 4U;",
+      "suites": [
+        "test_half"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "a NaN loses its payload",
+      "file": "src/view/Half.hpp",
+      "find": "        return sign | (detail::kFloatExponentAllOnes << detail::kFloatFractionBits) |\n               (fraction << detail::kFractionShift);",
+      "replace": "        return sign | (detail::kFloatExponentAllOnes << detail::kFloatFractionBits) |\n               (fraction != 0 ? 0x0040'0000U : 0U);",
+      "suites": [
+        "test_half"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the dump's first byte is the most significant",
+      "file": "src/view/ProbeImage.cpp",
+      "find": "        bytes.push_back(static_cast<std::byte>(bits & 0xFFU));",
+      "replace": "        bytes.push_back(static_cast<std::byte>(bits >> 24U));",
+      "suites": [
+        "test_hdr_dump"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the dump's header names version 2",
+      "file": "src/view/ProbeImage.cpp",
+      "find": "    return std::format(\"orbsim-hdr-f32 v1 {} {}\\n\", size.width, size.height);",
+      "replace": "    return std::format(\"orbsim-hdr-f32 v2 {} {}\\n\", size.width, size.height);",
+      "suites": [
+        "test_hdr_dump"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the reader accepts a dimension with a leading zero",
+      "file": "tests/HdrDumpFile.cpp",
+      "find": "    if (text.empty() || text.front() == '0') return std::nullopt;",
+      "replace": "    if (text.empty()) return std::nullopt;",
+      "suites": [
+        "test_hdr_dump"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the 16-bit PNG's high byte is the low one",
+      "file": "src/view/ImageFiles.cpp",
+      "find": "            rgb.push_back(static_cast<unsigned char>(sample >> 8U));",
+      "replace": "            rgb.push_back(static_cast<unsigned char>(sample & 0xFFU));",
+      "suites": [
+        "test_image_files"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the 8-bit PNG is handed alpha as well",
+      "file": "src/view/ImageFiles.cpp",
+      "find": "        const auto pixel = rgba.subspan(i, 3);",
+      "replace": "        const auto pixel = rgba.subspan(i, 4);",
+      "suites": [
+        "test_image_files"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the EXR's red channel is read from blue",
+      "file": "src/view/ImageFiles.cpp",
+      "find": "    if (name == \"R\") return 0;",
+      "replace": "    if (name == \"R\") return 2;",
+      "suites": [
+        "test_image_files"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the EXR is written uncompressed",
+      "file": "src/view/ImageFiles.cpp",
+      "find": "                                                               EXR_COMPRESSION_ZIP),",
+      "replace": "                                                               EXR_COMPRESSION_NONE),",
+      "suites": [
+        "test_image_files"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the sidecar writes the hour where the minute belongs",
+      "file": "src/view/ProbeSidecar.cpp",
+      "find": "                       date->minute,",
+      "replace": "                       date->hour,",
+      "suites": [
+        "test_probe_sidecar"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the ramp is sampled half a pixel to the left",
+      "file": "shaders/probe_gradient.frag",
+      "find": "    float radiance = exp2(ramp.log2Low + ramp.stops * gl_FragCoord.x / ramp.width);",
+      "replace": "    float radiance = exp2(ramp.log2Low + ramp.stops * (gl_FragCoord.x - 0.5) / ramp.width);",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_probe_clear"
+      ],
+      "ctest": [
+        "probe_clear",
+        "every band carries the ramp's radiance, to within one binary16 step",
+        "the grey band's three channels are the same number",
+        "below the bands nothing is drawn, and every pixel is opaque"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the red and green bands change places",
+      "file": "shaders/probe_gradient.frag",
+      "find": "    vec3 colour = band == 0 ? vec3(1.0) : vec3(band == 1, band == 2, band == 3);",
+      "replace": "    vec3 colour = band == 0 ? vec3(1.0) : vec3(band == 2, band == 1, band == 3);",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_probe_clear"
+      ],
+      "ctest": [
+        "probe_clear",
+        "every band carries the ramp's radiance, to within one binary16 step",
+        "the grey band's three channels are the same number",
+        "below the bands nothing is drawn, and every pixel is opaque"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the blue band is not drawn",
+      "file": "shaders/probe_gradient.frag",
+      "find": "    if (band > 3) {",
+      "replace": "    if (band > 2) {",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_probe_clear"
+      ],
+      "ctest": [
+        "probe_clear",
+        "every band carries the ramp's radiance, to within one binary16 step",
+        "the grey band's three channels are the same number",
+        "below the bands nothing is drawn, and every pixel is opaque"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the ramp starts a stop below AgX's black",
+      "file": "src/view/ProbeGradient.hpp",
+      "find": "        .low = Radiance{std::exp2(agx::kMinEv) / perRadiance},",
+      "replace": "        .low = Radiance{std::exp2(agx::kMinEv - 1.0) / perRadiance},",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_probe_clear"
+      ],
+      "ctest": [
+        "probe_clear",
+        "every band carries the ramp's radiance, to within one binary16 step",
+        "the grey band's three channels are the same number",
+        "below the bands nothing is drawn, and every pixel is opaque"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the probe exposes at 1/60 s rather than 1/125 s",
+      "file": "src/render/Probes.cpp",
+      "find": "                .shutterTime = view::ShutterTime::from(Seconds{1.0 / 125.0}).value(),",
+      "replace": "                .shutterTime = view::ShutterTime::from(Seconds{1.0 / 60.0}).value(),",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_probe_clear"
+      ],
+      "ctest": [
+        "probe_clear",
+        "every band carries the ramp's radiance, to within one binary16 step",
+        "the grey band's three channels are the same number",
+        "below the bands nothing is drawn, and every pixel is opaque"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the full-screen triangle writes depth 0, the cleared value",
+      "file": "shaders/fullscreen.vert",
+      "find": "const float kDepth = 0.5;",
+      "replace": "const float kDepth = 0.0;",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_probe_clear"
+      ],
+      "ctest": [
+        "probe_clear",
+        "every band carries the ramp's radiance, to within one binary16 step",
+        "the grey band's three channels are the same number",
+        "below the bands nothing is drawn, and every pixel is opaque"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the probe's scene is never recorded",
+      "file": "src/render/VulkanContext.cpp",
+      "find": "    scene(cmd);",
+      "replace": "    static_cast<void>(scene);",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_probe_clear"
+      ],
+      "ctest": [
+        "probe_clear",
+        "every band carries the ramp's radiance, to within one binary16 step",
+        "the grey band's three channels are the same number",
+        "below the bands nothing is drawn, and every pixel is opaque"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the HDR target cannot be copied out",
+      "file": "src/render/VulkanContext.cpp",
+      "find": "                 VkImageUsageFlags{VK_IMAGE_USAGE_SAMPLED_BIT} |\n                 VkImageUsageFlags{VK_IMAGE_USAGE_TRANSFER_SRC_BIT},",
+      "replace": "                 VkImageUsageFlags{VK_IMAGE_USAGE_SAMPLED_BIT},",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_probe_clear"
+      ],
+      "ctest": [
+        "probe_clear",
+        "every band carries the ramp's radiance, to within one binary16 step",
+        "the grey band's three channels are the same number",
+        "below the bands nothing is drawn, and every pixel is opaque"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the copies' writes are never made visible to the host",
+      "file": "src/render/VulkanContext.cpp",
+      "find": "    makeWritesVisibleToHost(cmd);",
+      "replace": "    static_cast<void>(&makeWritesVisibleToHost);",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_probe_clear"
+      ],
+      "ctest": [
+        "probe_clear",
+        "every band carries the ramp's radiance, to within one binary16 step",
+        "the grey band's three channels are the same number",
+        "below the bands nothing is drawn, and every pixel is opaque"
+      ],
+      "expect": "survives",
+      "why": "Without the barrier the host may read the readback buffers before the transfer's writes are visible to it. On this machine it cannot be seen: the fence wait and host-coherent memory make the values arrive anyway, and the validation layers do not check host access. A real gap, not an equivalent mutant; found by this pass on 2026-09-26 and put to the owner with the task's report."
+    },
+    {
+      "name": "--probe-out is ignored",
+      "file": "src/app/main.cpp",
+      "find": "            options.probeOut = pathFromUtf8(tokens.at(++i));",
+      "replace": "            static_cast<void>(tokens.at(++i));",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_probe_clear"
+      ],
+      "ctest": [
+        "probe_clear",
+        "every band carries the ramp's radiance, to within one binary16 step",
+        "the grey band's three channels are the same number",
+        "below the bands nothing is drawn, and every pixel is opaque",
+        "probe_clear_determinism"
+      ],
+      "expect": "caught"
+    }
+  ]
+}

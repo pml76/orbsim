@@ -1,7 +1,7 @@
 {
   "task": "M1-14",
   "tree": "build/debug",
-  "note": "The HDR render target and the resolve pass. Two halves, judged two ways. The orbsim_view half -- the sRGB transfer function and the scene's clear colour -- is judged by test_srgb against 50-digit references. The src/render half and the shaders cannot be reached from tests/, so their mutants build the application and are judged by orbsim_smoke, which since M1-14 runs synchronization validation as well as the base layers. **Several render mutants are declared survivors, and they share one cause**: nothing reads a pixel back before M1-16, so a resolve pass that draws the wrong thing -- or nothing -- is a valid Vulkan program. The shader's encode and the two 'not supported' paths were accepted in advance by the owner on 2026-09-24 (M1-14 question 10); the other survivors of the same cause were found by this pass and accepted by the owner on 2026-09-25 (decision 171). M1-16's probe frames and M1-18's port check are what must kill them, and whoever closes those tasks re-runs these mutants and removes the declarations. **Run once on 2026-09-24: 10 caught, 6 survived as declared, 0 invalid, 2 hung.** The two hung mutants make renderer start-up fail, and a failed start-up opens a message box that waits for a click, so orbsim_smoke hangs rather than fails -- a defect older than M1-14 that nothing had reached before. The owner ruled on 2026-09-25 (decision 170) that an automated run -- one with --seconds -- shows no dialog; the pass was then run again. **One mutant removed on 2026-09-25 by M1-15** (register decision 181): 'the scene clears to the display value instead of the light' mutated the decoded clear colour in view/SceneClear.hpp, which M1-15 replaced with zero radiance, and was caught by the test_srgb case M1-15 removed with it. With the code and its test both gone there is nothing left for it to mutate; M1-15's own pass mutates the new clear.",
+  "note": "The HDR render target and the resolve pass. Two halves, judged two ways. The orbsim_view half -- the sRGB transfer function and the scene's clear colour -- is judged by test_srgb against 50-digit references. The src/render half and the shaders cannot be reached from tests/, so their mutants build the application and are judged by orbsim_smoke, which since M1-14 runs synchronization validation as well as the base layers. **Several render mutants are declared survivors, and they share one cause**: nothing reads a pixel back before M1-16, so a resolve pass that draws the wrong thing -- or nothing -- is a valid Vulkan program. The shader's encode and the two 'not supported' paths were accepted in advance by the owner on 2026-09-24 (M1-14 question 10); the other survivors of the same cause were found by this pass and accepted by the owner on 2026-09-25 (decision 171). M1-16's probe frames and M1-18's port check are what must kill them, and whoever closes those tasks re-runs these mutants and removes the declarations. **Run once on 2026-09-24: 10 caught, 6 survived as declared, 0 invalid, 2 hung.** The two hung mutants make renderer start-up fail, and a failed start-up opens a message box that waits for a click, so orbsim_smoke hangs rather than fails -- a defect older than M1-14 that nothing had reached before. The owner ruled on 2026-09-25 (decision 170) that an automated run -- one with --seconds -- shows no dialog; the pass was then run again. **One mutant removed on 2026-09-25 by M1-15** (register decision 181): 'the scene clears to the display value instead of the light' mutated the decoded clear colour in view/SceneClear.hpp, which M1-15 replaced with zero radiance, and was caught by the test_srgb case M1-15 removed with it. With the code and its test both gone there is nothing left for it to mutate; M1-15's own pass mutates the new clear. **Re-run 2026-09-26 with M1-16:** the quarter-size full-screen triangle is now caught by the `clear` probe's numeric check (the probe draws with fullscreen.vert), and its declaration is removed. The resolve pass never drawn and the 2.2 encode still survive, because that check reads the HDR target, before the resolve; they are re-pointed at M1-17's golden and M1-18's port check. The scene pipelines built for the swapchain's format still survive: `clear` draws with a pipeline of its own, and M1-19's first scene draw remains what kills it. Two anchors in render/VulkanContext.cpp were moved to the code M1-16's refactor left them in.",
   "mutants": [
     {
       "name": "the power segment uses the gamma-2.2 exponent",
@@ -180,7 +180,7 @@
         "orbsim_smoke"
       ],
       "expect": "survives",
-      "why": "The GPU's encode is a second implementation that nothing reads back before M1-16; M1-18 compares it with view/Srgb.hpp to 1/255. Accepted in advance by the owner on 2026-09-24 (M1-14 question 10)."
+      "why": "The GPU's encode is a second implementation. M1-16's numeric check (tests/test_probe_clear.cpp) reads the HDR target, which is before the resolve pass, so it cannot see this either -- measured 2026-09-26, when this mutant survived the probe's judges too. M1-18 compares it with view/Srgb.hpp to 1/255, and M1-17's golden sees it first. Accepted in advance by the owner on 2026-09-24 (M1-14 question 10)."
     },
     {
       "name": "the scene pipelines are built for the swapchain's format",
@@ -210,7 +210,7 @@
         "orbsim_smoke"
       ],
       "expect": "survives",
-      "why": "The display is then cleared to black and nothing else: a valid program, and nothing reads a pixel back before M1-16, whose tonemapped PNG kills it. Found by this pass on 2026-09-24 and accepted by the owner on 2026-09-25 (register decision 171), on the same grounds as the gaps accepted in advance."
+      "why": "The display is then cleared to black and nothing else: a valid program. M1-16's numeric check (tests/test_probe_clear.cpp) reads the HDR target, which is before the resolve pass, so it cannot see this either -- measured 2026-09-26, when this mutant survived the probe's judges too. M1-17's golden image of clear.png is what kills it. Found by this pass on 2026-09-24 and accepted by the owner on 2026-09-25 (register decision 171)."
     },
     {
       "name": "the full-screen triangle covers a quarter of the screen",
@@ -219,13 +219,17 @@
       "replace": "    vec2 corner = vec2(float(gl_VertexIndex & 1), float((gl_VertexIndex >> 1) & 1));",
       "suites": [],
       "targets": [
-        "orbsim"
+        "orbsim",
+        "test_probe_clear"
       ],
       "ctest": [
-        "orbsim_smoke"
+        "orbsim_smoke",
+        "probe_clear",
+        "every band carries the ramp's radiance, to within one binary16 step",
+        "the grey band's three channels are the same number",
+        "below the bands nothing is drawn, and every pixel is opaque"
       ],
-      "expect": "survives",
-      "why": "A smaller triangle is valid Vulkan, and the uncovered part is the resolve pass's black clear; nothing reads a pixel back before M1-16, whose probe frames kill it. Found by this pass on 2026-09-24 and accepted by the owner on 2026-09-25 (register decision 171), on the same grounds as the gaps accepted in advance."
+      "expect": "caught"
     }
   ]
 }
