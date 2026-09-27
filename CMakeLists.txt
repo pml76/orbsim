@@ -725,14 +725,22 @@ set(ORBSIM_TESTS
         test_units_validated
         test_view_math
 )
-# tests/AbortBehaviour.cpp is compiled into every suite rather than linked in
+# tests/AbortBehaviour.cpp is linked into every suite as an OBJECT library, not
 # from orbsim_test_support, and the difference matters: a Catch2 listener in a
 # static library is only pulled in if something already references that library,
 # and test_render_quality references none of the support code. It would have
-# linked clean and silently lost the behaviour. See the file for what it is for.
+# linked clean and silently lost the behaviour. An OBJECT library has no such
+# choice -- its object is linked into each program directly -- so the listener
+# is compiled once and linted once, where until 2026-09-27 it was compiled into
+# each of 23 programs and linted 23 times, the slowest lint step in every tree
+# (M1-90, ADR 0024, register decision 210). The CTest test abort_listener asks
+# every suite, through Catch2's --list-listeners, whether it has it. See the
+# file for what it is for.
+add_library(orbsim_abort_behaviour OBJECT tests/AbortBehaviour.cpp)
+target_link_libraries(orbsim_abort_behaviour PRIVATE orbsim_test_support)
 foreach(test_name IN LISTS ORBSIM_TESTS)
-    add_executable(${test_name} tests/${test_name}.cpp tests/AbortBehaviour.cpp)
-    target_link_libraries(${test_name} PRIVATE orbsim_test_support)
+    add_executable(${test_name} tests/${test_name}.cpp)
+    target_link_libraries(${test_name} PRIVATE orbsim_abort_behaviour orbsim_test_support)
     # One CTest test per TEST_CASE, so `ctest -R` can select a single case and
     # a failure names the case rather than the executable.
     catch_discover_tests(${test_name})
@@ -1117,8 +1125,8 @@ set_tests_properties(probe_clear_determinism PROPERTIES
 # The frame read back and checked number by number (decision 194): an
 # ordinary suite of the tests' own, linking no Vulkan, that runs after
 # probe_clear has written the dump. The pattern M1-18's numeric probes copy.
-add_executable(test_probe_clear tests/test_probe_clear.cpp tests/AbortBehaviour.cpp)
-target_link_libraries(test_probe_clear PRIVATE orbsim_test_support)
+add_executable(test_probe_clear tests/test_probe_clear.cpp)
+target_link_libraries(test_probe_clear PRIVATE orbsim_abort_behaviour orbsim_test_support)
 target_compile_definitions(test_probe_clear PRIVATE ORBSIM_PROBE_DIR="${ORBSIM_PROBE_DIR}")
 catch_discover_tests(test_probe_clear
         PROPERTIES FIXTURES_REQUIRED probe_clear_frame LABELS gpu)
@@ -1370,7 +1378,8 @@ if(ORBSIM_CLANG_TIDY)
     # `__clang_analyzer__`, the one way the linter could read text the
     # compiler does not.
     set(orbsim_lint_targets
-            orbsim_core orbsim_view orbsim_test_support orbsim_fuzz_objects ${ORBSIM_TESTS})
+            orbsim_core orbsim_view orbsim_test_support orbsim_fuzz_objects
+            orbsim_abort_behaviour ${ORBSIM_TESTS})
     foreach(operation IN LISTS ORBSIM_COUNT_WRAPAROUND_OPERATIONS)
         list(APPEND orbsim_lint_targets count_wraparound_${operation})
     endforeach()
@@ -1545,6 +1554,33 @@ else()
     add_test(NAME lint_pool_self_test COMMAND ${CMAKE_COMMAND} -E false)
 endif()
 set_tests_properties(lint_pool lint_pool_self_test PROPERTIES LABELS fixtures)
+
+# The abort listener in every suite (M1-90, ADR 0024): each Catch2 program is
+# asked through --list-listeners, and each must name AbortWithoutADialog. A
+# suite that stopped linking orbsim_abort_behaviour would otherwise build and
+# pass, and only a failed assertion under a debugger would show the dialog.
+set(orbsim_listener_programs "")
+foreach(test_name IN LISTS ORBSIM_TESTS)
+    list(APPEND orbsim_listener_programs $<TARGET_FILE:${test_name}>)
+endforeach()
+if(ORBSIM_BUILD_APP)
+    list(APPEND orbsim_listener_programs $<TARGET_FILE:test_probe_clear>)
+endif()
+if(ORBSIM_PYTHON)
+    add_test(NAME abort_listener
+            COMMAND ${ORBSIM_PYTHON}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-abort-listener.py
+                    ${orbsim_listener_programs}
+    )
+    add_test(NAME abort_listener_self_test
+            COMMAND ${ORBSIM_PYTHON}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-abort-listener.py --self-test
+    )
+else()
+    add_test(NAME abort_listener COMMAND ${CMAKE_COMMAND} -E false)
+    add_test(NAME abort_listener_self_test COMMAND ${CMAKE_COMMAND} -E false)
+endif()
+set_tests_properties(abort_listener abort_listener_self_test PROPERTIES LABELS fixtures)
 
 # The lint steps' dependencies (M1-89, ADR 0024): each on its own objects, the
 # configurations, a verify stamp and clang-tidy, and on no project header
