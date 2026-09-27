@@ -59,7 +59,9 @@ is a failure rather than a line nobody reads. A declared survivor carries a
 """
 
 import argparse
+import datetime
 import json
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -306,7 +308,41 @@ def main(argv: list) -> int:
     if hung:
         print("a hung mutant is not a kill either: the harness could not decide, "
               "so find out why before believing anything else in this run")
-    return 1 if (bad or invalid or hung) else 0
+    if bad or invalid or hung:
+        return 1
+    record_pass(root, given, tree)
+    return 0
+
+
+# Where a clean pass is recorded, file by file: the commit it ran at. The strict
+# rerun rule (M1-92, ADR 0024, register decision 212) reads it -- a mutant file
+# is due again when anything its judges depend on has changed since.
+PASSES = "scripts/mutation-passes.json"
+# A pass vouches for the committed code only if these match the commit. The
+# mutant files and the measurement logs are left out: a pass edits its own
+# file's note, and that changes no verdict.
+VOUCHED_PATHS = ("CMakeLists.txt", "cmake", "data", "scripts", "shaders", "src", "tests")
+
+
+def record_pass(root: Path, given: Path, tree: str) -> None:
+    status = subprocess.run(["git", "status", "--porcelain", "--", *VOUCHED_PATHS], cwd=root,
+                            capture_output=True, text=True, check=True).stdout
+    uncommitted = [line for line in status.splitlines()
+                   if not re.search(r"scripts/(mutants|measurements)/|" + re.escape(PASSES), line)]
+    if uncommitted:
+        print(f"pass not recorded in {PASSES}: uncommitted changes it would not vouch for:")
+        for line in uncommitted[:5]:
+            print(f"  {line}")
+        return
+    head = subprocess.run(["git", "rev-parse", "HEAD"], cwd=root, capture_output=True,
+                          text=True, check=True).stdout.strip()
+    path = root / PASSES
+    passes = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    passes[given.name] = {"commit": head, "tree": tree,
+                          "date": datetime.date.today().isoformat()}
+    path.write_text(json.dumps(dict(sorted(passes.items())), indent=2) + "\n",
+                    encoding="utf-8", newline="\n")
+    print(f"pass recorded in {PASSES}: {given.name} at {head[:12]}")
 
 
 if __name__ == "__main__":

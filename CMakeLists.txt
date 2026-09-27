@@ -1504,6 +1504,45 @@ else()
     )
 endif()
 
+# Which mutant files a change makes due to run again (M1-92, ADR 0024, register
+# decision 212): the strict rule, that a file is due when anything its judges
+# depend on has changed since scripts/mutation-passes.json says it last passed.
+# The script is run by hand before a task's commit; here it is held to two
+# claims -- its decision function, by its self-test, and its reading of this
+# very tree, by assuming core/Scalar.hpp changed and requiring the two mutant
+# files that mutate it to be listed. About 8 s.
+if(ORBSIM_PYTHON)
+    add_test(NAME mutants_due
+            COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutants-due.py
+                    ${CMAKE_BINARY_DIR} --assume-changed src/core/Scalar.hpp --only-assumed
+                    --expect-due m1-12.json --expect-due m1-87.json
+    )
+    # The two run-time paths, each alone, because either would otherwise hide a
+    # fault in the other: a shader no mutant touches must make the application's
+    # judges due (M1-13, through orbsim_smoke), and a script named on a ctest
+    # entry's command line must make its file due (M1-15, tonemap_constants).
+    add_test(NAME mutants_due_shaders
+            COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutants-due.py
+                    ${CMAKE_BINARY_DIR} --assume-changed shaders/line.vert --only-assumed
+                    --expect-due m1-13.json
+    )
+    add_test(NAME mutants_due_scripts
+            COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutants-due.py
+                    ${CMAKE_BINARY_DIR} --assume-changed scripts/check-tonemap-constants.py
+                    --only-assumed --expect-due m1-15.json
+    )
+    add_test(NAME mutants_due_self_test
+            COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutants-due.py --self-test
+    )
+else()
+    add_test(NAME mutants_due COMMAND ${CMAKE_COMMAND} -E false)
+    add_test(NAME mutants_due_shaders COMMAND ${CMAKE_COMMAND} -E false)
+    add_test(NAME mutants_due_scripts COMMAND ${CMAKE_COMMAND} -E false)
+    add_test(NAME mutants_due_self_test COMMAND ${CMAKE_COMMAND} -E false)
+endif()
+set_tests_properties(mutants_due mutants_due_shaders mutants_due_scripts mutants_due_self_test
+        PROPERTIES LABELS fixtures)
+
 # AgX is written twice -- shaders/tonemap.frag and src/view/Tonemap.hpp -- and
 # nothing reads a pixel back until M1-18 (M1-15, register decision 182). This
 # holds the shader's constants to the CPU's, reading GLSL's matrices column by

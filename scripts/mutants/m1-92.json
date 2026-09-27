@@ -1,0 +1,126 @@
+{
+  "task": "M1-92",
+  "tree": "build/relwithdebinfo",
+  "note": "The strict rerun rule's script, scripts/mutants-due.py. Each mutant switches off one path by which a change makes a mutant file due; the judges are the self-test and the three real runs against this tree -- a header between a mutant and its tests (core/Scalar.hpp, which must make m1-12 and m1-87 due, the second only through its headers), a shader no mutant touches (which must make m1-13 due through its application judge), and a script on a ctest command line (which must make m1-15 due). A Python mutant needs no build, but the harness always builds, so every mutant names orbsim_shaders as a no-op. Not mutated: the line that adds each mutated file to its own inputs, because every mutated file here is also reached another way -- its judges are built from it, or read it at run time, or it is in the always-due set -- so removing that line changes no verdict in this repository; and mutate.py's record_pass, which only the harness itself exercises, checked by hand instead (a pass over an uncommitted tree must say 'pass not recorded').",
+  "mutants": [
+    {
+      "name": "a file with no recorded pass is not due",
+      "file": "scripts/mutants-due.py",
+      "find": "    if not recorded:\n        return True, [\"no recorded pass\"]",
+      "replace": "    if not recorded:\n        return False, []",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "mutants_due_self_test",
+        "mutants_due",
+        "mutants_due_shaders",
+        "mutants_due_scripts"
+      ]
+    },
+    {
+      "name": "a changed input does not count",
+      "file": "scripts/mutants-due.py",
+      "find": "    hits = sorted(changed & inputs)",
+      "replace": "    hits = []",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "mutants_due_self_test",
+        "mutants_due",
+        "mutants_due_shaders",
+        "mutants_due_scripts"
+      ]
+    },
+    {
+      "name": "the build definition is no longer always an input",
+      "file": "scripts/mutants-due.py",
+      "find": "ALWAYS = (\"CMakeLists.txt\", ",
+      "replace": "ALWAYS = (",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "mutants_due_self_test",
+        "mutants_due",
+        "mutants_due_shaders",
+        "mutants_due_scripts"
+      ]
+    },
+    {
+      "name": "headers from Ninja's log are ignored",
+      "file": "scripts/mutants-due.py",
+      "find": "                files |= self.headers.get(path, set())",
+      "replace": "                pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "mutants_due_self_test",
+        "mutants_due",
+        "mutants_due_shaders",
+        "mutants_due_scripts"
+      ]
+    },
+    {
+      "name": "shaders are no longer an input of the application's judges",
+      "file": "scripts/mutants-due.py",
+      "find": "        if program == \"orbsim\":",
+      "replace": "        if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "mutants_due_self_test",
+        "mutants_due",
+        "mutants_due_shaders",
+        "mutants_due_scripts"
+      ]
+    },
+    {
+      "name": "files on a ctest command line are ignored",
+      "file": "scripts/mutants-due.py",
+      "find": "                    if path.is_file():\n                        files.add(norm(path))",
+      "replace": "                    if path.is_file():\n                        pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "mutants_due_self_test",
+        "mutants_due",
+        "mutants_due_shaders",
+        "mutants_due_scripts"
+      ]
+    },
+    {
+      "name": "an expected file that is not due is not reported",
+      "file": "scripts/mutants-due.py",
+      "find": "    return 1 if missing else 0",
+      "replace": "    return 0",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "mutants_due_self_test",
+        "mutants_due",
+        "mutants_due_shaders",
+        "mutants_due_scripts"
+      ]
+    }
+  ]
+}

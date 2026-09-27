@@ -541,6 +541,29 @@ reconstructing five passes from prose would be inventing mutants and claiming
 they had been run, which is the shape rule 23 is about. Every pass from M1-08
 onwards leaves its file. *(Noted 2026-09-21.)*
 
+**When an older pass must run again: the strict rule, since 2026-09-27**
+([ADR 0024](adr/0024-verification-costs-what-changed.md), M1-92). A mutant's
+verdict depends on three things: the mutated file, the test, and all the code
+between them, test helpers and the production code the test runs through. So
+**a task runs every mutant file that `scripts/mutants-due.py <tree>` lists,
+before its commit.** A file is listed when anything its judges depend on has
+changed since `scripts/mutation-passes.json` says it last passed. That covers:
+
+- the mutated files;
+- every file the judging programs are built from, headers included, from
+  Ninja's own records;
+- the shaders for a judge that runs the application;
+- `data/`;
+- the scripts the judges run;
+- the build definition and the harness itself.
+
+`mutate.py` writes a file's entry after a clean run, and only when the code
+matches the commit, since otherwise the record would vouch for code that is
+not committed. After an edit to a core header, or to `CMakeLists.txt`, nearly
+everything is due, and that is the rule working. The full pass still runs at
+every gate. The script over-approximates on purpose: listing a file that did
+not need to run costs minutes, and missing one costs a hole nobody sees.
+
 **A pass is deliberately not part of `check`** -- it rebuilds once per mutant
 and takes minutes, and this rule is periodic by design. **The anchors are,
 since 2026-09-20**, as the `mutant-anchors` target: `mutate.py scripts/mutants
