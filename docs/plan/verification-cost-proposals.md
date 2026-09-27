@@ -65,10 +65,13 @@ minutes**, over half of it lint. On top of that, per task:
 - **What.** This 60-line file is compiled into 23 programs, so
   `compile_commands.json` holds 23 entries for it, and clang-tidy checks all
   23. That is the slowest lint step in every tree, at 114–171 s. Lint it once
-  per *distinct* set of compiler flags instead: the entries differ only by
-  program, except for `test_probe_clear`, which adds one definition.
-- **Saving.** About 110–160 CPU-seconds per full lint, per tree (measured on
-  the step). The wall-clock gain depends on the next-longest step,
+  per *distinct* set of compiler flags instead. Measured on the release tree,
+  the 23 entries fall into **three** sets:
+  - 21 identical;
+  - `test_image_files`, which adds OpenEXR's and Imath's include directories;
+  - `test_probe_clear`, which adds the probe-directory definition.
+- **Saving.** 3 runs instead of 23, so about 100–150 CPU-seconds per full lint,
+  per tree (from the measured step). The wall-clock gain depends on the next-longest step,
   `test_time.cpp` at 83–164 s. *To be measured.*
 - **Why no bug gets through.** clang-tidy sees exactly the same text under
   each set of flags, so linting a set once finds whatever 23 identical runs
