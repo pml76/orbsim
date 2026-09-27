@@ -163,6 +163,26 @@ the application under the Vulkan validation layers (`orbsim_smoke`, label
 only live in Debug. Smaller targets for the loop: `lint`, `format-check`,
 `format`, `doc-links`.
 
+**Since 2026-09-27 it re-does only what a change can affect**
+([`docs/adr/0024`](docs/adr/0024-verification-costs-what-changed.md)):
+
+- it re-lints a file only when the text the linter reads for it has changed;
+- it runs clang-tidy in a pool sized from the machine's memory;
+- it runs the tests in parallel, with the GPU tests under one lock.
+
+Run the two trees one after the other, never at once. **Two more steps before
+a task's commit**, outside `check` because they take minutes:
+
+- run every mutant file `python scripts/mutants-due.py build/<tree>` lists
+  ([`docs/VERIFICATION.md`](docs/VERIFICATION.md) rule 19);
+- if the change reaches a fuzz target (`src/core/`, `src/orbit/`,
+  `src/astro/`, a `tests/fuzz_*.cpp`), run that fuzzer for its budget from its
+  committed corpus (rule 13).
+
+If CLion has the project open, it may regenerate `build/debug` from a
+`CMakeLists.txt` it read mid-edit. Regenerate by hand
+(`cmake -S . -B build/debug`) before trusting `check` after editing it.
+
 Presets: `asan` and `windows-msvc` before a milestone lands, and `linux-sanitize` and `linux-gcc`
 for UndefinedBehaviorSanitizer and the second compiler.
 [`docs/adr/0005`](docs/adr/0005-correctness-is-enforced-by-tools.md) is why it
@@ -222,7 +242,7 @@ and the conventions and the finishing checklist are in
 ## Current work
 
 [Milestone 1](docs/plan/milestone-1-earth.md): Earth, orbit track, Orbit MFD,
-broken into 87 tasks. Phases run **A → B → D → C → E → F → G** — atmosphere
+broken into 94 tasks. Phases run **A → B → D → C → E → F → G** — atmosphere
 deliberately before the quadtree, because it is what makes the image read as
 Earth and it gives a correct reference while debugging tile seams. **Which task
 is next is in [`docs/STATUS.md`](docs/STATUS.md)**, not here. The plan was

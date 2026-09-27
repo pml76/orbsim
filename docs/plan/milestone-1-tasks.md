@@ -44,7 +44,7 @@ one starts.
 
 ### The standing rules, which every task inherits
 
-These are not repeated in the 87 documents. They apply to all of them.
+These are not repeated in the 94 documents. They apply to all of them.
 
 1. **The test is written first and seen to fail**, for the right reason
    ([`../VERIFICATION.md`](../VERIFICATION.md) rule 1). The failure message goes
@@ -70,6 +70,14 @@ These are not repeated in the 87 documents. They apply to all of them.
    commit as the code that first depends on it.
 8. Commits end with the `Co-Authored-By` line and **no session URL**
    ([`../../CLAUDE.md`](../../CLAUDE.md), Attribution).
+9. **Every mutant file a change makes due is run before the commit**:
+   `python scripts/mutants-due.py build/<tree>` lists them, and the full pass
+   stays at the gates ([`../VERIFICATION.md`](../VERIFICATION.md) rule 19;
+   ADR 0024, M1-92). *(Added 2026-09-27.)*
+10. **A change that reaches a fuzz target runs that fuzzer before the commit**,
+    for its budget, from its committed corpus
+    ([`../VERIFICATION.md`](../VERIFICATION.md) rule 13; ADR 0024, M1-93).
+    *(Added 2026-09-27.)*
 
 ### The phase gates
 
@@ -80,7 +88,7 @@ cmake --preset asan            && cmake --build build/asan && ctest --test-dir b
 cmake --preset windows-msvc   && ...   # the third implementation; needs vcvars64
 wsl -d Ubuntu -- cmake --preset linux-sanitize && ...      # clang + ASan + UBSan
 wsl -d Ubuntu -- cmake --preset linux-gcc      && ...      # the second compiler
-./build/windows-fuzz/fuzz_<target>.exe -max_total_time=240
+./build/windows-fuzz/fuzz_<target>.exe tests/corpus/<target> -max_total_time=<budget>   # VERIFICATION.md rule 13
 ```
 
 plus a coverage review and an update to `PROJECT_STATE.md`. **Nothing proceeds
