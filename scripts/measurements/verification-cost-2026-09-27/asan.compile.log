@@ -1,0 +1,1595 @@
+### 2026-09-27T07:21:34Z /c/Users/U439644/AppData/Local/Programs/CLion/bin/cmake/win/x64/bin/cmake.exe --build build/timing/asan
+[0/2] Re-checking globbed directories...
+[1/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/a2af.c.obj
+[2/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/a2tf.c.obj
+[3/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/ab.c.obj
+[4/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/ae2hd.c.obj
+[5/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/af2a.c.obj
+[6/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/anp.c.obj
+[7/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/anpm.c.obj
+[8/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/apcg.c.obj
+[9/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/apcg13.c.obj
+[10/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/apci.c.obj
+[11/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/apci13.c.obj
+[12/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/apco.c.obj
+[13/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/apco13.c.obj
+[14/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/apcs.c.obj
+[15/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/apcs13.c.obj
+[16/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/aper.c.obj
+[17/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/aper13.c.obj
+[18/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/apio.c.obj
+[19/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/apio13.c.obj
+[20/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/atcc13.c.obj
+[21/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/atccq.c.obj
+[22/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/atci13.c.obj
+[23/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/atciq.c.obj
+[24/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/atciqn.c.obj
+[25/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/atciqz.c.obj
+[26/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/atco13.c.obj
+[27/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/atic13.c.obj
+[28/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/aticq.c.obj
+[29/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/aticqn.c.obj
+[30/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/atio13.c.obj
+[31/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/atioq.c.obj
+[32/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/atoc13.c.obj
+[33/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/atoi13.c.obj
+[34/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/atoiq.c.obj
+[35/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/bi00.c.obj
+[36/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/bp00.c.obj
+[37/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/bp06.c.obj
+[38/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/bpn2xy.c.obj
+[39/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/c2i00a.c.obj
+[40/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/c2i00b.c.obj
+[41/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/c2i06a.c.obj
+[42/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/c2ibpn.c.obj
+[43/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/c2ixy.c.obj
+[44/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/c2ixys.c.obj
+[45/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/c2s.c.obj
+[46/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/c2t00a.c.obj
+[47/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/c2t00b.c.obj
+[48/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/c2t06a.c.obj
+[49/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/c2tcio.c.obj
+[50/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/c2teqx.c.obj
+[51/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/c2tpe.c.obj
+[52/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/c2txy.c.obj
+[53/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/cal2jd.c.obj
+[54/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/cp.c.obj
+[55/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/cpv.c.obj
+[56/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/cr.c.obj
+[57/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/d2dtf.c.obj
+[58/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/d2tf.c.obj
+[59/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/dat.c.obj
+[60/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/dtdb.c.obj
+[61/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/dtf2d.c.obj
+[62/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/eceq06.c.obj
+[63/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/ecm06.c.obj
+[64/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/ee00.c.obj
+[65/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/ee00a.c.obj
+[66/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/ee00b.c.obj
+[67/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/ee06a.c.obj
+[68/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/eect00.c.obj
+[69/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/eform.c.obj
+[70/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/eo06a.c.obj
+[71/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/eors.c.obj
+[72/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/epb.c.obj
+[73/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/epb2jd.c.obj
+[74/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/epj.c.obj
+[75/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/epj2jd.c.obj
+[76/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/epv00.c.obj
+[77/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/eqec06.c.obj
+[78/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/eqeq94.c.obj
+[79/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/era00.c.obj
+[80/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/erfadatextra.c.obj
+[81/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/erfaversion.c.obj
+[82/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/fad03.c.obj
+[83/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/fae03.c.obj
+[84/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/faf03.c.obj
+[85/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/faju03.c.obj
+[86/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/fal03.c.obj
+[87/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/falp03.c.obj
+[88/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/fama03.c.obj
+[89/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/fame03.c.obj
+[90/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/fane03.c.obj
+[91/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/faom03.c.obj
+[92/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/fapa03.c.obj
+[93/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/fasa03.c.obj
+[94/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/faur03.c.obj
+[95/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/fave03.c.obj
+[96/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/fk425.c.obj
+[97/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/fk45z.c.obj
+[98/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/fk524.c.obj
+[99/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/fk52h.c.obj
+[100/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/fk54z.c.obj
+[101/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/fk5hip.c.obj
+[102/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/fk5hz.c.obj
+[103/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/fw2m.c.obj
+[104/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/fw2xy.c.obj
+[105/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/g2icrs.c.obj
+[106/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/gc2gd.c.obj
+[107/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/gc2gde.c.obj
+[108/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/gd2gc.c.obj
+[109/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/gd2gce.c.obj
+[110/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/gmst00.c.obj
+[111/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/gmst06.c.obj
+[112/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/gmst82.c.obj
+[113/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/gst00a.c.obj
+[114/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/gst00b.c.obj
+[115/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/gst06.c.obj
+[116/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/gst06a.c.obj
+[117/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/gst94.c.obj
+[118/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/h2fk5.c.obj
+[119/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/hd2ae.c.obj
+[120/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/hd2pa.c.obj
+[121/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/hfk5z.c.obj
+[122/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/icrs2g.c.obj
+[123/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/ir.c.obj
+[124/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/jd2cal.c.obj
+[125/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/jdcalf.c.obj
+[126/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/ld.c.obj
+[127/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/ldn.c.obj
+[128/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/ldsun.c.obj
+[129/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/lteceq.c.obj
+[130/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/ltecm.c.obj
+[131/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/lteqec.c.obj
+[132/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/ltp.c.obj
+[133/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/ltpb.c.obj
+[134/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/ltpecl.c.obj
+[135/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/ltpequ.c.obj
+[136/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/moon98.c.obj
+[137/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/num00a.c.obj
+[138/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/num00b.c.obj
+[139/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/num06a.c.obj
+[140/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/numat.c.obj
+[141/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/nut00a.c.obj
+[142/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/nut00b.c.obj
+[143/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/nut06a.c.obj
+[144/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/nut80.c.obj
+[145/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/nutm80.c.obj
+[146/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/obl06.c.obj
+[147/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/obl80.c.obj
+[148/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/p06e.c.obj
+[149/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/p2pv.c.obj
+[150/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/p2s.c.obj
+[151/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pap.c.obj
+[152/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pas.c.obj
+[153/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pb06.c.obj
+[154/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pdp.c.obj
+[155/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pfw06.c.obj
+[156/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/plan94.c.obj
+[157/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pm.c.obj
+[158/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pmat00.c.obj
+[159/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pmat06.c.obj
+[160/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pmat76.c.obj
+[161/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pmp.c.obj
+[162/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pmpx.c.obj
+[163/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pmsafe.c.obj
+[164/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pn.c.obj
+[165/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pn00.c.obj
+[166/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pn00a.c.obj
+[167/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pn00b.c.obj
+[168/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pn06.c.obj
+[169/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pn06a.c.obj
+[170/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pnm00a.c.obj
+[171/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pnm00b.c.obj
+[172/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pnm06a.c.obj
+[173/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pnm80.c.obj
+[174/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pom00.c.obj
+[175/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/ppp.c.obj
+[176/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/ppsp.c.obj
+[177/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pr00.c.obj
+[178/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/prec76.c.obj
+[179/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pv2p.c.obj
+[180/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pv2s.c.obj
+[181/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pvdpv.c.obj
+[182/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pvm.c.obj
+[183/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pvmpv.c.obj
+[184/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pvppv.c.obj
+[185/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pvstar.c.obj
+[186/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pvtob.c.obj
+[187/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pvu.c.obj
+[188/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pvup.c.obj
+[189/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pvxpv.c.obj
+[190/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/pxp.c.obj
+[191/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/refco.c.obj
+[192/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/rm2v.c.obj
+[193/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/rv2m.c.obj
+[194/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/rx.c.obj
+[195/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/rxp.c.obj
+[196/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/rxpv.c.obj
+[197/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/rxr.c.obj
+[198/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/ry.c.obj
+[199/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/rz.c.obj
+[200/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/s00.c.obj
+[201/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/s00a.c.obj
+[202/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/s00b.c.obj
+[203/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/s06.c.obj
+[204/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/s06a.c.obj
+[205/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/s2c.c.obj
+[206/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/s2p.c.obj
+[207/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/s2pv.c.obj
+[208/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/s2xpv.c.obj
+[209/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/sepp.c.obj
+[210/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/seps.c.obj
+[211/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/sp00.c.obj
+[212/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/starpm.c.obj
+[213/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/starpv.c.obj
+[214/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/sxp.c.obj
+[215/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/sxpv.c.obj
+[216/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/taitt.c.obj
+[217/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/taiut1.c.obj
+[218/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/taiutc.c.obj
+[219/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/tcbtdb.c.obj
+[220/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/tcgtt.c.obj
+[221/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/tdbtcb.c.obj
+[222/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/tdbtt.c.obj
+[223/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/tf2a.c.obj
+[224/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/tf2d.c.obj
+[225/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/tpors.c.obj
+[226/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/tporv.c.obj
+[227/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/tpsts.c.obj
+[228/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/tpstv.c.obj
+[229/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/tpxes.c.obj
+[230/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/tpxev.c.obj
+[231/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/tr.c.obj
+[232/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/trxp.c.obj
+[233/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/trxpv.c.obj
+[234/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/tttai.c.obj
+[235/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/tttcg.c.obj
+[236/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/tttdb.c.obj
+[237/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/ttut1.c.obj
+[238/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/ut1tai.c.obj
+[239/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/ut1tt.c.obj
+[240/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/ut1utc.c.obj
+[241/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/utctai.c.obj
+[242/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/utcut1.c.obj
+[243/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/xy06.c.obj
+[244/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/xys00a.c.obj
+[245/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/xys00b.c.obj
+[246/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/xys06a.c.obj
+[247/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/zp.c.obj
+[248/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/zpv.c.obj
+[249/904] Building C object CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/zr.c.obj
+[250/904] Building CXX object _deps/imath-build/src/Imath/CMakeFiles/Imath.dir/ImathRandom.cpp.obj
+[251/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/generators/catch_generator_exception.cpp.obj
+[252/904] Building CXX object _deps/imath-build/src/Imath/CMakeFiles/Imath.dir/ImathFun.cpp.obj
+[253/904] Building CXX object _deps/imath-build/src/Imath/CMakeFiles/Imath.dir/ImathColorAlgo.cpp.obj
+[254/904] Building CXX object _deps/imath-build/src/Imath/CMakeFiles/Imath.dir/half.cpp.obj
+[255/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/benchmark/catch_chronometer.cpp.obj
+[256/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/generators/catch_generators_throw.cpp.obj
+[257/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/benchmark/detail/catch_analyse.cpp.obj
+[258/904] Building CXX object _deps/imath-build/src/Imath/CMakeFiles/Imath.dir/ImathMatrixAlgo.cpp.obj
+[259/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/benchmark/detail/catch_benchmark_function.cpp.obj
+[260/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/benchmark/detail/catch_run_for_at_least.cpp.obj
+[261/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/benchmark/catch_benchmark.cpp.obj
+[262/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/generators/catch_generators.cpp.obj
+[263/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_common_base.cpp.obj
+[264/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/generators/catch_generators_random.cpp.obj
+[265/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/benchmark/detail/catch_stats.cpp.obj
+[266/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_registrars.cpp.obj
+[267/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_event_listener.cpp.obj
+[268/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_automake.cpp.obj
+[269/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_compact.cpp.obj
+[270/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_console.cpp.obj
+[271/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_multi.cpp.obj
+[272/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_junit.cpp.obj
+[273/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_cumulative_base.cpp.obj
+[274/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_json.cpp.obj
+[275/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/interfaces/catch_interfaces_exception.cpp.obj
+[276/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/interfaces/catch_interfaces_registry_hub.cpp.obj
+[277/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_helpers.cpp.obj
+[278/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/interfaces/catch_interfaces_testcase.cpp.obj
+[279/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/interfaces/catch_interfaces_reporter_factory.cpp.obj
+[280/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_totals.cpp.obj
+[281/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/interfaces/catch_interfaces_capture.cpp.obj
+[282/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_streaming_base.cpp.obj
+[283/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/interfaces/catch_interfaces_config.cpp.obj
+[284/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_sonarqube.cpp.obj
+[285/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_tag_alias_autoregistrar.cpp.obj
+[286/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_teamcity.cpp.obj
+[287/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_assertion_result.cpp.obj
+[288/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_tap.cpp.obj
+[289/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/interfaces/catch_interfaces_generatortracker.cpp.obj
+[290/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_approx.cpp.obj
+[291/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_context.cpp.obj
+[292/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/reporters/catch_reporter_xml.cpp.obj
+[293/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/interfaces/catch_interfaces_reporter.cpp.obj
+[294/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_translate_exception.cpp.obj
+[295/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_message.cpp.obj
+[296/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_errno_guard.cpp.obj
+[297/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_get_random_seed.cpp.obj
+[298/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_debugger.cpp.obj
+[299/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_getenv.cpp.obj
+[300/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_registry_hub.cpp.obj
+[301/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_case_insensitive_comparisons.cpp.obj
+[302/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_test_case_info.cpp.obj
+[303/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_version.cpp.obj
+[304/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_timer.cpp.obj
+[305/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_config.cpp.obj
+[306/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_tostring.cpp.obj
+[307/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_floating_point_helpers.cpp.obj
+[308/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_enum_info.cpp.obj
+[309/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_test_spec.cpp.obj
+[310/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_random_number_generator.cpp.obj
+[311/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_polyfills.cpp.obj
+[312/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_enforce.cpp.obj
+[313/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_assertion_handler.cpp.obj
+[314/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_debug_console.cpp.obj
+[315/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_leak_detector.cpp.obj
+[316/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_decomposer.cpp.obj
+[317/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_message_info.cpp.obj
+[318/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_exception_translator_registry.cpp.obj
+[319/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/catch_session.cpp.obj
+[320/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_parse_numbers.cpp.obj
+[321/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_console_colour.cpp.obj
+[322/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_clara.cpp.obj
+[323/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_istream.cpp.obj
+[324/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_jsonwriter.cpp.obj
+[325/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_fatal_condition_handler.cpp.obj
+[326/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_lazy_expr.cpp.obj
+[327/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_output_redirect.cpp.obj
+[328/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_singletons.cpp.obj
+[329/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_section.cpp.obj
+[330/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_startup_exception_registry.cpp.obj
+[331/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_uncaught_exceptions.cpp.obj
+[332/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_random_seed_generation.cpp.obj
+[333/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_list.cpp.obj
+[334/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_test_case_info_hasher.cpp.obj
+[335/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_reusable_string_stream.cpp.obj
+[336/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_source_line_info.cpp.obj
+[337/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_stdstreams.cpp.obj
+[338/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_commandline.cpp.obj
+[339/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_string_manip.cpp.obj
+[340/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_stringref.cpp.obj
+[341/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_reporter_registry.cpp.obj
+[342/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_test_registry.cpp.obj
+[343/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_reporter_spec_parser.cpp.obj
+[344/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_test_failure_exception.cpp.obj
+[345/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_tag_alias_registry.cpp.obj
+[346/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_run_context.cpp.obj
+[347/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_test_spec_parser.cpp.obj
+[348/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_test_case_tracker.cpp.obj
+[349/904] Linking C static library orbsim_erfa.lib
+[350/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_wildcard_pattern.cpp.obj
+[351/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_xmlwriter.cpp.obj
+[352/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_textflow.cpp.obj
+[353/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/internal_b44_table.c.obj
+[354/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_test_case_registry_impl.cpp.obj
+[355/904] Linking CXX static library _deps\imath-build\src\Imath\Imath-3_2.lib
+[356/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/matchers/catch_matchers.cpp.obj
+[357/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/matchers/catch_matchers_predicate.cpp.obj
+[358/904] Building CXX object CMakeFiles/orbsim_core.dir/src/core/LeapSeconds.cpp.obj
+[359/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/matchers/catch_matchers_container_properties.cpp.obj
+[360/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/matchers/catch_matchers_exception.cpp.obj
+[361/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/internal_dwa_table.c.obj
+[362/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/matchers/catch_matchers_quantifiers.cpp.obj
+[363/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/internal_rle.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/internal_rle.c:9:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/internal_rle.c:9:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[364/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/matchers/catch_matchers_floating_point.cpp.obj
+[365/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/matchers/catch_matchers_templated.cpp.obj
+[366/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/internal_zip.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/internal_zip.c:9:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/internal_zip.c:9:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[367/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/internal_zstd_delta.c.obj
+[368/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/matchers/internal/catch_matchers_impl.cpp.obj
+[369/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/internal_zstd_shuffle.c.obj
+[370/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/internal_b44.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/internal_b44.c:9:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/internal_b44.c:9:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[371/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/internal_pxr24.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/internal_pxr24.c:9:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/internal_pxr24.c:9:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[372/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/internal_b44_table_init.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/internal_b44_table_init.c:8:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/internal_b44_table_init.c:8:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[373/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/internal_piz.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/internal_piz.c:9:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/internal_piz.c:9:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[374/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/internal_dwa_table_init.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/internal_dwa_table_init.c:8:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/internal_dwa_table_init.c:8:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[375/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/base.c.obj
+[376/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/string.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/string.c:9:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/string.c:9:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[377/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/string_vector.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/string_vector.c:8:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/string_vector.c:8:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[378/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/attributes.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/attributes.c:9:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/attributes.c:9:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[379/904] Building CXX object CMakeFiles/orbsim_lodepng.dir/_deps/lodepng-src/lodepng.cpp.obj
+[380/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/float_vector.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/float_vector.c:8:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/float_vector.c:8:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[381/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/channel_list.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/channel_list.c:9:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/channel_list.c:9:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[382/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/opaque.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/opaque.c:9:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/opaque.c:9:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[383/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/internal_zstd.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/internal_zstd.c:9:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/internal_zstd.c:9:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[384/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/std_attr.c.obj
+[385/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/matchers/catch_matchers_string.cpp.obj
+[386/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/color_metadata.c.obj
+[387/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/preview.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/preview.c:8:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/preview.c:8:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[388/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/internal_huf.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/internal_huf.c:10:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/internal_huf.c:10:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[389/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/internal_dwa.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/internal_dwa.c:106:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/internal_dwa.c:106:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[390/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/bytes.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/bytes.c:9:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/bytes.c:9:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[391/904] Building CXX object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/internal_ht_common.cpp.obj
+[392/904] Building CXX object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/internal_ht.cpp.obj
+[393/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/memory.c.obj
+[394/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/common/debug.c.obj
+[395/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/context.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/context.c:17:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_file.h:9:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/context.c:17:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_file.h:9:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[396/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/internal_structs.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/internal_structs.c:7:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/internal_structs.c:7:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[397/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/part.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/part.c:11:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/part.c:11:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[398/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/common/threading.c.obj
+[399/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/write_header.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/write_header.c:6:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_file.h:9:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/write_header.c:6:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_file.h:9:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[400/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/common/xxhash.c.obj
+[401/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/common/error_private.c.obj
+[402/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/common/entropy_common.c.obj
+[403/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/part_attr.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/part_attr.c:12:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_file.h:9:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/part_attr.c:12:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_file.h:9:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[404/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/parse_header.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/parse_header.c:6:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_file.h:9:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/parse_header.c:6:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_file.h:9:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/parse_header.c:779:13: warning: format specifies type 'long' but the argument has type '__size_t' (aka 'unsigned long long') [-Wformat]
+  775 |             "Attribute '%s': Invalid size %d (exp '%s' size >= %ld)",
+      |                                                                ~~~
+      |                                                                %zu
+  776 |             aname,
+  777 |             attrsz,
+  778 |             tname,
+  779 |             sizeof(uint32_t));
+      |             ^~~~~~~~~~~~~~~~
+3 warnings generated.
+[405/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/validation.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/validation.c:6:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_file.h:9:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/validation.c:6:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_file.h:9:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[406/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/common/fse_decompress.c.obj
+[407/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/common/pool.c.obj
+[408/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/debug.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/debug.c:9:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/debug.c:9:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[409/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/coding.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/coding.c:6:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/coding.c:6:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[410/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/encoding.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/encoding.c:9:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/encoding.c:9:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[411/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/common/zstd_common.c.obj
+[412/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/pack.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/pack.c:8:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/pack.c:8:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[413/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/decoding.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/decoding.c:10:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/decoding.c:10:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[414/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/chunk.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/chunk.c:8:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/chunk.c:8:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[415/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/compress/hist.c.obj
+[416/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/compress/fse_compress.c.obj
+[417/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/compress/zstd_compress_literals.c.obj
+[418/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/unpack.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/unpack.c:6:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/unpack.c:6:
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_coding.h:13:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[419/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/compress/zstd_compress_superblock.c.obj
+[420/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/compress/zstd_compress_sequences.c.obj
+[421/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/compress/huf_compress.c.obj
+[422/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/compress/zstd_preSplit.c.obj
+[423/904] Building ASM object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/decompress/huf_decompress_amd64.S.obj
+[424/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/compress/zstd_ldm.c.obj
+[425/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/decompress/zstd_ddict.c.obj
+[426/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/compress/zstdmt_compress.c.obj
+[427/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/decompress/zstd_decompress.c.obj
+[428/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/compress/zstd_fast.c.obj
+[429/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/codestream/ojph_codeblock_fun.cpp.obj
+[430/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/compression.c.obj
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/compression.c:9:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:67:41: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   67 |     return (uintptr_t) InterlockedOr64 (object, 0);
+      |                                         ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3193:52: note: passing argument to parameter 'Destination' here
+ 3193 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+In file included from C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore/compression.c:9:
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/src/lib/OpenEXRCore\internal_structs.h:80:51: warning: passing 'volatile uintptr_t *' (aka 'volatile unsigned long long *') to parameter of type 'volatile long long *' converts between pointers to integer types with different sign [-Wpointer-sign]
+   80 |         (uintptr_t) InterlockedCompareExchange64 (object, desired, *expected);
+      |                                                   ^~~~~~
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\um\winnt.h:3286:52: note: passing argument to parameter 'Destination' here
+ 3286 |     _Inout_ _Interlocked_operand_ LONG64 volatile *Destination,
+      |                                                    ^
+2 warnings generated.
+[431/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/compress/zstd_opt.c.obj
+[432/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/compress/zstd_double_fast.c.obj
+[433/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/codestream/ojph_codeblock.cpp.obj
+[434/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/codestream/ojph_codestream.cpp.obj
+[435/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/decompress/huf_decompress.c.obj
+[436/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/codestream/ojph_codestream_gen.cpp.obj
+[437/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/coding/ojph_block_common.cpp.obj
+[438/904] Building CXX object CMakeFiles/orbsim_core.dir/src/astro/EarthOrientation.cpp.obj
+[439/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/compress/zstd_compress.c.obj
+[440/904] Building C object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/others/ojph_mem_c.c.obj
+[441/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/decompress/zstd_decompress_block.c.obj
+[442/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/codestream/ojph_codestream_local.cpp.obj
+[443/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/codestream/ojph_resolution.cpp.obj
+[444/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/codestream/ojph_subband.cpp.obj
+[445/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/codestream/ojph_precinct.cpp.obj
+[446/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/codestream/ojph_tile.cpp.obj
+[447/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/codestream/ojph_tile_comp.cpp.obj
+[448/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/others/ojph_arch.cpp.obj
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/external/OpenJPH/src/core/others/ojph_arch.cpp:56:33: warning: implicit conversion changes signedness: 'uint32_t' (aka 'unsigned int') to 'int' [-Wsign-conversion]
+   56 |     __cpuidex((int *)abcd, eax, ecx);
+      |     ~~~~~~~~~                   ^~~
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/external/OpenJPH/src/core/others/ojph_arch.cpp:56:28: warning: implicit conversion changes signedness: 'uint32_t' (aka 'unsigned int') to 'int' [-Wsign-conversion]
+   56 |     __cpuidex((int *)abcd, eax, ecx);
+      |     ~~~~~~~~~              ^~~
+2 warnings generated.
+[449/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/others/ojph_mem.cpp.obj
+[450/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/codestream/ojph_params.cpp.obj
+[451/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/others/ojph_file.cpp.obj
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/external/OpenJPH/src/core/others/ojph_file.cpp:65:10: warning: 'fopen' is deprecated: This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [-Wdeprecated-declarations]
+   65 |     fh = fopen(filename, "wb");
+      |          ^
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\ucrt\stdio.h:212:20: note: 'fopen' has been explicitly marked deprecated here
+  212 |     _Check_return_ _CRT_INSECURE_DEPRECATE(fopen_s)
+      |                    ^
+C:\Program Files\Microsoft Visual Studio\18\Insiders\VC\Tools\MSVC\14.51.36231\include\vcruntime.h:358:55: note: expanded from macro '_CRT_INSECURE_DEPRECATE'
+  358 |         #define _CRT_INSECURE_DEPRECATE(_Replacement) _CRT_DEPRECATE_TEXT(    \
+      |                                                       ^
+C:\Program Files\Microsoft Visual Studio\18\Insiders\VC\Tools\MSVC\14.51.36231\include\vcruntime.h:348:47: note: expanded from macro '_CRT_DEPRECATE_TEXT'
+  348 | #define _CRT_DEPRECATE_TEXT(_Text) __declspec(deprecated(_Text))
+      |                                               ^
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/external/OpenJPH/src/core/others/ojph_file.cpp:223:15: warning: 'fopen' is deprecated: This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [-Wdeprecated-declarations]
+  223 |     FILE *f = fopen(file_name, "wb");
+      |               ^
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\ucrt\stdio.h:212:20: note: 'fopen' has been explicitly marked deprecated here
+  212 |     _Check_return_ _CRT_INSECURE_DEPRECATE(fopen_s)
+      |                    ^
+C:\Program Files\Microsoft Visual Studio\18\Insiders\VC\Tools\MSVC\14.51.36231\include\vcruntime.h:358:55: note: expanded from macro '_CRT_INSECURE_DEPRECATE'
+  358 |         #define _CRT_INSECURE_DEPRECATE(_Replacement) _CRT_DEPRECATE_TEXT(    \
+      |                                                       ^
+C:\Program Files\Microsoft Visual Studio\18\Insiders\VC\Tools\MSVC\14.51.36231\include\vcruntime.h:348:47: note: expanded from macro '_CRT_DEPRECATE_TEXT'
+  348 | #define _CRT_DEPRECATE_TEXT(_Text) __declspec(deprecated(_Text))
+      |                                               ^
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/openexr-src/external/OpenJPH/src/core/others/ojph_file.cpp:277:10: warning: 'fopen' is deprecated: This function or variable may be unsafe. Consider using fopen_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [-Wdeprecated-declarations]
+  277 |     fh = fopen(filename, "rb");
+      |          ^
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\ucrt\stdio.h:212:20: note: 'fopen' has been explicitly marked deprecated here
+  212 |     _Check_return_ _CRT_INSECURE_DEPRECATE(fopen_s)
+      |                    ^
+C:\Program Files\Microsoft Visual Studio\18\Insiders\VC\Tools\MSVC\14.51.36231\include\vcruntime.h:358:55: note: expanded from macro '_CRT_INSECURE_DEPRECATE'
+  358 |         #define _CRT_INSECURE_DEPRECATE(_Replacement) _CRT_DEPRECATE_TEXT(    \
+      |                                                       ^
+C:\Program Files\Microsoft Visual Studio\18\Insiders\VC\Tools\MSVC\14.51.36231\include\vcruntime.h:348:47: note: expanded from macro '_CRT_DEPRECATE_TEXT'
+  348 | #define _CRT_DEPRECATE_TEXT(_Text) __declspec(deprecated(_Text))
+      |                                               ^
+3 warnings generated.
+[452/904] Building CXX object CMakeFiles/orbsim_core.dir/src/astro/Tdb.cpp.obj
+[453/904] Building CXX object CMakeFiles/orbsim_core.dir/src/astro/Sun.cpp.obj
+[454/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/transform/ojph_colour_sse.cpp.obj
+[455/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/codestream/ojph_codestream_sse.cpp.obj
+[456/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/transform/ojph_transform_sse.cpp.obj
+[457/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/codestream/ojph_codestream_sse2.cpp.obj
+[458/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/others/ojph_message.cpp.obj
+[459/904] Building CXX object CMakeFiles/orbsim_core.dir/src/orbit/Orbit.cpp.obj
+[460/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/transform/ojph_colour_avx.cpp.obj
+[461/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/transform/ojph_colour_sse2.cpp.obj
+[462/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/codestream/ojph_codestream_avx.cpp.obj
+[463/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/transform/ojph_colour.cpp.obj
+[464/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/codestream/ojph_codestream_avx2.cpp.obj
+[465/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/transform/ojph_transform_sse2.cpp.obj
+[466/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/coding/ojph_block_decoder64.cpp.obj
+[467/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/transform/ojph_transform_avx.cpp.obj
+[468/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/coding/ojph_block_decoder32.cpp.obj
+[469/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/coding/ojph_block_encoder.cpp.obj
+[470/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/transform/ojph_transform.cpp.obj
+[471/904] Linking CXX static library _deps\catch2-build\src\Catch2.lib
+[472/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/transform/ojph_colour_avx2.cpp.obj
+[473/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/transform/ojph_transform_avx2.cpp.obj
+[474/904] Building C object _deps/sdl3-build/CMakeFiles/SDL_uclibc.dir/src/libm/e_atan2.c.obj
+[475/904] Building CXX object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/cmake_pch.hxx.pch
+[476/904] Building C object _deps/sdl3-build/CMakeFiles/SDL_uclibc.dir/src/libm/e_exp.c.obj
+[477/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/cmake_pch.h.pch
+[478/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/transform/ojph_transform_avx512.cpp.obj
+[479/904] Building C object _deps/sdl3-build/CMakeFiles/SDL_uclibc.dir/src/libm/e_log.c.obj
+[480/904] Building C object _deps/sdl3-build/CMakeFiles/SDL_uclibc.dir/src/libm/e_fmod.c.obj
+[481/904] Building C object _deps/sdl3-build/CMakeFiles/SDL_uclibc.dir/src/libm/e_log10.c.obj
+[482/904] Building C object _deps/openexr-build/src/lib/OpenEXRCore/CMakeFiles/OpenEXRCore.dir/__/__/__/external/zstd/lib/compress/zstd_lazy.c.obj
+[483/904] Building C object _deps/sdl3-build/CMakeFiles/SDL_uclibc.dir/src/libm/e_rem_pio2.c.obj
+[484/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/coding/ojph_block_encoder_avx2.cpp.obj
+[485/904] Building C object _deps/sdl3-build/CMakeFiles/SDL_uclibc.dir/src/libm/e_sqrt.c.obj
+[486/904] Building C object _deps/sdl3-build/CMakeFiles/SDL_uclibc.dir/src/libm/k_cos.c.obj
+[487/904] Building C object _deps/sdl3-build/CMakeFiles/SDL_uclibc.dir/src/libm/e_pow.c.obj
+[488/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/coding/ojph_block_encoder_avx512.cpp.obj
+[489/904] Building C object _deps/sdl3-build/CMakeFiles/SDL_uclibc.dir/src/libm/k_sin.c.obj
+[490/904] Building C object _deps/sdl3-build/CMakeFiles/SDL_uclibc.dir/src/libm/k_tan.c.obj
+[491/904] Building C object _deps/sdl3-build/CMakeFiles/SDL_uclibc.dir/src/libm/k_rem_pio2.c.obj
+[492/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/coding/ojph_block_decoder_ssse3.cpp.obj
+[493/904] Building C object _deps/sdl3-build/CMakeFiles/SDL_uclibc.dir/src/libm/s_atan.c.obj
+[494/904] Building C object _deps/sdl3-build/CMakeFiles/SDL_uclibc.dir/src/libm/s_cos.c.obj
+[495/904] Building CXX object _deps/openexr-build/external/OpenJPH/src/core/CMakeFiles/openjph.dir/coding/ojph_block_decoder_avx2.cpp.obj
+[496/904] Building C object _deps/sdl3-build/CMakeFiles/SDL_uclibc.dir/src/libm/s_copysign.c.obj
+[497/904] Building C object _deps/sdl3-build/CMakeFiles/SDL_uclibc.dir/src/libm/s_floor.c.obj
+[498/904] Building C object _deps/sdl3-build/CMakeFiles/SDL_uclibc.dir/src/libm/s_fabs.c.obj
+[499/904] Building C object _deps/sdl3-build/CMakeFiles/SDL_uclibc.dir/src/libm/s_isinf.c.obj
+[500/904] Building C object _deps/sdl3-build/CMakeFiles/SDL_uclibc.dir/src/libm/s_isinff.c.obj
+[501/904] Building C object _deps/sdl3-build/CMakeFiles/SDL_uclibc.dir/src/libm/s_isnanf.c.obj
+[502/904] Building C object _deps/sdl3-build/CMakeFiles/SDL_uclibc.dir/src/libm/s_isnan.c.obj
+[503/904] Building C object _deps/sdl3-build/CMakeFiles/SDL_uclibc.dir/src/libm/s_modf.c.obj
+[504/904] Linking CXX static library orbsim_core.lib
+[505/904] Building CXX object _deps/catch2-build/src/CMakeFiles/Catch2WithMain.dir/catch2/internal/catch_main.cpp.obj
+[506/904] Building C object _deps/sdl3-build/CMakeFiles/SDL_uclibc.dir/src/libm/s_scalbn.c.obj
+[507/904] Building C object _deps/sdl3-build/CMakeFiles/SDL_uclibc.dir/src/libm/s_sin.c.obj
+[508/904] Building C object _deps/sdl3-build/CMakeFiles/SDL_uclibc.dir/src/libm/s_tan.c.obj
+[509/904] Linking CXX static library orbsim_lodepng.lib
+[510/904] glslc body.frag
+[511/904] glslc body.vert
+[512/904] glslc fullscreen.vert
+[513/904] glslc line.frag
+[514/904] glslc line.vert
+[515/904] glslc probe_gradient.frag
+[516/904] glslc tonemap.frag
+[517/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/SDL_error.c.obj
+[518/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/SDL_guid.c.obj
+[519/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/SDL_list.c.obj
+[520/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/SDL_hints.c.obj
+[521/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/SDL_hashtable.c.obj
+[522/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/SDL_utils.c.obj
+[523/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/atomic/SDL_atomic.c.obj
+[524/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/SDL_properties.c.obj
+[525/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/SDL_assert.c.obj
+[526/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/SDL.c.obj
+[527/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/audio/SDL_audiodev.c.obj
+[528/904] Linking CXX static library _deps\openexr-build\src\lib\OpenEXRCore\OpenEXRCore-3_5.lib
+[529/904] Linking CXX static library _deps\catch2-build\src\Catch2Main.lib
+[530/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/SDL_log.c.obj
+[531/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/atomic/SDL_spinlock.c.obj
+[532/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/audio/SDL_audioqueue.c.obj
+[533/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/audio/SDL_audioresample.c.obj
+[534/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/core/SDL_core_unsupported.c.obj
+[535/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/audio/SDL_mixer.c.obj
+[536/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/events/SDL_categories.c.obj
+[537/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/audio/SDL_audiotypecvt.c.obj
+[538/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/events/SDL_clipboardevents.c.obj
+[539/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/audio/SDL_wave.c.obj
+[540/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/events/SDL_displayevents.c.obj
+[541/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/audio/SDL_audio.c.obj
+[542/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/cpuinfo/SDL_cpuinfo.c.obj
+[543/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/events/SDL_dropevents.c.obj
+[544/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/events/SDL_eventwatch.c.obj
+[545/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/events/SDL_keysym_to_keycode.c.obj
+[546/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/events/SDL_keysym_to_scancode.c.obj
+[547/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/audio/SDL_audiocvt.c.obj
+[548/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/events/SDL_keymap.c.obj
+[549/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/camera/SDL_camera.c.obj
+[550/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/events/SDL_keyboard.c.obj
+[551/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/events/SDL_scancode_tables.c.obj
+[552/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/events/SDL_quit.c.obj
+[553/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/events/imKStoUCS.c.obj
+[554/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/events/SDL_pen.c.obj
+[555/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/events/SDL_windowevents.c.obj
+[556/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/events/SDL_touch.c.obj
+[557/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/filesystem/SDL_filesystem.c.obj
+[558/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/io/SDL_asyncio.c.obj
+[559/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/haptic/SDL_haptic.c.obj
+[560/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/events/SDL_events.c.obj
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/sdl3-src/src/events/SDL_events.c:119:15: warning: variable 'SDL_last_event_id' set but not used [-Wunused-but-set-global]
+  119 | static Uint32 SDL_last_event_id = 0;
+      |               ^
+1 warning generated.
+[561/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/io/generic/SDL_asyncio_generic.c.obj
+[562/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/events/SDL_mouse.c.obj
+[563/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/controller_type.c.obj
+[564/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/locale/SDL_locale.c.obj
+[565/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/main/SDL_main_callbacks.c.obj
+[566/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/main/SDL_runapp.c.obj
+[567/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/gpu/SDL_gpu.c.obj
+[568/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/misc/SDL_libusb.c.obj
+[569/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/misc/SDL_url.c.obj
+[570/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/io/SDL_iostream.c.obj
+[571/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/power/SDL_power.c.obj
+[572/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/SDL_steam_virtual_gamepad.c.obj
+[573/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/SDL_render_unsupported.c.obj
+[574/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/SDL_yuv_sw.c.obj
+[575/904] Building CXX object CMakeFiles/orbsim_view.dir/src/view/ImageFiles.cpp.obj
+[576/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/gpu/SDL_pipeline_gpu.c.obj
+[577/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/SDL_joystick.c.obj
+[578/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/direct3d/SDL_shaders_d3d.c.obj
+[579/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/hidapi/SDL_hidapi.c.obj
+[580/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/SDL_gamepad.c.obj
+[581/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/ngage/SDL_render_ngage.c.obj
+[582/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/gpu/SDL_shaders_gpu.c.obj
+[583/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/direct3d11/SDL_shaders_d3d11.c.obj
+[584/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/gpu/SDL_render_gpu.c.obj
+[585/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/opengles2/SDL_shaders_gles2.c.obj
+[586/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/ps2/SDL_render_ps2.c.obj
+[587/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/direct3d12/SDL_shaders_d3d12.c.obj
+[588/904] Building CXX object CMakeFiles/orbsim_test_support.dir/tests/HdrDumpFile.cpp.obj
+[589/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/direct3d/SDL_render_d3d.c.obj
+[590/904] Building CXX object CMakeFiles/vma_impl.dir/src/render/VmaImpl.cpp.obj
+[591/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/SDL_render.c.obj
+[592/904] Building CXX object CMakeFiles/orbsim_test_support.dir/tests/StbImageImpl.cpp.obj
+[593/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/psp/SDL_render_psp.c.obj
+[594/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/opengl/SDL_shaders_gl.c.obj
+[595/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/direct3d11/SDL_render_d3d11.c.obj
+[596/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/software/SDL_drawpoint.c.obj
+[597/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/vitagxm/SDL_render_vita_gxm_memory.c.obj
+[598/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/vitagxm/SDL_render_vita_gxm.c.obj
+[599/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/opengles2/SDL_render_gles2.c.obj
+[600/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/software/SDL_blendpoint.c.obj
+[601/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/vitagxm/SDL_render_vita_gxm_tools.c.obj
+[602/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/software/SDL_drawline.c.obj
+[603/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/direct3d12/SDL_render_d3d12.c.obj
+[604/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/opengl/SDL_render_gl.c.obj
+[605/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/vulkan/SDL_shaders_vulkan.c.obj
+[606/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/dynapi/SDL_dynapi.c.obj
+[607/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/stdlib/SDL_crc16.c.obj
+[608/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/sensor/SDL_sensor.c.obj
+[609/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/stdlib/SDL_crc32.c.obj
+[610/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/software/SDL_render_sw.c.obj
+[611/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/software/SDL_triangle.c.obj
+[612/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/stdlib/SDL_memcpy.c.obj
+[613/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/stdlib/SDL_malloc.c.obj
+[614/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/stdlib/SDL_iconv.c.obj
+[615/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/stdlib/SDL_memmove.c.obj
+[616/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/stdlib/SDL_memset.c.obj
+[617/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/stdlib/SDL_mslibc.c.obj
+[618/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/stdlib/SDL_strtokr.c.obj
+[619/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/stdlib/SDL_murmur3.c.obj
+[620/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/software/SDL_blendfillrect.c.obj
+[621/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/stdlib/SDL_random.c.obj
+[622/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/stdlib/SDL_getenv.c.obj
+[623/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/stdlib/SDL_stdlib.c.obj
+[624/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/storage/SDL_storage.c.obj
+[625/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/time/SDL_time.c.obj
+[626/904] Building CXX object CMakeFiles/orbsim_view.dir/src/view/ProbeImage.cpp.obj
+[627/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/SDL_blit.c.obj
+[628/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/stdlib/SDL_qsort.c.obj
+[629/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/SDL_blit_copy.c.obj
+[630/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/thread/SDL_thread.c.obj
+[631/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/SDL_blit_1.c.obj
+[632/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/timer/SDL_timer.c.obj
+[633/904] Building CXX object _deps/vk_bootstrap-build/CMakeFiles/vk-bootstrap.dir/src/VkBootstrap.cpp.obj
+[634/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/SDL_bmp.c.obj
+[635/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/stdlib/SDL_string.c.obj
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/sdl3-src/src/stdlib/SDL_string.c:1164:12: warning: 'itoa' is deprecated: The POSIX name for this item is deprecated. Instead, use the ISO C and C++ conformant name: _itoa. See online help for details. [-Wdeprecated-declarations]
+ 1164 |     return itoa(value, string, radix);
+      |            ^
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\ucrt\stdlib.h:1315:5: note: 'itoa' has been explicitly marked deprecated here
+ 1315 |     _CRT_NONSTDC_DEPRECATE(_itoa) _CRT_INSECURE_DEPRECATE(_itoa_s)
+      |     ^
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\ucrt\corecrt.h:428:50: note: expanded from macro '_CRT_NONSTDC_DEPRECATE'
+  428 |         #define _CRT_NONSTDC_DEPRECATE(_NewName) _CRT_DEPRECATE_TEXT(             \
+      |                                                  ^
+C:\Program Files\Microsoft Visual Studio\18\Insiders\VC\Tools\MSVC\14.51.36231\include\vcruntime.h:348:47: note: expanded from macro '_CRT_DEPRECATE_TEXT'
+  348 | #define _CRT_DEPRECATE_TEXT(_Text) __declspec(deprecated(_Text))
+      |                                               ^
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/sdl3-src/src/stdlib/SDL_string.c:1173:12: warning: '_ltoa' is deprecated: This function or variable may be unsafe. Consider using _ltoa_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [-Wdeprecated-declarations]
+ 1173 |     return _ltoa(value, string, radix);
+      |            ^
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\ucrt\stdlib.h:664:1: note: '_ltoa' has been explicitly marked deprecated here
+  664 | __DEFINE_CPP_OVERLOAD_STANDARD_FUNC_1_1(
+      | ^
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\ucrt\corecrt.h:886:5: note: expanded from macro '__DEFINE_CPP_OVERLOAD_STANDARD_FUNC_1_1'
+  886 |     __DEFINE_CPP_OVERLOAD_STANDARD_FUNC_1_1_EX(_ReturnType, _ReturnPolicy, _DeclSpec, _FuncName, _FuncName##_s, _HType1, _HArg1, _SalAttributeDst, _DstType, _Dst, _TType1, _TArg1)
+      |     ^
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\ucrt\corecrt.h:1945:17: note: expanded from macro '__DEFINE_CPP_OVERLOAD_STANDARD_FUNC_1_1_EX'
+ 1945 |                 _CRT_INSECURE_DEPRECATE(_SecureFuncName) _DeclSpec _ReturnType __cdecl _FuncName(_HType1 _HArg1, _SalAttributeDst _DstType *_Dst, _TType1 _TArg1);
+      |                 ^
+C:\Program Files\Microsoft Visual Studio\18\Insiders\VC\Tools\MSVC\14.51.36231\include\vcruntime.h:358:55: note: expanded from macro '_CRT_INSECURE_DEPRECATE'
+  358 |         #define _CRT_INSECURE_DEPRECATE(_Replacement) _CRT_DEPRECATE_TEXT(    \
+      |                                                       ^
+C:\Program Files\Microsoft Visual Studio\18\Insiders\VC\Tools\MSVC\14.51.36231\include\vcruntime.h:348:47: note: expanded from macro '_CRT_DEPRECATE_TEXT'
+  348 | #define _CRT_DEPRECATE_TEXT(_Text) __declspec(deprecated(_Text))
+      |                                               ^
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/sdl3-src/src/stdlib/SDL_string.c:1191:12: warning: '_ultoa' is deprecated: This function or variable may be unsafe. Consider using _ultoa_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [-Wdeprecated-declarations]
+ 1191 |     return _ultoa(value, string, radix);
+      |            ^
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\ucrt\stdlib.h:687:1: note: '_ultoa' has been explicitly marked deprecated here
+  687 | __DEFINE_CPP_OVERLOAD_STANDARD_FUNC_1_1(
+      | ^
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\ucrt\corecrt.h:886:5: note: expanded from macro '__DEFINE_CPP_OVERLOAD_STANDARD_FUNC_1_1'
+  886 |     __DEFINE_CPP_OVERLOAD_STANDARD_FUNC_1_1_EX(_ReturnType, _ReturnPolicy, _DeclSpec, _FuncName, _FuncName##_s, _HType1, _HArg1, _SalAttributeDst, _DstType, _Dst, _TType1, _TArg1)
+      |     ^
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\ucrt\corecrt.h:1945:17: note: expanded from macro '__DEFINE_CPP_OVERLOAD_STANDARD_FUNC_1_1_EX'
+ 1945 |                 _CRT_INSECURE_DEPRECATE(_SecureFuncName) _DeclSpec _ReturnType __cdecl _FuncName(_HType1 _HArg1, _SalAttributeDst _DstType *_Dst, _TType1 _TArg1);
+      |                 ^
+C:\Program Files\Microsoft Visual Studio\18\Insiders\VC\Tools\MSVC\14.51.36231\include\vcruntime.h:358:55: note: expanded from macro '_CRT_INSECURE_DEPRECATE'
+  358 |         #define _CRT_INSECURE_DEPRECATE(_Replacement) _CRT_DEPRECATE_TEXT(    \
+      |                                                       ^
+C:\Program Files\Microsoft Visual Studio\18\Insiders\VC\Tools\MSVC\14.51.36231\include\vcruntime.h:348:47: note: expanded from macro '_CRT_DEPRECATE_TEXT'
+  348 | #define _CRT_DEPRECATE_TEXT(_Text) __declspec(deprecated(_Text))
+      |                                               ^
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/sdl3-src/src/stdlib/SDL_string.c:1215:12: warning: '_i64toa' is deprecated: This function or variable may be unsafe. Consider using _i64toa_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [-Wdeprecated-declarations]
+ 1215 |     return _i64toa(value, string, radix);
+      |            ^
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\ucrt\stdlib.h:704:1: note: '_i64toa' has been explicitly marked deprecated here
+  704 | _CRT_INSECURE_DEPRECATE(_i64toa_s)
+      | ^
+C:\Program Files\Microsoft Visual Studio\18\Insiders\VC\Tools\MSVC\14.51.36231\include\vcruntime.h:358:55: note: expanded from macro '_CRT_INSECURE_DEPRECATE'
+  358 |         #define _CRT_INSECURE_DEPRECATE(_Replacement) _CRT_DEPRECATE_TEXT(    \
+      |                                                       ^
+C:\Program Files\Microsoft Visual Studio\18\Insiders\VC\Tools\MSVC\14.51.36231\include\vcruntime.h:348:47: note: expanded from macro '_CRT_DEPRECATE_TEXT'
+  348 | #define _CRT_DEPRECATE_TEXT(_Text) __declspec(deprecated(_Text))
+      |                                               ^
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/sdl3-src/src/stdlib/SDL_string.c:1233:12: warning: '_ui64toa' is deprecated: This function or variable may be unsafe. Consider using _ui64toa_s instead. To disable deprecation, use _CRT_SECURE_NO_WARNINGS. See online help for details. [-Wdeprecated-declarations]
+ 1233 |     return _ui64toa(value, string, radix);
+      |            ^
+C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\ucrt\stdlib.h:720:1: note: '_ui64toa' has been explicitly marked deprecated here
+  720 | _CRT_INSECURE_DEPRECATE(_ui64toa_s)
+      | ^
+C:\Program Files\Microsoft Visual Studio\18\Insiders\VC\Tools\MSVC\14.51.36231\include\vcruntime.h:358:55: note: expanded from macro '_CRT_INSECURE_DEPRECATE'
+  358 |         #define _CRT_INSECURE_DEPRECATE(_Replacement) _CRT_DEPRECATE_TEXT(    \
+      |                                                       ^
+C:\Program Files\Microsoft Visual Studio\18\Insiders\VC\Tools\MSVC\14.51.36231\include\vcruntime.h:348:47: note: expanded from macro '_CRT_DEPRECATE_TEXT'
+  348 | #define _CRT_DEPRECATE_TEXT(_Text) __declspec(deprecated(_Text))
+      |                                               ^
+5 warnings generated.
+[636/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/SDL_clipboard.c.obj
+[637/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/SDL_fillrect.c.obj
+[638/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/software/SDL_blendline.c.obj
+[639/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/SDL_RLEaccel.c.obj
+[640/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/SDL_blit_0.c.obj
+[641/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/SDL_blit_N.c.obj
+[642/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/SDL_rect.c.obj
+[643/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/SDL_pixels.c.obj
+[644/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/SDL_blit_slow.c.obj
+[645/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/SDL_video_unsupported.c.obj
+[646/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/SDL_rotate.c.obj
+[647/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/SDL_egl.c.obj
+[648/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/SDL_stretch.c.obj
+[649/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/yuv2rgb/yuv_rgb_lsx.c.obj
+[650/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/audio/dummy/SDL_dummyaudio.c.obj
+[651/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/audio/disk/SDL_diskaudio.c.obj
+[652/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/SDL_blit_A.c.obj
+[653/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/camera/dummy/SDL_camera_dummy.c.obj
+[654/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/dummy/SDL_nullevents.c.obj
+[655/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/dummy/SDL_nullframebuffer.c.obj
+[656/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/dummy/SDL_nullvideo.c.obj
+[657/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/SDL_vulkan_utils.c.obj
+[658/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/virtual/SDL_virtualjoystick.c.obj
+[659/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/SDL_surface.c.obj
+[660/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/render/vulkan/SDL_render_vulkan.c.obj
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/sdl3-src/src/render/vulkan/SDL_render_vulkan.c:158:1: warning: variable 'vkGetPhysicalDeviceFeatures2KHR' set but not used [-Wunused-but-set-global]
+  158 | VULKAN_FUNCTIONS()
+      | ^
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/sdl3-src/src/render/vulkan/SDL_render_vulkan.c:145:39: note: expanded from macro 'VULKAN_FUNCTIONS'
+  145 |     VULKAN_OPTIONAL_INSTANCE_FUNCTION(vkGetPhysicalDeviceFeatures2KHR)              \
+      |                                       ^
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/sdl3-src/src/render/vulkan/SDL_render_vulkan.c:158:1: warning: variable 'vkGetPhysicalDeviceFormatProperties2KHR' set but not used [-Wunused-but-set-global]
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/sdl3-src/src/render/vulkan/SDL_render_vulkan.c:146:39: note: expanded from macro 'VULKAN_FUNCTIONS'
+  146 |     VULKAN_OPTIONAL_INSTANCE_FUNCTION(vkGetPhysicalDeviceFormatProperties2KHR)      \
+      |                                       ^
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/sdl3-src/src/render/vulkan/SDL_render_vulkan.c:158:1: warning: variable 'vkGetPhysicalDeviceImageFormatProperties2KHR' set but not used [-Wunused-but-set-global]
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/sdl3-src/src/render/vulkan/SDL_render_vulkan.c:147:39: note: expanded from macro 'VULKAN_FUNCTIONS'
+  147 |     VULKAN_OPTIONAL_INSTANCE_FUNCTION(vkGetPhysicalDeviceImageFormatProperties2KHR) \
+      |                                       ^
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/sdl3-src/src/render/vulkan/SDL_render_vulkan.c:158:1: warning: variable 'vkGetPhysicalDeviceMemoryProperties2KHR' set but not used [-Wunused-but-set-global]
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/sdl3-src/src/render/vulkan/SDL_render_vulkan.c:148:39: note: expanded from macro 'VULKAN_FUNCTIONS'
+  148 |     VULKAN_OPTIONAL_INSTANCE_FUNCTION(vkGetPhysicalDeviceMemoryProperties2KHR)      \
+      |                                       ^
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/sdl3-src/src/render/vulkan/SDL_render_vulkan.c:158:1: warning: variable 'vkGetPhysicalDeviceProperties2KHR' set but not used [-Wunused-but-set-global]
+C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/sdl3-src/src/render/vulkan/SDL_render_vulkan.c:149:39: note: expanded from macro 'VULKAN_FUNCTIONS'
+  149 |     VULKAN_OPTIONAL_INSTANCE_FUNCTION(vkGetPhysicalDeviceProperties2KHR)            \
+      |                                       ^
+5 warnings generated.
+[661/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/core/windows/pch.c.obj
+[662/904] Building CXX object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/core/windows/pch_cpp.cpp.obj
+[663/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/io/windows/SDL_asyncio_windows_ioring.c.obj
+[664/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/core/windows/SDL_hid.c.obj
+[665/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/core/windows/SDL_xinput.c.obj
+[666/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/main/windows/SDL_sysmain_runapp.c.obj
+[667/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/yuv2rgb/yuv_rgb_sse.c.obj
+[668/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/SDL_yuv.c.obj
+[669/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/misc/windows/SDL_sysurl.c.obj
+[670/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/core/windows/SDL_windows.c.obj
+[671/904] Building CXX object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/core/windows/SDL_gameinput.cpp.obj
+[672/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/core/windows/SDL_immdevice.c.obj
+[673/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/SDL_video.c.obj
+[674/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/audio/directsound/SDL_directsound.c.obj
+[675/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/windows/SDL_windowsclipboard.c.obj
+[676/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/audio/wasapi/SDL_wasapi.c.obj
+[677/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/windows/SDL_windowsframebuffer.c.obj
+[678/904] Building CXX object CMakeFiles/orbsim_view.dir/src/view/Camera.cpp.obj
+[679/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/thread/generic/SDL_syscond.c.obj
+[680/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/windows/SDL_windowskeyboard.c.obj
+[681/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/thread/generic/SDL_sysrwlock.c.obj
+[682/904] Building CXX object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/windows/SDL_windowsgameinput.cpp.obj
+[683/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/windows/SDL_windowsmessagebox.c.obj
+[684/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/windows/SDL_windowsmodes.c.obj
+[685/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/windows/SDL_windowsevents.c.obj
+[686/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/windows/SDL_windowsopengles.c.obj
+[687/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/windows/SDL_windowsmouse.c.obj
+[688/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/windows/SDL_windowsrawinput.c.obj
+[689/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/windows/SDL_windowsshape.c.obj
+[690/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/windows/SDL_windowsopengl.c.obj
+[691/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/thread/windows/SDL_syscond_cv.c.obj
+[692/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/thread/windows/SDL_sysmutex.c.obj
+[693/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/storage/generic/SDL_genericstorage.c.obj
+[694/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/thread/windows/SDL_sysrwlock_srw.c.obj
+[695/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/windows/SDL_windowsvideo.c.obj
+[696/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/windows/SDL_windowsvulkan.c.obj
+[697/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/storage/steam/SDL_steamstorage.c.obj
+[698/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/thread/windows/SDL_systhread.c.obj
+[699/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/SDL_stb.c.obj
+[700/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/thread/windows/SDL_syssem.c.obj
+[701/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/thread/windows/SDL_systls.c.obj
+[702/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/power/windows/SDL_syspower.c.obj
+[703/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/locale/windows/SDL_syslocale.c.obj
+[704/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/SDL_blit_auto.c.obj
+[705/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/filesystem/windows/SDL_sysfsops.c.obj
+[706/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapi_combined.c.obj
+[707/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/windows/SDL_windowswindow.c.obj
+[708/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapi_8bitdo.c.obj
+[709/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/time/windows/SDL_systime.c.obj
+[710/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/loadso/windows/SDL_sysloadso.c.obj
+[711/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/sensor/windows/SDL_windowssensor.c.obj
+[712/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/timer/windows/SDL_systimer.c.obj
+[713/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapi_gamecube.c.obj
+[714/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapi_flydigi.c.obj
+[715/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapi_luna.c.obj
+[716/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapi_lg4ff.c.obj
+[717/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/tray/windows/SDL_tray.c.obj
+[718/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapi_ps3.c.obj
+[719/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/filesystem/windows/SDL_sysfilesystem.c.obj
+[720/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapi_shield.c.obj
+[721/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapi_stadia.c.obj
+[722/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapi_ps4.c.obj
+[723/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapi_ps5.c.obj
+[724/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapi_steam_hori.c.obj
+[725/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapi_sinput.c.obj
+[726/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapi_gip.c.obj
+[727/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapi_switch2.c.obj
+[728/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapi_steam_triton.c.obj
+[729/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapi_steamdeck.c.obj
+[730/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapi_rumble.c.obj
+[731/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/haptic/hidapi/SDL_hidapihaptic.c.obj
+[732/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapi_steam.c.obj
+[733/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapi_xbox360.c.obj
+[734/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapi_xbox360w.c.obj
+[735/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapi_xboxone.c.obj
+[736/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapi_zuiki.c.obj
+[737/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapi_wii.c.obj
+[738/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_report_descriptor.c.obj
+[739/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapi_switch.c.obj
+[740/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/haptic/hidapi/SDL_hidapihaptic_lg4ff.c.obj
+[741/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/dialog/SDL_dialog.c.obj
+[742/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/dialog/SDL_dialog_utils.c.obj
+[743/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/hidapi/SDL_hidapijoystick.c.obj
+[744/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/process/SDL_process.c.obj
+[745/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/offscreen/SDL_offscreenevents.c.obj
+[746/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/offscreen/SDL_offscreenframebuffer.c.obj
+[747/904] Building RC object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/core/windows/version.rc.res
+[748/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/windows/SDL_dinputjoystick.c.obj
+[749/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/windows/SDL_xinputjoystick.c.obj
+[750/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/windows/SDL_windowsjoystick.c.obj
+[751/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/haptic/windows/SDL_dinputhaptic.c.obj
+[752/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/haptic/windows/SDL_windowshaptic.c.obj
+[753/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/tray/SDL_tray_utils.c.obj
+[754/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/process/windows/SDL_windowsprocess.c.obj
+[755/904] Building CXX object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/gdk/SDL_gameinputjoystick.cpp.obj
+[756/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/offscreen/SDL_offscreenopengles.c.obj
+[757/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/main/generic/SDL_sysmain_callbacks.c.obj
+[758/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/offscreen/SDL_offscreenvideo.c.obj
+[759/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/camera/mediafoundation/SDL_camera_mediafoundation.c.obj
+[760/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/offscreen/SDL_offscreenwindow.c.obj
+[761/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/offscreen/SDL_offscreenvulkan.c.obj
+[762/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/dialog/windows/SDL_windowsdialog.c.obj
+[763/904] Linking C static library _deps\sdl3-build\SDL_uclibc.lib
+[764/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/yuv2rgb/yuv_rgb_std.c.obj
+[765/904] Building CXX object CMakeFiles/orbsim_test_support.dir/tests/OrbitTestSupport.cpp.obj
+[766/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/windows/SDL_rawinputjoystick.c.obj
+[767/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/joystick/windows/SDL_windows_gaming_input.c.obj
+[768/904] Building CXX object CMakeFiles/orbsim_view.dir/src/view/ProbeSidecar.cpp.obj
+[769/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/gpu/d3d12/SDL_gpu_d3d12.c.obj
+[770/904] Building C object _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/gpu/vulkan/SDL_gpu_vulkan.c.obj
+[771/904] Building CXX object CMakeFiles/test_double_double.dir/tests/AbortBehaviour.cpp.obj
+[772/904] Linking CXX static library orbsim_view.lib
+[773/904] Building CXX object CMakeFiles/test_camera.dir/tests/AbortBehaviour.cpp.obj
+[774/904] Building CXX object CMakeFiles/test_astro_time.dir/tests/AbortBehaviour.cpp.obj
+[775/904] Building CXX object CMakeFiles/test_exposure.dir/tests/AbortBehaviour.cpp.obj
+[776/904] Building CXX object CMakeFiles/test_earth_orientation.dir/tests/AbortBehaviour.cpp.obj
+[777/904] Building CXX object CMakeFiles/test_fixture_file.dir/tests/AbortBehaviour.cpp.obj
+[778/904] Building CXX object CMakeFiles/orbsim_test_support.dir/tests/FixtureFile.cpp.obj
+[779/904] Building CXX object CMakeFiles/test_half.dir/tests/AbortBehaviour.cpp.obj
+[780/904] Building CXX object CMakeFiles/test_hdr_dump.dir/tests/AbortBehaviour.cpp.obj
+[781/904] Building CXX object CMakeFiles/test_half.dir/tests/test_half.cpp.obj
+[782/904] Linking CXX static library orbsim_test_support.lib
+[783/904] Building CXX object CMakeFiles/test_image_files.dir/tests/AbortBehaviour.cpp.obj
+[784/904] Building CXX object CMakeFiles/test_hdr_dump.dir/tests/test_hdr_dump.cpp.obj
+[785/904] Building CXX object CMakeFiles/test_math.dir/tests/AbortBehaviour.cpp.obj
+[786/904] Building CXX object CMakeFiles/test_orbit.dir/tests/AbortBehaviour.cpp.obj
+[787/904] Building CXX object CMakeFiles/test_orbit_scales.dir/tests/AbortBehaviour.cpp.obj
+[788/904] Building CXX object CMakeFiles/test_pipeline_inputs.dir/tests/AbortBehaviour.cpp.obj
+[789/904] Building CXX object CMakeFiles/test_probe_sidecar.dir/tests/AbortBehaviour.cpp.obj
+[790/904] Building CXX object CMakeFiles/test_projection.dir/tests/AbortBehaviour.cpp.obj
+[791/904] Building CXX object CMakeFiles/test_render_quality.dir/tests/AbortBehaviour.cpp.obj
+[792/904] Building CXX object CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj
+[793/904] Building CXX object CMakeFiles/test_srgb.dir/tests/AbortBehaviour.cpp.obj
+[794/904] Building CXX object CMakeFiles/test_srgb.dir/tests/test_srgb.cpp.obj
+[795/904] Building CXX object CMakeFiles/test_sun.dir/tests/AbortBehaviour.cpp.obj
+[796/904] Building CXX object CMakeFiles/test_image_files.dir/tests/test_image_files.cpp.obj
+[797/904] Building CXX object CMakeFiles/test_camera.dir/tests/test_camera.cpp.obj
+[798/904] Building CXX object CMakeFiles/test_exposure.dir/tests/test_exposure.cpp.obj
+[799/904] Building CXX object CMakeFiles/test_time.dir/tests/AbortBehaviour.cpp.obj
+[800/904] Building CXX object CMakeFiles/test_tonemap.dir/tests/AbortBehaviour.cpp.obj
+[801/904] Building CXX object CMakeFiles/test_tonemap.dir/tests/test_tonemap.cpp.obj
+[802/904] Building C object CMakeFiles/t_erfa_c_extra.dir/_deps/erfa-src/src/t_erfa_c_extra.c.obj
+[803/904] Building CXX object CMakeFiles/test_units_validated.dir/tests/AbortBehaviour.cpp.obj
+[804/904] Building CXX object CMakeFiles/test_earth_orientation.dir/tests/test_earth_orientation.cpp.obj
+[805/904] Linking CXX static library vma_impl.lib
+[806/904] Building CXX object CMakeFiles/test_view_math.dir/tests/AbortBehaviour.cpp.obj
+[807/904] Building CXX object CMakeFiles/test_pipeline_inputs.dir/tests/test_pipeline_inputs.cpp.obj
+[808/904] Building CXX object CMakeFiles/test_render_quality.dir/tests/test_render_quality.cpp.obj
+[809/904] Building CXX object CMakeFiles/orbsim_header_selfcheck.dir/selfcheck/orbsim_header_selfcheck_core_Contract_hpp.cpp.obj
+[810/904] Building CXX object CMakeFiles/test_astro_time.dir/tests/test_astro_time.cpp.obj
+[811/904] Building CXX object CMakeFiles/test_math.dir/tests/test_math.cpp.obj
+[812/904] Building CXX object CMakeFiles/test_probe_sidecar.dir/tests/test_probe_sidecar.cpp.obj
+[813/904] Building CXX object CMakeFiles/orbsim_header_selfcheck.dir/selfcheck/orbsim_header_selfcheck_core_Scalar_hpp.cpp.obj
+[814/904] Building CXX object CMakeFiles/test_probe_clear.dir/tests/AbortBehaviour.cpp.obj
+[815/904] Building CXX object CMakeFiles/orbsim_header_selfcheck.dir/selfcheck/orbsim_header_selfcheck_core_DoubleDouble_hpp.cpp.obj
+[816/904] Building CXX object CMakeFiles/count_wraparound_addition.dir/tests/count_wraparound_addition.cpp.obj
+[817/904] Building C object CMakeFiles/t_erfa_c.dir/_deps/erfa-src/src/t_erfa_c.c.obj
+[818/904] Building CXX object CMakeFiles/orbsim_header_selfcheck.dir/selfcheck/orbsim_header_selfcheck_core_LeapSeconds_hpp.cpp.obj
+[819/904] Building CXX object CMakeFiles/test_probe_clear.dir/tests/test_probe_clear.cpp.obj
+[820/904] Building CXX object CMakeFiles/orbsim_view_header_selfcheck.dir/selfcheck/orbsim_view_header_selfcheck_view_Frame_hpp.cpp.obj
+[821/904] Building CXX object CMakeFiles/count_wraparound_subtraction.dir/tests/count_wraparound_subtraction.cpp.obj
+[822/904] Building CXX object CMakeFiles/count_wraparound_multiplication.dir/tests/count_wraparound_multiplication.cpp.obj
+[823/904] Building CXX object CMakeFiles/test_projection.dir/tests/test_projection.cpp.obj
+[824/904] Building CXX object CMakeFiles/orbsim_view_header_selfcheck.dir/selfcheck/orbsim_view_header_selfcheck_view_Half_hpp.cpp.obj
+[825/904] Building CXX object CMakeFiles/test_fixture_file.dir/tests/test_fixture_file.cpp.obj
+[826/904] Building CXX object CMakeFiles/test_sun.dir/tests/test_sun.cpp.obj
+[827/904] Building CXX object CMakeFiles/test_units_validated.dir/tests/test_units_validated.cpp.obj
+[828/904] Building CXX object CMakeFiles/test_view_math.dir/tests/test_view_math.cpp.obj
+[829/904] Building CXX object CMakeFiles/orbsim_view_header_selfcheck.dir/selfcheck/orbsim_view_header_selfcheck_view_RenderQuality_hpp.cpp.obj
+[830/904] Building CXX object CMakeFiles/orbsim_view_header_selfcheck.dir/selfcheck/orbsim_view_header_selfcheck_view_PushConstants_hpp.cpp.obj
+[831/904] Building CXX object CMakeFiles/orbsim_view_header_selfcheck.dir/selfcheck/orbsim_view_header_selfcheck_view_ImageFiles_hpp.cpp.obj
+[832/904] Building CXX object CMakeFiles/orbsim_view_header_selfcheck.dir/selfcheck/orbsim_view_header_selfcheck_view_ProbeImage_hpp.cpp.obj
+[833/904] Building CXX object CMakeFiles/test_orbit.dir/tests/test_orbit.cpp.obj
+[834/904] Building CXX object CMakeFiles/orbsim_view_header_selfcheck.dir/selfcheck/orbsim_view_header_selfcheck_view_SceneClear_hpp.cpp.obj
+[835/904] Building CXX object CMakeFiles/orbsim_view_header_selfcheck.dir/selfcheck/orbsim_view_header_selfcheck_view_Srgb_hpp.cpp.obj
+[836/904] Building CXX object CMakeFiles/orbsim_view_header_selfcheck.dir/selfcheck/orbsim_view_header_selfcheck_view_Tonemap_hpp.cpp.obj
+[837/904] Building CXX object CMakeFiles/orbsim_header_selfcheck.dir/selfcheck/orbsim_header_selfcheck_astro_Sun_hpp.cpp.obj
+[838/904] Building CXX object CMakeFiles/orbsim_header_selfcheck.dir/selfcheck/orbsim_header_selfcheck_astro_Tdb_hpp.cpp.obj
+[839/904] Building CXX object CMakeFiles/orbsim_test_header_selfcheck.dir/selfcheck/orbsim_test_header_selfcheck_tests_CountWraparound_hpp.cpp.obj
+[840/904] Building CXX object CMakeFiles/orbsim_header_selfcheck.dir/selfcheck/orbsim_header_selfcheck_core_Units_hpp.cpp.obj
+[841/904] Building CXX object CMakeFiles/orbsim_header_selfcheck.dir/selfcheck/orbsim_header_selfcheck_astro_EarthOrientation_hpp.cpp.obj
+[842/904] Building CXX object CMakeFiles/orbsim_render_header_selfcheck.dir/selfcheck/orbsim_render_header_selfcheck_render_VulkanHandle_hpp.cpp.obj
+[843/904] Building CXX object CMakeFiles/orbsim_render_header_selfcheck.dir/selfcheck/orbsim_render_header_selfcheck_app_ExitCodes_hpp.cpp.obj
+[844/904] Building CXX object CMakeFiles/test_orbit_scales.dir/tests/test_orbit_scales.cpp.obj
+[845/904] Building CXX object CMakeFiles/orbsim_header_selfcheck.dir/selfcheck/orbsim_header_selfcheck_core_Time_hpp.cpp.obj
+[846/904] Building CXX object CMakeFiles/orbsim_test_header_selfcheck.dir/selfcheck/orbsim_test_header_selfcheck_tests_HdrDumpFile_hpp.cpp.obj
+[847/904] Building CXX object CMakeFiles/orbsim_header_selfcheck.dir/selfcheck/orbsim_header_selfcheck_core_Math_hpp.cpp.obj
+[848/904] Building CXX object CMakeFiles/orbsim_header_selfcheck.dir/selfcheck/orbsim_header_selfcheck_orbit_Orbit_hpp.cpp.obj
+[849/904] Building CXX object CMakeFiles/orbsim_render_header_selfcheck.dir/selfcheck/orbsim_render_header_selfcheck_app_SdlHandle_hpp.cpp.obj
+[850/904] Building CXX object CMakeFiles/orbsim_view_header_selfcheck.dir/selfcheck/orbsim_view_header_selfcheck_view_Mat4_hpp.cpp.obj
+[851/904] Building CXX object CMakeFiles/orbsim_view_header_selfcheck.dir/selfcheck/orbsim_view_header_selfcheck_view_Camera_hpp.cpp.obj
+[852/904] Linking CXX static library _deps\vk_bootstrap-build\vk-bootstrap.lib
+[853/904] Building CXX object CMakeFiles/orbsim_view_header_selfcheck.dir/selfcheck/orbsim_view_header_selfcheck_view_Projection_hpp.cpp.obj
+[854/904] Building CXX object CMakeFiles/orbsim_view_header_selfcheck.dir/selfcheck/orbsim_view_header_selfcheck_view_Exposure_hpp.cpp.obj
+[855/904] Linking CXX shared library _deps\sdl3-build\SDL3.dll
+lld-link: warning: ignoring unknown argument '--version-script=C:/Users/U439644/Projects/untitled/build/timing/asan/_deps/sdl3-src/src/dynapi/SDL_dynapi.sym'
+lld-link: warning: ignoring unknown argument '--no-undefined'
+[856/904] Building CXX object CMakeFiles/orbsim_render_header_selfcheck.dir/selfcheck/orbsim_render_header_selfcheck_render_VulkanContext_hpp.cpp.obj
+[857/904] Building CXX object CMakeFiles/test_time.dir/tests/test_time.cpp.obj
+[858/904] Building CXX object CMakeFiles/orbsim_render_header_selfcheck.dir/selfcheck/orbsim_render_header_selfcheck_app_ProbeMode_hpp.cpp.obj
+[859/904] Building CXX object CMakeFiles/orbsim_view_header_selfcheck.dir/selfcheck/orbsim_view_header_selfcheck_view_ProbeGradient_hpp.cpp.obj
+[860/904] Building CXX object CMakeFiles/orbsim_view_header_selfcheck.dir/selfcheck/orbsim_view_header_selfcheck_view_ProbeSidecar_hpp.cpp.obj
+[861/904] Linking CXX executable count_wraparound_subtraction.exe
+[862/904] Linking CXX executable test_earth_orientation.exe
+[863/904] Linking CXX executable test_math.exe
+[864/904] Linking CXX executable count_wraparound_addition.exe
+[865/904] Linking CXX executable test_double_double.exe
+[866/904] Linking CXX executable count_wraparound_multiplication.exe
+[867/904] Linking C executable t_erfa_c.exe
+[868/904] Linking CXX executable test_units_validated.exe
+[869/904] Linking CXX executable test_time.exe
+[870/904] Linking CXX executable test_sun.exe
+[871/904] Linking C executable t_erfa_c_extra.exe
+[872/904] Linking CXX executable test_astro_time.exe
+[873/904] Building CXX object CMakeFiles/orbsim_view_header_selfcheck.dir/selfcheck/orbsim_view_header_selfcheck_view_VertexLayout_hpp.cpp.obj
+[874/904] Building CXX object CMakeFiles/orbsim_test_header_selfcheck.dir/selfcheck/orbsim_test_header_selfcheck_tests_OrbitTestSupport_hpp.cpp.obj
+[875/904] Linking CXX executable test_fixture_file.exe
+[876/904] Building CXX object CMakeFiles/orbsim_test_header_selfcheck.dir/selfcheck/orbsim_test_header_selfcheck_tests_FixtureFile_hpp.cpp.obj
+[877/904] Linking CXX executable test_probe_clear.exe
+[878/904] Linking CXX executable test_pipeline_inputs.exe
+[879/904] Linking CXX executable test_exposure.exe
+[880/904] Linking CXX executable test_probe_sidecar.exe
+[881/904] Linking CXX executable test_camera.exe
+[882/904] Building CXX object CMakeFiles/orbsim_render_header_selfcheck.dir/selfcheck/orbsim_render_header_selfcheck_render_ResolvePass_hpp.cpp.obj
+[883/904] Building CXX object CMakeFiles/orbsim_render_header_selfcheck.dir/selfcheck/orbsim_render_header_selfcheck_render_Pipeline_hpp.cpp.obj
+[884/904] Linking CXX executable test_image_files.exe
+[885/904] Linking CXX executable test_orbit_scales.exe
+[886/904] Building CXX object CMakeFiles/orbsim_render_header_selfcheck.dir/selfcheck/orbsim_render_header_selfcheck_render_Probes_hpp.cpp.obj
+[887/904] Linking CXX executable test_view_math.exe
+[888/904] Linking CXX executable test_render_quality.exe
+[889/904] Linking CXX executable test_projection.exe
+[890/904] Linking CXX executable test_tonemap.exe
+[891/904] Linking CXX executable test_hdr_dump.exe
+[892/904] Linking CXX executable test_orbit.exe
+[893/904] Linking CXX executable test_half.exe
+[894/904] Building CXX object CMakeFiles/orbsim.dir/src/render/Pipeline.cpp.obj
+[895/904] Building CXX object CMakeFiles/orbsim.dir/src/render/ResolvePass.cpp.obj
+[896/904] Building CXX object CMakeFiles/orbsim.dir/src/render/Probes.cpp.obj
+[897/904] Linking CXX executable test_srgb.exe
+[898/904] Building CXX object CMakeFiles/orbsim_fuzz_objects.dir/tests/fuzz_orbit.cpp.obj
+[899/904] Building CXX object CMakeFiles/orbsim_fuzz_objects.dir/tests/fuzz_time.cpp.obj
+[900/904] Building CXX object CMakeFiles/orbsim.dir/src/render/VulkanContext.cpp.obj
+[901/904] Building CXX object CMakeFiles/orbsim.dir/src/app/main.cpp.obj
+[902/904] Building CXX object CMakeFiles/orbsim.dir/src/app/ProbeMode.cpp.obj
+[903/904] Linking CXX executable orbsim.exe

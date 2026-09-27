@@ -1,0 +1,55 @@
+1790504582.651	CAUGHT (static_assert)   the subtraction's condition is inverted, so it refuses what fits and allows what does not
+1790504582.652	                         C:/Users/U439644/Projects/untitled/src\core/Scalar.hpp:667:15: error: static assertion expression is not an integral constant expression
+1790504621.217	CAUGHT (test)            the subtraction's condition is one off, and refuses a difference of exactly zero
+1790504621.217	                         test_render_quality: nonzero exit
+1790504630.073	CAUGHT (static_assert)   the addition's condition is inverted
+1790504630.074	                         C:/Users/U439644/Projects/untitled/src\core/Scalar.hpp:631:15: error: static assertion expression is not an integral constant expression
+1790504658.811	CAUGHT (test)            the addition's condition is one off, and refuses a sum that exactly fits
+1790504658.811	                         test_render_quality: nonzero exit
+1790504669.675	CAUGHT (static_assert)   the multiplication's condition is inverted
+1790504669.676	                         C:/Users/U439644/Projects/untitled/src\core/Scalar.hpp:648:15: error: static assertion expression is not an integral constant expression
+1790504709.815	CAUGHT (test)            the subtraction keeps only the compile-time half of its guard
+1790504709.815	                         ctest: count_wraparound_subtraction_aborts
+1790504736.293	CAUGHT (test)            the addition keeps only the compile-time half of its guard
+1790504736.293	                         ctest: count_wraparound_addition_aborts
+1790504767.157	CAUGHT (test)            the multiplication keeps only the compile-time half of its guard
+1790504767.157	                         ctest: count_wraparound_multiplication_aborts
+1790504778.132	CAUGHT (static_assert)   the limit is not the last value the type holds
+1790504778.132	                         C:/Users/U439644/Projects/untitled/src\core/Scalar.hpp:615:15: error: static assertion failed due to requirement 'orb::Texels::kMaximum + 1U == 0U': one past th
+1790504789.038	CAUGHT (static_assert)   the subtraction runs the wrong way round
+1790504789.038	                         C:/Users/U439644/Projects/untitled/src\core/Scalar.hpp:667:15: error: static assertion failed due to requirement '(orb::Texels{1024U} - orb::Texels{24U}).value(
+1790504800.099	CAUGHT (static_assert)   the addition is a subtraction
+1790504800.100	                         C:/Users/U439644/Projects/untitled/src\core/Scalar.hpp:631:15: error: static assertion failed due to requirement '(orb::Bytes{4294967296ULL} + orb::Bytes{1ULL})
+1790504811.699	CAUGHT (static_assert)   the multiplication is an addition
+1790504811.699	                         C:/Users/U439644/Projects/untitled/src\core/Scalar.hpp:648:15: error: static assertion failed due to requirement '(orb::Bytes{8U} * 2U).value() == 16U'
+1790504822.050	CAUGHT (static_assert)   the mirrored scale hands the count straight back
+1790504822.050	                         C:/Users/U439644/Projects/untitled/src\core/Scalar.hpp:669:15: error: static assertion failed due to requirement '(4U * orb::Texels{16U}).value() == 64U': and t
+1790504850.005	CAUGHT (test)            the compound addition subtracts instead
+1790504850.005	                         test_render_quality: nonzero exit
+1790504860.870	CAUGHT (static_assert)   a count's scale accepts any type at all, so a fractional one silently means its floor
+1790504860.870	                         C:/Users/U439644/Projects/untitled/src\core/Scalar.hpp:648:15: error: static assertion failed due to requirement '!multipliable<orb::Texels, unsigned long long>
+1790504872.349	CAUGHT (static_assert)   a count is constructible from a bare number without anyone saying so
+1790504872.349	                         C:/Users/U439644/Projects/untitled/src\core/Scalar.hpp:656:15: error: static assertion failed due to requirement '!std::is_convertible_v<unsigned int, orb::Texe
+1790504887.347	CAUGHT (static_assert)   Pixels loses the dimension that separates it from every other ratio
+1790504887.348	                         C:/Users/U439644/Projects/untitled/src\core/Units.hpp:792:15: error: static assertion failed due to requirement '!std::is_same_v<orb::Scalar<mp_units::one{{{}, 
+1790504901.059	CAUGHT (static_assert)   the pixel literal scales the number it was given
+1790504901.059	                         C:/Users/U439644/Projects/untitled/src\core/Units.hpp:830:15: error: static assertion failed due to requirement 'nearlyEqual(kTwoAndAHalfPixels.value(), 2.5, or
+1790504914.935	CAUGHT (static_assert)   a preset stops being usable in a constant expression
+1790504914.936	                         C:/Users/U439644/Projects/untitled/src\view/RenderQuality.hpp:96:15: error: static assertion failed: every preset is usable in a constant expression, which is w
+1790504928.435	CAUGHT (static_assert)   aligning up rounds down instead
+1790504928.436	                         C:/Users/U439644/Projects/untitled/src\core/Scalar.hpp:639:15: error: static assertion failed due to requirement 'orb::Bytes{1000U}.alignedUpTo(orb::Bytes{256U}
+1790504941.480	CAUGHT (static_assert)   aligning up uses the wrong complement, so it lands a step too far
+1790504941.480	                         C:/Users/U439644/Projects/untitled/src\core/Scalar.hpp:638:15: error: static assertion failed due to requirement 'orb::Bytes{1000U}.alignedUpTo(orb::Bytes{256U}
+1790504951.437	CAUGHT (static_assert)   an alignment of zero, or one that is not a power of two, is accepted
+1790504951.438	                         C:/Users/U439644/Projects/untitled/src\core/Scalar.hpp:712:5: error: static assertion failed due to requirement '!constantEvaluable<orb::(lambda at C:\Users\U43
+1790504963.016	CAUGHT (static_assert)   how many fit rounds up instead of dropping the remainder
+1790504963.017	                         C:/Users/U439644/Projects/untitled/src\core/Scalar.hpp:641:15: error: static assertion failed due to requirement 'orb::Bytes{1000U}.howManyFit(orb::Bytes{256U})
+1790504973.893	CAUGHT (static_assert)   mebibytes convert without widening first
+1790504973.893	                         C:/Users/U439644/Projects/untitled/src\core/Scalar.hpp:633:15: error: static assertion failed due to requirement 'toBytes(orb::Mebibytes{4096U}).value() == 4294
+1790504986.240	CAUGHT (static_assert)   a byte count is built on the 32-bit representation after all
+1790504986.240	                         C:/Users/U439644/Projects/untitled/src\core/Scalar.hpp:620:15: error: static assertion failed due to requirement 'sizeof(orb::Bytes) == sizeof(unsigned long lon
+1790504996.988	CAUGHT (static_assert)   a block size of zero is accepted instead of reported
+1790504996.988	                         C:/Users/U439644/Projects/untitled/src\core/Scalar.hpp:725:15: error: static assertion failed due to requirement '!orb::Bytes{100U}.howManyFit(orb::Bytes{0U}).h
+1790505087.899	
+1790505087.900	==== M1-12: 26 mutants ====
+1790505087.900	26 caught, 0 survived, 0 invalid, 0 hung

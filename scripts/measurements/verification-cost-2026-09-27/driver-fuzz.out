@@ -1,0 +1,7 @@
+STEP windows-fuzz.configure exit=0 seconds=201.0
+STEP windows-fuzz.compile exit=0 seconds=178.5
+STEP win.fuzz_orbit.240 seconds=242.1
+STEP win.fuzz_time.240 seconds=243.9
+STEP win.fuzz_orbit.1800 seconds=1801.4
+STEP win.fuzz_time.1800 seconds=1801.6
+PHASE fuzzwin DONE

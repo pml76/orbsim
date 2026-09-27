@@ -1,0 +1,180 @@
+### 2026-09-27T08:00:18Z /c/Users/U439644/AppData/Local/Programs/CLion/bin/cmake/win/x64/bin/cmake.exe --preset windows-fuzz -B build/timing/windows-fuzz
+-- The C compiler identification is Clang 23.1.0 with GNU-like command-line
+-- The CXX compiler identification is Clang 23.1.0 with GNU-like command-line
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: C:/GitHub/clang+llvm-23.1.0-x86_64-pc-windows-msvc/bin/clang.exe - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: C:/GitHub/clang+llvm-23.1.0-x86_64-pc-windows-msvc/bin/clang++.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Populating mp_units
+-- Configuring done (0.5s)
+-- Generating done (0.1s)
+-- Build files have been written to: C:/Users/U439644/Projects/untitled/build/timing/windows-fuzz/_deps/mp_units-subbuild
+[1/9] Creating directories for 'mp_units-populate'
+[1/9] Performing download step (git clone) for 'mp_units-populate'
+Cloning into 'mp_units-src'...
+HEAD is now at 27d2def9 feat: 2.5.0 released
+[2/9] Performing update step for 'mp_units-populate'
+-- Already at requested tag: v2.5.0
+[3/9] No patch step for 'mp_units-populate'
+[5/9] No configure step for 'mp_units-populate'
+[6/9] No build step for 'mp_units-populate'
+[7/9] No install step for 'mp_units-populate'
+[8/9] No test step for 'mp_units-populate'
+[9/9] Completed 'mp_units-populate'
+-- Checking if libc++ is being used
+--   Looking for _LIBCPP_VERSION
+--   Looking for _LIBCPP_VERSION - not found
+-- Checking if libc++ is being used - not found
+-- MP_UNITS_BUILD_CXX_MODULES: OFF
+-- MP_UNITS_BUILD_INSTALL: OFF
+-- Checking C++ feature test macro '__cpp_lib_format'
+-- Checking C++ feature test macro '__cpp_lib_format' - SUCCESS
+-- Checking C++ feature test macro '__cpp_explicit_this_parameter'
+-- Checking C++ feature test macro '__cpp_explicit_this_parameter' - SUCCESS
+-- Checking C++ feature test macro '__cpp_constexpr_exceptions >= 202411L'
+-- Checking C++ feature test macro '__cpp_constexpr_exceptions >= 202411L' - FAIL
+-- MP_UNITS_API_STD_FORMAT: ON
+-- MP_UNITS_API_NO_CRTP: ON
+-- MP_UNITS_API_THROWING_CONSTRAINTS: OFF
+-- MP_UNITS_API_FREESTANDING: OFF
+-- MP_UNITS_API_CONTRACTS: NONE
+-- MP_UNITS_API_NATURAL_UNITS: ON
+-- Populating erfa
+-- Configuring done (0.2s)
+-- Generating done (0.1s)
+-- Build files have been written to: C:/Users/U439644/Projects/untitled/build/timing/windows-fuzz/_deps/erfa-subbuild
+[1/9] Creating directories for 'erfa-populate'
+[1/9] Performing download step (git clone) for 'erfa-populate'
+Cloning into 'erfa-src'...
+HEAD is now at 9915ba3 Also update configure.ac for 2.0.1
+[2/9] Performing update step for 'erfa-populate'
+-- Already at requested tag: v2.0.1
+[3/9] No patch step for 'erfa-populate'
+[5/9] No configure step for 'erfa-populate'
+[6/9] No build step for 'erfa-populate'
+[7/9] No install step for 'erfa-populate'
+[8/9] No test step for 'erfa-populate'
+[9/9] Completed 'erfa-populate'
+-- Populating stb
+-- Configuring done (0.2s)
+-- Generating done (0.2s)
+-- Build files have been written to: C:/Users/U439644/Projects/untitled/build/timing/windows-fuzz/_deps/stb-subbuild
+[1/9] Creating directories for 'stb-populate'
+[1/9] Performing download step (git clone) for 'stb-populate'
+Cloning into 'stb-src'...
+HEAD is now at 2c980bb Merge pull request #1984 from ruby-R53/patch-1
+[2/9] Performing update step for 'stb-populate'
+-- Already at requested ref: 2c980bb59875b0d32144a71867fbdebb2f77cd20
+[3/9] No patch step for 'stb-populate'
+[5/9] No configure step for 'stb-populate'
+[6/9] No build step for 'stb-populate'
+[7/9] No install step for 'stb-populate'
+[8/9] No test step for 'stb-populate'
+[9/9] Completed 'stb-populate'
+-- Populating lodepng
+-- Configuring done (0.2s)
+-- Generating done (0.2s)
+-- Build files have been written to: C:/Users/U439644/Projects/untitled/build/timing/windows-fuzz/_deps/lodepng-subbuild
+[1/9] Creating directories for 'lodepng-populate'
+[1/9] Performing download step (git clone) for 'lodepng-populate'
+Cloning into 'lodepng-src'...
+HEAD is now at ed6fe58 fix pngdetail utility exif out of bounds issue on 32-bit systems
+[2/9] Performing update step for 'lodepng-populate'
+-- Already at requested ref: ed6fe5825c6a4fbb7f58ab35a4231c7543cd452a
+[3/9] No patch step for 'lodepng-populate'
+[5/9] No configure step for 'lodepng-populate'
+[6/9] No build step for 'lodepng-populate'
+[7/9] No install step for 'lodepng-populate'
+[8/9] No test step for 'lodepng-populate'
+[9/9] Completed 'lodepng-populate'
+-- Populating openexr
+-- Configuring done (0.3s)
+-- Generating done (0.2s)
+-- Build files have been written to: C:/Users/U439644/Projects/untitled/build/timing/windows-fuzz/_deps/openexr-subbuild
+[1/9] Creating directories for 'openexr-populate'
+[1/9] Performing download step (git clone) for 'openexr-populate'
+Cloning into 'openexr-src'...
+HEAD is now at 490f4cb drop vfx 2021/2022 from CI
+M	src/test/OpenEXRFuzzTest/oss-fuzz
+[2/9] Performing update step for 'openexr-populate'
+-- Already at requested tag: v3.5.1
+[3/9] No patch step for 'openexr-populate'
+[5/9] No configure step for 'openexr-populate'
+[6/9] No build step for 'openexr-populate'
+[7/9] No install step for 'openexr-populate'
+[8/9] No test step for 'openexr-populate'
+[9/9] Completed 'openexr-populate'
+-- OpenEXR is configuring as a cmake subproject
+-- Building against C++ Standard: 23
+-- libdeflate forced internal, using vendored code
+-- openjph forced internal, using vendored code, version 0.32.0
+-- Imath forced internal, fetching from https://github.com/AcademySoftwareFoundation/Imath.git @ v3.2.3
+-- Populating imath
+-- Configuring done (0.2s)
+-- Generating done (0.1s)
+-- Build files have been written to: C:/Users/U439644/Projects/untitled/build/timing/windows-fuzz/_deps/imath-subbuild
+[1/9] Creating directories for 'imath-populate'
+[1/9] Performing download step (git clone) for 'imath-populate'
+Cloning into 'imath-src'...
+HEAD is now at 5f27ba2 Release notes for v3.2.3
+[2/9] Performing update step for 'imath-populate'
+-- Already at requested tag: v3.2.3
+[3/9] No patch step for 'imath-populate'
+[5/9] No configure step for 'imath-populate'
+[6/9] No build step for 'imath-populate'
+[7/9] No install step for 'imath-populate'
+[8/9] No test step for 'imath-populate'
+[9/9] Completed 'imath-populate'
+-- Imath is configuring as a cmake sub project
+-- Configure Imath 3.2.3, library API version: 30.3.2.3
+-- Imath pkg-config generation disabled
+-- Looking for sin in m
+-- Looking for sin in m - not found
+-- zstd forced internal, using vendored code, version 1.5.7
+-- Performing Test OPENEXR_IMF_HAVE_SYSCONF_NPROCESSORS_ONLN
+-- Performing Test OPENEXR_IMF_HAVE_SYSCONF_NPROCESSORS_ONLN - Failed
+-- Performing Test OPENEXR_IMF_HAVE_GCC_INLINE_ASM_AVX
+-- Performing Test OPENEXR_IMF_HAVE_GCC_INLINE_ASM_AVX - Success
+-- Looking for include file ucontext.h
+-- Looking for include file ucontext.h - not found
+-- OpenEXR pkg-config generation disabled
+-- Configure OpenEXR 3.5.1, library API version: 34.3.5.1
+-- Building OpenEXR libraries
+-- The ASM compiler identification is Clang with GNU-like command-line
+-- Found assembler: C:/GitHub/clang+llvm-23.1.0-x86_64-pc-windows-msvc/bin/clang.exe
+-- OpenJPH library version: 0.32.0
+-- CPU Architecture is OJPH_ARCH_X86_64
+-- Building Debug
+-- C Standard is set to 11
+-- C++ Standard is set to 23
+-- Looking for aligned_alloc
+-- Looking for aligned_alloc - not found
+-- Looking for posix_memalign
+-- Looking for posix_memalign - not found
+-- Populating catch2
+-- Configuring done (0.2s)
+-- Generating done (0.1s)
+-- Build files have been written to: C:/Users/U439644/Projects/untitled/build/timing/windows-fuzz/_deps/catch2-subbuild
+[1/9] Creating directories for 'catch2-populate'
+[1/9] Performing download step (git clone) for 'catch2-populate'
+Cloning into 'catch2-src'...
+HEAD is now at 317ac1e v3.16.0
+[2/9] Performing update step for 'catch2-populate'
+-- Already at requested tag: v3.16.0
+[3/9] No patch step for 'catch2-populate'
+[5/9] No configure step for 'catch2-populate'
+[6/9] No build step for 'catch2-populate'
+[7/9] No install step for 'catch2-populate'
+[8/9] No test step for 'catch2-populate'
+[9/9] Completed 'catch2-populate'
+-- Performing Test HAVE_FLAG__ffile_prefix_map_C__Users_U439644_Projects_untitled_build_timing_windows_fuzz__deps_catch2_src__
+-- Performing Test HAVE_FLAG__ffile_prefix_map_C__Users_U439644_Projects_untitled_build_timing_windows_fuzz__deps_catch2_src__ - Success
+-- Configuring done (195.6s)
+-- Generating done (4.8s)
+-- Build files have been written to: C:/Users/U439644/Projects/untitled/build/timing/windows-fuzz

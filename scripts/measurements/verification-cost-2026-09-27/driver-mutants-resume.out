@@ -1,0 +1,10 @@
+STEP mutants.m1-10 exit=0 seconds=224.6
+STEP mutants.m1-11 exit=0 seconds=235.8
+STEP mutants.m1-12-release exit=0 seconds=121.6
+STEP mutants.m1-12 exit=0 seconds=519.3
+STEP mutants.m1-13 exit=0 seconds=258.4
+STEP mutants.m1-14 exit=0 seconds=248.1
+STEP mutants.m1-15 exit=0 seconds=329.4
+STEP mutants.m1-16 exit=0 seconds=514.2
+STEP mutants.m1-87 exit=0 seconds=373.9
+PHASE mutants DONE

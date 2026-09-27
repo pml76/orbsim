@@ -1,0 +1,87 @@
+### 2026-09-27T06:43:00Z /c/Users/U439644/AppData/Local/Programs/CLion/bin/cmake/win/x64/bin/cmake.exe --build build/timing/relwithdebinfo --target lint -j 10
+[0/2] Re-checking globbed directories...
+[1/56] clang-tidy --verify-config for src/core/
+No config errors detected.
+[2/56] clang-tidy --verify-config for src/astro/
+No config errors detected.
+[3/56] clang-tidy --verify-config for src/app/
+No config errors detected.
+[4/56] clang-tidy --verify-config for src/render/
+No config errors detected.
+[5/56] clang-tidy --verify-config for src/view/
+No config errors detected.
+[6/56] clang-tidy --verify-config for src/orbit/
+No config errors detected.
+[7/56] clang-tidy --verify-config for tests/
+No config errors detected.
+[8/56] clang-tidy src/core/LeapSeconds.cpp
+[9/56] clang-tidy src/astro/Tdb.cpp
+[10/56] clang-tidy src/astro/EarthOrientation.cpp
+[11/56] clang-tidy src/astro/Sun.cpp
+[12/56] clang-tidy src/render/Probes.cpp
+[13/56] clang-tidy src/render/ResolvePass.cpp
+[14/56] clang-tidy src/view/ImageFiles.cpp
+[15/56] clang-tidy src/render/Pipeline.cpp
+[16/56] clang-tidy src/view/ProbeImage.cpp
+[17/56] clang-tidy src/orbit/Orbit.cpp
+[18/56] clang-tidy tests/StbImageImpl.cpp
+[19/56] clang-tidy tests/count_wraparound_addition.cpp
+[20/56] clang-tidy tests/count_wraparound_multiplication.cpp
+[21/56] clang-tidy src/app/main.cpp
+[22/56] clang-tidy tests/count_wraparound_subtraction.cpp
+[23/56] clang-tidy src/view/Camera.cpp
+[24/56] clang-tidy tests/HdrDumpFile.cpp
+[25/56] clang-tidy src/app/ProbeMode.cpp
+[26/56] clang-tidy tests/fuzz_orbit.cpp
+[27/56] clang-tidy src/view/ProbeSidecar.cpp
+[28/56] clang-tidy tests/fuzz_time.cpp
+[29/56] clang-tidy src/render/VulkanContext.cpp
+[30/56] clang-tidy tests/OrbitTestSupport.cpp
+[31/56] clang-tidy tests/test_exposure.cpp
+[32/56] clang-tidy tests/FixtureFile.cpp
+[33/56] clang-tidy tests/test_hdr_dump.cpp
+[34/56] clang-tidy tests/test_astro_time.cpp
+[35/56] clang-tidy tests/test_half.cpp
+[36/56] clang-tidy tests/test_image_files.cpp
+[37/56] clang-tidy tests/test_double_double.cpp
+[38/56] clang-tidy tests/test_camera.cpp
+[39/56] clang-tidy tests/test_math.cpp
+[40/56] clang-tidy tests/test_earth_orientation.cpp
+[41/56] clang-tidy tests/test_orbit.cpp
+[42/56] clang-tidy tests/test_srgb.cpp
+[43/56] clang-tidy tests/test_pipeline_inputs.cpp
+[44/56] clang-tidy tests/test_render_quality.cpp
+[45/56] clang-tidy tests/test_probe_sidecar.cpp
+[46/56] clang-tidy tests/test_tonemap.cpp
+[47/56] clang-tidy tests/test_probe_clear.cpp
+[48/56] clang-tidy tests/test_fixture_file.cpp
+[49/56] clang-tidy tests/test_projection.cpp
+[50/56] clang-tidy tests/AbortBehaviour.cpp
+[1/1] (1/23) Processing file C:\Users\U439644\Projects\untitled\tests\AbortBehaviour.cpp.
+[1/1] (2/23) Processing file C:\Users\U439644\Projects\untitled\tests\AbortBehaviour.cpp.
+[1/1] (3/23) Processing file C:\Users\U439644\Projects\untitled\tests\AbortBehaviour.cpp.
+[1/1] (4/23) Processing file C:\Users\U439644\Projects\untitled\tests\AbortBehaviour.cpp.
+[1/1] (5/23) Processing file C:\Users\U439644\Projects\untitled\tests\AbortBehaviour.cpp.
+[1/1] (6/23) Processing file C:\Users\U439644\Projects\untitled\tests\AbortBehaviour.cpp.
+[1/1] (7/23) Processing file C:\Users\U439644\Projects\untitled\tests\AbortBehaviour.cpp.
+[1/1] (8/23) Processing file C:\Users\U439644\Projects\untitled\tests\AbortBehaviour.cpp.
+[1/1] (9/23) Processing file C:\Users\U439644\Projects\untitled\tests\AbortBehaviour.cpp.
+[1/1] (10/23) Processing file C:\Users\U439644\Projects\untitled\tests\AbortBehaviour.cpp.
+[1/1] (11/23) Processing file C:\Users\U439644\Projects\untitled\tests\AbortBehaviour.cpp.
+[1/1] (12/23) Processing file C:\Users\U439644\Projects\untitled\tests\AbortBehaviour.cpp.
+[1/1] (13/23) Processing file C:\Users\U439644\Projects\untitled\tests\AbortBehaviour.cpp.
+[1/1] (14/23) Processing file C:\Users\U439644\Projects\untitled\tests\AbortBehaviour.cpp.
+[1/1] (15/23) Processing file C:\Users\U439644\Projects\untitled\tests\AbortBehaviour.cpp.
+[1/1] (16/23) Processing file C:\Users\U439644\Projects\untitled\tests\AbortBehaviour.cpp.
+[1/1] (17/23) Processing file C:\Users\U439644\Projects\untitled\tests\AbortBehaviour.cpp.
+[1/1] (18/23) Processing file C:\Users\U439644\Projects\untitled\tests\AbortBehaviour.cpp.
+[1/1] (19/23) Processing file C:\Users\U439644\Projects\untitled\tests\AbortBehaviour.cpp.
+[1/1] (20/23) Processing file C:\Users\U439644\Projects\untitled\tests\AbortBehaviour.cpp.
+[1/1] (21/23) Processing file C:\Users\U439644\Projects\untitled\tests\AbortBehaviour.cpp.
+[1/1] (22/23) Processing file C:\Users\U439644\Projects\untitled\tests\AbortBehaviour.cpp.
+[1/1] (23/23) Processing file C:\Users\U439644\Projects\untitled\tests\AbortBehaviour.cpp.
+[51/56] clang-tidy tests/test_sun.cpp
+[52/56] clang-tidy tests/test_view_math.cpp
+[53/56] clang-tidy tests/test_units_validated.cpp
+[54/56] clang-tidy tests/test_orbit_scales.cpp
+[55/56] clang-tidy tests/test_time.cpp

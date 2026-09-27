@@ -1,0 +1,27 @@
+1790506472.251	CAUGHT (static_assert)   Eccentricity::from accepts a negative value
+1790506472.253	                         C:/Users/U439644/Projects/untitled/src\core/Units.hpp:694:15: error: static assertion failed due to requirement '!orb::Eccentricity::from(-0.5).has_value()': a 
+1790506497.867	CAUGHT (test)            Eccentricity::from accepts a non-finite value
+1790506497.867	                         test_units_validated: a non-finite eccentricity is refused by a different name; C:/Users/U439644/Projects/untitled/tests/test_units_validated.cpp(95)
+1790506512.152	CAUGHT (static_assert)   Eccentricity::from refuses a negative value under the wrong name
+1790506512.162	                         C:/Users/U439644/Projects/untitled/src\core/Units.hpp:695:15: error: static assertion failed due to requirement 'orb::Eccentricity::from(-0.5).error() == orb::U
+1790506532.803	CAUGHT (static_assert)   Eccentricity::from stores a value other than the one it was given
+1790506532.803	                         C:/Users/U439644/Projects/untitled/src\core/Units.hpp:692:15: error: static assertion expression is not an integral constant expression
+1790506555.794	CAUGHT (static_assert)   GravParam::from accepts a mu of zero
+1790506555.795	                         C:/Users/U439644/Projects/untitled/src\core/Units.hpp:697:15: error: static assertion failed due to requirement '!orb::GravParam::from(0.).has_value()': a massl
+1790506575.517	CAUGHT (static_assert)   GravParam::from accepts a negative mu
+1790506575.518	                         C:/Users/U439644/Projects/untitled/src\core/Units.hpp:697:15: error: static assertion failed due to requirement '!orb::GravParam::from(0.).has_value()': a massl
+1790506597.498	CAUGHT (test)            GravParam::from loses the NaN, by testing the sign first
+1790506597.498	                         test_units_validated: a non-finite gravitational parameter is refused by a different name; C:/Users/U439644/Projects/untitled/tests/test_units_validated.cpp(142
+1790506613.884	CAUGHT (static_assert)   GravParam::quantity hands back a scaled quantity
+1790506613.884	                         C:/Users/U439644/Projects/untitled/src\core/Units.hpp:712:15: error: static assertion failed due to requirement 'nearlyEqual((gravParam(3.986004418E+14).quantit
+1790506645.336	CAUGHT (test)            two unit errors describe the same thing
+1790506645.336	                         test_units_validated: and no two unit errors describe the same thing; C:/Users/U439644/Projects/untitled/tests/test_units_validated.cpp(197)
+1790506689.584	CAUGHT (test)            the conic fix-up moves the eccentricity to the wrong side of 1
+1790506689.584	                         test_orbit_scales: an eccentricity that rounds to 1 keeps the side of 1 its energy says; C:/Users/U439644/Projects/untitled/tests/test_orbit_scales.cpp(569); th
+1790506697.134	CAUGHT (test)            assignShape accepts a non-finite eccentricity
+1790506697.134	                         test_orbit_scales: states that are finite but are not orbits; C:/Users/U439644/Projects/untitled/tests/test_orbit_scales.cpp(300); states with no orbital plane;
+1790506710.014	CAUGHT (static_assert)   the default eccentricity is not zero
+1790506710.014	                         C:/Users/U439644/Projects/untitled/src\core/Units.hpp:685:15: error: static assertion failed due to requirement 'orb::Eccentricity{}.value() == 0.': a default e
+1790506816.568	
+1790506816.568	==== M1-87: 12 mutants ====
+1790506816.568	12 caught, 0 survived, 0 invalid, 0 hung

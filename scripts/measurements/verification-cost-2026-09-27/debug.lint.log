@@ -1,0 +1,81 @@
+### 2026-09-27T06:37:25Z /c/Users/U439644/AppData/Local/Programs/CLion/bin/cmake/win/x64/bin/cmake.exe --build build/timing/debug --target lint
+[0/2] Re-checking globbed directories...
+[1/56] clang-tidy --verify-config for src/astro/
+No config errors detected.
+[2/56] clang-tidy --verify-config for src/orbit/
+No config errors detected.
+[3/56] clang-tidy --verify-config for src/app/
+No config errors detected.
+[4/56] clang-tidy --verify-config for src/core/
+No config errors detected.
+[5/56] clang-tidy --verify-config for src/render/
+No config errors detected.
+[6/56] clang-tidy --verify-config for src/view/
+No config errors detected.
+[7/56] clang-tidy --verify-config for tests/
+No config errors detected.
+[8/56] clang-tidy tests/StbImageImpl.cpp
+[9/56] clang-tidy src/core/LeapSeconds.cpp
+[10/56] clang-tidy src/view/ImageFiles.cpp
+[11/56] clang-tidy tests/count_wraparound_addition.cpp
+[12/56] clang-tidy src/view/ProbeImage.cpp
+[13/56] clang-tidy tests/count_wraparound_multiplication.cpp
+FAILED: lint/tests_count_wraparound_multiplication.cpp.ok C:/Users/U439644/Projects/untitled/build/timing/debug/lint/tests_count_wraparound_multiplication.cpp.ok 
+C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\U439644\Projects\untitled\build\timing\debug && C:\GitHub\clang+llvm-23.1.0-x86_64-pc-windows-msvc\bin\clang-tidy.exe --quiet -p C:/Users/U439644/Projects/untitled/build/timing/debug C:/Users/U439644/Projects/untitled/tests/count_wraparound_multiplication.cpp && C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe -E touch C:/Users/U439644/Projects/untitled/build/timing/debug/lint/tests_count_wraparound_multiplication.cpp.ok"
+[14/56] clang-tidy tests/count_wraparound_subtraction.cpp
+FAILED: lint/tests_count_wraparound_subtraction.cpp.ok C:/Users/U439644/Projects/untitled/build/timing/debug/lint/tests_count_wraparound_subtraction.cpp.ok 
+C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\U439644\Projects\untitled\build\timing\debug && C:\GitHub\clang+llvm-23.1.0-x86_64-pc-windows-msvc\bin\clang-tidy.exe --quiet -p C:/Users/U439644/Projects/untitled/build/timing/debug C:/Users/U439644/Projects/untitled/tests/count_wraparound_subtraction.cpp && C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe -E touch C:/Users/U439644/Projects/untitled/build/timing/debug/lint/tests_count_wraparound_subtraction.cpp.ok"
+[15/56] clang-tidy tests/HdrDumpFile.cpp
+FAILED: lint/tests_HdrDumpFile.cpp.ok C:/Users/U439644/Projects/untitled/build/timing/debug/lint/tests_HdrDumpFile.cpp.ok 
+C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\U439644\Projects\untitled\build\timing\debug && C:\GitHub\clang+llvm-23.1.0-x86_64-pc-windows-msvc\bin\clang-tidy.exe --quiet -p C:/Users/U439644/Projects/untitled/build/timing/debug C:/Users/U439644/Projects/untitled/tests/HdrDumpFile.cpp && C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe -E touch C:/Users/U439644/Projects/untitled/build/timing/debug/lint/tests_HdrDumpFile.cpp.ok"
+[16/56] clang-tidy src/astro/Tdb.cpp
+FAILED: lint/src_astro_Tdb.cpp.ok C:/Users/U439644/Projects/untitled/build/timing/debug/lint/src_astro_Tdb.cpp.ok 
+C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\U439644\Projects\untitled\build\timing\debug && C:\GitHub\clang+llvm-23.1.0-x86_64-pc-windows-msvc\bin\clang-tidy.exe --quiet -p C:/Users/U439644/Projects/untitled/build/timing/debug C:/Users/U439644/Projects/untitled/src/astro/Tdb.cpp && C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe -E touch C:/Users/U439644/Projects/untitled/build/timing/debug/lint/src_astro_Tdb.cpp.ok"
+[17/56] clang-tidy src/astro/Sun.cpp
+FAILED: lint/src_astro_Sun.cpp.ok C:/Users/U439644/Projects/untitled/build/timing/debug/lint/src_astro_Sun.cpp.ok 
+C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\U439644\Projects\untitled\build\timing\debug && C:\GitHub\clang+llvm-23.1.0-x86_64-pc-windows-msvc\bin\clang-tidy.exe --quiet -p C:/Users/U439644/Projects/untitled/build/timing/debug C:/Users/U439644/Projects/untitled/src/astro/Sun.cpp && C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe -E touch C:/Users/U439644/Projects/untitled/build/timing/debug/lint/src_astro_Sun.cpp.ok"
+[18/56] clang-tidy tests/fuzz_orbit.cpp
+FAILED: lint/tests_fuzz_orbit.cpp.ok C:/Users/U439644/Projects/untitled/build/timing/debug/lint/tests_fuzz_orbit.cpp.ok 
+C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\U439644\Projects\untitled\build\timing\debug && C:\GitHub\clang+llvm-23.1.0-x86_64-pc-windows-msvc\bin\clang-tidy.exe --quiet -p C:/Users/U439644/Projects/untitled/build/timing/debug C:/Users/U439644/Projects/untitled/tests/fuzz_orbit.cpp && C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe -E touch C:/Users/U439644/Projects/untitled/build/timing/debug/lint/tests_fuzz_orbit.cpp.ok"
+[19/56] clang-tidy src/view/Camera.cpp
+FAILED: lint/src_view_Camera.cpp.ok C:/Users/U439644/Projects/untitled/build/timing/debug/lint/src_view_Camera.cpp.ok 
+C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\U439644\Projects\untitled\build\timing\debug && C:\GitHub\clang+llvm-23.1.0-x86_64-pc-windows-msvc\bin\clang-tidy.exe --quiet -p C:/Users/U439644/Projects/untitled/build/timing/debug C:/Users/U439644/Projects/untitled/src/view/Camera.cpp && C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe -E touch C:/Users/U439644/Projects/untitled/build/timing/debug/lint/src_view_Camera.cpp.ok"
+[20/56] clang-tidy src/astro/EarthOrientation.cpp
+FAILED: lint/src_astro_EarthOrientation.cpp.ok C:/Users/U439644/Projects/untitled/build/timing/debug/lint/src_astro_EarthOrientation.cpp.ok 
+C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\U439644\Projects\untitled\build\timing\debug && C:\GitHub\clang+llvm-23.1.0-x86_64-pc-windows-msvc\bin\clang-tidy.exe --quiet -p C:/Users/U439644/Projects/untitled/build/timing/debug C:/Users/U439644/Projects/untitled/src/astro/EarthOrientation.cpp && C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe -E touch C:/Users/U439644/Projects/untitled/build/timing/debug/lint/src_astro_EarthOrientation.cpp.ok"
+[21/56] clang-tidy src/render/ResolvePass.cpp
+FAILED: lint/src_render_ResolvePass.cpp.ok C:/Users/U439644/Projects/untitled/build/timing/debug/lint/src_render_ResolvePass.cpp.ok 
+C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\U439644\Projects\untitled\build\timing\debug && C:\GitHub\clang+llvm-23.1.0-x86_64-pc-windows-msvc\bin\clang-tidy.exe --quiet -p C:/Users/U439644/Projects/untitled/build/timing/debug C:/Users/U439644/Projects/untitled/src/render/ResolvePass.cpp && C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe -E touch C:/Users/U439644/Projects/untitled/build/timing/debug/lint/src_render_ResolvePass.cpp.ok"
+[22/56] clang-tidy src/render/Probes.cpp
+FAILED: lint/src_render_Probes.cpp.ok C:/Users/U439644/Projects/untitled/build/timing/debug/lint/src_render_Probes.cpp.ok 
+C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\U439644\Projects\untitled\build\timing\debug && C:\GitHub\clang+llvm-23.1.0-x86_64-pc-windows-msvc\bin\clang-tidy.exe --quiet -p C:/Users/U439644/Projects/untitled/build/timing/debug C:/Users/U439644/Projects/untitled/src/render/Probes.cpp && C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe -E touch C:/Users/U439644/Projects/untitled/build/timing/debug/lint/src_render_Probes.cpp.ok"
+[23/56] clang-tidy tests/fuzz_time.cpp
+FAILED: lint/tests_fuzz_time.cpp.ok C:/Users/U439644/Projects/untitled/build/timing/debug/lint/tests_fuzz_time.cpp.ok 
+C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\U439644\Projects\untitled\build\timing\debug && C:\GitHub\clang+llvm-23.1.0-x86_64-pc-windows-msvc\bin\clang-tidy.exe --quiet -p C:/Users/U439644/Projects/untitled/build/timing/debug C:/Users/U439644/Projects/untitled/tests/fuzz_time.cpp && C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe -E touch C:/Users/U439644/Projects/untitled/build/timing/debug/lint/tests_fuzz_time.cpp.ok"
+[24/56] clang-tidy src/render/Pipeline.cpp
+FAILED: lint/src_render_Pipeline.cpp.ok C:/Users/U439644/Projects/untitled/build/timing/debug/lint/src_render_Pipeline.cpp.ok 
+C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\U439644\Projects\untitled\build\timing\debug && C:\GitHub\clang+llvm-23.1.0-x86_64-pc-windows-msvc\bin\clang-tidy.exe --quiet -p C:/Users/U439644/Projects/untitled/build/timing/debug C:/Users/U439644/Projects/untitled/src/render/Pipeline.cpp && C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe -E touch C:/Users/U439644/Projects/untitled/build/timing/debug/lint/src_render_Pipeline.cpp.ok"
+[25/56] clang-tidy src/orbit/Orbit.cpp
+FAILED: lint/src_orbit_Orbit.cpp.ok C:/Users/U439644/Projects/untitled/build/timing/debug/lint/src_orbit_Orbit.cpp.ok 
+C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\U439644\Projects\untitled\build\timing\debug && C:\GitHub\clang+llvm-23.1.0-x86_64-pc-windows-msvc\bin\clang-tidy.exe --quiet -p C:/Users/U439644/Projects/untitled/build/timing/debug C:/Users/U439644/Projects/untitled/src/orbit/Orbit.cpp && C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe -E touch C:/Users/U439644/Projects/untitled/build/timing/debug/lint/src_orbit_Orbit.cpp.ok"
+[26/56] clang-tidy src/view/ProbeSidecar.cpp
+FAILED: lint/src_view_ProbeSidecar.cpp.ok C:/Users/U439644/Projects/untitled/build/timing/debug/lint/src_view_ProbeSidecar.cpp.ok 
+C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\U439644\Projects\untitled\build\timing\debug && C:\GitHub\clang+llvm-23.1.0-x86_64-pc-windows-msvc\bin\clang-tidy.exe --quiet -p C:/Users/U439644/Projects/untitled/build/timing/debug C:/Users/U439644/Projects/untitled/src/view/ProbeSidecar.cpp && C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe -E touch C:/Users/U439644/Projects/untitled/build/timing/debug/lint/src_view_ProbeSidecar.cpp.ok"
+[27/56] clang-tidy tests/OrbitTestSupport.cpp
+FAILED: lint/tests_OrbitTestSupport.cpp.ok C:/Users/U439644/Projects/untitled/build/timing/debug/lint/tests_OrbitTestSupport.cpp.ok 
+C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\U439644\Projects\untitled\build\timing\debug && C:\GitHub\clang+llvm-23.1.0-x86_64-pc-windows-msvc\bin\clang-tidy.exe --quiet -p C:/Users/U439644/Projects/untitled/build/timing/debug C:/Users/U439644/Projects/untitled/tests/OrbitTestSupport.cpp && C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe -E touch C:/Users/U439644/Projects/untitled/build/timing/debug/lint/tests_OrbitTestSupport.cpp.ok"
+[28/56] clang-tidy src/app/main.cpp
+FAILED: lint/src_app_main.cpp.ok C:/Users/U439644/Projects/untitled/build/timing/debug/lint/src_app_main.cpp.ok 
+C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\U439644\Projects\untitled\build\timing\debug && C:\GitHub\clang+llvm-23.1.0-x86_64-pc-windows-msvc\bin\clang-tidy.exe --quiet -p C:/Users/U439644/Projects/untitled/build/timing/debug C:/Users/U439644/Projects/untitled/src/app/main.cpp && C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe -E touch C:/Users/U439644/Projects/untitled/build/timing/debug/lint/src_app_main.cpp.ok"
+[29/56] clang-tidy src/app/ProbeMode.cpp
+FAILED: lint/src_app_ProbeMode.cpp.ok C:/Users/U439644/Projects/untitled/build/timing/debug/lint/src_app_ProbeMode.cpp.ok 
+C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\U439644\Projects\untitled\build\timing\debug && C:\GitHub\clang+llvm-23.1.0-x86_64-pc-windows-msvc\bin\clang-tidy.exe --quiet -p C:/Users/U439644/Projects/untitled/build/timing/debug C:/Users/U439644/Projects/untitled/src/app/ProbeMode.cpp && C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe -E touch C:/Users/U439644/Projects/untitled/build/timing/debug/lint/src_app_ProbeMode.cpp.ok"
+[30/56] clang-tidy tests/FixtureFile.cpp
+FAILED: lint/tests_FixtureFile.cpp.ok C:/Users/U439644/Projects/untitled/build/timing/debug/lint/tests_FixtureFile.cpp.ok 
+C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\U439644\Projects\untitled\build\timing\debug && C:\GitHub\clang+llvm-23.1.0-x86_64-pc-windows-msvc\bin\clang-tidy.exe --quiet -p C:/Users/U439644/Projects/untitled/build/timing/debug C:/Users/U439644/Projects/untitled/tests/FixtureFile.cpp && C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe -E touch C:/Users/U439644/Projects/untitled/build/timing/debug/lint/tests_FixtureFile.cpp.ok"
+[31/56] clang-tidy tests/test_astro_time.cpp
+FAILED: lint/tests_test_astro_time.cpp.ok C:/Users/U439644/Projects/untitled/build/timing/debug/lint/tests_test_astro_time.cpp.ok 
+C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\U439644\Projects\untitled\build\timing\debug && C:\GitHub\clang+llvm-23.1.0-x86_64-pc-windows-msvc\bin\clang-tidy.exe --quiet -p C:/Users/U439644/Projects/untitled/build/timing/debug C:/Users/U439644/Projects/untitled/tests/test_astro_time.cpp && C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe -E touch C:/Users/U439644/Projects/untitled/build/timing/debug/lint/tests_test_astro_time.cpp.ok"
+[32/56] clang-tidy src/render/VulkanContext.cpp
+FAILED: lint/src_render_VulkanContext.cpp.ok C:/Users/U439644/Projects/untitled/build/timing/debug/lint/src_render_VulkanContext.cpp.ok 
+C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\U439644\Projects\untitled\build\timing\debug && C:\GitHub\clang+llvm-23.1.0-x86_64-pc-windows-msvc\bin\clang-tidy.exe --quiet -p C:/Users/U439644/Projects/untitled/build/timing/debug C:/Users/U439644/Projects/untitled/src/render/VulkanContext.cpp && C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe 

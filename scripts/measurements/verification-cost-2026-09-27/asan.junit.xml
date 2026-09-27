@@ -1,0 +1,2385 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="Win32-ninja"
+	tests="266"
+	failures="0"
+	disabled="0"
+	skipped="0"
+	hostname="DLH-5CD3129BVL"
+	time="97"
+	timestamp="2026-09-27T09:28:24"
+	>
+	<testcase name="TDB - TT changes within a day as the annual term does" classname="TDB - TT changes within a day as the annual term does" time="1.11433" status="run">
+		<properties/>
+		<system-out>Filters: "TDB - TT changes within a day as the annual term does"
+Randomness seeded to: 2600871299
+===============================================================================
+All tests passed (149 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="TDB - TT is within 20 us of Circular 179 over 1900-2100" classname="TDB - TT is within 20 us of Circular 179 over 1900-2100" time="0.305627" status="run">
+		<properties/>
+		<system-out>Filters: "TDB - TT is within 20 us of Circular 179 over 1900-2100"
+Randomness seeded to: 3177910518
+===============================================================================
+All tests passed (1978 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="TDB is converted, not refused, at both ends of the calendar" classname="TDB is converted, not refused, at both ends of the calendar" time="0.0561894" status="run">
+		<properties/>
+		<system-out>Filters: "TDB is converted\, not refused\, at both ends of the calendar"
+Randomness seeded to: 1326252630
+===============================================================================
+All tests passed (6 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="TT to TDB and back is within 1 ps both ways over a seeded sweep" classname="TT to TDB and back is within 1 ps both ways over a seeded sweep" time="1.98856" status="run">
+		<properties/>
+		<system-out>Filters: "TT to TDB and back is within 1 ps both ways over a seeded sweep"
+Randomness seeded to: 3454411164
+===============================================================================
+All tests passed (40002 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the annual term peaks and crosses zero where the physics says" classname="the annual term peaks and crosses zero where the physics says" time="0.499859" status="run">
+		<properties/>
+		<system-out>Filters: "the annual term peaks and crosses zero where the physics says"
+Randomness seeded to: 4007060194
+===============================================================================
+All tests passed (8 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a camera whose near plane is not finite and positive is refused" classname="a camera whose near plane is not finite and positive is refused" time="0.792768" status="run">
+		<properties/>
+		<system-out>Filters: "a camera whose near plane is not finite and positive is refused"
+Randomness seeded to: 3915179737
+===============================================================================
+All tests passed (8 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a camera whose orientation is not a rotation is refused" classname="a camera whose orientation is not a rotation is refused" time="0.0387936" status="run">
+		<properties/>
+		<system-out>Filters: "a camera whose orientation is not a rotation is refused"
+Randomness seeded to: 2144650466
+===============================================================================
+All tests passed (8 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a camera with a field of view outside (0, pi) is refused" classname="a camera with a field of view outside (0, pi) is refused" time="0.050336" status="run">
+		<properties/>
+		<system-out>Filters: "a camera with a field of view outside (0\, pi) is refused"
+Randomness seeded to: 3947815502
+===============================================================================
+All tests passed (12 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a camera with a position that is not finite is refused" classname="a camera with a position that is not finite is refused" time="0.0388125" status="run">
+		<properties/>
+		<system-out>Filters: "a camera with a position that is not finite is refused"
+Randomness seeded to: 947115485
+===============================================================================
+All tests passed (18 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a displacement round-trips through view space" classname="a displacement round-trips through view space" time="0.0463277" status="run">
+		<properties/>
+		<system-out>Filters: "a displacement round-trips through view space"
+Randomness seeded to: 2336677433
+===============================================================================
+All tests passed (20001 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the jitter budget holds, and does not depend on the distance to the origin" classname="the jitter budget holds, and does not depend on the distance to the origin" time="0.0466583" status="run">
+		<properties/>
+		<system-out>Filters: "the jitter budget holds\, and does not depend on the distance to the origin"
+Randomness seeded to: 3878171449
+===============================================================================
+All tests passed (1845 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the naive path fails the budget where it bites, and passes where it does not" classname="the naive path fails the budget where it bites, and passes where it does not" time="0.0483857" status="run">
+		<properties/>
+		<system-out>Filters: "the naive path fails the budget where it bites\, and passes where it does not"
+Randomness seeded to: 3991004619
+===============================================================================
+All tests passed (809 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the narrowing is exact, and it is the subtraction that makes it so" classname="the narrowing is exact, and it is the subtraction that makes it so" time="0.046623" status="run">
+		<properties/>
+		<system-out>Filters: "the narrowing is exact\, and it is the subtraction that makes it so"
+Randomness seeded to: 899348027
+===============================================================================
+All tests passed (7 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the narrowing&apos;s error is flat across six decades of world magnitude" classname="the narrowing&apos;s error is flat across six decades of world magnitude" time="0.0414482" status="run">
+		<properties/>
+		<system-out>Filters: "the narrowing's error is flat across six decades of world magnitude"
+Randomness seeded to: 2049355348
+===============================================================================
+All tests passed (606 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the orientation tolerance is a boundary, and it is checked from both sides" classname="the orientation tolerance is a boundary, and it is checked from both sides" time="0.047876" status="run">
+		<properties/>
+		<system-out>Filters: "the orientation tolerance is a boundary\, and it is checked from both sides"
+Randomness seeded to: 107743170
+===============================================================================
+All tests passed (9 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the view matrix is a pure rotation" classname="the view matrix is a pure rotation" time="0.0637764" status="run">
+		<properties/>
+		<system-out>Filters: "the view matrix is a pure rotation"
+Randomness seeded to: 2372728488
+===============================================================================
+All tests passed (100002 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the view matrix takes the camera&apos;s own axes to view space&apos;s axes" classname="the view matrix takes the camera&apos;s own axes to view space&apos;s axes" time="0.0580527" status="run">
+		<properties/>
+		<system-out>Filters: "the view matrix takes the camera's own axes to view space's axes"
+Randomness seeded to: 1164724993
+===============================================================================
+All tests passed (12 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a cancelling difference keeps what a double loses" classname="a cancelling difference keeps what a double loses" time="0.865374" status="run">
+		<properties/>
+		<system-out>Filters: "a cancelling difference keeps what a double loses"
+Randomness seeded to: 3363354195
+===============================================================================
+All tests passed (3 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="an overflow stays an overflow rather than becoming a NaN" classname="an overflow stays an overflow rather than becoming a NaN" time="0.0532261" status="run">
+		<properties/>
+		<system-out>Filters: "an overflow stays an overflow rather than becoming a NaN"
+Randomness seeded to: 3413178136
+===============================================================================
+All tests passed (11 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="quickTwoSum is exact when its precondition holds" classname="quickTwoSum is exact when its precondition holds" time="1.07093" status="run">
+		<properties/>
+		<system-out>Filters: "quickTwoSum is exact when its precondition holds"
+Randomness seeded to: 616175529
+===============================================================================
+All tests passed (20000 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="splitting survives the top of the range" classname="splitting survives the top of the range" time="0.766291" status="run">
+		<properties/>
+		<system-out>Filters: "splitting survives the top of the range"
+Randomness seeded to: 4101499976
+===============================================================================
+All tests passed (15000 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the error term of a product is exactly what an fma reports" classname="the error term of a product is exactly what an fma reports" time="1.91348" status="run">
+		<properties/>
+		<system-out>Filters: "the error term of a product is exactly what an fma reports"
+Randomness seeded to: 1999116733
+===============================================================================
+All tests passed (40000 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the error term of a sum is exact" classname="the error term of a sum is exact" time="1.56946" status="run">
+		<properties/>
+		<system-out>Filters: "the error term of a sum is exact"
+Randomness seeded to: 111536179
+===============================================================================
+All tests passed (40000 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the quotient and the square root are correct beyond a double" classname="the quotient and the square root are correct beyond a double" time="0.818218" status="run">
+		<properties/>
+		<system-out>Filters: "the quotient and the square root are correct beyond a double"
+Randomness seeded to: 1001988006
+===============================================================================
+All tests passed (20000 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the scalar predicates agree about NaN" classname="the scalar predicates agree about NaN" time="0.0321326" status="run">
+		<properties/>
+		<system-out>Filters: "the scalar predicates agree about NaN"
+Randomness seeded to: 2141560229
+===============================================================================
+All tests passed (6 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="one turn of the Earth rotation angle takes the stellar day" classname="one turn of the Earth rotation angle takes the stellar day" time="0.744784" status="run">
+		<properties/>
+		<system-out>Filters: "one turn of the Earth rotation angle takes the stellar day"
+Randomness seeded to: 2589541610
+===============================================================================
+All tests passed (16 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="only UT1 turns the Earth" classname="only UT1 turns the Earth" time="0.0595369" status="run">
+		<properties/>
+		<system-out>Filters: "only UT1 turns the Earth"
+Randomness seeded to: 1023465158
+===============================================================================
+All tests passed (1000 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the Earth rotation angle at J2000.0 is the published value" classname="the Earth rotation angle at J2000.0 is the published value" time="0.0371253" status="run">
+		<properties/>
+		<system-out>Filters: "the Earth rotation angle at J2000.0 is the published value"
+Randomness seeded to: 2680805735
+===============================================================================
+All tests passed (5 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the composition is CIO-consistent" classname="the composition is CIO-consistent" time="0.172948" status="run">
+		<properties/>
+		<system-out>Filters: "the composition is CIO-consistent"
+Randomness seeded to: 3334102445
+===============================================================================
+All tests passed (1032 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the intermediate frame is the full rotation less the Earth&apos;s turn" classname="the intermediate frame is the full rotation less the Earth&apos;s turn" time="0.0594508" status="run">
+		<properties/>
+		<system-out>Filters: "the intermediate frame is the full rotation less the Earth's turn"
+Randomness seeded to: 2712880928
+===============================================================================
+All tests passed (800 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the pole of date is the same with and without the Earth&apos;s rotation" classname="the pole of date is the same with and without the Earth&apos;s rotation" time="0.0729547" status="run">
+		<properties/>
+		<system-out>Filters: "the pole of date is the same with and without the Earth's rotation"
+Randomness seeded to: 1318575113
+===============================================================================
+All tests passed (1200 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the quaternion is a unit one and reproduces the matrix" classname="the quaternion is a unit one and reproduces the matrix" time="0.28196" status="run">
+		<properties/>
+		<system-out>Filters: "the quaternion is a unit one and reproduces the matrix"
+Randomness seeded to: 573554235
+===============================================================================
+All tests passed (27001 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the rotation agrees with an independent implementation to 0.1 mas" classname="the rotation agrees with an independent implementation to 0.1 mas" time="0.164854" status="run">
+		<properties/>
+		<system-out>Filters: "the rotation agrees with an independent implementation to 0.1 mas"
+Randomness seeded to: 1345196505
+===============================================================================
+All tests passed (1033 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="EV100 matches the reference at every point, including a fractional stop" classname="EV100 matches the reference at every point, including a fractional stop" time="0.813916" status="run">
+		<properties/>
+		<system-out>Filters: "EV100 matches the reference at every point\, including a fractional stop"
+Randomness seeded to: 664320701
+===============================================================================
+All tests passed (7 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a shutter time that is not finite and positive is refused by name" classname="a shutter time that is not finite and positive is refused by name" time="0.0632451" status="run">
+		<properties/>
+		<system-out>Filters: "a shutter time that is not finite and positive is refused by name"
+Randomness seeded to: 1316586787
+===============================================================================
+All tests passed (12 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a sunlit patch of albedo 0.3 exposes at sunny 16 as the reference says" classname="a sunlit patch of albedo 0.3 exposes at sunny 16 as the reference says" time="0.0694422" status="run">
+		<properties/>
+		<system-out>Filters: "a sunlit patch of albedo 0.3 exposes at sunny 16 as the reference says"
+Randomness seeded to: 1631504025
+===============================================================================
+All tests passed (3 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="an ISO speed that is not finite and positive is refused by name" classname="an ISO speed that is not finite and positive is refused by name" time="0.0788314" status="run">
+		<properties/>
+		<system-out>Filters: "an ISO speed that is not finite and positive is refused by name"
+Randomness seeded to: 3302084325
+===============================================================================
+All tests passed (12 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="an f-number that is not finite and positive is refused by name" classname="an f-number that is not finite and positive is refused by name" time="0.0860055" status="run">
+		<properties/>
+		<system-out>Filters: "an f-number that is not finite and positive is refused by name"
+Randomness seeded to: 2592497699
+===============================================================================
+All tests passed (12 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="f/16 at 1/125 s and ISO 100 is EV100 14.97, worked by hand" classname="f/16 at 1/125 s and ISO 100 is EV100 14.97, worked by hand" time="0.0674529" status="run">
+		<properties/>
+		<system-out>Filters: "f/16 at 1/125 s and ISO 100 is EV100 14.97\, worked by hand"
+Randomness seeded to: 3329198124
+===============================================================================
+All tests passed (2 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="halving the shutter time raises EV by one stop, and doubling N by two" classname="halving the shutter time raises EV by one stop, and doubling N by two" time="0.0910138" status="run">
+		<properties/>
+		<system-out>Filters: "halving the shutter time raises EV by one stop\, and doubling N by two"
+Randomness seeded to: 1658706392
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the exposure factor matches the reference, and maps saturation to one" classname="the exposure factor matches the reference, and maps saturation to one" time="0.0675281" status="run">
+		<properties/>
+		<system-out>Filters: "the exposure factor matches the reference\, and maps saturation to one"
+Randomness seeded to: 3696783361
+===============================================================================
+All tests passed (8 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the shader&apos;s exposure is the nearest float to the double" classname="the shader&apos;s exposure is the nearest float to the double" time="0.0711526" status="run">
+		<properties/>
+		<system-out>Filters: "the shader's exposure is the nearest float to the double"
+Randomness seeded to: 247629073
+===============================================================================
+All tests passed (5 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the smallest positive setting is accepted: the bound is zero, not a threshold" classname="the smallest positive setting is accepted: the bound is zero, not a threshold" time="0.0497423" status="run">
+		<properties/>
+		<system-out>Filters: "the smallest positive setting is accepted: the bound is zero\, not a threshold"
+Randomness seeded to: 1920880616
+===============================================================================
+All tests passed (3 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a TDB - TT fixture arrives in TDB and seconds" classname="a TDB - TT fixture arrives in TDB and seconds" time="1.0308" status="run">
+		<properties/>
+		<system-out>Filters: "a TDB - TT fixture arrives in TDB and seconds"
+Randomness seeded to: 1906455643
+===============================================================================
+All tests passed (9 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a TDB - TT fixture in the wrong scale or unit is refused" classname="a TDB - TT fixture in the wrong scale or unit is refused" time="0.068961" status="run">
+		<properties/>
+		<system-out>Filters: "a TDB - TT fixture in the wrong scale or unit is refused"
+Randomness seeded to: 440910142
+===============================================================================
+All tests passed (15 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a double written with 17 digits reads back bit for bit" classname="a double written with 17 digits reads back bit for bit" time="0.603586" status="run">
+		<properties/>
+		<system-out>Filters: "a double written with 17 digits reads back bit for bit"
+Randomness seeded to: 608401040
+===============================================================================
+All tests passed (19993 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a file that is not there is FileNotFound" classname="a file that is not there is FileNotFound" time="0.0462838" status="run">
+		<properties/>
+		<system-out>Filters: "a file that is not there is FileNotFound"
+Randomness seeded to: 815109907
+===============================================================================
+All tests passed (3 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a fractional epoch keeps its fraction" classname="a fractional epoch keeps its fraction" time="0.0489158" status="run">
+		<properties/>
+		<system-out>Filters: "a fractional epoch keeps its fraction"
+Randomness seeded to: 786471447
+===============================================================================
+All tests passed (5 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a known-good fixture parses, header and rows" classname="a known-good fixture parses, header and rows" time="0.0445056" status="run">
+		<properties/>
+		<system-out>Filters: "a known-good fixture parses\, header and rows"
+Randomness seeded to: 299256686
+===============================================================================
+All tests passed (13 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a state-vector fixture arrives in metres, metres per second and TDB" classname="a state-vector fixture arrives in metres, metres per second and TDB" time="0.0494802" status="run">
+		<properties/>
+		<system-out>Filters: "a state-vector fixture arrives in metres\, metres per second and TDB"
+Randomness seeded to: 2786063917
+===============================================================================
+All tests passed (12 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a state-vector fixture in the wrong frame, scale or units is refused" classname="a state-vector fixture in the wrong frame, scale or units is refused" time="0.0559544" status="run">
+		<properties/>
+		<system-out>Filters: "a state-vector fixture in the wrong frame\, scale or units is refused"
+Randomness seeded to: 2112602764
+===============================================================================
+All tests passed (23 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="an Earth-orientation fixture arrives as two instants and a rotation" classname="an Earth-orientation fixture arrives as two instants and a rotation" time="0.0482088" status="run">
+		<properties/>
+		<system-out>Filters: "an Earth-orientation fixture arrives as two instants and a rotation"
+Randomness seeded to: 3060366608
+===============================================================================
+All tests passed (14 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="an Earth-orientation fixture in the wrong frame or scale is refused" classname="an Earth-orientation fixture in the wrong frame or scale is refused" time="0.0512374" status="run">
+		<properties/>
+		<system-out>Filters: "an Earth-orientation fixture in the wrong frame or scale is refused"
+Randomness seeded to: 3281020477
+===============================================================================
+All tests passed (23 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="comments, blank lines and CRLF change nothing" classname="comments, blank lines and CRLF change nothing" time="0.0464789" status="run">
+		<properties/>
+		<system-out>Filters: "comments\, blank lines and CRLF change nothing"
+Randomness seeded to: 455545117
+===============================================================================
+All tests passed (7 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="every fixture error describes itself" classname="every fixture error describes itself" time="0.0487051" status="run">
+		<properties/>
+		<system-out>Filters: "every fixture error describes itself"
+Randomness seeded to: 3393113107
+===============================================================================
+All tests passed (36 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="every malformed fixture is refused by name and line" classname="every malformed fixture is refused by name and line" time="0.0486601" status="run">
+		<properties/>
+		<system-out>Filters: "every malformed fixture is refused by name and line"
+Randomness seeded to: 2769137577
+===============================================================================
+All tests passed (45 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="kilometres become metres with a single rounding" classname="kilometres become metres with a single rounding" time="0.0554302" status="run">
+		<properties/>
+		<system-out>Filters: "kilometres become metres with a single rounding"
+Randomness seeded to: 1668716304
+===============================================================================
+All tests passed (16 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the committed Earth-orientation fixture reads, as rotations" classname="the committed Earth-orientation fixture reads, as rotations" time="0.143407" status="run">
+		<properties/>
+		<system-out>Filters: "the committed Earth-orientation fixture reads\, as rotations"
+Randomness seeded to: 1160766485
+===============================================================================
+All tests passed (3091 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the committed TDB - TT fixture reads, in seconds" classname="the committed TDB - TT fixture reads, in seconds" time="0.158889" status="run">
+		<properties/>
+		<system-out>Filters: "the committed TDB - TT fixture reads\, in seconds"
+Randomness seeded to: 71590405
+===============================================================================
+All tests passed (3956 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the generated Sun fixture reads, in metres" classname="the generated Sun fixture reads, in metres" time="0.0491478" status="run">
+		<properties/>
+		<system-out>Filters: "the generated Sun fixture reads\, in metres"
+Randomness seeded to: 3320681935
+===============================================================================
+All tests passed (126 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="every finite half converts to the value its definition gives" classname="every finite half converts to the value its definition gives" time="1.37352" status="run">
+		<properties/>
+		<system-out>Filters: "every finite half converts to the value its definition gives"
+Randomness seeded to: 2183504469
+===============================================================================
+All tests passed (63489 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="infinities stay infinite and every NaN keeps its payload" classname="infinities stay infinite and every NaN keeps its payload" time="0.0578458" status="run">
+		<properties/>
+		<system-out>Filters: "infinities stay infinite and every NaN keeps its payload"
+Randomness seeded to: 3458129280
+===============================================================================
+All tests passed (6144 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the bit pattern and the float are the same conversion" classname="the bit pattern and the float are the same conversion" time="0.221749" status="run">
+		<properties/>
+		<system-out>Filters: "the bit pattern and the float are the same conversion"
+Randomness seeded to: 2029378456
+===============================================================================
+All tests passed (65536 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the conversion agrees with the compiler&apos;s own _Float16" classname="the conversion agrees with the compiler&apos;s own _Float16" time="0.218081" status="run">
+		<properties/>
+		<system-out>Filters: "the conversion agrees with the compiler's own _Float16"
+Randomness seeded to: 2067242890
+===============================================================================
+All tests passed (65537 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a file with no header line is refused by name" classname="a file with no header line is refused by name" time="0.739511" status="run">
+		<properties/>
+		<system-out>Filters: "a file with no header line is refused by name"
+Randomness seeded to: 1301710197
+===============================================================================
+All tests passed (8 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a header that is not this format&apos;s is refused by name" classname="a header that is not this format&apos;s is refused by name" time="0.0333199" status="run">
+		<properties/>
+		<system-out>Filters: "a header that is not this format's is refused by name"
+Randomness seeded to: 327802292
+===============================================================================
+All tests passed (8 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a missing file is refused by name" classname="a missing file is refused by name" time="0.0331384" status="run">
+		<properties/>
+		<system-out>Filters: "a missing file is refused by name"
+Randomness seeded to: 473843918
+===============================================================================
+All tests passed (2 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a well-formed dump is read value for value" classname="a well-formed dump is read value for value" time="0.0328489" status="run">
+		<properties/>
+		<system-out>Filters: "a well-formed dump is read value for value"
+Randomness seeded to: 3098240096
+===============================================================================
+All tests passed (11 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="data too short or too long is refused by name" classname="data too short or too long is refused by name" time="0.0296266" status="run">
+		<properties/>
+		<system-out>Filters: "data too short or too long is refused by name"
+Randomness seeded to: 120775612
+===============================================================================
+All tests passed (6 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="dimensions that are not two positive decimal integers are refused by name" classname="dimensions that are not two positive decimal integers are refused by name" time="0.0293411" status="run">
+		<properties/>
+		<system-out>Filters: "dimensions that are not two positive decimal integers are refused by name"
+Randomness seeded to: 1585554465
+===============================================================================
+All tests passed (22 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="rows run top to bottom" classname="rows run top to bottom" time="0.0339558" status="run">
+		<properties/>
+		<system-out>Filters: "rows run top to bottom"
+Randomness seeded to: 1961438817
+===============================================================================
+All tests passed (3 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the application&apos;s writer and this reader agree" classname="the application&apos;s writer and this reader agree" time="0.0284468" status="run">
+		<properties/>
+		<system-out>Filters: "the application's writer and this reader agree"
+Randomness seeded to: 3843810898
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the largest dimension the limit allows is accepted as a header" classname="the largest dimension the limit allows is accepted as a header" time="0.0333493" status="run">
+		<properties/>
+		<system-out>Filters: "the largest dimension the limit allows is accepted as a header"
+Randomness seeded to: 3779110986
+===============================================================================
+All tests passed (2 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a 16-bit PNG holds the RGB it was given, most significant byte first" classname="a 16-bit PNG holds the RGB it was given, most significant byte first" time="0.89431" status="run">
+		<properties/>
+		<system-out>Filters: "a 16-bit PNG holds the RGB it was given\, most significant byte first"
+Randomness seeded to: 2618476364
+===============================================================================
+All tests passed (19 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="an 8-bit PNG holds the RGB it was given, and no alpha" classname="an 8-bit PNG holds the RGB it was given, and no alpha" time="0.0476983" status="run">
+		<properties/>
+		<system-out>Filters: "an 8-bit PNG holds the RGB it was given\, and no alpha"
+Randomness seeded to: 3780634321
+===============================================================================
+All tests passed (19 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="an EXR holds the HDR target&apos;s bits, as R, G and B, with its colours and comment" classname="an EXR holds the HDR target&apos;s bits, as R, G and B, with its colours and comment" time="0.0659471" status="run">
+		<properties/>
+		<system-out>Filters: "an EXR holds the HDR target's bits\, as R\, G and B\, with its colours and comment"
+Randomness seeded to: 3749448403
+===============================================================================
+All tests passed (85 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="each encoder writes the same bytes twice" classname="each encoder writes the same bytes twice" time="0.0515485" status="run">
+		<properties/>
+		<system-out>Filters: "each encoder writes the same bytes twice"
+Randomness seeded to: 921251109
+===============================================================================
+All tests passed (9 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="every branch is reached and each reproduces its matrix" classname="every branch is reached and each reproduces its matrix" time="2.85147" status="run">
+		<properties/>
+		<system-out>Filters: "every branch is reached and each reproduces its matrix"
+Randomness seeded to: 194917212
+===============================================================================
+All tests passed (80004 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="isRotation accepts rounding and refuses what was never a rotation" classname="isRotation accepts rounding and refuses what was never a rotation" time="0.0359684" status="run">
+		<properties/>
+		<system-out>Filters: "isRotation accepts rounding and refuses what was never a rotation"
+Randomness seeded to: 834745558
+===============================================================================
+All tests passed (206 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="isUnitQuaternion accepts everything this project builds" classname="isUnitQuaternion accepts everything this project builds" time="0.0759474" status="run">
+		<properties/>
+		<system-out>Filters: "isUnitQuaternion accepts everything this project builds"
+Randomness seeded to: 2365708954
+===============================================================================
+All tests passed (4002 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="isUnitQuaternion refuses what was never a rotation" classname="isUnitQuaternion refuses what was never a rotation" time="0.0314267" status="run">
+		<properties/>
+		<system-out>Filters: "isUnitQuaternion refuses what was never a rotation"
+Randomness seeded to: 2337072310
+===============================================================================
+All tests passed (6 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="near a half turn the conversion keeps what the trace alone would lose" classname="near a half turn the conversion keeps what the trace alone would lose" time="0.152876" status="run">
+		<properties/>
+		<system-out>Filters: "near a half turn the conversion keeps what the trace alone would lose"
+Randomness seeded to: 3184014215
+===============================================================================
+All tests passed (4002 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the identity and the three half turns convert exactly" classname="the identity and the three half turns convert exactly" time="0.0422326" status="run">
+		<properties/>
+		<system-out>Filters: "the identity and the three half turns convert exactly"
+Randomness seeded to: 281075563
+===============================================================================
+All tests passed (16 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="Kepler equation solver" classname="Kepler equation solver" time="0.766014" status="run">
+		<properties/>
+		<system-out>Filters: "Kepler equation solver"
+Randomness seeded to: 2201200848
+===============================================================================
+All tests passed (589 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="degenerate orbits stay finite" classname="degenerate orbits stay finite" time="0.0320437" status="run">
+		<properties/>
+		<system-out>Filters: "degenerate orbits stay finite"
+Randomness seeded to: 2405553193
+===============================================================================
+All tests passed (13 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="elements &lt;-&gt; state round trip" classname="elements &lt;-&gt; state round trip" time="0.0405152" status="run">
+		<properties/>
+		<system-out>Filters: "elements &lt;-&gt; state round trip"
+Randomness seeded to: 1548080173
+===============================================================================
+All tests passed (32 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="failures are reported, not approximated" classname="failures are reported, not approximated" time="0.0409143" status="run">
+		<properties/>
+		<system-out>Filters: "failures are reported\, not approximated"
+Randomness seeded to: 1291852649
+===============================================================================
+All tests passed (5 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="hyperbolic trajectories" classname="hyperbolic trajectories" time="0.0443801" status="run">
+		<properties/>
+		<system-out>Filters: "hyperbolic trajectories"
+Randomness seeded to: 976615836
+===============================================================================
+All tests passed (15 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="known analytic values" classname="known analytic values" time="0.0383432" status="run">
+		<properties/>
+		<system-out>Filters: "known analytic values"
+Randomness seeded to: 3441598780
+===============================================================================
+All tests passed (10 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="propagation invariants" classname="propagation invariants" time="0.0355634" status="run">
+		<properties/>
+		<system-out>Filters: "propagation invariants"
+Randomness seeded to: 4124355042
+===============================================================================
+All tests passed (17 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="universal-variable vs Kepler-element propagation" classname="universal-variable vs Kepler-element propagation" time="0.0457306" status="run">
+		<properties/>
+		<system-out>Filters: "universal-variable vs Kepler-element propagation"
+Randomness seeded to: 82698337
+===============================================================================
+All tests passed (78 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a nearly radial ellipse is closed, with its period" classname="a nearly radial ellipse is closed, with its period" time="0.761599" status="run">
+		<properties/>
+		<system-out>Filters: "a nearly radial ellipse is closed\, with its period"
+Randomness seeded to: 2635235962
+===============================================================================
+All tests passed (8 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a nearly radial hyperbola at a tiny scale is not reported as closed" classname="a nearly radial hyperbola at a tiny scale is not reported as closed" time="0.0360751" status="run">
+		<properties/>
+		<system-out>Filters: "a nearly radial hyperbola at a tiny scale is not reported as closed"
+Randomness seeded to: 1803577116
+===============================================================================
+All tests passed (9 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a nearly radial hyperbola is open, with its energy" classname="a nearly radial hyperbola is open, with its energy" time="0.0370282" status="run">
+		<properties/>
+		<system-out>Filters: "a nearly radial hyperbola is open\, with its energy"
+Randomness seeded to: 3824245557
+===============================================================================
+All tests passed (6 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a nearly radial hyperbola&apos;s state is not a NaN position" classname="a nearly radial hyperbola&apos;s state is not a NaN position" time="0.0421266" status="run">
+		<properties/>
+		<system-out>Filters: "a nearly radial hyperbola's state is not a NaN position"
+Randomness seeded to: 3222340815
+===============================================================================
+All tests passed (3 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a radial trajectory at the threshold is refused, not parameterised" classname="a radial trajectory at the threshold is refused, not parameterised" time="0.0516162" status="run">
+		<properties/>
+		<system-out>Filters: "a radial trajectory at the threshold is refused\, not parameterised"
+Randomness seeded to: 1408495305
+===============================================================================
+All tests passed (4 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a zero time step is the identity on every conic" classname="a zero time step is the identity on every conic" time="0.0637604" status="run">
+		<properties/>
+		<system-out>Filters: "a zero time step is the identity on every conic"
+Randomness seeded to: 1273877984
+===============================================================================
+All tests passed (15 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="an anomaly past a hyperbola&apos;s asymptote is refused" classname="an anomaly past a hyperbola&apos;s asymptote is refused" time="0.0505336" status="run">
+		<properties/>
+		<system-out>Filters: "an anomaly past a hyperbola's asymptote is refused"
+Randomness seeded to: 1358216582
+===============================================================================
+All tests passed (3 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="an eccentricity that rounds to 1 does not halve the radius" classname="an eccentricity that rounds to 1 does not halve the radius" time="0.0615421" status="run">
+		<properties/>
+		<system-out>Filters: "an eccentricity that rounds to 1 does not halve the radius"
+Randomness seeded to: 1011247434
+===============================================================================
+All tests passed (2 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="an eccentricity that rounds to 1 keeps the side of 1 its energy says" classname="an eccentricity that rounds to 1 keeps the side of 1 its energy says" time="0.0543258" status="run">
+		<properties/>
+		<system-out>Filters: "an eccentricity that rounds to 1 keeps the side of 1 its energy says"
+Randomness seeded to: 2214083386
+===============================================================================
+All tests passed (8 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="an underflowing semi-major axis is not a NaN radius" classname="an underflowing semi-major axis is not a NaN radius" time="0.0561257" status="run">
+		<properties/>
+		<system-out>Filters: "an underflowing semi-major axis is not a NaN radius"
+Randomness seeded to: 1411668984
+===============================================================================
+All tests passed (10 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="element propagation agrees with the state propagator on every conic" classname="element propagation agrees with the state propagator on every conic" time="0.406834" status="run">
+		<properties/>
+		<system-out>Filters: "element propagation agrees with the state propagator on every conic"
+Randomness seeded to: 1890654106
+===============================================================================
+All tests passed (18000 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="element propagation holds on both sides of a parabola" classname="element propagation holds on both sides of a parabola" time="0.0401779" status="run">
+		<properties/>
+		<system-out>Filters: "element propagation holds on both sides of a parabola"
+Randomness seeded to: 325392655
+===============================================================================
+All tests passed (16 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="element propagation holds outbound and over a long step" classname="element propagation holds outbound and over a long step" time="0.0379679" status="run">
+		<properties/>
+		<system-out>Filters: "element propagation holds outbound and over a long step"
+Randomness seeded to: 3057687974
+===============================================================================
+All tests passed (8 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="element propagation keeps the semi-major axis it was given" classname="element propagation keeps the semi-major axis it was given" time="0.0393673" status="run">
+		<properties/>
+		<system-out>Filters: "element propagation keeps the semi-major axis it was given"
+Randomness seeded to: 1608484825
+===============================================================================
+All tests passed (8 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="elementsFromState is accurate to the resolution of a double" classname="elementsFromState is accurate to the resolution of a double" time="0.0386456" status="run">
+		<properties/>
+		<system-out>Filters: "elementsFromState is accurate to the resolution of a double"
+Randomness seeded to: 1217353150
+===============================================================================
+All tests passed (56 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="heliocentric circular orbits" classname="heliocentric circular orbits" time="0.0390649" status="run">
+		<properties/>
+		<system-out>Filters: "heliocentric circular orbits"
+Randomness seeded to: 1474508707
+===============================================================================
+All tests passed (36 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="length is exact at every binary scale" classname="length is exact at every binary scale" time="0.0424741" status="run">
+		<properties/>
+		<system-out>Filters: "length is exact at every binary scale"
+Randomness seeded to: 2275336441
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="near-rectilinear orbits, e approaching 1" classname="near-rectilinear orbits, e approaching 1" time="0.0493166" status="run">
+		<properties/>
+		<system-out>Filters: "near-rectilinear orbits\, e approaching 1"
+Randomness seeded to: 3814793715
+===============================================================================
+All tests passed (40 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="non-finite inputs are refused by name" classname="non-finite inputs are refused by name" time="0.0485974" status="run">
+		<properties/>
+		<system-out>Filters: "non-finite inputs are refused by name"
+Randomness seeded to: 4092770707
+===============================================================================
+All tests passed (11 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="orbitInfo&apos;s radius and speed hold near the radial limit" classname="orbitInfo&apos;s radius and speed hold near the radial limit" time="0.0467151" status="run">
+		<properties/>
+		<system-out>Filters: "orbitInfo's radius and speed hold near the radial limit"
+Randomness seeded to: 1725240886
+===============================================================================
+All tests passed (12 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="orbitInfo&apos;s radius and speed stay within the elements&apos; conditioning" classname="orbitInfo&apos;s radius and speed stay within the elements&apos; conditioning" time="1.72601" status="run">
+		<properties/>
+		<system-out>Filters: "orbitInfo's radius and speed stay within the elements' conditioning"
+Randomness seeded to: 2105841921
+===============================================================================
+All tests passed (64000 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="parabolic trajectories" classname="parabolic trajectories" time="0.0380542" status="run">
+		<properties/>
+		<system-out>Filters: "parabolic trajectories"
+Randomness seeded to: 1784849036
+===============================================================================
+All tests passed (41 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="propagation composes: one long step equals two short ones" classname="propagation composes: one long step equals two short ones" time="0.0358512" status="run">
+		<properties/>
+		<system-out>Filters: "propagation composes: one long step equals two short ones"
+Randomness seeded to: 2362162226
+===============================================================================
+All tests passed (25 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="propagation is bit-identical across runs" classname="propagation is bit-identical across runs" time="0.0369359" status="run">
+		<properties/>
+		<system-out>Filters: "propagation is bit-identical across runs"
+Randomness seeded to: 3989517416
+===============================================================================
+All tests passed (12 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="randomised sweep across bodies, shapes and time steps" classname="randomised sweep across bodies, shapes and time steps" time="0.0820116" status="run">
+		<properties/>
+		<system-out>Filters: "randomised sweep across bodies\, shapes and time steps"
+Randomness seeded to: 684050691
+===============================================================================
+All tests passed (3300 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="states that are finite but are not orbits" classname="states that are finite but are not orbits" time="0.0385812" status="run">
+		<properties/>
+		<system-out>Filters: "states that are finite but are not orbits"
+Randomness seeded to: 3058023190
+===============================================================================
+All tests passed (3 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="states with no orbital plane" classname="states with no orbital plane" time="0.0406106" status="run">
+		<properties/>
+		<system-out>Filters: "states with no orbital plane"
+Randomness seeded to: 1161672571
+===============================================================================
+All tests passed (7 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the conversion&apos;s magnitudes are identical on every toolchain" classname="the conversion&apos;s magnitudes are identical on every toolchain" time="0.0398605" status="run">
+		<properties/>
+		<system-out>Filters: "the conversion's magnitudes are identical on every toolchain"
+Randomness seeded to: 749179603
+===============================================================================
+All tests passed (2 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the perifocal velocity keeps e - 1 where ecc cannot" classname="the perifocal velocity keeps e - 1 where ecc cannot" time="0.038507" status="run">
+		<properties/>
+		<system-out>Filters: "the perifocal velocity keeps e - 1 where ecc cannot"
+Randomness seeded to: 1167581153
+===============================================================================
+All tests passed (2 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="two-body motion is invariant under canonical rescaling" classname="two-body motion is invariant under canonical rescaling" time="0.0386629" status="run">
+		<properties/>
+		<system-out>Filters: "two-body motion is invariant under canonical rescaling"
+Randomness seeded to: 1344496374
+===============================================================================
+All tests passed (24 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a body vertex is laid out the way body.vert reads it" classname="a body vertex is laid out the way body.vert reads it" time="0.666487" status="run">
+		<properties/>
+		<system-out>Filters: "a body vertex is laid out the way body.vert reads it"
+Randomness seeded to: 1080484033
+===============================================================================
+All tests passed (5 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a line vertex is laid out the way line.vert reads it" classname="a line vertex is laid out the way line.vert reads it" time="0.0370494" status="run">
+		<properties/>
+		<system-out>Filters: "a line vertex is laid out the way line.vert reads it"
+Randomness seeded to: 192388752
+===============================================================================
+All tests passed (8 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a packed layout numbers its attributes in order and adds up their widths" classname="a packed layout numbers its attributes in order and adds up their widths" time="0.0427817" status="run">
+		<properties/>
+		<system-out>Filters: "a packed layout numbers its attributes in order and adds up their widths"
+Randomness seeded to: 3593357698
+===============================================================================
+All tests passed (10 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a push-constant range the specification allows is accepted" classname="a push-constant range the specification allows is accepted" time="0.0471871" status="run">
+		<properties/>
+		<system-out>Filters: "a push-constant range the specification allows is accepted"
+Randomness seeded to: 14666870
+===============================================================================
+All tests passed (16 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a push-constant range the specification forbids is refused by name" classname="a push-constant range the specification forbids is refused by name" time="0.0463124" status="run">
+		<properties/>
+		<system-out>Filters: "a push-constant range the specification forbids is refused by name"
+Randomness seeded to: 822843885
+===============================================================================
+All tests passed (34 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="an attribute format is as wide as its components" classname="an attribute format is as wide as its components" time="0.04891" status="run">
+		<properties/>
+		<system-out>Filters: "an attribute format is as wide as its components"
+Randomness seeded to: 3718278117
+===============================================================================
+All tests passed (2 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the push-constant ranges cover the blocks the shaders declare" classname="the push-constant ranges cover the blocks the shaders declare" time="0.0478353" status="run">
+		<properties/>
+		<system-out>Filters: "the push-constant ranges cover the blocks the shaders declare"
+Randomness seeded to: 3481102662
+===============================================================================
+All tests passed (6 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the sidecar&apos;s exposure agrees with its definitions" classname="the sidecar&apos;s exposure agrees with its definitions" time="0.757295" status="run">
+		<properties/>
+		<system-out>Filters: "the sidecar's exposure agrees with its definitions"
+Randomness seeded to: 2953088715
+===============================================================================
+All tests passed (34 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the sidecar&apos;s numbers are written with their units" classname="the sidecar&apos;s numbers are written with their units" time="0.0458116" status="run">
+		<properties/>
+		<system-out>Filters: "the sidecar's numbers are written with their units"
+Randomness seeded to: 659633860
+===============================================================================
+All tests passed (51 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the sidecar&apos;s text fields are each under their own key" classname="the sidecar&apos;s text fields are each under their own key" time="0.0439728" status="run">
+		<properties/>
+		<system-out>Filters: "the sidecar's text fields are each under their own key"
+Randomness seeded to: 3632469287
+===============================================================================
+All tests passed (50 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a field of view that cannot be used is refused by name" classname="a field of view that cannot be used is refused by name" time="0.743623" status="run">
+		<properties/>
+		<system-out>Filters: "a field of view that cannot be used is refused by name"
+Randomness seeded to: 1840072914
+===============================================================================
+All tests passed (10 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a near plane that cannot be used is refused by name" classname="a near plane that cannot be used is refused by name" time="0.041389" status="run">
+		<properties/>
+		<system-out>Filters: "a near plane that cannot be used is refused by name"
+Randomness seeded to: 1364653208
+===============================================================================
+All tests passed (8 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a point behind the camera lands back on screen, and is told apart by name" classname="a point behind the camera lands back on screen, and is told apart by name" time="0.0452985" status="run">
+		<properties/>
+		<system-out>Filters: "a point behind the camera lands back on screen\, and is told apart by name"
+Randomness seeded to: 3854982328
+===============================================================================
+All tests passed (8 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="an aspect ratio that cannot be used is refused by name" classname="an aspect ratio that cannot be used is refused by name" time="0.0429595" status="run">
+		<properties/>
+		<system-out>Filters: "an aspect ratio that cannot be used is refused by name"
+Randomness seeded to: 2553184886
+===============================================================================
+All tests passed (8 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="depth decreases strictly with distance" classname="depth decreases strictly with distance" time="0.173604" status="run">
+		<properties/>
+		<system-out>Filters: "depth decreases strictly with distance"
+Randomness seeded to: 3187047252
+===============================================================================
+All tests passed (1503 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="depth is the near plane over the distance, exactly" classname="depth is the near plane over the distance, exactly" time="0.0375434" status="run">
+		<properties/>
+		<system-out>Filters: "depth is the near plane over the distance\, exactly"
+Randomness seeded to: 3142040320
+===============================================================================
+All tests passed (52 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the admissible extremes are accepted, and each error says something different" classname="the admissible extremes are accepted, and each error says something different" time="0.0393243" status="run">
+		<properties/>
+		<system-out>Filters: "the admissible extremes are accepted\, and each error says something different"
+Randomness seeded to: 76137540
+===============================================================================
+All tests passed (5 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the frustum edge lands on the screen edge across the admissible range" classname="the frustum edge lands on the screen edge across the admissible range" time="1.10968" status="run">
+		<properties/>
+		<system-out>Filters: "the frustum edge lands on the screen edge across the admissible range"
+Randomness seeded to: 3259507460
+===============================================================================
+All tests passed (20002 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the frustum edge lands on the screen edge, without asking the tangent function" classname="the frustum edge lands on the screen edge, without asking the tangent function" time="0.033773" status="run">
+		<properties/>
+		<system-out>Filters: "the frustum edge lands on the screen edge\, without asking the tangent function"
+Randomness seeded to: 2506272654
+===============================================================================
+All tests passed (18 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the near plane maps to exactly one, and to the right two numbers" classname="the near plane maps to exactly one, and to the right two numbers" time="0.0336711" status="run">
+		<properties/>
+		<system-out>Filters: "the near plane maps to exactly one\, and to the right two numbers"
+Randomness seeded to: 2763246053
+===============================================================================
+All tests passed (20 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="two points a metre apart at 1000 km are distinct in a 32-bit depth buffer" classname="two points a metre apart at 1000 km are distinct in a 32-bit depth buffer" time="0.0338135" status="run">
+		<properties/>
+		<system-out>Filters: "two points a metre apart at 1000 km are distinct in a 32-bit depth buffer"
+Randomness seeded to: 515173534
+===============================================================================
+All tests passed (17 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a block size of zero is reported by name, not assumed away" classname="a block size of zero is reported by name, not assumed away" time="0.667094" status="run">
+		<properties/>
+		<system-out>Filters: "a block size of zero is reported by name\, not assumed away"
+Randomness seeded to: 4262843734
+===============================================================================
+All tests passed (24 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a byte count works above the range a 32-bit count could hold" classname="a byte count works above the range a 32-bit count could hold" time="0.0327425" status="run">
+		<properties/>
+		<system-out>Filters: "a byte count works above the range a 32-bit count could hold"
+Randomness seeded to: 2164722493
+===============================================================================
+All tests passed (212 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a count added and then taken away again is the number it started with" classname="a count added and then taken away again is the number it started with" time="0.0348939" status="run">
+		<properties/>
+		<system-out>Filters: "a count added and then taken away again is the number it started with"
+Randomness seeded to: 1724626261
+===============================================================================
+All tests passed (522 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a count orders and compares the way the number it holds does" classname="a count orders and compares the way the number it holds does" time="0.0373125" status="run">
+		<properties/>
+		<system-out>Filters: "a count orders and compares the way the number it holds does"
+Randomness seeded to: 836041877
+===============================================================================
+All tests passed (648 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a count subtracts to the difference of the two numbers" classname="a count subtracts to the difference of the two numbers" time="0.0325708" status="run">
+		<properties/>
+		<system-out>Filters: "a count subtracts to the difference of the two numbers"
+Randomness seeded to: 1672610195
+===============================================================================
+All tests passed (171 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a default count is zero, not whatever was on the stack" classname="a default count is zero, not whatever was on the stack" time="0.0343187" status="run">
+		<properties/>
+		<system-out>Filters: "a default count is zero\, not whatever was on the stack"
+Randomness seeded to: 1324092548
+===============================================================================
+All tests passed (2 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a mebibyte budget is the same arithmetic, because the base is the same" classname="a mebibyte budget is the same arithmetic, because the base is the same" time="0.0356889" status="run">
+		<properties/>
+		<system-out>Filters: "a mebibyte budget is the same arithmetic\, because the base is the same"
+Randomness seeded to: 1018582231
+===============================================================================
+All tests passed (522 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a pixel measurement scales and orders like its number" classname="a pixel measurement scales and orders like its number" time="0.0377298" status="run">
+		<properties/>
+		<system-out>Filters: "a pixel measurement scales and orders like its number"
+Randomness seeded to: 1390310390
+===============================================================================
+All tests passed (288 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="aligning up lands on a multiple of the step" classname="aligning up lands on a multiple of the step" time="0.0352723" status="run">
+		<properties/>
+		<system-out>Filters: "aligning up lands on a multiple of the step"
+Randomness seeded to: 3797247047
+===============================================================================
+All tests passed (51 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="aligning up never lands below what was asked for" classname="aligning up never lands below what was asked for" time="0.0337111" status="run">
+		<properties/>
+		<system-out>Filters: "aligning up never lands below what was asked for"
+Randomness seeded to: 348394189
+===============================================================================
+All tests passed (51 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="aligning up never lands more than one step above" classname="aligning up never lands more than one step above" time="0.0414886" status="run">
+		<properties/>
+		<system-out>Filters: "aligning up never lands more than one step above"
+Randomness seeded to: 533155696
+===============================================================================
+All tests passed (51 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="how many fit is the whole number of blocks, with the remainder dropped" classname="how many fit is the whole number of blocks, with the remainder dropped" time="0.0392895" status="run">
+		<properties/>
+		<system-out>Filters: "how many fit is the whole number of blocks\, with the remainder dropped"
+Randomness seeded to: 2020549398
+===============================================================================
+All tests passed (120 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="mebibytes convert to bytes by widening first, not after" classname="mebibytes convert to bytes by widening first, not after" time="0.035349" status="run">
+		<properties/>
+		<system-out>Filters: "mebibytes convert to bytes by widening first\, not after"
+Randomness seeded to: 640908442
+===============================================================================
+All tests passed (8 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="multiplying a count by a scale is the product of the two numbers" classname="multiplying a count by a scale is the product of the two numbers" time="0.0377939" status="run">
+		<properties/>
+		<system-out>Filters: "multiplying a count by a scale is the product of the two numbers"
+Randomness seeded to: 2744776734
+===============================================================================
+All tests passed (162 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="pixels add and subtract like the number they carry" classname="pixels add and subtract like the number they carry" time="0.0454677" status="run">
+		<properties/>
+		<system-out>Filters: "pixels add and subtract like the number they carry"
+Randomness seeded to: 2106213847
+===============================================================================
+All tests passed (288 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="that many blocks fit, and one more would not" classname="that many blocks fit, and one more would not" time="0.0337421" status="run">
+		<properties/>
+		<system-out>Filters: "that many blocks fit\, and one more would not"
+Randomness seeded to: 3754391574
+===============================================================================
+All tests passed (60 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the boundary values that do not wrap are accepted" classname="the boundary values that do not wrap are accepted" time="0.0688608" status="run">
+		<properties/>
+		<system-out>Filters: "the boundary values that do not wrap are accepted"
+Randomness seeded to: 560367011
+===============================================================================
+All tests passed (8 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the compound forms are the plain ones, applied in place" classname="the compound forms are the plain ones, applied in place" time="0.0440406" status="run">
+		<properties/>
+		<system-out>Filters: "the compound forms are the plain ones\, applied in place"
+Randomness seeded to: 3998182600
+===============================================================================
+All tests passed (522 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="each side of the knee is on its own branch, and the steps are the standard&apos;s" classname="each side of the knee is on its own branch, and the steps are the standard&apos;s" time="0.622785" status="run">
+		<properties/>
+		<system-out>Filters: "each side of the knee is on its own branch\, and the steps are the standard's"
+Randomness seeded to: 2976379920
+===============================================================================
+All tests passed (5 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="encode then decode returns the input, except in the window at the knee" classname="encode then decode returns the input, except in the window at the knee" time="0.163998" status="run">
+		<properties/>
+		<system-out>Filters: "encode then decode returns the input\, except in the window at the knee"
+Randomness seeded to: 2071970779
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the decode matches IEC 61966-2-1 at every reference point" classname="the decode matches IEC 61966-2-1 at every reference point" time="0.0328455" status="run">
+		<properties/>
+		<system-out>Filters: "the decode matches IEC 61966-2-1 at every reference point"
+Randomness seeded to: 191708248
+===============================================================================
+All tests passed (14 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the encode matches IEC 61966-2-1 at every reference point" classname="the encode matches IEC 61966-2-1 at every reference point" time="0.0326131" status="run">
+		<properties/>
+		<system-out>Filters: "the encode matches IEC 61966-2-1 at every reference point"
+Randomness seeded to: 651870641
+===============================================================================
+All tests passed (16 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the window at the knee is where the standard puts it, and no wider" classname="the window at the knee is where the standard puts it, and no wider" time="0.163205" status="run">
+		<properties/>
+		<system-out>Filters: "the window at the knee is where the standard puts it\, and no wider"
+Randomness seeded to: 3967374419
+===============================================================================
+All tests passed (5 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="values outside [0, 1] are clamped, as the display target clamps them" classname="values outside [0, 1] are clamped, as the display target clamps them" time="0.0459891" status="run">
+		<properties/>
+		<system-out>Filters: "values outside \[0\, 1\] are clamped\, as the display target clamps them"
+Randomness seeded to: 722932603
+===============================================================================
+All tests passed (6 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="zero is exact, and one is within a unit in the last place" classname="zero is exact, and one is within a unit in the last place" time="0.0424538" status="run">
+		<properties/>
+		<system-out>Filters: "zero is exact\, and one is within a unit in the last place"
+Randomness seeded to: 3415654985
+===============================================================================
+All tests passed (4 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a date in mid-2100 is outside the span" classname="a date in mid-2100 is outside the span" time="0.852516" status="run">
+		<properties/>
+		<system-out>Filters: "a date in mid-2100 is outside the span"
+Randomness seeded to: 1186569539
+===============================================================================
+All tests passed (3 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a date outside ERFA&apos;s span is reported by name" classname="a date outside ERFA&apos;s span is reported by name" time="0.0407487" status="run">
+		<properties/>
+		<system-out>Filters: "a date outside ERFA's span is reported by name"
+Randomness seeded to: 3037633721
+===============================================================================
+All tests passed (20 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="irradiance follows the inverse-square law" classname="irradiance follows the inverse-square law" time="0.0401019" status="run">
+		<properties/>
+		<system-out>Filters: "irradiance follows the inverse-square law"
+Randomness seeded to: 3780108088
+===============================================================================
+All tests passed (4 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the March equinox puts the Sun on the equator of date" classname="the March equinox puts the Sun on the equator of date" time="0.0643635" status="run">
+		<properties/>
+		<system-out>Filters: "the March equinox puts the Sun on the equator of date"
+Randomness seeded to: 3931106718
+===============================================================================
+All tests passed (15 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the Sun is where Horizons says it is" classname="the Sun is where Horizons says it is" time="0.0480778" status="run">
+		<properties/>
+		<system-out>Filters: "the Sun is where Horizons says it is"
+Randomness seeded to: 1815274633
+===============================================================================
+All tests passed (123 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the Sun&apos;s motion is continuous across fifty years" classname="the Sun&apos;s motion is continuous across fifty years" time="1.40973" status="run">
+		<properties/>
+		<system-out>Filters: "the Sun's motion is continuous across fifty years"
+Randomness seeded to: 2392380231
+===============================================================================
+All tests passed (54789 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the apsides are where the published figures put them" classname="the apsides are where the published figures put them" time="0.599488" status="run">
+		<properties/>
+		<system-out>Filters: "the apsides are where the published figures put them"
+Randomness seeded to: 3575615988
+===============================================================================
+All tests passed (28519 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the distance is the length of the position" classname="the distance is the length of the position" time="0.0405331" status="run">
+		<properties/>
+		<system-out>Filters: "the distance is the length of the position"
+Randomness seeded to: 3857099782
+===============================================================================
+All tests passed (16 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="2017-01-01T00:00:00 UTC is 00:00:37 TAI and 00:01:09.184 TT" classname="2017-01-01T00:00:00 UTC is 00:00:37 TAI and 00:01:09.184 TT" time="0.774366" status="run">
+		<properties/>
+		<system-out>Filters: "2017-01-01T00:00:00 UTC is 00:00:37 TAI and 00:01:09.184 TT"
+Randomness seeded to: 2822640022
+===============================================================================
+All tests passed (19 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="DeltaT is refused by name beyond 10^6 s and when not finite" classname="DeltaT is refused by name beyond 10^6 s and when not finite" time="0.0394438" status="run">
+		<properties/>
+		<system-out>Filters: "DeltaT is refused by name beyond 10^6 s and when not finite"
+Randomness seeded to: 3973642197
+===============================================================================
+All tests passed (42 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="DeltaUT1 is refused by name beyond 0.9 s and when not finite" classname="DeltaUT1 is refused by name beyond 0.9 s and when not finite" time="0.0350678" status="run">
+		<properties/>
+		<system-out>Filters: "DeltaUT1 is refused by name beyond 0.9 s and when not finite"
+Randomness seeded to: 2339064340
+===============================================================================
+All tests passed (27 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="TT - TAI is exactly 32.184 s at every epoch" classname="TT - TAI is exactly 32.184 s at every epoch" time="0.125023" status="run">
+		<properties/>
+		<system-out>Filters: "TT - TAI is exactly 32.184 s at every epoch"
+Randomness seeded to: 3674112980
+===============================================================================
+All tests passed (3000 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="TT to UT1 and back is exact both ways with DeltaT anywhere in its range" classname="TT to UT1 and back is exact both ways with DeltaT anywhere in its range" time="1.9695" status="run">
+		<properties/>
+		<system-out>Filters: "TT to UT1 and back is exact both ways with DeltaT anywhere in its range"
+Randomness seeded to: 2120803547
+===============================================================================
+All tests passed (70000 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="UT1 = TT - DeltaT to the picosecond" classname="UT1 = TT - DeltaT to the picosecond" time="0.0415831" status="run">
+		<properties/>
+		<system-out>Filters: "UT1 = TT - DeltaT to the picosecond"
+Randomness seeded to: 2425979324
+===============================================================================
+All tests passed (30 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="UT1 = UTC + DeltaUT1, to the picosecond" classname="UT1 = UTC + DeltaUT1, to the picosecond" time="0.0384944" status="run">
+		<properties/>
+		<system-out>Filters: "UT1 = UTC + DeltaUT1\, to the picosecond"
+Randomness seeded to: 3376666956
+===============================================================================
+All tests passed (26 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="UT1 across a leap second runs on, and the way back lands a second later" classname="UT1 across a leap second runs on, and the way back lands a second later" time="0.0390299" status="run">
+		<properties/>
+		<system-out>Filters: "UT1 across a leap second runs on\, and the way back lands a second later"
+Randomness seeded to: 4243145931
+===============================================================================
+All tests passed (19 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="UT1 from the table&apos;s DeltaT is the UTC road&apos;s UT1 to the picosecond" classname="UT1 from the table&apos;s DeltaT is the UTC road&apos;s UT1 to the picosecond" time="1.88282" status="run">
+		<properties/>
+		<system-out>Filters: "UT1 from the table's DeltaT is the UTC road's UT1 to the picosecond"
+Randomness seeded to: 3906736348
+===============================================================================
+All tests passed (74725 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="UT1 in the second a negative leap second removes has no UTC" classname="UT1 in the second a negative leap second removes has no UTC" time="0.0429928" status="run">
+		<properties/>
+		<system-out>Filters: "UT1 in the second a negative leap second removes has no UTC"
+Randomness seeded to: 1153467464
+===============================================================================
+All tests passed (29 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="UT1 to UTC and back is exact over a seeded sweep" classname="UT1 to UTC and back is exact over a seeded sweep" time="1.47277" status="run">
+		<properties/>
+		<system-out>Filters: "UT1 to UTC and back is exact over a seeded sweep"
+Randomness seeded to: 1567657251
+===============================================================================
+All tests passed (50000 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="UT1 to UTC past either end of the calendar is YearOutOfRange" classname="UT1 to UTC past either end of the calendar is YearOutOfRange" time="0.0498939" status="run">
+		<properties/>
+		<system-out>Filters: "UT1 to UTC past either end of the calendar is YearOutOfRange"
+Randomness seeded to: 884796086
+===============================================================================
+All tests passed (14 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="UTC and TAI round-trip exactly over a seeded sweep" classname="UTC and TAI round-trip exactly over a seeded sweep" time="1.56221" status="run">
+		<properties/>
+		<system-out>Filters: "UTC and TAI round-trip exactly over a seeded sweep"
+Randomness seeded to: 200198391
+===============================================================================
+All tests passed (100891 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a Julian date becomes the nearest picosecond" classname="a Julian date becomes the nearest picosecond" time="0.0411406" status="run">
+		<properties/>
+		<system-out>Filters: "a Julian date becomes the nearest picosecond"
+Randomness seeded to: 849159326
+===============================================================================
+All tests passed (60 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a Julian date is refused by name" classname="a Julian date is refused by name" time="0.0424042" status="run">
+		<properties/>
+		<system-out>Filters: "a Julian date is refused by name"
+Randomness seeded to: 1604178106
+===============================================================================
+All tests passed (8 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a Julian date may be split any way" classname="a Julian date may be split any way" time="0.0395408" status="run">
+		<properties/>
+		<system-out>Filters: "a Julian date may be split any way"
+Randomness seeded to: 4076248224
+===============================================================================
+All tests passed (14 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a TAI instant outside the calendar is reported rather than asserted" classname="a TAI instant outside the calendar is reported rather than asserted" time="0.0408805" status="run">
+		<properties/>
+		<system-out>Filters: "a TAI instant outside the calendar is reported rather than asserted"
+Randomness seeded to: 3286955628
+===============================================================================
+All tests passed (25 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a UTC Julian date is a fraction of its own day" classname="a UTC Julian date is a fraction of its own day" time="0.0399742" status="run">
+		<properties/>
+		<system-out>Filters: "a UTC Julian date is a fraction of its own day"
+Randomness seeded to: 3623099513
+===============================================================================
+All tests passed (72 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a date exists exactly when the standard library says it does" classname="a date exists exactly when the standard library says it does" time="0.352108" status="run">
+		<properties/>
+		<system-out>Filters: "a date exists exactly when the standard library says it does"
+Randomness seeded to: 124813927
+===============================================================================
+All tests passed (19647 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a held DeltaT turns UT1 uniformly through a leap second where the UTC road steps back" classname="a held DeltaT turns UT1 uniformly through a leap second where the UTC road steps back" time="0.0490292" status="run">
+		<properties/>
+		<system-out>Filters: "a held DeltaT turns UT1 uniformly through a leap second where the UTC road steps back"
+Randomness seeded to: 1174970330
+===============================================================================
+All tests passed (425 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a million additions of 1 us drift by nothing" classname="a million additions of 1 us drift by nothing" time="0.0533042" status="run">
+		<properties/>
+		<system-out>Filters: "a million additions of 1 us drift by nothing"
+Randomness seeded to: 230257989
+===============================================================================
+All tests passed (5 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a synthetic negative leap second shortens its day" classname="a synthetic negative leap second shortens its day" time="0.0505282" status="run">
+		<properties/>
+		<system-out>Filters: "a synthetic negative leap second shortens its day"
+Randomness seeded to: 2488831678
+===============================================================================
+All tests passed (15 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="an instant becomes the nearest Julian date" classname="an instant becomes the nearest Julian date" time="0.0492033" status="run">
+		<properties/>
+		<system-out>Filters: "an instant becomes the nearest Julian date"
+Randomness seeded to: 1090868307
+===============================================================================
+All tests passed (108 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="an instant past the calendar&apos;s range is reported, not converted" classname="an instant past the calendar&apos;s range is reported, not converted" time="0.0551257" status="run">
+		<properties/>
+		<system-out>Filters: "an instant past the calendar's range is reported\, not converted"
+Randomness seeded to: 385940004
+===============================================================================
+All tests passed (5 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="an instant survives its Julian date to within 5 ps" classname="an instant survives its Julian date to within 5 ps" time="1.07154" status="run">
+		<properties/>
+		<system-out>Filters: "an instant survives its Julian date to within 5 ps"
+Randomness seeded to: 3418676041
+===============================================================================
+All tests passed (40000 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="arithmetic moves by the nearest picosecond and stays normalised" classname="arithmetic moves by the nearest picosecond and stays normalised" time="0.0448469" status="run">
+		<properties/>
+		<system-out>Filters: "arithmetic moves by the nearest picosecond and stays normalised"
+Randomness seeded to: 3240063317
+===============================================================================
+All tests passed (224 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="both scales increase across every boundary" classname="both scales increase across every boundary" time="0.0433384" status="run">
+		<properties/>
+		<system-out>Filters: "both scales increase across every boundary"
+Randomness seeded to: 3980214972
+===============================================================================
+All tests passed (918 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="calendar input is refused by name" classname="calendar input is refused by name" time="0.0418613" status="run">
+		<properties/>
+		<system-out>Filters: "calendar input is refused by name"
+Randomness seeded to: 913591524
+===============================================================================
+All tests passed (23 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="calendar round trip over a seeded sweep of 1900-2100" classname="calendar round trip over a seeded sweep of 1900-2100" time="1.19279" status="run">
+		<properties/>
+		<system-out>Filters: "calendar round trip over a seeded sweep of 1900-2100"
+Randomness seeded to: 2658453847
+===============================================================================
+All tests passed (80000 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="enormous durations keep the instant normalised" classname="enormous durations keep the instant normalised" time="0.0400584" status="run">
+		<properties/>
+		<system-out>Filters: "enormous durations keep the instant normalised"
+Randomness seeded to: 1401091755
+===============================================================================
+All tests passed (17 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="every step in the table, one second either side" classname="every step in the table, one second either side" time="0.0405271" status="run">
+		<properties/>
+		<system-out>Filters: "every step in the table\, one second either side"
+Randomness seeded to: 1847740641
+===============================================================================
+All tests passed (675 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="every time error describes itself" classname="every time error describes itself" time="0.043182" status="run">
+		<properties/>
+		<system-out>Filters: "every time error describes itself"
+Randomness seeded to: 2838686246
+===============================================================================
+All tests passed (55 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="ordering agrees with the sign of the difference" classname="ordering agrees with the sign of the difference" time="1.30476" status="run">
+		<properties/>
+		<system-out>Filters: "ordering agrees with the sign of the difference"
+Randomness seeded to: 3489092012
+===============================================================================
+All tests passed (55000 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="t + 1 ns - t recovers 1 ns, at the end of a day and across it" classname="t + 1 ns - t recovers 1 ns, at the end of a day and across it" time="0.194799" status="run">
+		<properties/>
+		<system-out>Filters: "t + 1 ns - t recovers 1 ns\, at the end of a day and across it"
+Randomness seeded to: 2884896866
+===============================================================================
+All tests passed (5025 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the calendar agrees with the standard library&apos;s on every day of 1900-2100" classname="the calendar agrees with the standard library&apos;s on every day of 1900-2100" time="1.86846" status="run">
+		<properties/>
+		<system-out>Filters: "the calendar agrees with the standard library's on every day of 1900-2100"
+Randomness seeded to: 3633638338
+===============================================================================
+All tests passed (220243 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the century rule, 29 February and every month end" classname="the century rule, 29 February and every month end" time="0.0392536" status="run">
+		<properties/>
+		<system-out>Filters: "the century rule\, 29 February and every month end"
+Randomness seeded to: 498010239
+===============================================================================
+All tests passed (313 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the epoch constants are the published instants" classname="the epoch constants are the published instants" time="0.0381577" status="run">
+		<properties/>
+		<system-out>Filters: "the epoch constants are the published instants"
+Randomness seeded to: 8295573
+===============================================================================
+All tests passed (9 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the first and last supported days" classname="the first and last supported days" time="0.0404348" status="run">
+		<properties/>
+		<system-out>Filters: "the first and last supported days"
+Randomness seeded to: 978520778
+===============================================================================
+All tests passed (4 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the held DeltaT is the table&apos;s last step with DeltaUT1 unmodelled" classname="the held DeltaT is the table&apos;s last step with DeltaUT1 unmodelled" time="0.0390417" status="run">
+		<properties/>
+		<system-out>Filters: "the held DeltaT is the table's last step with DeltaUT1 unmodelled"
+Randomness seeded to: 3819287990
+===============================================================================
+All tests passed (2 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the leap second at 2016-12-31T23:59:60 round-trips" classname="the leap second at 2016-12-31T23:59:60 round-trips" time="0.0401302" status="run">
+		<properties/>
+		<system-out>Filters: "the leap second at 2016-12-31T23:59:60 round-trips"
+Randomness seeded to: 3696344
+===============================================================================
+All tests passed (29 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the leap-second table agrees with the standard library&apos;s" classname="the leap-second table agrees with the standard library&apos;s" time="0.0606239" status="run">
+		<properties/>
+		<system-out>Filters: "the leap-second table agrees with the standard library's"
+Randomness seeded to: 1881717189
+===============================================================================
+All tests passed (56 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the leap-second table is the published one" classname="the leap-second table is the published one" time="0.0397491" status="run">
+		<properties/>
+		<system-out>Filters: "the leap-second table is the published one"
+Randomness seeded to: 2080207009
+===============================================================================
+All tests passed (60 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the leap-second table refuses by name" classname="the leap-second table refuses by name" time="0.0455002" status="run">
+		<properties/>
+		<system-out>Filters: "the leap-second table refuses by name"
+Randomness seeded to: 2741722514
+===============================================================================
+All tests passed (33 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the published epochs, both ways" classname="the published epochs, both ways" time="0.0402003" status="run">
+		<properties/>
+		<system-out>Filters: "the published epochs\, both ways"
+Randomness seeded to: 2747273506
+===============================================================================
+All tests passed (30 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the table&apos;s DeltaT is 32.184 s + DeltaAT - DeltaUT1 either side of every step" classname="the table&apos;s DeltaT is 32.184 s + DeltaAT - DeltaUT1 either side of every step" time="0.0601013" status="run">
+		<properties/>
+		<system-out>Filters: "the table's DeltaT is 32.184 s + DeltaAT - DeltaUT1 either side of every step"
+Randomness seeded to: 1459489602
+===============================================================================
+All tests passed (987 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the table&apos;s DeltaT is refused by name where the table has none" classname="the table&apos;s DeltaT is refused by name where the table has none" time="0.0410454" status="run">
+		<properties/>
+		<system-out>Filters: "the table's DeltaT is refused by name where the table has none"
+Randomness seeded to: 1875392650
+===============================================================================
+All tests passed (24 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="with DeltaUT1 unmodelled, UT1 is UTC&apos;s day and time of day" classname="with DeltaUT1 unmodelled, UT1 is UTC&apos;s day and time of day" time="1.46718" status="run">
+		<properties/>
+		<system-out>Filters: "with DeltaUT1 unmodelled\, UT1 is UTC's day and time of day"
+Randomness seeded to: 4117693864
+===============================================================================
+All tests passed (50000 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="AgX matches the reference at every point, to the rounding of doubles" classname="AgX matches the reference at every point, to the rounding of doubles" time="0.672114" status="run">
+		<properties/>
+		<system-out>Filters: "AgX matches the reference at every point\, to the rounding of doubles"
+Randomness seeded to: 604016306
+===============================================================================
+All tests passed (64 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a large input saturates, and never wraps or becomes NaN" classname="a large input saturates, and never wraps or becomes NaN" time="0.0322251" status="run">
+		<properties/>
+		<system-out>Filters: "a large input saturates\, and never wraps or becomes NaN"
+Randomness seeded to: 1612753826
+===============================================================================
+All tests passed (31 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="black is exactly black, and so is everything below the curve&apos;s zero" classname="black is exactly black, and so is everything below the curve&apos;s zero" time="0.0328657" status="run">
+		<properties/>
+		<system-out>Filters: "black is exactly black\, and so is everything below the curve's zero"
+Randomness seeded to: 3670730691
+===============================================================================
+All tests passed (5 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="grey rises strictly inside AgX&apos;s range, and never falls across twelve decades" classname="grey rises strictly inside AgX&apos;s range, and never falls across twelve decades" time="0.035596" status="run">
+		<properties/>
+		<system-out>Filters: "grey rises strictly inside AgX's range\, and never falls across twelve decades"
+Randomness seeded to: 790719190
+===============================================================================
+All tests passed (3 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="mid-grey reaches the display as code 128" classname="mid-grey reaches the display as code 128" time="0.0303541" status="run">
+		<properties/>
+		<system-out>Filters: "mid-grey reaches the display as code 128"
+Randomness seeded to: 3615333542
+===============================================================================
+All tests passed (3 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a default eccentricity is a circle" classname="a default eccentricity is a circle" time="0.67362" status="run">
+		<properties/>
+		<system-out>Filters: "a default eccentricity is a circle"
+Randomness seeded to: 3037699356
+===============================================================================
+All tests passed (1 assertion in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a gravitational parameter accepts any positive value" classname="a gravitational parameter accepts any positive value" time="0.0280721" status="run">
+		<properties/>
+		<system-out>Filters: "a gravitational parameter accepts any positive value"
+Randomness seeded to: 1480559583
+===============================================================================
+All tests passed (4 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a gravitational parameter keeps its place in the dimension system" classname="a gravitational parameter keeps its place in the dimension system" time="0.0304353" status="run">
+		<properties/>
+		<system-out>Filters: "a gravitational parameter keeps its place in the dimension system"
+Randomness seeded to: 737720750
+===============================================================================
+All tests passed (2 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a negative eccentricity is refused by its own name" classname="a negative eccentricity is refused by its own name" time="0.0320716" status="run">
+		<properties/>
+		<system-out>Filters: "a negative eccentricity is refused by its own name"
+Randomness seeded to: 2961984104
+===============================================================================
+All tests passed (10 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a non-finite eccentricity is refused by a different name" classname="a non-finite eccentricity is refused by a different name" time="0.0310867" status="run">
+		<properties/>
+		<system-out>Filters: "a non-finite eccentricity is refused by a different name"
+Randomness seeded to: 2363181484
+===============================================================================
+All tests passed (6 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a non-finite gravitational parameter is refused by a different name" classname="a non-finite gravitational parameter is refused by a different name" time="0.0299517" status="run">
+		<properties/>
+		<system-out>Filters: "a non-finite gravitational parameter is refused by a different name"
+Randomness seeded to: 2984750374
+===============================================================================
+All tests passed (6 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a non-positive gravitational parameter is refused by name" classname="a non-positive gravitational parameter is refused by name" time="0.0338519" status="run">
+		<properties/>
+		<system-out>Filters: "a non-positive gravitational parameter is refused by name"
+Randomness seeded to: 3882104235
+===============================================================================
+All tests passed (10 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="an accepted eccentricity survives the factory bit for bit" classname="an accepted eccentricity survives the factory bit for bit" time="0.0492609" status="run">
+		<properties/>
+		<system-out>Filters: "an accepted eccentricity survives the factory bit for bit"
+Randomness seeded to: 2396094512
+===============================================================================
+All tests passed (8 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="an accepted gravitational parameter survives the factory bit for bit" classname="an accepted gravitational parameter survives the factory bit for bit" time="0.0404505" status="run">
+		<properties/>
+		<system-out>Filters: "an accepted gravitational parameter survives the factory bit for bit"
+Randomness seeded to: 3731464696
+===============================================================================
+All tests passed (4 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="an eccentricity accepts every conic, with no upper bound" classname="an eccentricity accepts every conic, with no upper bound" time="0.0341611" status="run">
+		<properties/>
+		<system-out>Filters: "an eccentricity accepts every conic\, with no upper bound"
+Randomness seeded to: 1526239523
+===============================================================================
+All tests passed (8 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="and no two unit errors describe the same thing" classname="and no two unit errors describe the same thing" time="0.0325272" status="run">
+		<properties/>
+		<system-out>Filters: "and no two unit errors describe the same thing"
+Randomness seeded to: 1842973447
+===============================================================================
+All tests passed (3 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="every unit error describes itself" classname="every unit error describes itself" time="0.033225" status="run">
+		<properties/>
+		<system-out>Filters: "every unit error describes itself"
+Randomness seeded to: 788404254
+===============================================================================
+All tests passed (3 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="negative zero is an eccentricity, because it is zero" classname="negative zero is an eccentricity, because it is zero" time="0.0381991" status="run">
+		<properties/>
+		<system-out>Filters: "negative zero is an eccentricity\, because it is zero"
+Randomness seeded to: 886158711
+===============================================================================
+All tests passed (2 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a frame change is declared once, and the arithmetic is untouched by it" classname="a frame change is declared once, and the arithmetic is untouched by it" time="10.3033" status="run">
+		<properties/>
+		<system-out>Filters: "a frame change is declared once\, and the arithmetic is untouched by it"
+Randomness seeded to: 1146329974
+===============================================================================
+All tests passed (16000 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a point survives the round trip through a transform and its inverse" classname="a point survives the round trip through a transform and its inverse" time="0.0387747" status="run">
+		<properties/>
+		<system-out>Filters: "a point survives the round trip through a transform and its inverse"
+Randomness seeded to: 3031230791
+===============================================================================
+All tests passed (4 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a rotation moves a point and a direction the same way" classname="a rotation moves a point and a direction the same way" time="0.0363572" status="run">
+		<properties/>
+		<system-out>Filters: "a rotation moves a point and a direction the same way"
+Randomness seeded to: 201175176
+===============================================================================
+All tests passed (2000 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="a translation moves a point and leaves a direction alone" classname="a translation moves a point and leaves a direction alone" time="0.028052" status="run">
+		<properties/>
+		<system-out>Filters: "a translation moves a point and leaves a direction alone"
+Randomness seeded to: 3968124466
+===============================================================================
+All tests passed (4 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="isAffine says which matrices transformPoint may be handed" classname="isAffine says which matrices transformPoint may be handed" time="0.030754" status="run">
+		<properties/>
+		<system-out>Filters: "isAffine says which matrices transformPoint may be handed"
+Randomness seeded to: 883321433
+===============================================================================
+All tests passed (4 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="matrix multiplication is associative to the conditioning of the product" classname="matrix multiplication is associative to the conditioning of the product" time="0.899525" status="run">
+		<properties/>
+		<system-out>Filters: "matrix multiplication is associative to the conditioning of the product"
+Randomness seeded to: 3237823744
+===============================================================================
+All tests passed (60002 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the identity is exactly the multiplicative identity" classname="the identity is exactly the multiplicative identity" time="0.0449158" status="run">
+		<properties/>
+		<system-out>Filters: "the identity is exactly the multiplicative identity"
+Randomness seeded to: 846063333
+===============================================================================
+All tests passed (3000 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the rigid inverse undoes the transform, at every scale" classname="the rigid inverse undoes the transform, at every scale" time="0.034703" status="run">
+		<properties/>
+		<system-out>Filters: "the rigid inverse undoes the transform\, at every scale"
+Randomness seeded to: 2863528536
+===============================================================================
+All tests passed (12 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="transpose(AB) is transpose(B) transpose(A), bit for bit" classname="transpose(AB) is transpose(B) transpose(A), bit for bit" time="0.0396104" status="run">
+		<properties/>
+		<system-out>Filters: "transpose(AB) is transpose(B) transpose(A)\, bit for bit"
+Randomness seeded to: 3546482459
+===============================================================================
+All tests passed (1000 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="transposing twice returns the original, bit for bit" classname="transposing twice returns the original, bit for bit" time="0.0404097" status="run">
+		<properties/>
+		<system-out>Filters: "transposing twice returns the original\, bit for bit"
+Randomness seeded to: 3407194030
+===============================================================================
+All tests passed (2000 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="below the bands nothing is drawn, and every pixel is opaque" classname="below the bands nothing is drawn, and every pixel is opaque" time="10.9297" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>Filters: "below the bands nothing is drawn\, and every pixel is opaque"
+Randomness seeded to: 1765165056
+===============================================================================
+All tests passed (1382403 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="every band carries the ramp&apos;s radiance, to within one binary16 step" classname="every band carries the ramp&apos;s radiance, to within one binary16 step" time="0.183548" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>Filters: "every band carries the ramp's radiance\, to within one binary16 step"
+Randomness seeded to: 2540656758
+===============================================================================
+All tests passed (255 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="the grey band&apos;s three channels are the same number" classname="the grey band&apos;s three channels are the same number" time="1.73303" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>Filters: "the grey band's three channels are the same number"
+Randomness seeded to: 960747371
+===============================================================================
+All tests passed (384003 assertions in 1 test case)
+
+</system-out>
+	</testcase>
+	<testcase name="count_wraparound_subtraction_aborts" classname="count_wraparound_subtraction_aborts" time="0.866304" status="run">
+		<properties/>
+		<system-out>-- the guard fired: the probe did not return (3)
+</system-out>
+	</testcase>
+	<testcase name="count_wraparound_addition_aborts" classname="count_wraparound_addition_aborts" time="0.949245" status="run">
+		<properties/>
+		<system-out>-- the guard fired: the probe did not return (3)
+</system-out>
+	</testcase>
+	<testcase name="count_wraparound_multiplication_aborts" classname="count_wraparound_multiplication_aborts" time="0.876315" status="run">
+		<properties/>
+		<system-out>-- the guard fired: the probe did not return (3)
+</system-out>
+	</testcase>
+	<testcase name="horizons_fixture_checksums" classname="horizons_fixture_checksums" time="0.132012" status="run">
+		<properties>
+			<property name="cmake_labels" value="fixtures"/>
+		</properties>
+		<system-out>-- All 1 fixture(s) match their committed SHA-256 sums.
+</system-out>
+	</testcase>
+	<testcase name="t_erfa_c" classname="t_erfa_c" time="0.842372" status="run">
+		<properties/>
+		<system-out>t_erfa_c validation successful
+</system-out>
+	</testcase>
+	<testcase name="t_erfa_c_extra" classname="t_erfa_c_extra" time="0.57448" status="run">
+		<properties/>
+		<system-out>t_versions passed
+t_leap_seconds set passed
+t_leap_seconds reset passed
+t_erfa_c_extra validation successful
+</system-out>
+	</testcase>
+	<testcase name="orbsim_smoke" classname="orbsim_smoke" time="3.40384" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>[validation] Removing layer VK_LAYER_EOS_Overlay (C:\Program Files (x86)\Epic Games\Launcher\Portal\Extras\Overlay\EOSOverlayVkLayer-Win64.json) because it is a duplicate of VK_LAYER_EOS_Overlay (C:\Program Files (x86)\Epic Games\Launcher\Portal\Extras\Overlay\EOSOverlayVkLayer-Win32.json)
+GPU: NVIDIA RTX A2000 8GB Laptop GPU
+Swapchain: 1600x900
+4210 frames in 2000 ms (2105.0 fps)
+</system-out>
+	</testcase>
+	<testcase name="probe_clear" classname="probe_clear" time="3.01579" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>-- probe clear: all five files written to C:/Users/U439644/Projects/untitled/build/timing/asan/probes, exit code 0
+</system-out>
+	</testcase>
+	<testcase name="probe_clear_determinism" classname="probe_clear_determinism" time="1.57803" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out>-- probe clear: all five files written to C:/Users/U439644/Projects/untitled/build/timing/asan/probes-rerun, exit code 0
+-- probe clear: the HDR dump is byte-identical to C:/Users/U439644/Projects/untitled/build/timing/asan/probes/clear.hdr.f32
+</system-out>
+	</testcase>
+	<testcase name="shader_missing_is_reported" classname="shader_missing_is_reported" time="1.59961" status="run">
+		<properties>
+			<property name="cmake_labels" value="gpu"/>
+		</properties>
+		<system-out></system-out>
+	</testcase>
+	<testcase name="tonemap_constants" classname="tonemap_constants" time="0.149083" status="run">
+		<properties>
+			<property name="cmake_labels" value="fixtures"/>
+		</properties>
+		<system-out>tonemap-constants: 6 AgX constants agree between the shader and the CPU
+</system-out>
+	</testcase>
+	<testcase name="tonemap_constants_self_test" classname="tonemap_constants_self_test" time="0.140454" status="run">
+		<properties>
+			<property name="cmake_labels" value="fixtures"/>
+		</properties>
+		<system-out>self-test: a transposed inset is reported
+self-test: a changed coefficient is reported
+self-test: a changed range is reported
+self-test: a changed exponent is reported
+self-test: a missing constant is reported
+</system-out>
+	</testcase>
+	<testcase name="horizons_fixture_converter" classname="horizons_fixture_converter" time="0.123278" status="run">
+		<properties>
+			<property name="cmake_labels" value="fixtures"/>
+		</properties>
+		<system-out>horizons-fixture self-test: 25 checks passed
+</system-out>
+	</testcase>
+</testsuite>

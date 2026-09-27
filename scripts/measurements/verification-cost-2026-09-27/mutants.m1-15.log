@@ -1,0 +1,57 @@
+1790505611.194	CAUGHT (test)            EV100 takes N rather than N squared
+1790505611.195	                         test_exposure: halving the shutter time raises EV by one stop, and doubling N by two; C:/Users/U439644/Projects/untitled/tests/test_exposure.cpp(179); f/16 at 1
+1790505622.689	CAUGHT (test)            the ISO speed enters EV100 upside down
+1790505622.690	                         test_exposure: EV100 matches the reference at every point, including a fractional stop; C:/Users/U439644/Projects/untitled/tests/test_exposure.cpp(170); halving
+1790505630.132	CAUGHT (static_assert)   the saturation constant is 100 rather than ISO 12232's 78
+1790505630.142	                         C:/Users/U439644/Projects/untitled/src\view/Exposure.hpp:287:15: error: static assertion failed due to requirement 'nearlyEqual(kSaturationSpeedConstant / (kRef
+1790505638.283	CAUGHT (static_assert)   the lens attenuation is 0.6 rather than 0.65
+1790505638.283	                         C:/Users/U439644/Projects/untitled/src\view/Exposure.hpp:287:15: error: static assertion failed due to requirement 'nearlyEqual(kSaturationSpeedConstant / (kRef
+1790505649.838	CAUGHT (test)            the exposure factor is the saturating luminance, not its reciprocal
+1790505649.838	                         test_exposure: a sunlit patch of albedo 0.3 exposes at sunny 16 as the reference says; C:/Users/U439644/Projects/untitled/tests/test_exposure.cpp(243); the expo
+1790505660.891	CAUGHT (test)            2^EV100 is computed as e^EV100
+1790505660.891	                         test_exposure: a sunlit patch of albedo 0.3 exposes at sunny 16 as the reference says; C:/Users/U439644/Projects/untitled/tests/test_exposure.cpp(243); the expo
+1790505669.355	CAUGHT (static_assert)   the efficacy is Radiance's 179 lm/W rather than sunlight's
+1790505669.355	                         C:/Users/U439644/Projects/untitled/src\view/Exposure.hpp:300:15: error: static assertion failed due to requirement 'nearlyEqual((orb::Scalar<mp_units::one{{{}, 
+1790505679.432	CAUGHT (static_assert)   a setting of zero is accepted
+1790505679.433	                         C:/Users/U439644/Projects/untitled/src\view/Exposure.hpp:269:51: error: static assertion failed due to requirement '!orb::view::Aperture::from(0.).has_value()':
+1790505688.819	CAUGHT (static_assert)   an ISO speed is refused under the aperture's name
+1790505688.819	                         C:/Users/U439644/Projects/untitled/src\view/Exposure.hpp:278:19: error: static assertion failed due to requirement 'orb::view::Iso::from(-100.).error() == orb::
+1790505703.000	CAUGHT (test)            the shader's exposure is narrowed from half the value
+1790505703.000	                         test_exposure: the shader's exposure is the nearest float to the double; C:/Users/U439644/Projects/untitled/tests/test_exposure.cpp(295)
+1790505714.752	CAUGHT (test)            the inset's second row is its second column (a transposed element pair)
+1790505714.752	                         test_tonemap: AgX matches the reference at every point, to the rounding of doubles; C:/Users/U439644/Projects/untitled/tests/test_tonemap.cpp(288); black is exa
+1790505721.812	CAUGHT (test)            the outset's second row carries a sign error
+1790505721.812	                         test_tonemap: grey rises strictly inside AgX's range, and never falls across twelve decades; C:/Users/U439644/Projects/untitled/tests/test_tonemap.cpp(323); mid
+1790505729.074	CAUGHT (test)            the log range starts at -12 rather than -12.47393
+1790505729.074	                         test_tonemap: AgX matches the reference at every point, to the rounding of doubles; C:/Users/U439644/Projects/untitled/tests/test_tonemap.cpp(288); grey rises s
+1790505735.524	CAUGHT (test)            the log range ends at 4.5 rather than 4.026069
+1790505735.524	                         test_tonemap: grey rises strictly inside AgX's range, and never falls across twelve decades; C:/Users/U439644/Projects/untitled/tests/test_tonemap.cpp(323); mid
+1790505741.364	CAUGHT (static_assert)   a curve coefficient has two digits swapped
+1790505741.364	                         C:/Users/U439644/Projects/untitled/src\view/Tonemap.hpp:211:15: error: static assertion failed due to requirement 'nearlyEqual(agx::contrast(1.), 0.998580000000
+1790505747.187	CAUGHT (static_assert)   Horner's rule adds before it multiplies
+1790505747.188	                         C:/Users/U439644/Projects/untitled/src\view/Tonemap.hpp:210:15: error: static assertion failed due to requirement 'nearlyEqual(agx::contrast(0.), -0.00232, orb:
+1790505754.772	CAUGHT (test)            the log is not clamped at the top of the range
+1790505754.773	                         test_tonemap: a large input saturates, and never wraps or becomes NaN; C:/Users/U439644/Projects/untitled/tests/test_tonemap.cpp(353); AgX matches the reference
+1790505762.747	CAUGHT (test)            the output is not clamped before the 2.2 power
+1790505762.747	                         test_tonemap: black is exactly black, and so is everything below the curve's zero; C:/Users/U439644/Projects/untitled/tests/test_tonemap.cpp(312); grey rises st
+1790505769.748	CAUGHT (test)            negative red light is not clamped
+1790505769.748	                         test_tonemap: AgX matches the reference at every point, to the rounding of doubles; C:/Users/U439644/Projects/untitled/tests/test_tonemap.cpp(288)
+1790505777.152	CAUGHT (test)            the display exponent is 2.4 rather than 2.2
+1790505777.153	                         test_tonemap: mid-grey reaches the display as code 128; C:/Users/U439644/Projects/untitled/tests/test_tonemap.cpp(379); AgX matches the reference at every point
+1790505783.886	SURVIVED                 the floor before log2 is removed
+1790505811.226	CAUGHT (test)            the shader's log range ends at 4.5
+1790505811.226	                         ctest: tonemap_constants
+1790505815.705	CAUGHT (test)            the shader's inset has one element pair transposed
+1790505815.705	                         ctest: tonemap_constants
+1790505820.628	SURVIVED                 the shader does not apply the exposure
+1790505825.314	SURVIVED                 the shader does not clamp negative light before the inset
+1790505830.388	SURVIVED                 the shader does not clamp before the 2.2 power
+1790505858.582	CAUGHT (test)            the push-constant range is declared for the vertex stage
+1790505858.582	                         ctest: orbsim_smoke
+1790505886.516	CAUGHT (test)            the exposure is never pushed
+1790505886.516	                         ctest: orbsim_smoke
+1790505894.650	CAUGHT (static_assert)   the scene clears to a grey radiance
+1790505894.651	                         C:/Users/U439644/Projects/untitled/src\view/SceneClear.hpp:48:15: error: static assertion failed due to requirement 'bitsOf(kSceneClear.red) == bitsOf(0.F)': wh
+1790505925.956	
+1790505925.956	==== M1-15: 29 mutants ====
+1790505925.956	25 caught, 4 survived, 0 invalid, 0 hung

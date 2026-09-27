@@ -1,0 +1,31 @@
+1790504001.569	CAUGHT (test)            the perspective divide multiplies by w -- M1-09's declared survivor
+1790504001.569	                         test_projection: the frustum edge lands on the screen edge across the admissible range; C:/Users/U439644/Projects/untitled/tests/test_projection.cpp(380); two p
+1790504016.231	CAUGHT (test)            the perspective divide takes the operands the wrong way round
+1790504016.231	                         test_projection: depth decreases strictly with distance; C:/Users/U439644/Projects/untitled/tests/test_projection.cpp(267); depth is the near plane over the dis
+1790504032.001	CAUGHT (test)            the perspective divide returns a hard-coded one
+1790504032.001	                         test_projection: depth is the near plane over the distance, exactly; C:/Users/U439644/Projects/untitled/tests/test_projection.cpp(235); a point behind the camer
+1790504046.391	CAUGHT (test)            the perspective divide squares the ratio
+1790504046.391	                         test_projection: depth is the near plane over the distance, exactly; C:/Users/U439644/Projects/untitled/tests/test_projection.cpp(235); a point behind the camer
+1790504056.869	CAUGHT (static_assert)   the y flip is missing
+1790504056.870	                         C:/Users/U439644/Projects/untitled/src\view/Projection.hpp:204:15: error: static assertion failed due to requirement 'nearlyEqual(kProjectionForAssertions.linea
+1790504068.034	CAUGHT (static_assert)   the aspect ratio multiplies instead of dividing
+1790504068.034	                         C:/Users/U439644/Projects/untitled/src\view/Projection.hpp:200:15: error: static assertion failed due to requirement 'nearlyEqual(kProjectionForAssertions.linea
+1790504078.306	CAUGHT (static_assert)   the depth numerator is not the near plane but a constant one
+1790504078.306	                         C:/Users/U439644/Projects/untitled/src\view/Projection.hpp:212:15: error: static assertion failed due to requirement 'nearlyEqual(kProjectionForAssertions.trans
+1790504088.537	CAUGHT (static_assert)   the depth row is not constant: it reads the point's z
+1790504088.537	                         C:/Users/U439644/Projects/untitled/src\view/Projection.hpp:209:15: error: static assertion failed due to requirement 'nearlyEqual(kProjectionForAssertions.linea
+1790504097.911	CAUGHT (static_assert)   the depth denominator is +z rather than -z
+1790504097.911	                         C:/Users/U439644/Projects/untitled/src\view/Projection.hpp:216:15: error: static assertion failed due to requirement 'nearlyEqual(kProjectionForAssertions.botto
+1790504107.763	CAUGHT (static_assert)   the near plane goes into the translation row above its own
+1790504107.763	                         C:/Users/U439644/Projects/untitled/src\view/Projection.hpp:212:15: error: static assertion failed due to requirement 'nearlyEqual(kProjectionForAssertions.trans
+1790504121.641	CAUGHT (test)            the focal length is the tangent rather than its reciprocal
+1790504121.641	                         test_projection: the frustum edge lands on the screen edge, without asking the tangent function; C:/Users/U439644/Projects/untitled/tests/test_projection.cpp(33
+1790504134.884	CAUGHT (test)            the near plane's finiteness is not checked, only its sign
+1790504134.884	                         test_projection: an aspect ratio that cannot be used is refused by name; C:/Users/U439644/Projects/untitled/tests/test_projection.cpp(430); a near plane that ca
+1790504158.396	CAUGHT (test)            the field of view admits a half turn
+1790504158.396	                         test_projection: a field of view that cannot be used is refused by name; C:/Users/U439644/Projects/untitled/tests/test_projection.cpp(438)
+1790504169.723	CAUGHT (test)            a bad aspect ratio is reported as a bad near plane
+1790504169.723	                         test_projection: an aspect ratio that cannot be used is refused by name; C:/Users/U439644/Projects/untitled/tests/test_projection.cpp(430)
+1790504208.023	
+1790504208.024	==== M1-10: 14 mutants ====
+1790504208.024	14 caught, 0 survived, 0 invalid, 0 hung

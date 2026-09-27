@@ -1,0 +1,39 @@
+1790505095.661	CAUGHT (static_assert)   an attribute's width counts 64-bit components
+1790505095.661	                         C:/Users/U439644/Projects/untitled/src\view/VertexLayout.hpp:180:15: error: static assertion failed due to requirement 'kLineVertexLayout.stride() == orb::Bytes
+1790505112.239	CAUGHT (test)            locations are counted from one
+1790505112.239	                         test_pipeline_inputs: a line vertex is laid out the way line.vert reads it; C:/Users/U439644/Projects/untitled/tests/test_pipeline_inputs.cpp(108); a body verte
+1790505119.527	CAUGHT (static_assert)   an attribute's offset includes its own width
+1790505119.527	                         C:/Users/U439644/Projects/untitled/src\view/VertexLayout.hpp:183:15: error: static assertion failed due to requirement 'std::get(kLineVertexLayout.attributes())
+1790505125.136	CAUGHT (static_assert)   the stride forgets the last attribute
+1790505125.136	                         C:/Users/U439644/Projects/untitled/src\view/VertexLayout.hpp:180:15: error: static assertion failed due to requirement 'kLineVertexLayout.stride() == orb::Bytes
+1790505131.253	CAUGHT (static_assert)   an empty range is not refused
+1790505131.254	                         C:/Users/U439644/Projects/untitled/src\view/PushConstants.hpp:210:15: error: static assertion failed due to requirement '!orb::view::PushConstantRange::from(orb
+1790505137.454	CAUGHT (static_assert)   the bound refuses a range that ends exactly at the guaranteed space
+1790505137.455	                         C:/Users/U439644/Projects/untitled/src\view/PushConstants.hpp:226:15: error: static assertion failed due to requirement 'orb::view::PushConstantRange::from(orb:
+1790505149.306	CAUGHT (test)            the bound is formed as a sum, which can wrap round
+1790505149.306	                         test_pipeline_inputs: nonzero exit
+1790505154.224	CAUGHT (static_assert)   the offset's alignment is not checked
+1790505154.225	                         C:/Users/U439644/Projects/untitled/src\view/PushConstants.hpp:214:15: error: static assertion failed due to requirement '!orb::view::PushConstantRange::from(orb
+1790505159.353	CAUGHT (static_assert)   the size's alignment is not checked
+1790505159.353	                         C:/Users/U439644/Projects/untitled/src\view/PushConstants.hpp:218:15: error: static assertion failed due to requirement '!orb::view::PushConstantRange::from(orb
+1790505165.644	CAUGHT (static_assert)   the alignment is eight bytes rather than four
+1790505165.645	                         C:/Users/U439644/Projects/untitled/src\view/PushConstants.hpp:226:15: error: static assertion failed due to requirement 'orb::view::PushConstantRange::from(orb:
+1790505171.085	CAUGHT (static_assert)   the guaranteed space is taken as Vulkan 1.4's 256 bytes
+1790505171.086	                         C:/Users/U439644/Projects/untitled/src\view/PushConstants.hpp:222:15: error: static assertion failed due to requirement '!orb::view::PushConstantRange::from(orb
+1790505201.321	CAUGHT (test)            the body's range is declared for the vertex stage only, though body.frag reads it
+1790505201.321	                         test_pipeline_inputs: the push-constant ranges cover the blocks the shaders declare; C:/Users/U439644/Projects/untitled/tests/test_pipeline_inputs.cpp(175) | ct
+1790505223.365	CAUGHT (test)            both stages translate to the vertex stage alone
+1790505223.365	                         ctest: orbsim_smoke
+1790505233.537	CAUGHT (test)            a four-component attribute is described as three
+1790505233.537	                         ctest: orbsim_smoke
+1790505243.699	CAUGHT (test)            viewport and scissor are not dynamic
+1790505243.700	                         ctest: orbsim_smoke
+1790505255.608	CAUGHT (test)            a missing shader is reported without its path
+1790505255.608	                         ctest: shader_missing_is_reported
+1790505275.696	CAUGHT (test)            --shader-dir is accepted and ignored
+1790505275.696	                         ctest: shader_missing_is_reported
+1790505324.702	CAUGHT (test)            depth is compared the conventional way round
+1790505324.702	                         ctest: every band carries the ramp's radiance, to within one binary16 step
+1790505346.794	
+1790505346.794	==== M1-13: 18 mutants ====
+1790505346.794	18 caught, 0 survived, 0 invalid, 0 hung

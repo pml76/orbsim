@@ -1,0 +1,4 @@
+### 2026-09-27T07:28:23Z /c/Users/U439644/AppData/Local/Programs/CLion/bin/cmake/win/x64/bin/cmake.exe --build build/timing/asan --target mutant-anchors
+[0/2] Re-checking globbed directories...
+[1/2] mutant-anchors: every mutation-pass anchor still matches once
+mutant-anchors: 11 tasks, 180 anchors, 0 stale

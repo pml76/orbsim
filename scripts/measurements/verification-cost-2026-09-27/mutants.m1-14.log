@@ -1,0 +1,32 @@
+1790505358.332	CAUGHT (test)            the power segment uses the gamma-2.2 exponent
+1790505358.332	                         test_srgb: the encode matches IEC 61966-2-1 at every reference point; C:/Users/U439644/Projects/untitled/tests/test_srgb.cpp(194); each side of the knee is on i
+1790505366.841	CAUGHT (test)            the knee itself is encoded on the power segment
+1790505366.841	                         test_srgb: the encode matches IEC 61966-2-1 at every reference point; C:/Users/U439644/Projects/untitled/tests/test_srgb.cpp(194); each side of the knee is on i
+1790505375.607	CAUGHT (test)            the power segment's offset is 0.05
+1790505375.608	                         test_srgb: zero is exact, and one is within a unit in the last place; C:/Users/U439644/Projects/untitled/tests/test_srgb.cpp(210); the decode matches IEC 61966-
+1790505388.440	CAUGHT (test)            the decode raises to the encode's exponent
+1790505388.440	                         test_srgb: encode then decode returns the input, except in the window at the knee; C:/Users/U439644/Projects/untitled/tests/test_srgb.cpp(254); each side of the
+1790505396.089	CAUGHT (test)            the encode lets a negative value through
+1790505396.089	                         test_srgb: values outside [0, 1] are clamped, as the display target clamps them; C:/Users/U439644/Projects/untitled/tests/test_srgb.cpp(243)
+1790505414.456	CAUGHT (test)            the HDR target is left as a colour attachment for the resolve pass
+1790505414.457	                         ctest: orbsim_smoke
+1790505425.784	CAUGHT (test)            a barrier waits for nothing before it
+1790505425.784	                         ctest: orbsim_smoke
+1790505438.287	CAUGHT (test)            the device is not idle before the resolve pass is destroyed
+1790505438.287	                         ctest: orbsim_smoke
+1790505452.724	CAUGHT (test)            the descriptor names the wrong layout for the HDR target
+1790505452.725	                         ctest: orbsim_smoke
+1790505462.707	CAUGHT (test)            the HDR format check refuses a format the device supports
+1790505462.708	                         ctest: orbsim_smoke
+1790505473.573	CAUGHT (test)            the swapchain check refuses a UNORM format
+1790505473.573	                         ctest: orbsim_smoke
+1790505494.320	SURVIVED                 the HDR format check never reports
+1790505506.836	SURVIVED                 the swapchain check accepts any colour space
+1790505523.781	SURVIVED                 the tonemap shader encodes with the gamma-2.2 exponent
+1790505538.038	SURVIVED                 the scene pipelines are built for the swapchain's format
+1790505550.574	SURVIVED                 the resolve pass is never drawn
+1790505588.145	CAUGHT (test)            the full-screen triangle covers a quarter of the screen
+1790505588.145	                         ctest: every band carries the ramp's radiance, to within one binary16 step
+1790505595.781	
+1790505595.781	==== M1-14: 17 mutants ====
+1790505595.781	12 caught, 5 survived, 0 invalid, 0 hung

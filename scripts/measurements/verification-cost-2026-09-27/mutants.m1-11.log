@@ -1,0 +1,31 @@
+1790504222.128	CAUGHT (test)            the narrowing happens before the subtraction
+1790504222.128	                         test_camera: the narrowing is exact, and it is the subtraction that makes it so; C:/Users/U439644/Projects/untitled/tests/test_camera.cpp(621); the naive path f
+1790504229.887	CAUGHT (test)            the camera position is not subtracted at all
+1790504229.887	                         test_camera: the narrowing is exact, and it is the subtraction that makes it so; C:/Users/U439644/Projects/untitled/tests/test_camera.cpp(621); the jitter budge
+1790504236.965	CAUGHT (test)            the subtraction runs the wrong way round
+1790504236.966	                         test_camera: the narrowing is exact, and it is the subtraction that makes it so; C:/Users/U439644/Projects/untitled/tests/test_camera.cpp(621)
+1790504244.274	CAUGHT (test)            x and y are transposed at the GPU boundary
+1790504244.274	                         test_camera: the narrowing is exact, and it is the subtraction that makes it so; C:/Users/U439644/Projects/untitled/tests/test_camera.cpp(621); the naive path f
+1790504251.087	CAUGHT (test)            the view matrix does not conjugate the orientation
+1790504251.087	                         test_camera: the view matrix takes the camera's own axes to view space's axes; C:/Users/U439644/Projects/untitled/tests/test_camera.cpp(567); the jitter budget 
+1790504258.646	CAUGHT (test)            the view matrix carries a translation as well as the rotation
+1790504258.646	                         test_camera: the view matrix is a pure rotation; C:/Users/U439644/Projects/untitled/tests/test_camera.cpp(541)
+1790504265.767	CAUGHT (test)            the factory does not check the position
+1790504265.767	                         test_camera: a camera with a position that is not finite is refused; C:/Users/U439644/Projects/untitled/tests/test_camera.cpp(465)
+1790504273.698	CAUGHT (test)            the factory does not check the orientation
+1790504273.699	                         test_camera: the orientation tolerance is a boundary, and it is checked from both sides; C:/Users/U439644/Projects/untitled/tests/test_camera.cpp(507); a camera
+1790504280.896	CAUGHT (test)            the factory does not check the field of view
+1790504280.896	                         test_camera: a camera with a field of view outside (0, pi) is refused; C:/Users/U439644/Projects/untitled/tests/test_camera.cpp(492)
+1790504288.738	CAUGHT (test)            the factory does not check the near plane
+1790504288.738	                         test_camera: a camera whose near plane is not finite and positive is refused; C:/Users/U439644/Projects/untitled/tests/test_camera.cpp(500)
+1790504303.250	CAUGHT (test)            bit identity looks only at x
+1790504303.251	                         test_camera: the narrowing is exact, and it is the subtraction that makes it so; C:/Users/U439644/Projects/untitled/tests/test_camera.cpp(621)
+1790504312.610	CAUGHT (static_assert)   a value past 32-bit range is called narrowable
+1790504312.610	                         C:/Users/U439644/Projects/untitled/src\view/Camera.hpp:214:15: error: static assertion failed due to requirement '!isNarrowable(9.9999999999999994E+38)': and ne
+1790504340.159	CAUGHT (test)            the unit-quaternion test uses the squared norm
+1790504340.159	                         test_camera: the view matrix is a pure rotation; C:/Users/U439644/Projects/untitled/tests/test_camera.cpp(541); the orientation tolerance is a boundary, and it 
+1790504370.729	CAUGHT (test)            the orientation tolerance is ten times looser
+1790504370.730	                         test_camera: the view matrix is a pure rotation; C:/Users/U439644/Projects/untitled/tests/test_camera.cpp(541)
+1790504444.644	
+1790504444.645	==== M1-11: 14 mutants ====
+1790504444.645	14 caught, 0 survived, 0 invalid, 0 hung

@@ -1,0 +1,32 @@
+1790500680.171	CAUGHT (test)            the rigid inverse turns the translation by R instead of R transposed
+1790500680.172	                         test_view_math: the rigid inverse undoes the transform, at every scale; C:/Users/U439644/Projects/untitled/tests/test_view_math.cpp(332); a point survives the r
+1790500694.111	CAUGHT (test)            the rigid inverse does not negate the translation
+1790500694.111	                         test_view_math: the rigid inverse undoes the transform, at every scale; C:/Users/U439644/Projects/untitled/tests/test_view_math.cpp(332); a point survives the r
+1790500710.351	CAUGHT (test)            the rigid inverse copies the rotation block instead of transposing it
+1790500710.351	                         test_view_math: a point survives the round trip through a transform and its inverse; C:/Users/U439644/Projects/untitled/tests/test_view_math.cpp(345); the rigid
+1790500722.063	CAUGHT (static_assert)   multiplication reads the left operand transposed
+1790500722.063	                         C:/Users/U439644/Projects/untitled/src\view/Mat4.hpp:542:15: error: static assertion failed due to requirement '(kShiftForAssertions * identityTransform()).bitI
+1790500735.322	CAUGHT (static_assert)   multiplication reads the right operand transposed
+1790500735.323	                         C:/Users/U439644/Projects/untitled/src\view/Mat4.hpp:544:15: error: static assertion failed due to requirement '(identityTransform() * kShiftForAssertions).bitI
+1790500764.153	CAUGHT (test)            transpose copies instead of transposing
+1790500764.153	                         test_view_math: transposing twice returns the original, bit for bit; C:/Users/U439644/Projects/untitled/tests/test_view_math.cpp(293); transpose(AB) is transpos
+1790500776.951	CAUGHT (static_assert)   transformPoint drops the translation
+1790500776.951	                         C:/Users/U439644/Projects/untitled/src\view/Mat4.hpp:569:15: error: static assertion failed due to requirement 'nearlyEqual(transformPoint(kShiftForAssertions, 
+1790500790.406	CAUGHT (static_assert)   transformDirection applies the translation
+1790500790.407	                         C:/Users/U439644/Projects/untitled/src\view/Mat4.hpp:573:15: error: static assertion failed due to requirement 'nearlyEqual(transformDirection(kShiftForAssertio
+1790500803.699	CAUGHT (static_assert)   the identity's corner is zero
+1790500803.699	                         C:/Users/U439644/Projects/untitled/src\view/Mat4.hpp:540:15: error: static assertion failed due to requirement 'isAffine(kShiftForAssertions)'
+1790500816.335	CAUGHT (static_assert)   a translation writes its components into the wrong row
+1790500816.335	                         C:/Users/U439644/Projects/untitled/src\view/Mat4.hpp:546:15: error: static assertion failed due to requirement 'nearlyEqual((kShiftForAssertions * kShiftForAsse
+1790500831.299	CAUGHT (static_assert)   isAffine accepts anything
+1790500831.299	                         C:/Users/U439644/Projects/untitled/src\view/Projection.hpp:223:15: error: static assertion failed due to requirement '!isAffine(kProjectionForAssertions)': a pe
+1790500850.086	SURVIVED                 the perspective divide multiplies by w
+1790500863.349	CAUGHT (static_assert)   the transpose forgets that it is a dual map
+1790500863.349	                         C:/Users/U439644/Projects/untitled/src\view/Mat4.hpp:556:15: error: static assertion failed due to requirement 'std::is_same_v<orb::view::Mat4<orb::view::FrameT
+1790500877.246	CAUGHT (static_assert)   dualising is the identity
+1790500877.246	                         C:/Users/U439644/Projects/untitled/src\view/Frame.hpp:75:15: error: static assertion failed due to requirement 'dualOf(kWorld) != kWorld': and once is not
+1790500898.743	CAUGHT (test)            retargetFrame changes the matrix as well as its label
+1790500898.743	                         test_view_math: a frame change is declared once, and the arithmetic is untouched by it; C:/Users/U439644/Projects/untitled/tests/test_view_math.cpp(403)
+1790500935.024	
+1790500935.025	==== M1-09: 15 mutants ====
+1790500935.025	14 caught, 1 survived, 0 invalid, 0 hung

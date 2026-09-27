@@ -1,0 +1,7 @@
+1790504460.137	CAUGHT (static_assert)   the guard's function is marked constexpr, which is the one change that undoes it
+1790504460.137	                         C:/Users/U439644/Projects/untitled/src\core/Scalar.hpp:691:15: error: static assertion failed due to requirement '!constantEvaluable<orb::(lambda at C:\Users\U4
+1790504472.086	CAUGHT (static_assert)   the subtraction keeps only the run-time half of its guard
+1790504472.086	                         C:/Users/U439644/Projects/untitled/src\core/Scalar.hpp:691:15: error: static assertion failed due to requirement '!constantEvaluable<orb::(lambda at C:\Users\U4
+1790504567.112	
+1790504567.112	==== M1-12 (release tree): 2 mutants ====
+1790504567.112	2 caught, 0 survived, 0 invalid, 0 hung

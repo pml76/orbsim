@@ -1,0 +1,6 @@
+### 2026-09-27T07:39:29Z msvc /c/Users/U439644/AppData/Local/Programs/CLion/bin/cmake/win/x64/bin/cmake.exe --build build/timing/windows-msvc --target mutant-anchors
+'vswhere.exe' is not recognized as an internal or external command,
+operable program or batch file.
+[0/2] Re-checking globbed directories...
+[1/2] mutant-anchors: every mutation-pass anchor still matches once
+mutant-anchors: 11 tasks, 180 anchors, 0 stale

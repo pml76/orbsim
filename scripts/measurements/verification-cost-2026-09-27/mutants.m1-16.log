@@ -1,0 +1,44 @@
+1790505930.346	CAUGHT (static_assert)   the binary16 exponent bias is taken as 16
+1790505930.346	                         C:/Users/U439644/Projects/untitled/src\view/Half.hpp:108:15: error: static assertion failed due to requirement 'bitsOf(halfToFloat(15360U)) == bitsOf(1.F)': one
+1790505933.199	CAUGHT (static_assert)   a subnormal is shifted one place too few
+1790505933.199	                         C:/Users/U439644/Projects/untitled/src\view/Half.hpp:112:15: error: static assertion failed due to requirement 'bitsOf(halfToFloat(1U)) == bitsOf(5.96046448E-8F
+1790505935.678	CAUGHT (static_assert)   a NaN loses its payload
+1790505935.687	                         C:/Users/U439644/Projects/untitled/src\view/Half.hpp:116:15: error: static assertion failed due to requirement 'halfToFloatBits(32001U) == 2141200384U': a signa
+1790505942.764	CAUGHT (test)            the dump's first byte is the most significant
+1790505942.764	                         test_hdr_dump: the application's writer and this reader agree; C:/Users/U439644/Projects/untitled/tests/test_hdr_dump.cpp(166)
+1790505948.411	CAUGHT (test)            the dump's header names version 2
+1790505948.411	                         test_hdr_dump: the application's writer and this reader agree; C:/Users/U439644/Projects/untitled/tests/test_hdr_dump.cpp(166)
+1790505955.560	CAUGHT (test)            the reader accepts a dimension with a leading zero
+1790505955.560	                         test_hdr_dump: dimensions that are not two positive decimal integers are refused by name; C:/Users/U439644/Projects/untitled/tests/test_hdr_dump.cpp(122)
+1790505963.873	CAUGHT (test)            the 16-bit PNG's high byte is the low one
+1790505963.873	                         test_image_files: a 16-bit PNG holds the RGB it was given, most significant byte first; C:/Users/U439644/Projects/untitled/tests/test_image_files.cpp(214)
+1790505973.985	CAUGHT (test)            the 8-bit PNG is handed alpha as well
+1790505973.986	                         test_image_files: an 8-bit PNG holds the RGB it was given, and no alpha; C:/Users/U439644/Projects/untitled/tests/test_image_files.cpp(198)
+1790505990.312	CAUGHT (test)            the EXR's red channel is read from blue
+1790505990.312	                         test_image_files: an EXR holds the HDR target's bits, as R, G and B, with its colours and comment; C:/Users/U439644/Projects/untitled/tests/test_image_files.cpp
+1790506000.630	CAUGHT (test)            the EXR is written uncompressed
+1790506000.631	                         test_image_files: an EXR holds the HDR target's bits, as R, G and B, with its colours and comment; C:/Users/U439644/Projects/untitled/tests/test_image_files.cpp
+1790506019.306	CAUGHT (test)            the sidecar writes the hour where the minute belongs
+1790506019.307	                         test_probe_sidecar: the sidecar's numbers are written with their units; C:/Users/U439644/Projects/untitled/tests/test_probe_sidecar.cpp(131)
+1790506059.015	CAUGHT (test)            the ramp is sampled half a pixel to the left
+1790506059.016	                         ctest: every band carries the ramp's radiance, to within one binary16 step
+1790506092.694	CAUGHT (test)            the red and green bands change places
+1790506092.695	                         ctest: every band carries the ramp's radiance, to within one binary16 step
+1790506126.347	CAUGHT (test)            the blue band is not drawn
+1790506126.347	                         ctest: every band carries the ramp's radiance, to within one binary16 step
+1790506174.589	CAUGHT (test)            the ramp starts a stop below AgX's black
+1790506174.590	                         ctest: every band carries the ramp's radiance, to within one binary16 step
+1790506220.538	CAUGHT (test)            the probe exposes at 1/60 s rather than 1/125 s
+1790506220.539	                         ctest: every band carries the ramp's radiance, to within one binary16 step
+1790506260.635	CAUGHT (test)            the full-screen triangle writes depth 0, the cleared value
+1790506260.635	                         ctest: every band carries the ramp's radiance, to within one binary16 step
+1790506294.429	CAUGHT (test)            the probe's scene is never recorded
+1790506294.429	                         ctest: every band carries the ramp's radiance, to within one binary16 step
+1790506317.762	CAUGHT (test)            the HDR target cannot be copied out
+1790506317.763	                         ctest: probe_clear | ctest: every band carries the ramp's radiance, to within one binary16 step | ctest: the grey band's three channels are the same number | ct
+1790506364.041	SURVIVED                 the copies' writes are never made visible to the host
+1790506411.890	CAUGHT (test)            --probe-out is ignored
+1790506411.890	                         ctest: probe_clear_determinism
+1790506441.053	
+1790506441.053	==== M1-16: 21 mutants ====
+1790506441.053	20 caught, 1 survived, 0 invalid, 0 hung

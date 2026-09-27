@@ -1,0 +1,27 @@
+1790500526.227	CAUGHT (test)            the Sun is not negated
+1790500526.227	                         test_sun: the March equinox puts the Sun on the equator of date; C:/Users/U439644/Projects/untitled/tests/test_sun.cpp(359); the Sun is where Horizons says it i
+1790500534.597	CAUGHT (test)            barycentric instead of heliocentric
+1790500534.597	                         test_sun: the Sun is where Horizons says it is; C:/Users/U439644/Projects/untitled/tests/test_sun.cpp(224); the apsides are where the published figures put them
+1790500542.796	CAUGHT (test)            the velocity row instead of the position row
+1790500542.797	                         test_sun: the March equinox puts the Sun on the equator of date; C:/Users/U439644/Projects/untitled/tests/test_sun.cpp(359); the apsides are where the published
+1790500552.022	CAUGHT (test)            the range status is not checked
+1790500552.022	                         test_sun: a date in mid-2100 is outside the span; C:/Users/U439644/Projects/untitled/tests/test_sun.cpp(461); a date outside ERFA's span is reported by name; C:
+1790500559.570	CAUGHT (test)            x and y transposed
+1790500559.570	                         test_sun: the March equinox puts the Sun on the equator of date; C:/Users/U439644/Projects/untitled/tests/test_sun.cpp(359); the Sun's motion is continuous acro
+1790500567.408	CAUGHT (test)            kilometres, not metres
+1790500567.408	                         test_sun: the Sun's motion is continuous across fifty years; C:/Users/U439644/Projects/untitled/tests/test_sun.cpp(330); the apsides are where the published fig
+1790500585.269	CAUGHT (test)            the time of day is dropped
+1790500585.269	                         test_sun: the distance is the length of the position; C:/Users/U439644/Projects/untitled/tests/test_sun.cpp(265); a date outside ERFA's span is reported by name
+1790500600.843	CAUGHT (test)            the date is 1.7 ms out, the size of TDB - TT
+1790500600.843	                         test_sun: the distance is the length of the position; C:/Users/U439644/Projects/untitled/tests/test_sun.cpp(265); a date outside ERFA's span is reported by name
+1790500607.024	CAUGHT (static_assert)   the solar constant is the pre-2011 1366
+1790500607.024	                         C:/Users/U439644/Projects/untitled/src\astro/Sun.hpp:153:15: error: static assertion failed due to requirement 'nearlyEqual(solarIrradianceAt(kAstronomicalUnit)
+1790500613.903	CAUGHT (static_assert)   inverse-linear, not inverse-square
+1790500613.904	                         C:/Users/U439644/Projects/untitled/src\astro/Sun.hpp:154:15: error: static assertion failed due to requirement 'nearlyEqual(solarIrradianceAt(kAstronomicalUnit 
+1790500619.933	CAUGHT (static_assert)   the pre-2012 astronomical unit
+1790500619.933	                         C:/Users/U439644/Projects/untitled/src/astro/Sun.cpp:32:15: error: static assertion failed due to requirement 'kAstronomicalUnit.bitIdentical(orb::Scalar<mp_uni
+1790500629.134	CAUGHT (test)            the lift transposed TT and UT1
+1790500629.135	                         test_earth_orientation: the composition is CIO-consistent; C:/Users/U439644/Projects/untitled/tests/test_earth_orientation.cpp(339); the intermediate frame is t
+1790500649.526	
+1790500649.526	==== M1-08: 12 mutants ====
+1790500649.526	12 caught, 0 survived, 0 invalid, 0 hung

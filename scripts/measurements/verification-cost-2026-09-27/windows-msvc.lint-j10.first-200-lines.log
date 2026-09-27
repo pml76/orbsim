@@ -1,0 +1,200 @@
+### 2026-09-27T07:38:20Z msvc /c/Users/U439644/AppData/Local/Programs/CLion/bin/cmake/win/x64/bin/cmake.exe --build build/timing/windows-msvc --target lint -j 10
+'vswhere.exe' is not recognized as an internal or external command,
+operable program or batch file.
+[0/2] Re-checking globbed directories...
+[1/56] clang-tidy --verify-config for tests/
+No config errors detected.
+[2/56] clang-tidy --verify-config for src/astro/
+No config errors detected.
+[3/56] clang-tidy --verify-config for src/view/
+No config errors detected.
+[4/56] clang-tidy --verify-config for src/render/
+No config errors detected.
+[5/56] clang-tidy --verify-config for src/core/
+No config errors detected.
+[6/56] clang-tidy --verify-config for src/orbit/
+No config errors detected.
+[7/56] clang-tidy --verify-config for src/app/
+No config errors detected.
+[8/56] clang-tidy src/core/LeapSeconds.cpp
+FAILED: lint/src_core_LeapSeconds.cpp.ok C:/Users/U439644/Projects/untitled/build/timing/windows-msvc/lint/src_core_LeapSeconds.cpp.ok 
+C:\WINDOWS\system32\cmd.exe /C "cd /D C:\Users\U439644\Projects\untitled\build\timing\windows-msvc && C:\GitHub\clang+llvm-23.1.0-x86_64-pc-windows-msvc\bin\clang-tidy.exe --quiet -p C:/Users/U439644/Projects/untitled/build/timing/windows-msvc C:/Users/U439644/Projects/untitled/src/core/LeapSeconds.cpp && C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe -E touch C:/Users/U439644/Projects/untitled/build/timing/windows-msvc/lint/src_core_LeapSeconds.cpp.ok"
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:62:8: error: padding size of 'orb::LeapSecondStep' with 4 bytes to alignment boundary [clang-diagnostic-padded,-warnings-as-errors]
+   62 | struct LeapSecondStep {
+      |        ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:63:24: error: default member initializer for non-static data members is incompatible with C++98 [clang-diagnostic-c++98-compat,-warnings-as-errors]
+   63 |     std::int64_t utcMjd{};
+      |                        ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:63:24: error: scalar initialized from empty initializer list is incompatible with C++98 [clang-diagnostic-c++98-compat,-warnings-as-errors]
+   63 |     std::int64_t utcMjd{};
+      |                        ^~
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:64:32: error: default member initializer for non-static data members is incompatible with C++98 [clang-diagnostic-c++98-compat,-warnings-as-errors]
+   64 |     std::int32_t deltaAtSeconds{};
+      |                                ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:64:32: error: scalar initialized from empty initializer list is incompatible with C++98 [clang-diagnostic-c++98-compat,-warnings-as-errors]
+   64 |     std::int32_t deltaAtSeconds{};
+      |                                ^~
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:70:1: error: inline variables are incompatible with C++ standards before C++17 [clang-diagnostic-pre-c++17-compat,-warnings-as-errors]
+   70 | inline constexpr auto kIersLeapSeconds = std::to_array<LeapSecondStep>({
+      | ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:70:8: error: 'constexpr' specifier is incompatible with C++98 [clang-diagnostic-c++98-compat,-warnings-as-errors]
+   70 | inline constexpr auto kIersLeapSeconds = std::to_array<LeapSecondStep>({
+      |        ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:70:18: error: 'auto' type specifier is incompatible with C++98 [clang-diagnostic-c++98-compat,-warnings-as-errors]
+   70 | inline constexpr auto kIersLeapSeconds = std::to_array<LeapSecondStep>({
+      |                  ^~~~
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:70:72: error: generalized initializer lists are incompatible with C++98 [clang-diagnostic-c++98-compat,-warnings-as-errors]
+   70 | inline constexpr auto kIersLeapSeconds = std::to_array<LeapSecondStep>({
+      |                                                                        ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:71:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   71 |     {.utcMjd = 41'317, .deltaAtSeconds = 10}, // 1972-01-01
+      |      ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:71:18: error: digit separators are incompatible with C++ standards before C++14 [clang-diagnostic-pre-c++14-compat,-warnings-as-errors]
+   71 |     {.utcMjd = 41'317, .deltaAtSeconds = 10}, // 1972-01-01
+      |                  ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:72:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   72 |     {.utcMjd = 41'499, .deltaAtSeconds = 11}, // 1972-07-01
+      |      ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:72:18: error: digit separators are incompatible with C++ standards before C++14 [clang-diagnostic-pre-c++14-compat,-warnings-as-errors]
+   72 |     {.utcMjd = 41'499, .deltaAtSeconds = 11}, // 1972-07-01
+      |                  ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:73:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   73 |     {.utcMjd = 41'683, .deltaAtSeconds = 12}, // 1973-01-01
+      |      ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:73:18: error: digit separators are incompatible with C++ standards before C++14 [clang-diagnostic-pre-c++14-compat,-warnings-as-errors]
+   73 |     {.utcMjd = 41'683, .deltaAtSeconds = 12}, // 1973-01-01
+      |                  ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:74:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   74 |     {.utcMjd = 42'048, .deltaAtSeconds = 13}, // 1974-01-01
+      |      ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:74:18: error: digit separators are incompatible with C++ standards before C++14 [clang-diagnostic-pre-c++14-compat,-warnings-as-errors]
+   74 |     {.utcMjd = 42'048, .deltaAtSeconds = 13}, // 1974-01-01
+      |                  ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:75:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   75 |     {.utcMjd = 42'413, .deltaAtSeconds = 14}, // 1975-01-01
+      |      ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:75:18: error: digit separators are incompatible with C++ standards before C++14 [clang-diagnostic-pre-c++14-compat,-warnings-as-errors]
+   75 |     {.utcMjd = 42'413, .deltaAtSeconds = 14}, // 1975-01-01
+      |                  ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:76:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   76 |     {.utcMjd = 42'778, .deltaAtSeconds = 15}, // 1976-01-01
+      |      ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:76:18: error: digit separators are incompatible with C++ standards before C++14 [clang-diagnostic-pre-c++14-compat,-warnings-as-errors]
+   76 |     {.utcMjd = 42'778, .deltaAtSeconds = 15}, // 1976-01-01
+      |                  ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:77:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   77 |     {.utcMjd = 43'144, .deltaAtSeconds = 16}, // 1977-01-01
+      |      ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:77:18: error: digit separators are incompatible with C++ standards before C++14 [clang-diagnostic-pre-c++14-compat,-warnings-as-errors]
+   77 |     {.utcMjd = 43'144, .deltaAtSeconds = 16}, // 1977-01-01
+      |                  ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:78:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   78 |     {.utcMjd = 43'509, .deltaAtSeconds = 17}, // 1978-01-01
+      |      ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:78:18: error: digit separators are incompatible with C++ standards before C++14 [clang-diagnostic-pre-c++14-compat,-warnings-as-errors]
+   78 |     {.utcMjd = 43'509, .deltaAtSeconds = 17}, // 1978-01-01
+      |                  ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:79:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   79 |     {.utcMjd = 43'874, .deltaAtSeconds = 18}, // 1979-01-01
+      |      ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:79:18: error: digit separators are incompatible with C++ standards before C++14 [clang-diagnostic-pre-c++14-compat,-warnings-as-errors]
+   79 |     {.utcMjd = 43'874, .deltaAtSeconds = 18}, // 1979-01-01
+      |                  ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:80:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   80 |     {.utcMjd = 44'239, .deltaAtSeconds = 19}, // 1980-01-01
+      |      ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:80:18: error: digit separators are incompatible with C++ standards before C++14 [clang-diagnostic-pre-c++14-compat,-warnings-as-errors]
+   80 |     {.utcMjd = 44'239, .deltaAtSeconds = 19}, // 1980-01-01
+      |                  ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:81:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   81 |     {.utcMjd = 44'786, .deltaAtSeconds = 20}, // 1981-07-01
+      |      ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:81:18: error: digit separators are incompatible with C++ standards before C++14 [clang-diagnostic-pre-c++14-compat,-warnings-as-errors]
+   81 |     {.utcMjd = 44'786, .deltaAtSeconds = 20}, // 1981-07-01
+      |                  ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:82:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   82 |     {.utcMjd = 45'151, .deltaAtSeconds = 21}, // 1982-07-01
+      |      ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:82:18: error: digit separators are incompatible with C++ standards before C++14 [clang-diagnostic-pre-c++14-compat,-warnings-as-errors]
+   82 |     {.utcMjd = 45'151, .deltaAtSeconds = 21}, // 1982-07-01
+      |                  ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:83:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   83 |     {.utcMjd = 45'516, .deltaAtSeconds = 22}, // 1983-07-01
+      |      ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:83:18: error: digit separators are incompatible with C++ standards before C++14 [clang-diagnostic-pre-c++14-compat,-warnings-as-errors]
+   83 |     {.utcMjd = 45'516, .deltaAtSeconds = 22}, // 1983-07-01
+      |                  ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:84:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   84 |     {.utcMjd = 46'247, .deltaAtSeconds = 23}, // 1985-07-01
+      |      ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:84:18: error: digit separators are incompatible with C++ standards before C++14 [clang-diagnostic-pre-c++14-compat,-warnings-as-errors]
+   84 |     {.utcMjd = 46'247, .deltaAtSeconds = 23}, // 1985-07-01
+      |                  ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:85:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   85 |     {.utcMjd = 47'161, .deltaAtSeconds = 24}, // 1988-01-01
+      |      ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:85:18: error: digit separators are incompatible with C++ standards before C++14 [clang-diagnostic-pre-c++14-compat,-warnings-as-errors]
+   85 |     {.utcMjd = 47'161, .deltaAtSeconds = 24}, // 1988-01-01
+      |                  ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:86:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   86 |     {.utcMjd = 47'892, .deltaAtSeconds = 25}, // 1990-01-01
+      |      ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:86:18: error: digit separators are incompatible with C++ standards before C++14 [clang-diagnostic-pre-c++14-compat,-warnings-as-errors]
+   86 |     {.utcMjd = 47'892, .deltaAtSeconds = 25}, // 1990-01-01
+      |                  ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:87:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   87 |     {.utcMjd = 48'257, .deltaAtSeconds = 26}, // 1991-01-01
+      |      ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:87:18: error: digit separators are incompatible with C++ standards before C++14 [clang-diagnostic-pre-c++14-compat,-warnings-as-errors]
+   87 |     {.utcMjd = 48'257, .deltaAtSeconds = 26}, // 1991-01-01
+      |                  ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:88:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   88 |     {.utcMjd = 48'804, .deltaAtSeconds = 27}, // 1992-07-01
+      |      ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:88:18: error: digit separators are incompatible with C++ standards before C++14 [clang-diagnostic-pre-c++14-compat,-warnings-as-errors]
+   88 |     {.utcMjd = 48'804, .deltaAtSeconds = 27}, // 1992-07-01
+      |                  ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:89:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   89 |     {.utcMjd = 49'169, .deltaAtSeconds = 28}, // 1993-07-01
+      |      ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:89:18: error: digit separators are incompatible with C++ standards before C++14 [clang-diagnostic-pre-c++14-compat,-warnings-as-errors]
+   89 |     {.utcMjd = 49'169, .deltaAtSeconds = 28}, // 1993-07-01
+      |                  ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:90:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   90 |     {.utcMjd = 49'534, .deltaAtSeconds = 29}, // 1994-07-01
+      |      ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:90:18: error: digit separators are incompatible with C++ standards before C++14 [clang-diagnostic-pre-c++14-compat,-warnings-as-errors]
+   90 |     {.utcMjd = 49'534, .deltaAtSeconds = 29}, // 1994-07-01
+      |                  ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:91:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   91 |     {.utcMjd = 50'083, .deltaAtSeconds = 30}, // 1996-01-01
+      |      ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:91:18: error: digit separators are incompatible with C++ standards before C++14 [clang-diagnostic-pre-c++14-compat,-warnings-as-errors]
+   91 |     {.utcMjd = 50'083, .deltaAtSeconds = 30}, // 1996-01-01
+      |                  ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:92:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   92 |     {.utcMjd = 50'630, .deltaAtSeconds = 31}, // 1997-07-01
+      |      ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:92:18: error: digit separators are incompatible with C++ standards before C++14 [clang-diagnostic-pre-c++14-compat,-warnings-as-errors]
+   92 |     {.utcMjd = 50'630, .deltaAtSeconds = 31}, // 1997-07-01
+      |                  ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:93:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   93 |     {.utcMjd = 51'179, .deltaAtSeconds = 32}, // 1999-01-01
+      |      ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:93:18: error: digit separators are incompatible with C++ standards before C++14 [clang-diagnostic-pre-c++14-compat,-warnings-as-errors]
+   93 |     {.utcMjd = 51'179, .deltaAtSeconds = 32}, // 1999-01-01
+      |                  ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:94:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   94 |     {.utcMjd = 53'736, .deltaAtSeconds = 33}, // 2006-01-01
+      |      ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:94:18: error: digit separators are incompatible with C++ standards before C++14 [clang-diagnostic-pre-c++14-compat,-warnings-as-errors]
+   94 |     {.utcMjd = 53'736, .deltaAtSeconds = 33}, // 2006-01-01
+      |                  ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:95:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   95 |     {.utcMjd = 54'832, .deltaAtSeconds = 34}, // 2009-01-01
+      |      ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:95:18: error: digit separators are incompatible with C++ standards before C++14 [clang-diagnostic-pre-c++14-compat,-warnings-as-errors]
+   95 |     {.utcMjd = 54'832, .deltaAtSeconds = 34}, // 2009-01-01
+      |                  ^
+C:\Users\U439644\Projects\untitled\src\core/LeapSeconds.hpp:96:6: error: designated initializers are incompatible with C++ standards before C++20 [clang-diagnostic-pre-c++20-compat-pedantic,-warnings-as-errors]
+   96 |     {.utcMjd = 56'109, .deltaAtSeconds = 35}, // 2012-07-01

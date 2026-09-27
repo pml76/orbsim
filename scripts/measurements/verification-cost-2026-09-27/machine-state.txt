@@ -1,0 +1,30 @@
+2026-09-27T06:05:24Z
+LoadPercentage=24
+Name=12th Gen Intel(R) Core(TM) i9-12900H
+FreePhysicalMemory=10880828
+TotalVisibleMemorySize=32981456
+ERROR: Invalid argument/option - 'C:/Program Files/Git/fo'.
+Type "TASKLIST /?" for usage.
+
+Name                   CPU  WorkingSet
+----                   ---  ----------
+UevAppMonitor  54177.28125    35725312
+clion64        44140.21875 -1859612672
+Rider.Backend 15295.640625   717627392
+ms-teams       8693.828125    62672896
+OneDrive        7689.71875   163545088
+claude         6432.234375   399421440
+Everything      6095.53125   547135488
+Receiver       4886.734375    11800576
+
+
+
+clang version 23.1.0 (https://github.com/llvm/llvm-project ea7d852a70e8bdfaf601d6626a760f9771b2c4b4)
+cmake version 4.3.1
+1.12.0
+Ubuntu clang version 23.1.1 (++20260907063831+80062a22dc03-1~exp1~20260907063842.66)
+g++-14 (Ubuntu 14.3.0-14ubuntu1) 14.3.0
+cmake version 4.2.3
+1.13.2
+739f102836dd55248a30634838a76530680eaa38
+ M prompts.txt

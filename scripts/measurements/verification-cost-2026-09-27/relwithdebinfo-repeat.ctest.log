@@ -1,0 +1,547 @@
+### 2026-09-27T07:10:46Z /c/Users/U439644/AppData/Local/Programs/CLion/bin/cmake/win/x64/bin/ctest.exe --test-dir build/timing/relwithdebinfo-repeat --output-on-failure --output-junit /c/Users/U439644/Projects/untitled/build/timing/_logs/relwithdebinfo-repeat.junit.xml
+Test project C:/Users/U439644/Projects/untitled/build/timing/relwithdebinfo-repeat
+        Start   1: TDB - TT changes within a day as the annual term does
+  1/266 Test   #1: TDB - TT changes within a day as the annual term does ...................................   Passed    1.10 sec
+        Start   2: TDB - TT is within 20 us of Circular 179 over 1900-2100
+  2/266 Test   #2: TDB - TT is within 20 us of Circular 179 over 1900-2100 .................................   Passed    0.06 sec
+        Start   3: TDB is converted, not refused, at both ends of the calendar
+  3/266 Test   #3: TDB is converted, not refused, at both ends of the calendar .............................   Passed    0.03 sec
+        Start   4: TT to TDB and back is within 1 ps both ways over a seeded sweep
+  4/266 Test   #4: TT to TDB and back is within 1 ps both ways over a seeded sweep .........................   Passed    0.57 sec
+        Start   5: the annual term peaks and crosses zero where the physics says
+  5/266 Test   #5: the annual term peaks and crosses zero where the physics says ...........................   Passed    0.28 sec
+        Start   6: a camera whose near plane is not finite and positive is refused
+  6/266 Test   #6: a camera whose near plane is not finite and positive is refused .........................   Passed    0.66 sec
+        Start   7: a camera whose orientation is not a rotation is refused
+  7/266 Test   #7: a camera whose orientation is not a rotation is refused .................................   Passed    0.03 sec
+        Start   8: a camera with a field of view outside (0, pi) is refused
+  8/266 Test   #8: a camera with a field of view outside (0, pi) is refused ................................   Passed    0.02 sec
+        Start   9: a camera with a position that is not finite is refused
+  9/266 Test   #9: a camera with a position that is not finite is refused ..................................   Passed    0.03 sec
+        Start  10: a displacement round-trips through view space
+ 10/266 Test  #10: a displacement round-trips through view space ...........................................   Passed    0.02 sec
+        Start  11: the jitter budget holds, and does not depend on the distance to the origin
+ 11/266 Test  #11: the jitter budget holds, and does not depend on the distance to the origin ..............   Passed    0.03 sec
+        Start  12: the naive path fails the budget where it bites, and passes where it does not
+ 12/266 Test  #12: the naive path fails the budget where it bites, and passes where it does not ............   Passed    0.02 sec
+        Start  13: the narrowing is exact, and it is the subtraction that makes it so
+ 13/266 Test  #13: the narrowing is exact, and it is the subtraction that makes it so ......................   Passed    0.03 sec
+        Start  14: the narrowing's error is flat across six decades of world magnitude
+ 14/266 Test  #14: the narrowing's error is flat across six decades of world magnitude .....................   Passed    0.03 sec
+        Start  15: the orientation tolerance is a boundary, and it is checked from both sides
+ 15/266 Test  #15: the orientation tolerance is a boundary, and it is checked from both sides ..............   Passed    0.03 sec
+        Start  16: the view matrix is a pure rotation
+ 16/266 Test  #16: the view matrix is a pure rotation ......................................................   Passed    0.03 sec
+        Start  17: the view matrix takes the camera's own axes to view space's axes
+ 17/266 Test  #17: the view matrix takes the camera's own axes to view space's axes ........................   Passed    0.03 sec
+        Start  18: a cancelling difference keeps what a double loses
+ 18/266 Test  #18: a cancelling difference keeps what a double loses .......................................   Passed    0.61 sec
+        Start  19: an overflow stays an overflow rather than becoming a NaN
+ 19/266 Test  #19: an overflow stays an overflow rather than becoming a NaN ................................   Passed    0.03 sec
+        Start  20: quickTwoSum is exact when its precondition holds
+ 20/266 Test  #20: quickTwoSum is exact when its precondition holds ........................................   Passed    0.06 sec
+        Start  21: splitting survives the top of the range
+ 21/266 Test  #21: splitting survives the top of the range .................................................   Passed    0.07 sec
+        Start  22: the error term of a product is exactly what an fma reports
+ 22/266 Test  #22: the error term of a product is exactly what an fma reports ..............................   Passed    0.11 sec
+        Start  23: the error term of a sum is exact
+ 23/266 Test  #23: the error term of a sum is exact ........................................................   Passed    0.09 sec
+        Start  24: the quotient and the square root are correct beyond a double
+ 24/266 Test  #24: the quotient and the square root are correct beyond a double ............................   Passed    0.06 sec
+        Start  25: the scalar predicates agree about NaN
+ 25/266 Test  #25: the scalar predicates agree about NaN ...................................................   Passed    0.03 sec
+        Start  26: one turn of the Earth rotation angle takes the stellar day
+ 26/266 Test  #26: one turn of the Earth rotation angle takes the stellar day ..............................   Passed    0.63 sec
+        Start  27: only UT1 turns the Earth
+ 27/266 Test  #27: only UT1 turns the Earth ................................................................   Passed    0.04 sec
+        Start  28: the Earth rotation angle at J2000.0 is the published value
+ 28/266 Test  #28: the Earth rotation angle at J2000.0 is the published value ..............................   Passed    0.03 sec
+        Start  29: the composition is CIO-consistent
+ 29/266 Test  #29: the composition is CIO-consistent .......................................................   Passed    0.09 sec
+        Start  30: the intermediate frame is the full rotation less the Earth's turn
+ 30/266 Test  #30: the intermediate frame is the full rotation less the Earth's turn .......................   Passed    0.04 sec
+        Start  31: the pole of date is the same with and without the Earth's rotation
+ 31/266 Test  #31: the pole of date is the same with and without the Earth's rotation ......................   Passed    0.06 sec
+        Start  32: the quaternion is a unit one and reproduces the matrix
+ 32/266 Test  #32: the quaternion is a unit one and reproduces the matrix ..................................   Passed    0.20 sec
+        Start  33: the rotation agrees with an independent implementation to 0.1 mas
+ 33/266 Test  #33: the rotation agrees with an independent implementation to 0.1 mas .......................   Passed    0.08 sec
+        Start  34: EV100 matches the reference at every point, including a fractional stop
+ 34/266 Test  #34: EV100 matches the reference at every point, including a fractional stop .................   Passed    0.65 sec
+        Start  35: a shutter time that is not finite and positive is refused by name
+ 35/266 Test  #35: a shutter time that is not finite and positive is refused by name .......................   Passed    0.02 sec
+        Start  36: a sunlit patch of albedo 0.3 exposes at sunny 16 as the reference says
+ 36/266 Test  #36: a sunlit patch of albedo 0.3 exposes at sunny 16 as the reference says ..................   Passed    0.03 sec
+        Start  37: an ISO speed that is not finite and positive is refused by name
+ 37/266 Test  #37: an ISO speed that is not finite and positive is refused by name .........................   Passed    0.02 sec
+        Start  38: an f-number that is not finite and positive is refused by name
+ 38/266 Test  #38: an f-number that is not finite and positive is refused by name ..........................   Passed    0.02 sec
+        Start  39: f/16 at 1/125 s and ISO 100 is EV100 14.97, worked by hand
+ 39/266 Test  #39: f/16 at 1/125 s and ISO 100 is EV100 14.97, worked by hand ..............................   Passed    0.02 sec
+        Start  40: halving the shutter time raises EV by one stop, and doubling N by two
+ 40/266 Test  #40: halving the shutter time raises EV by one stop, and doubling N by two ...................   Passed    0.03 sec
+        Start  41: the exposure factor matches the reference, and maps saturation to one
+ 41/266 Test  #41: the exposure factor matches the reference, and maps saturation to one ...................   Passed    0.02 sec
+        Start  42: the shader's exposure is the nearest float to the double
+ 42/266 Test  #42: the shader's exposure is the nearest float to the double ................................   Passed    0.02 sec
+        Start  43: the smallest positive setting is accepted: the bound is zero, not a threshold
+ 43/266 Test  #43: the smallest positive setting is accepted: the bound is zero, not a threshold ...........   Passed    0.03 sec
+        Start  44: a TDB - TT fixture arrives in TDB and seconds
+ 44/266 Test  #44: a TDB - TT fixture arrives in TDB and seconds ...........................................   Passed    0.62 sec
+        Start  45: a TDB - TT fixture in the wrong scale or unit is refused
+ 45/266 Test  #45: a TDB - TT fixture in the wrong scale or unit is refused ................................   Passed    0.03 sec
+        Start  46: a double written with 17 digits reads back bit for bit
+ 46/266 Test  #46: a double written with 17 digits reads back bit for bit ..................................   Passed    0.04 sec
+        Start  47: a file that is not there is FileNotFound
+ 47/266 Test  #47: a file that is not there is FileNotFound ................................................   Passed    0.03 sec
+        Start  48: a fractional epoch keeps its fraction
+ 48/266 Test  #48: a fractional epoch keeps its fraction ...................................................   Passed    0.03 sec
+        Start  49: a known-good fixture parses, header and rows
+ 49/266 Test  #49: a known-good fixture parses, header and rows ............................................   Passed    0.03 sec
+        Start  50: a state-vector fixture arrives in metres, metres per second and TDB
+ 50/266 Test  #50: a state-vector fixture arrives in metres, metres per second and TDB .....................   Passed    0.03 sec
+        Start  51: a state-vector fixture in the wrong frame, scale or units is refused
+ 51/266 Test  #51: a state-vector fixture in the wrong frame, scale or units is refused ....................   Passed    0.03 sec
+        Start  52: an Earth-orientation fixture arrives as two instants and a rotation
+ 52/266 Test  #52: an Earth-orientation fixture arrives as two instants and a rotation .....................   Passed    0.03 sec
+        Start  53: an Earth-orientation fixture in the wrong frame or scale is refused
+ 53/266 Test  #53: an Earth-orientation fixture in the wrong frame or scale is refused .....................   Passed    0.03 sec
+        Start  54: comments, blank lines and CRLF change nothing
+ 54/266 Test  #54: comments, blank lines and CRLF change nothing ...........................................   Passed    0.03 sec
+        Start  55: every fixture error describes itself
+ 55/266 Test  #55: every fixture error describes itself ....................................................   Passed    0.03 sec
+        Start  56: every malformed fixture is refused by name and line
+ 56/266 Test  #56: every malformed fixture is refused by name and line .....................................   Passed    0.03 sec
+        Start  57: kilometres become metres with a single rounding
+ 57/266 Test  #57: kilometres become metres with a single rounding .........................................   Passed    0.03 sec
+        Start  58: the committed Earth-orientation fixture reads, as rotations
+ 58/266 Test  #58: the committed Earth-orientation fixture reads, as rotations .............................   Passed    0.03 sec
+        Start  59: the committed TDB - TT fixture reads, in seconds
+ 59/266 Test  #59: the committed TDB - TT fixture reads, in seconds ........................................   Passed    0.03 sec
+        Start  60: the generated Sun fixture reads, in metres
+ 60/266 Test  #60: the generated Sun fixture reads, in metres ..............................................   Passed    0.04 sec
+        Start  61: every finite half converts to the value its definition gives
+ 61/266 Test  #61: every finite half converts to the value its definition gives ............................   Passed    0.69 sec
+        Start  62: infinities stay infinite and every NaN keeps its payload
+ 62/266 Test  #62: infinities stay infinite and every NaN keeps its payload ................................   Passed    0.03 sec
+        Start  63: the bit pattern and the float are the same conversion
+ 63/266 Test  #63: the bit pattern and the float are the same conversion ...................................   Passed    0.05 sec
+        Start  64: the conversion agrees with the compiler's own _Float16
+ 64/266 Test  #64: the conversion agrees with the compiler's own _Float16 ..................................   Passed    0.04 sec
+        Start  65: a file with no header line is refused by name
+ 65/266 Test  #65: a file with no header line is refused by name ...........................................   Passed    1.23 sec
+        Start  66: a header that is not this format's is refused by name
+ 66/266 Test  #66: a header that is not this format's is refused by name ...................................   Passed    0.03 sec
+        Start  67: a missing file is refused by name
+ 67/266 Test  #67: a missing file is refused by name .......................................................   Passed    0.02 sec
+        Start  68: a well-formed dump is read value for value
+ 68/266 Test  #68: a well-formed dump is read value for value ..............................................   Passed    0.03 sec
+        Start  69: data too short or too long is refused by name
+ 69/266 Test  #69: data too short or too long is refused by name ...........................................   Passed    0.03 sec
+        Start  70: dimensions that are not two positive decimal integers are refused by name
+ 70/266 Test  #70: dimensions that are not two positive decimal integers are refused by name ...............   Passed    0.03 sec
+        Start  71: rows run top to bottom
+ 71/266 Test  #71: rows run top to bottom ..................................................................   Passed    0.03 sec
+        Start  72: the application's writer and this reader agree
+ 72/266 Test  #72: the application's writer and this reader agree ..........................................   Passed    0.03 sec
+        Start  73: the largest dimension the limit allows is accepted as a header
+ 73/266 Test  #73: the largest dimension the limit allows is accepted as a header ..........................   Passed    0.03 sec
+        Start  74: a 16-bit PNG holds the RGB it was given, most significant byte first
+ 74/266 Test  #74: a 16-bit PNG holds the RGB it was given, most significant byte first ....................   Passed    0.81 sec
+        Start  75: an 8-bit PNG holds the RGB it was given, and no alpha
+ 75/266 Test  #75: an 8-bit PNG holds the RGB it was given, and no alpha ...................................   Passed    0.05 sec
+        Start  76: an EXR holds the HDR target's bits, as R, G and B, with its colours and comment
+ 76/266 Test  #76: an EXR holds the HDR target's bits, as R, G and B, with its colours and comment .........   Passed    0.05 sec
+        Start  77: each encoder writes the same bytes twice
+ 77/266 Test  #77: each encoder writes the same bytes twice ................................................   Passed    0.05 sec
+        Start  78: every branch is reached and each reproduces its matrix
+ 78/266 Test  #78: every branch is reached and each reproduces its matrix ..................................   Passed    0.72 sec
+        Start  79: isRotation accepts rounding and refuses what was never a rotation
+ 79/266 Test  #79: isRotation accepts rounding and refuses what was never a rotation .......................   Passed    0.03 sec
+        Start  80: isUnitQuaternion accepts everything this project builds
+ 80/266 Test  #80: isUnitQuaternion accepts everything this project builds .................................   Passed    0.03 sec
+        Start  81: isUnitQuaternion refuses what was never a rotation
+ 81/266 Test  #81: isUnitQuaternion refuses what was never a rotation ......................................   Passed    0.03 sec
+        Start  82: near a half turn the conversion keeps what the trace alone would lose
+ 82/266 Test  #82: near a half turn the conversion keeps what the trace alone would lose ...................   Passed    0.03 sec
+        Start  83: the identity and the three half turns convert exactly
+ 83/266 Test  #83: the identity and the three half turns convert exactly ...................................   Passed    0.03 sec
+        Start  84: Kepler equation solver
+ 84/266 Test  #84: Kepler equation solver ..................................................................   Passed    0.76 sec
+        Start  85: degenerate orbits stay finite
+ 85/266 Test  #85: degenerate orbits stay finite ...........................................................   Passed    0.03 sec
+        Start  86: elements <-> state round trip
+ 86/266 Test  #86: elements <-> state round trip ...........................................................   Passed    0.03 sec
+        Start  87: failures are reported, not approximated
+ 87/266 Test  #87: failures are reported, not approximated .................................................   Passed    0.03 sec
+        Start  88: hyperbolic trajectories
+ 88/266 Test  #88: hyperbolic trajectories .................................................................   Passed    0.03 sec
+        Start  89: known analytic values
+ 89/266 Test  #89: known analytic values ...................................................................   Passed    0.03 sec
+        Start  90: propagation invariants
+ 90/266 Test  #90: propagation invariants ..................................................................   Passed    0.03 sec
+        Start  91: universal-variable vs Kepler-element propagation
+ 91/266 Test  #91: universal-variable vs Kepler-element propagation ........................................   Passed    0.03 sec
+        Start  92: a nearly radial ellipse is closed, with its period
+ 92/266 Test  #92: a nearly radial ellipse is closed, with its period ......................................   Passed    0.71 sec
+        Start  93: a nearly radial hyperbola at a tiny scale is not reported as closed
+ 93/266 Test  #93: a nearly radial hyperbola at a tiny scale is not reported as closed .....................   Passed    0.03 sec
+        Start  94: a nearly radial hyperbola is open, with its energy
+ 94/266 Test  #94: a nearly radial hyperbola is open, with its energy ......................................   Passed    0.03 sec
+        Start  95: a nearly radial hyperbola's state is not a NaN position
+ 95/266 Test  #95: a nearly radial hyperbola's state is not a NaN position .................................   Passed    0.03 sec
+        Start  96: a radial trajectory at the threshold is refused, not parameterised
+ 96/266 Test  #96: a radial trajectory at the threshold is refused, not parameterised ......................   Passed    0.03 sec
+        Start  97: a zero time step is the identity on every conic
+ 97/266 Test  #97: a zero time step is the identity on every conic .........................................   Passed    0.03 sec
+        Start  98: an anomaly past a hyperbola's asymptote is refused
+ 98/266 Test  #98: an anomaly past a hyperbola's asymptote is refused ......................................   Passed    0.03 sec
+        Start  99: an eccentricity that rounds to 1 does not halve the radius
+ 99/266 Test  #99: an eccentricity that rounds to 1 does not halve the radius ..............................   Passed    0.03 sec
+        Start 100: an eccentricity that rounds to 1 keeps the side of 1 its energy says
+100/266 Test #100: an eccentricity that rounds to 1 keeps the side of 1 its energy says ....................   Passed    0.03 sec
+        Start 101: an underflowing semi-major axis is not a NaN radius
+101/266 Test #101: an underflowing semi-major axis is not a NaN radius .....................................   Passed    0.03 sec
+        Start 102: element propagation agrees with the state propagator on every conic
+102/266 Test #102: element propagation agrees with the state propagator on every conic .....................   Passed    0.04 sec
+        Start 103: element propagation holds on both sides of a parabola
+103/266 Test #103: element propagation holds on both sides of a parabola ...................................   Passed    0.03 sec
+        Start 104: element propagation holds outbound and over a long step
+104/266 Test #104: element propagation holds outbound and over a long step .................................   Passed    0.03 sec
+        Start 105: element propagation keeps the semi-major axis it was given
+105/266 Test #105: element propagation keeps the semi-major axis it was given ..............................   Passed    0.03 sec
+        Start 106: elementsFromState is accurate to the resolution of a double
+106/266 Test #106: elementsFromState is accurate to the resolution of a double .............................   Passed    0.03 sec
+        Start 107: heliocentric circular orbits
+107/266 Test #107: heliocentric circular orbits ............................................................   Passed    0.03 sec
+        Start 108: length is exact at every binary scale
+108/266 Test #108: length is exact at every binary scale ...................................................   Passed    0.03 sec
+        Start 109: near-rectilinear orbits, e approaching 1
+109/266 Test #109: near-rectilinear orbits, e approaching 1 ................................................   Passed    0.03 sec
+        Start 110: non-finite inputs are refused by name
+110/266 Test #110: non-finite inputs are refused by name ...................................................   Passed    0.03 sec
+        Start 111: orbitInfo's radius and speed hold near the radial limit
+111/266 Test #111: orbitInfo's radius and speed hold near the radial limit .................................   Passed    0.03 sec
+        Start 112: orbitInfo's radius and speed stay within the elements' conditioning
+112/266 Test #112: orbitInfo's radius and speed stay within the elements' conditioning .....................   Passed    0.11 sec
+        Start 113: parabolic trajectories
+113/266 Test #113: parabolic trajectories ..................................................................   Passed    0.03 sec
+        Start 114: propagation composes: one long step equals two short ones
+114/266 Test #114: propagation composes: one long step equals two short ones ...............................   Passed    0.03 sec
+        Start 115: propagation is bit-identical across runs
+115/266 Test #115: propagation is bit-identical across runs ................................................   Passed    0.03 sec
+        Start 116: randomised sweep across bodies, shapes and time steps
+116/266 Test #116: randomised sweep across bodies, shapes and time steps ...................................   Passed    0.03 sec
+        Start 117: states that are finite but are not orbits
+117/266 Test #117: states that are finite but are not orbits ...............................................   Passed    0.03 sec
+        Start 118: states with no orbital plane
+118/266 Test #118: states with no orbital plane ............................................................   Passed    0.03 sec
+        Start 119: the conversion's magnitudes are identical on every toolchain
+119/266 Test #119: the conversion's magnitudes are identical on every toolchain ............................   Passed    0.03 sec
+        Start 120: the perifocal velocity keeps e - 1 where ecc cannot
+120/266 Test #120: the perifocal velocity keeps e - 1 where ecc cannot .....................................   Passed    0.03 sec
+        Start 121: two-body motion is invariant under canonical rescaling
+121/266 Test #121: two-body motion is invariant under canonical rescaling ..................................   Passed    0.03 sec
+        Start 122: a body vertex is laid out the way body.vert reads it
+122/266 Test #122: a body vertex is laid out the way body.vert reads it ....................................   Passed    0.65 sec
+        Start 123: a line vertex is laid out the way line.vert reads it
+123/266 Test #123: a line vertex is laid out the way line.vert reads it ....................................   Passed    0.02 sec
+        Start 124: a packed layout numbers its attributes in order and adds up their widths
+124/266 Test #124: a packed layout numbers its attributes in order and adds up their widths ................   Passed    0.02 sec
+        Start 125: a push-constant range the specification allows is accepted
+125/266 Test #125: a push-constant range the specification allows is accepted ..............................   Passed    0.02 sec
+        Start 126: a push-constant range the specification forbids is refused by name
+126/266 Test #126: a push-constant range the specification forbids is refused by name ......................   Passed    0.02 sec
+        Start 127: an attribute format is as wide as its components
+127/266 Test #127: an attribute format is as wide as its components ........................................   Passed    0.03 sec
+        Start 128: the push-constant ranges cover the blocks the shaders declare
+128/266 Test #128: the push-constant ranges cover the blocks the shaders declare ...........................   Passed    0.02 sec
+        Start 129: the sidecar's exposure agrees with its definitions
+129/266 Test #129: the sidecar's exposure agrees with its definitions ......................................   Passed    0.65 sec
+        Start 130: the sidecar's numbers are written with their units
+130/266 Test #130: the sidecar's numbers are written with their units ......................................   Passed    0.03 sec
+        Start 131: the sidecar's text fields are each under their own key
+131/266 Test #131: the sidecar's text fields are each under their own key ..................................   Passed    0.03 sec
+        Start 132: a field of view that cannot be used is refused by name
+132/266 Test #132: a field of view that cannot be used is refused by name ..................................   Passed   10.23 sec
+        Start 133: a near plane that cannot be used is refused by name
+133/266 Test #133: a near plane that cannot be used is refused by name .....................................   Passed    0.02 sec
+        Start 134: a point behind the camera lands back on screen, and is told apart by name
+134/266 Test #134: a point behind the camera lands back on screen, and is told apart by name ...............   Passed    0.03 sec
+        Start 135: an aspect ratio that cannot be used is refused by name
+135/266 Test #135: an aspect ratio that cannot be used is refused by name ..................................   Passed    0.02 sec
+        Start 136: depth decreases strictly with distance
+136/266 Test #136: depth decreases strictly with distance ..................................................   Passed    0.03 sec
+        Start 137: depth is the near plane over the distance, exactly
+137/266 Test #137: depth is the near plane over the distance, exactly ......................................   Passed    0.02 sec
+        Start 138: the admissible extremes are accepted, and each error says something different
+138/266 Test #138: the admissible extremes are accepted, and each error says something different ...........   Passed    0.02 sec
+        Start 139: the frustum edge lands on the screen edge across the admissible range
+139/266 Test #139: the frustum edge lands on the screen edge across the admissible range ...................   Passed    0.06 sec
+        Start 140: the frustum edge lands on the screen edge, without asking the tangent function
+140/266 Test #140: the frustum edge lands on the screen edge, without asking the tangent function ..........   Passed    0.02 sec
+        Start 141: the near plane maps to exactly one, and to the right two numbers
+141/266 Test #141: the near plane maps to exactly one, and to the right two numbers ........................   Passed    0.02 sec
+        Start 142: two points a metre apart at 1000 km are distinct in a 32-bit depth buffer
+142/266 Test #142: two points a metre apart at 1000 km are distinct in a 32-bit depth buffer ...............   Passed    0.02 sec
+        Start 143: a block size of zero is reported by name, not assumed away
+143/266 Test #143: a block size of zero is reported by name, not assumed away ..............................   Passed    0.65 sec
+        Start 144: a byte count works above the range a 32-bit count could hold
+144/266 Test #144: a byte count works above the range a 32-bit count could hold ............................   Passed    0.03 sec
+        Start 145: a count added and then taken away again is the number it started with
+145/266 Test #145: a count added and then taken away again is the number it started with ...................   Passed    0.02 sec
+        Start 146: a count orders and compares the way the number it holds does
+146/266 Test #146: a count orders and compares the way the number it holds does ............................   Passed    0.03 sec
+        Start 147: a count subtracts to the difference of the two numbers
+147/266 Test #147: a count subtracts to the difference of the two numbers ..................................   Passed    0.03 sec
+        Start 148: a default count is zero, not whatever was on the stack
+148/266 Test #148: a default count is zero, not whatever was on the stack ..................................   Passed    0.03 sec
+        Start 149: a mebibyte budget is the same arithmetic, because the base is the same
+149/266 Test #149: a mebibyte budget is the same arithmetic, because the base is the same ..................   Passed    0.02 sec
+        Start 150: a pixel measurement scales and orders like its number
+150/266 Test #150: a pixel measurement scales and orders like its number ...................................   Passed    0.02 sec
+        Start 151: aligning up lands on a multiple of the step
+151/266 Test #151: aligning up lands on a multiple of the step .............................................   Passed    0.02 sec
+        Start 152: aligning up never lands below what was asked for
+152/266 Test #152: aligning up never lands below what was asked for ........................................   Passed    0.03 sec
+        Start 153: aligning up never lands more than one step above
+153/266 Test #153: aligning up never lands more than one step above ........................................   Passed    0.03 sec
+        Start 154: how many fit is the whole number of blocks, with the remainder dropped
+154/266 Test #154: how many fit is the whole number of blocks, with the remainder dropped ..................   Passed    0.02 sec
+        Start 155: mebibytes convert to bytes by widening first, not after
+155/266 Test #155: mebibytes convert to bytes by widening first, not after .................................   Passed    0.02 sec
+        Start 156: multiplying a count by a scale is the product of the two numbers
+156/266 Test #156: multiplying a count by a scale is the product of the two numbers ........................   Passed    0.02 sec
+        Start 157: pixels add and subtract like the number they carry
+157/266 Test #157: pixels add and subtract like the number they carry ......................................   Passed    0.03 sec
+        Start 158: that many blocks fit, and one more would not
+158/266 Test #158: that many blocks fit, and one more would not ............................................   Passed    0.03 sec
+        Start 159: the boundary values that do not wrap are accepted
+159/266 Test #159: the boundary values that do not wrap are accepted .......................................   Passed    0.02 sec
+        Start 160: the compound forms are the plain ones, applied in place
+160/266 Test #160: the compound forms are the plain ones, applied in place .................................   Passed    0.02 sec
+        Start 161: each side of the knee is on its own branch, and the steps are the standard's
+161/266 Test #161: each side of the knee is on its own branch, and the steps are the standard's ............   Passed    0.68 sec
+        Start 162: encode then decode returns the input, except in the window at the knee
+162/266 Test #162: encode then decode returns the input, except in the window at the knee ..................   Passed    0.12 sec
+        Start 163: the decode matches IEC 61966-2-1 at every reference point
+163/266 Test #163: the decode matches IEC 61966-2-1 at every reference point ...............................   Passed    0.02 sec
+        Start 164: the encode matches IEC 61966-2-1 at every reference point
+164/266 Test #164: the encode matches IEC 61966-2-1 at every reference point ...............................   Passed    0.02 sec
+        Start 165: the window at the knee is where the standard puts it, and no wider
+165/266 Test #165: the window at the knee is where the standard puts it, and no wider ......................   Passed    0.12 sec
+        Start 166: values outside [0, 1] are clamped, as the display target clamps them
+166/266 Test #166: values outside [0, 1] are clamped, as the display target clamps them ....................   Passed    0.02 sec
+        Start 167: zero is exact, and one is within a unit in the last place
+167/266 Test #167: zero is exact, and one is within a unit in the last place ...............................   Passed    0.02 sec
+        Start 168: a date in mid-2100 is outside the span
+168/266 Test #168: a date in mid-2100 is outside the span ..................................................   Passed    0.67 sec
+        Start 169: a date outside ERFA's span is reported by name
+169/266 Test #169: a date outside ERFA's span is reported by name ..........................................   Passed    0.03 sec
+        Start 170: irradiance follows the inverse-square law
+170/266 Test #170: irradiance follows the inverse-square law ...............................................   Passed    0.03 sec
+        Start 171: the March equinox puts the Sun on the equator of date
+171/266 Test #171: the March equinox puts the Sun on the equator of date ...................................   Passed    0.03 sec
+        Start 172: the Sun is where Horizons says it is
+172/266 Test #172: the Sun is where Horizons says it is ....................................................   Passed    0.03 sec
+        Start 173: the Sun's motion is continuous across fifty years
+173/266 Test #173: the Sun's motion is continuous across fifty years .......................................   Passed    0.47 sec
+        Start 174: the apsides are where the published figures put them
+174/266 Test #174: the apsides are where the published figures put them ....................................   Passed    0.46 sec
+        Start 175: the distance is the length of the position
+175/266 Test #175: the distance is the length of the position ..............................................   Passed    0.03 sec
+        Start 176: 2017-01-01T00:00:00 UTC is 00:00:37 TAI and 00:01:09.184 TT
+176/266 Test #176: 2017-01-01T00:00:00 UTC is 00:00:37 TAI and 00:01:09.184 TT .............................   Passed    0.67 sec
+        Start 177: DeltaT is refused by name beyond 10^6 s and when not finite
+177/266 Test #177: DeltaT is refused by name beyond 10^6 s and when not finite .............................   Passed    0.03 sec
+        Start 178: DeltaUT1 is refused by name beyond 0.9 s and when not finite
+178/266 Test #178: DeltaUT1 is refused by name beyond 0.9 s and when not finite ............................   Passed    0.03 sec
+        Start 179: TT - TAI is exactly 32.184 s at every epoch
+179/266 Test #179: TT - TAI is exactly 32.184 s at every epoch .............................................   Passed    0.03 sec
+        Start 180: TT to UT1 and back is exact both ways with DeltaT anywhere in its range
+180/266 Test #180: TT to UT1 and back is exact both ways with DeltaT anywhere in its range .................   Passed    0.10 sec
+        Start 181: UT1 = TT - DeltaT to the picosecond
+181/266 Test #181: UT1 = TT - DeltaT to the picosecond .....................................................   Passed    0.03 sec
+        Start 182: UT1 = UTC + DeltaUT1, to the picosecond
+182/266 Test #182: UT1 = UTC + DeltaUT1, to the picosecond .................................................   Passed    0.04 sec
+        Start 183: UT1 across a leap second runs on, and the way back lands a second later
+183/266 Test #183: UT1 across a leap second runs on, and the way back lands a second later .................   Passed    0.03 sec
+        Start 184: UT1 from the table's DeltaT is the UTC road's UT1 to the picosecond
+184/266 Test #184: UT1 from the table's DeltaT is the UTC road's UT1 to the picosecond .....................   Passed    0.11 sec
+        Start 185: UT1 in the second a negative leap second removes has no UTC
+185/266 Test #185: UT1 in the second a negative leap second removes has no UTC .............................   Passed    0.03 sec
+        Start 186: UT1 to UTC and back is exact over a seeded sweep
+186/266 Test #186: UT1 to UTC and back is exact over a seeded sweep ........................................   Passed    0.08 sec
+        Start 187: UT1 to UTC past either end of the calendar is YearOutOfRange
+187/266 Test #187: UT1 to UTC past either end of the calendar is YearOutOfRange ............................   Passed    0.03 sec
+        Start 188: UTC and TAI round-trip exactly over a seeded sweep
+188/266 Test #188: UTC and TAI round-trip exactly over a seeded sweep ......................................   Passed    0.08 sec
+        Start 189: a Julian date becomes the nearest picosecond
+189/266 Test #189: a Julian date becomes the nearest picosecond ............................................   Passed    0.03 sec
+        Start 190: a Julian date is refused by name
+190/266 Test #190: a Julian date is refused by name ........................................................   Passed    0.03 sec
+        Start 191: a Julian date may be split any way
+191/266 Test #191: a Julian date may be split any way ......................................................   Passed    0.03 sec
+        Start 192: a TAI instant outside the calendar is reported rather than asserted
+192/266 Test #192: a TAI instant outside the calendar is reported rather than asserted .....................   Passed    0.03 sec
+        Start 193: a UTC Julian date is a fraction of its own day
+193/266 Test #193: a UTC Julian date is a fraction of its own day ..........................................   Passed    0.03 sec
+        Start 194: a date exists exactly when the standard library says it does
+194/266 Test #194: a date exists exactly when the standard library says it does ............................   Passed    0.04 sec
+        Start 195: a held DeltaT turns UT1 uniformly through a leap second where the UTC road steps back
+195/266 Test #195: a held DeltaT turns UT1 uniformly through a leap second where the UTC road steps back ...   Passed    0.03 sec
+        Start 196: a million additions of 1 us drift by nothing
+196/266 Test #196: a million additions of 1 us drift by nothing ............................................   Passed    0.03 sec
+        Start 197: a synthetic negative leap second shortens its day
+197/266 Test #197: a synthetic negative leap second shortens its day .......................................   Passed    0.03 sec
+        Start 198: an instant becomes the nearest Julian date
+198/266 Test #198: an instant becomes the nearest Julian date ..............................................   Passed    0.03 sec
+        Start 199: an instant past the calendar's range is reported, not converted
+199/266 Test #199: an instant past the calendar's range is reported, not converted .........................   Passed    0.03 sec
+        Start 200: an instant survives its Julian date to within 5 ps
+200/266 Test #200: an instant survives its Julian date to within 5 ps ......................................   Passed    0.06 sec
+        Start 201: arithmetic moves by the nearest picosecond and stays normalised
+201/266 Test #201: arithmetic moves by the nearest picosecond and stays normalised .........................   Passed    0.03 sec
+        Start 202: both scales increase across every boundary
+202/266 Test #202: both scales increase across every boundary ..............................................   Passed    0.03 sec
+        Start 203: calendar input is refused by name
+203/266 Test #203: calendar input is refused by name .......................................................   Passed    0.03 sec
+        Start 204: calendar round trip over a seeded sweep of 1900-2100
+204/266 Test #204: calendar round trip over a seeded sweep of 1900-2100 ....................................   Passed    0.07 sec
+        Start 205: enormous durations keep the instant normalised
+205/266 Test #205: enormous durations keep the instant normalised ..........................................   Passed    0.03 sec
+        Start 206: every step in the table, one second either side
+206/266 Test #206: every step in the table, one second either side .........................................   Passed    0.03 sec
+        Start 207: every time error describes itself
+207/266 Test #207: every time error describes itself .......................................................   Passed    0.03 sec
+        Start 208: ordering agrees with the sign of the difference
+208/266 Test #208: ordering agrees with the sign of the difference .........................................   Passed    0.08 sec
+        Start 209: t + 1 ns - t recovers 1 ns, at the end of a day and across it
+209/266 Test #209: t + 1 ns - t recovers 1 ns, at the end of a day and across it ...........................   Passed    0.03 sec
+        Start 210: the calendar agrees with the standard library's on every day of 1900-2100
+210/266 Test #210: the calendar agrees with the standard library's on every day of 1900-2100 ...............   Passed    0.11 sec
+        Start 211: the century rule, 29 February and every month end
+211/266 Test #211: the century rule, 29 February and every month end .......................................   Passed    0.03 sec
+        Start 212: the epoch constants are the published instants
+212/266 Test #212: the epoch constants are the published instants ..........................................   Passed    0.03 sec
+        Start 213: the first and last supported days
+213/266 Test #213: the first and last supported days .......................................................   Passed    0.03 sec
+        Start 214: the held DeltaT is the table's last step with DeltaUT1 unmodelled
+214/266 Test #214: the held DeltaT is the table's last step with DeltaUT1 unmodelled .......................   Passed    0.03 sec
+        Start 215: the leap second at 2016-12-31T23:59:60 round-trips
+215/266 Test #215: the leap second at 2016-12-31T23:59:60 round-trips ......................................   Passed    0.03 sec
+        Start 216: the leap-second table agrees with the standard library's
+216/266 Test #216: the leap-second table agrees with the standard library's ................................   Passed    0.06 sec
+        Start 217: the leap-second table is the published one
+217/266 Test #217: the leap-second table is the published one ..............................................   Passed    0.03 sec
+        Start 218: the leap-second table refuses by name
+218/266 Test #218: the leap-second table refuses by name ...................................................   Passed    0.03 sec
+        Start 219: the published epochs, both ways
+219/266 Test #219: the published epochs, both ways .........................................................   Passed    0.03 sec
+        Start 220: the table's DeltaT is 32.184 s + DeltaAT - DeltaUT1 either side of every step
+220/266 Test #220: the table's DeltaT is 32.184 s + DeltaAT - DeltaUT1 either side of every step ...........   Passed    0.03 sec
+        Start 221: the table's DeltaT is refused by name where the table has none
+221/266 Test #221: the table's DeltaT is refused by name where the table has none ..........................   Passed    0.03 sec
+        Start 222: with DeltaUT1 unmodelled, UT1 is UTC's day and time of day
+222/266 Test #222: with DeltaUT1 unmodelled, UT1 is UTC's day and time of day ..............................   Passed    0.08 sec
+        Start 223: AgX matches the reference at every point, to the rounding of doubles
+223/266 Test #223: AgX matches the reference at every point, to the rounding of doubles ....................   Passed    0.88 sec
+        Start 224: a large input saturates, and never wraps or becomes NaN
+224/266 Test #224: a large input saturates, and never wraps or becomes NaN .................................   Passed    0.02 sec
+        Start 225: black is exactly black, and so is everything below the curve's zero
+225/266 Test #225: black is exactly black, and so is everything below the curve's zero .....................   Passed    0.02 sec
+        Start 226: grey rises strictly inside AgX's range, and never falls across twelve decades
+226/266 Test #226: grey rises strictly inside AgX's range, and never falls across twelve decades ...........   Passed    0.03 sec
+        Start 227: mid-grey reaches the display as code 128
+227/266 Test #227: mid-grey reaches the display as code 128 ................................................   Passed    0.03 sec
+        Start 228: a default eccentricity is a circle
+228/266 Test #228: a default eccentricity is a circle ......................................................   Passed    0.72 sec
+        Start 229: a gravitational parameter accepts any positive value
+229/266 Test #229: a gravitational parameter accepts any positive value ....................................   Passed    0.03 sec
+        Start 230: a gravitational parameter keeps its place in the dimension system
+230/266 Test #230: a gravitational parameter keeps its place in the dimension system .......................   Passed    0.02 sec
+        Start 231: a negative eccentricity is refused by its own name
+231/266 Test #231: a negative eccentricity is refused by its own name ......................................   Passed    0.02 sec
+        Start 232: a non-finite eccentricity is refused by a different name
+232/266 Test #232: a non-finite eccentricity is refused by a different name ................................   Passed    0.02 sec
+        Start 233: a non-finite gravitational parameter is refused by a different name
+233/266 Test #233: a non-finite gravitational parameter is refused by a different name .....................   Passed    0.03 sec
+        Start 234: a non-positive gravitational parameter is refused by name
+234/266 Test #234: a non-positive gravitational parameter is refused by name ...............................   Passed    0.03 sec
+        Start 235: an accepted eccentricity survives the factory bit for bit
+235/266 Test #235: an accepted eccentricity survives the factory bit for bit ...............................   Passed    0.02 sec
+        Start 236: an accepted gravitational parameter survives the factory bit for bit
+236/266 Test #236: an accepted gravitational parameter survives the factory bit for bit ....................   Passed    0.03 sec
+        Start 237: an eccentricity accepts every conic, with no upper bound
+237/266 Test #237: an eccentricity accepts every conic, with no upper bound ................................   Passed    0.03 sec
+        Start 238: and no two unit errors describe the same thing
+238/266 Test #238: and no two unit errors describe the same thing ..........................................   Passed    0.03 sec
+        Start 239: every unit error describes itself
+239/266 Test #239: every unit error describes itself .......................................................   Passed    0.02 sec
+        Start 240: negative zero is an eccentricity, because it is zero
+240/266 Test #240: negative zero is an eccentricity, because it is zero ....................................   Passed    0.02 sec
+        Start 241: a frame change is declared once, and the arithmetic is untouched by it
+241/266 Test #241: a frame change is declared once, and the arithmetic is untouched by it ..................   Passed    1.14 sec
+        Start 242: a point survives the round trip through a transform and its inverse
+242/266 Test #242: a point survives the round trip through a transform and its inverse .....................   Passed    0.02 sec
+        Start 243: a rotation moves a point and a direction the same way
+243/266 Test #243: a rotation moves a point and a direction the same way ...................................   Passed    0.02 sec
+        Start 244: a translation moves a point and leaves a direction alone
+244/266 Test #244: a translation moves a point and leaves a direction alone ................................   Passed    0.02 sec
+        Start 245: isAffine says which matrices transformPoint may be handed
+245/266 Test #245: isAffine says which matrices transformPoint may be handed ...............................   Passed    0.03 sec
+        Start 246: matrix multiplication is associative to the conditioning of the product
+246/266 Test #246: matrix multiplication is associative to the conditioning of the product .................   Passed    0.07 sec
+        Start 247: the identity is exactly the multiplicative identity
+247/266 Test #247: the identity is exactly the multiplicative identity .....................................   Passed    0.03 sec
+        Start 248: the rigid inverse undoes the transform, at every scale
+248/266 Test #248: the rigid inverse undoes the transform, at every scale ..................................   Passed    0.02 sec
+        Start 249: transpose(AB) is transpose(B) transpose(A), bit for bit
+249/266 Test #249: transpose(AB) is transpose(B) transpose(A), bit for bit .................................   Passed    0.02 sec
+        Start 250: transposing twice returns the original, bit for bit
+250/266 Test #250: transposing twice returns the original, bit for bit .....................................   Passed    0.02 sec
+        Start 261: probe_clear
+251/266 Test #261: probe_clear .............................................................................   Passed    3.40 sec
+        Start 251: below the bands nothing is drawn, and every pixel is opaque
+252/266 Test #251: below the bands nothing is drawn, and every pixel is opaque .............................   Passed    1.33 sec
+        Start 252: every band carries the ramp's radiance, to within one binary16 step
+253/266 Test #252: every band carries the ramp's radiance, to within one binary16 step .....................   Passed    0.15 sec
+        Start 253: the grey band's three channels are the same number
+254/266 Test #253: the grey band's three channels are the same number ......................................   Passed    0.45 sec
+        Start 254: count_wraparound_subtraction_aborts
+255/266 Test #254: count_wraparound_subtraction_aborts .....................................................***Skipped   0.79 sec
+        Start 255: count_wraparound_addition_aborts
+256/266 Test #255: count_wraparound_addition_aborts ........................................................***Skipped   0.66 sec
+        Start 256: count_wraparound_multiplication_aborts
+257/266 Test #256: count_wraparound_multiplication_aborts ..................................................***Skipped   0.51 sec
+        Start 257: horizons_fixture_checksums
+258/266 Test #257: horizons_fixture_checksums ..............................................................   Passed    0.13 sec
+        Start 258: t_erfa_c
+259/266 Test #258: t_erfa_c ................................................................................   Passed    0.84 sec
+        Start 259: t_erfa_c_extra
+260/266 Test #259: t_erfa_c_extra ..........................................................................   Passed    0.47 sec
+        Start 260: orbsim_smoke
+261/266 Test #260: orbsim_smoke ............................................................................   Passed    3.04 sec
+        Start 262: probe_clear_determinism
+262/266 Test #262: probe_clear_determinism .................................................................   Passed    1.46 sec
+        Start 263: shader_missing_is_reported
+263/266 Test #263: shader_missing_is_reported ..............................................................   Passed    1.23 sec
+        Start 264: tonemap_constants
+264/266 Test #264: tonemap_constants .......................................................................   Passed    0.22 sec
+        Start 265: tonemap_constants_self_test
+265/266 Test #265: tonemap_constants_self_test .............................................................   Passed    0.14 sec
+        Start 266: horizons_fixture_converter
+266/266 Test #266: horizons_fixture_converter ..............................................................   Passed    0.14 sec
+
+100% tests passed, 0 tests failed out of 266
+
+Label Time Summary:
+fixtures    =   0.63 sec*proc (4 tests)
+gpu         =  11.07 sec*proc (7 tests)
+
+Total Test time (real) =  51.38 sec
+
+The following tests did not run:
+	254 - count_wraparound_subtraction_aborts (Skipped)
+	255 - count_wraparound_addition_aborts (Skipped)
+	256 - count_wraparound_multiplication_aborts (Skipped)

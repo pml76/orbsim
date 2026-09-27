@@ -1,0 +1,425 @@
+### 2026-09-27T07:30:03Z msvc /c/Users/U439644/AppData/Local/Programs/CLion/bin/cmake/win/x64/bin/cmake.exe --preset windows-msvc -B build/timing/windows-msvc -DCMAKE_MAKE_PROGRAM=C:/Strawberry/c/bin/ninja.exe
+'vswhere.exe' is not recognized as an internal or external command,
+operable program or batch file.
+-- The C compiler identification is MSVC 19.51.36257.0
+-- The CXX compiler identification is MSVC 19.51.36257.0
+-- Detecting C compiler ABI info
+-- Detecting C compiler ABI info - done
+-- Check for working C compiler: C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe - skipped
+-- Detecting C compile features
+-- Detecting C compile features - done
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Populating mp_units
+-- Configuring done (0.2s)
+-- Generating done (0.1s)
+-- Build files have been written to: C:/Users/U439644/Projects/untitled/build/timing/windows-msvc/_deps/mp_units-subbuild
+[1/9] Creating directories for 'mp_units-populate'
+[1/9] Performing download step (git clone) for 'mp_units-populate'
+Cloning into 'mp_units-src'...
+HEAD is now at 27d2def9 feat: 2.5.0 released
+[2/9] Performing update step for 'mp_units-populate'
+-- Already at requested tag: v2.5.0
+[3/9] No patch step for 'mp_units-populate'
+[5/9] No configure step for 'mp_units-populate'
+[6/9] No build step for 'mp_units-populate'
+[7/9] No install step for 'mp_units-populate'
+[8/9] No test step for 'mp_units-populate'
+[9/9] Completed 'mp_units-populate'
+-- MP_UNITS_BUILD_CXX_MODULES: OFF
+-- MP_UNITS_BUILD_INSTALL: OFF
+-- Checking C++ feature test macro '__cpp_lib_format'
+-- Checking C++ feature test macro '__cpp_lib_format' - SUCCESS
+-- Checking C++ feature test macro '__cpp_explicit_this_parameter'
+-- Checking C++ feature test macro '__cpp_explicit_this_parameter' - SUCCESS
+-- Checking C++ feature test macro '__cpp_constexpr_exceptions >= 202411L'
+-- Checking C++ feature test macro '__cpp_constexpr_exceptions >= 202411L' - FAIL
+-- MP_UNITS_API_STD_FORMAT: ON
+-- MP_UNITS_API_NO_CRTP: ON
+-- MP_UNITS_API_THROWING_CONSTRAINTS: OFF
+-- MP_UNITS_API_FREESTANDING: OFF
+-- MP_UNITS_API_CONTRACTS: NONE
+-- MP_UNITS_API_NATURAL_UNITS: ON
+-- Populating erfa
+-- Configuring done (0.2s)
+-- Generating done (0.1s)
+-- Build files have been written to: C:/Users/U439644/Projects/untitled/build/timing/windows-msvc/_deps/erfa-subbuild
+[1/9] Creating directories for 'erfa-populate'
+[1/9] Performing download step (git clone) for 'erfa-populate'
+Cloning into 'erfa-src'...
+HEAD is now at 9915ba3 Also update configure.ac for 2.0.1
+[2/9] Performing update step for 'erfa-populate'
+-- Already at requested tag: v2.0.1
+[3/9] No patch step for 'erfa-populate'
+[5/9] No configure step for 'erfa-populate'
+[6/9] No build step for 'erfa-populate'
+[7/9] No install step for 'erfa-populate'
+[8/9] No test step for 'erfa-populate'
+[9/9] Completed 'erfa-populate'
+-- Populating stb
+-- Configuring done (0.2s)
+-- Generating done (0.2s)
+-- Build files have been written to: C:/Users/U439644/Projects/untitled/build/timing/windows-msvc/_deps/stb-subbuild
+[1/9] Creating directories for 'stb-populate'
+[1/9] Performing download step (git clone) for 'stb-populate'
+Cloning into 'stb-src'...
+HEAD is now at 2c980bb Merge pull request #1984 from ruby-R53/patch-1
+[2/9] Performing update step for 'stb-populate'
+-- Already at requested ref: 2c980bb59875b0d32144a71867fbdebb2f77cd20
+[3/9] No patch step for 'stb-populate'
+[5/9] No configure step for 'stb-populate'
+[6/9] No build step for 'stb-populate'
+[7/9] No install step for 'stb-populate'
+[8/9] No test step for 'stb-populate'
+[9/9] Completed 'stb-populate'
+-- Populating lodepng
+-- Configuring done (0.3s)
+-- Generating done (0.2s)
+-- Build files have been written to: C:/Users/U439644/Projects/untitled/build/timing/windows-msvc/_deps/lodepng-subbuild
+[1/9] Creating directories for 'lodepng-populate'
+[1/9] Performing download step (git clone) for 'lodepng-populate'
+Cloning into 'lodepng-src'...
+HEAD is now at ed6fe58 fix pngdetail utility exif out of bounds issue on 32-bit systems
+[2/9] Performing update step for 'lodepng-populate'
+-- Already at requested ref: ed6fe5825c6a4fbb7f58ab35a4231c7543cd452a
+[3/9] No patch step for 'lodepng-populate'
+[5/9] No configure step for 'lodepng-populate'
+[6/9] No build step for 'lodepng-populate'
+[7/9] No install step for 'lodepng-populate'
+[8/9] No test step for 'lodepng-populate'
+[9/9] Completed 'lodepng-populate'
+-- Populating openexr
+-- Configuring done (0.4s)
+-- Generating done (0.2s)
+-- Build files have been written to: C:/Users/U439644/Projects/untitled/build/timing/windows-msvc/_deps/openexr-subbuild
+[1/9] Creating directories for 'openexr-populate'
+[1/9] Performing download step (git clone) for 'openexr-populate'
+Cloning into 'openexr-src'...
+HEAD is now at 490f4cb drop vfx 2021/2022 from CI
+M	src/test/OpenEXRFuzzTest/oss-fuzz
+[2/9] Performing update step for 'openexr-populate'
+-- Already at requested tag: v3.5.1
+[3/9] No patch step for 'openexr-populate'
+[5/9] No configure step for 'openexr-populate'
+[6/9] No build step for 'openexr-populate'
+[7/9] No install step for 'openexr-populate'
+[8/9] No test step for 'openexr-populate'
+[9/9] Completed 'openexr-populate'
+-- OpenEXR is configuring as a cmake subproject
+-- Building against C++ Standard: 23
+-- libdeflate forced internal, using vendored code
+-- openjph forced internal, using vendored code, version 0.32.0
+-- Imath forced internal, fetching from https://github.com/AcademySoftwareFoundation/Imath.git @ v3.2.3
+-- Populating imath
+-- Configuring done (0.4s)
+-- Generating done (0.2s)
+-- Build files have been written to: C:/Users/U439644/Projects/untitled/build/timing/windows-msvc/_deps/imath-subbuild
+[1/9] Creating directories for 'imath-populate'
+[1/9] Performing download step (git clone) for 'imath-populate'
+Cloning into 'imath-src'...
+HEAD is now at 5f27ba2 Release notes for v3.2.3
+[2/9] Performing update step for 'imath-populate'
+-- Already at requested tag: v3.2.3
+[3/9] No patch step for 'imath-populate'
+[5/9] No configure step for 'imath-populate'
+[6/9] No build step for 'imath-populate'
+[7/9] No install step for 'imath-populate'
+[8/9] No test step for 'imath-populate'
+[9/9] Completed 'imath-populate'
+-- Imath is configuring as a cmake sub project
+-- Configure Imath 3.2.3, library API version: 30.3.2.3
+-- Imath pkg-config generation disabled
+-- Looking for sin in m
+-- Looking for sin in m - not found
+-- zstd forced internal, using vendored code, version 1.5.7
+-- Performing Test OPENEXR_IMF_HAVE_SYSCONF_NPROCESSORS_ONLN
+-- Performing Test OPENEXR_IMF_HAVE_SYSCONF_NPROCESSORS_ONLN - Failed
+-- Performing Test OPENEXR_IMF_HAVE_GCC_INLINE_ASM_AVX
+-- Performing Test OPENEXR_IMF_HAVE_GCC_INLINE_ASM_AVX - Failed
+-- Looking for include file ucontext.h
+-- Looking for include file ucontext.h - not found
+-- OpenEXR pkg-config generation disabled
+-- Configure OpenEXR 3.5.1, library API version: 34.3.5.1
+-- Building OpenEXR libraries
+-- OpenJPH library version: 0.32.0
+-- CPU Architecture is OJPH_ARCH_X86_64
+-- Building Debug
+-- C Standard is set to 11
+-- C++ Standard is set to 23
+-- Populating catch2
+-- Configuring done (0.2s)
+-- Generating done (0.1s)
+-- Build files have been written to: C:/Users/U439644/Projects/untitled/build/timing/windows-msvc/_deps/catch2-subbuild
+[1/9] Creating directories for 'catch2-populate'
+[1/9] Performing download step (git clone) for 'catch2-populate'
+Cloning into 'catch2-src'...
+HEAD is now at 317ac1e v3.16.0
+[2/9] Performing update step for 'catch2-populate'
+-- Already at requested tag: v3.16.0
+[3/9] No patch step for 'catch2-populate'
+[5/9] No configure step for 'catch2-populate'
+[6/9] No build step for 'catch2-populate'
+[7/9] No install step for 'catch2-populate'
+[8/9] No test step for 'catch2-populate'
+[9/9] Completed 'catch2-populate'
+-- Populating vulkan_headers
+-- Configuring done (0.2s)
+-- Generating done (0.1s)
+-- Build files have been written to: C:/Users/U439644/Projects/untitled/build/timing/windows-msvc/_deps/vulkan_headers-subbuild
+[1/9] Creating directories for 'vulkan_headers-populate'
+[1/9] Performing download step (git clone) for 'vulkan_headers-populate'
+Cloning into 'vulkan_headers-src'...
+HEAD is now at 36872f9 Update for Vulkan-Docs 1.3.302
+[2/9] Performing update step for 'vulkan_headers-populate'
+-- Already at requested tag: v1.3.302
+[3/9] No patch step for 'vulkan_headers-populate'
+[5/9] No configure step for 'vulkan_headers-populate'
+[6/9] No build step for 'vulkan_headers-populate'
+[7/9] No install step for 'vulkan_headers-populate'
+[8/9] No test step for 'vulkan_headers-populate'
+[9/9] Completed 'vulkan_headers-populate'
+-- Populating vulkan_utility_libraries
+-- Configuring done (0.3s)
+-- Generating done (0.2s)
+-- Build files have been written to: C:/Users/U439644/Projects/untitled/build/timing/windows-msvc/_deps/vulkan_utility_libraries-subbuild
+[1/9] Creating directories for 'vulkan_utility_libraries-populate'
+[1/9] Performing download step (git clone) for 'vulkan_utility_libraries-populate'
+Cloning into 'vulkan_utility_libraries-src'...
+HEAD is now at b538fb5 build: Update to header 1.3.302
+[2/9] Performing update step for 'vulkan_utility_libraries-populate'
+-- Already at requested tag: v1.3.302
+[3/9] No patch step for 'vulkan_utility_libraries-populate'
+[5/9] No configure step for 'vulkan_utility_libraries-populate'
+[6/9] No build step for 'vulkan_utility_libraries-populate'
+[7/9] No install step for 'vulkan_utility_libraries-populate'
+[8/9] No test step for 'vulkan_utility_libraries-populate'
+[9/9] Completed 'vulkan_utility_libraries-populate'
+-- Could NOT find VulkanHeaders (missing: VulkanHeaders_DIR)
+-- Populating vk_bootstrap
+-- Configuring done (0.2s)
+-- Generating done (0.2s)
+-- Build files have been written to: C:/Users/U439644/Projects/untitled/build/timing/windows-msvc/_deps/vk_bootstrap-subbuild
+[1/9] Creating directories for 'vk_bootstrap-populate'
+[1/9] Performing download step (git clone) for 'vk_bootstrap-populate'
+Cloning into 'vk_bootstrap-src'...
+HEAD is now at 2e7c8e8 Update to latest Vulkan-Headers
+[2/9] Performing update step for 'vk_bootstrap-populate'
+-- Already at requested tag: v1.3.302
+[3/9] No patch step for 'vk_bootstrap-populate'
+[5/9] No configure step for 'vk_bootstrap-populate'
+[6/9] No build step for 'vk_bootstrap-populate'
+[7/9] No install step for 'vk_bootstrap-populate'
+[8/9] No test step for 'vk_bootstrap-populate'
+[9/9] Completed 'vk_bootstrap-populate'
+-- Populating vma
+-- Configuring done (0.3s)
+-- Generating done (0.2s)
+-- Build files have been written to: C:/Users/U439644/Projects/untitled/build/timing/windows-msvc/_deps/vma-subbuild
+[1/9] Creating directories for 'vma-populate'
+[1/9] Performing download step (git clone) for 'vma-populate'
+Cloning into 'vma-src'...
+HEAD is now at c788c52 Version 3.2.1
+[2/9] Performing update step for 'vma-populate'
+-- Already at requested tag: v3.2.1
+[3/9] No patch step for 'vma-populate'
+[5/9] No configure step for 'vma-populate'
+[6/9] No build step for 'vma-populate'
+[7/9] No install step for 'vma-populate'
+[8/9] No test step for 'vma-populate'
+[9/9] Completed 'vma-populate'
+-- Populating sdl3
+-- Configuring done (0.2s)
+-- Generating done (0.1s)
+-- Build files have been written to: C:/Users/U439644/Projects/untitled/build/timing/windows-msvc/_deps/sdl3-subbuild
+[1/9] Creating directories for 'sdl3-populate'
+[1/9] Performing download step (git clone) for 'sdl3-populate'
+Cloning into 'sdl3-src'...
+HEAD is now at fa2c02bb Updated to version 3.4.16 for release
+[2/9] Performing update step for 'sdl3-populate'
+-- Already at requested tag: release-3.4.16
+[3/9] No patch step for 'sdl3-populate'
+[5/9] No configure step for 'sdl3-populate'
+[6/9] No build step for 'sdl3-populate'
+[7/9] No install step for 'sdl3-populate'
+[8/9] No test step for 'sdl3-populate'
+[9/9] Completed 'sdl3-populate'
+-- Could NOT find PkgConfig (missing: PKG_CONFIG_EXECUTABLE) 
+-- Detecting Target CPU Architecture
+-- Detecting Target CPU Architecture - X64
+-- Performing Test CAN_PRESEED
+-- Performing Test CAN_PRESEED - Success
+-- Performing Test COMPILER_SUPPORTS_MMX
+-- Performing Test COMPILER_SUPPORTS_MMX - Failed
+-- Performing Test COMPILER_SUPPORTS_SSE
+-- Performing Test COMPILER_SUPPORTS_SSE - Success
+-- Performing Test COMPILER_SUPPORTS_SSE2
+-- Performing Test COMPILER_SUPPORTS_SSE2 - Success
+-- Performing Test COMPILER_SUPPORTS_SSE3
+-- Performing Test COMPILER_SUPPORTS_SSE3 - Success
+-- Performing Test COMPILER_SUPPORTS_SSE4_1
+-- Performing Test COMPILER_SUPPORTS_SSE4_1 - Success
+-- Performing Test COMPILER_SUPPORTS_SSE4_2
+-- Performing Test COMPILER_SUPPORTS_SSE4_2 - Failed
+-- Performing Test COMPILER_SUPPORTS_AVX
+-- Performing Test COMPILER_SUPPORTS_AVX - Success
+-- Performing Test COMPILER_SUPPORTS_AVX2
+-- Performing Test COMPILER_SUPPORTS_AVX2 - Success
+-- Performing Test COMPILER_SUPPORTS_AVX512F
+-- Performing Test COMPILER_SUPPORTS_AVX512F - Success
+-- Looking for _copysign
+-- Looking for _copysign - not found
+-- Looking for _fseeki64
+-- Looking for _fseeki64 - found
+-- Performing Test HAVE_GAMEINPUT_H
+-- Performing Test HAVE_GAMEINPUT_H - Success
+-- Looking for dxgi1_5.h
+-- Looking for dxgi1_5.h - found
+-- Looking for dxgi1_6.h
+-- Looking for dxgi1_6.h - found
+-- Performing Test HAVE_MFAPI_H
+-- Performing Test HAVE_MFAPI_H - Success
+-- Could NOT find LibUSB (missing: LibUSB_LIBRARY LibUSB_INCLUDE_PATH) (found version "LibUSB_VERSION-NOTFOUND")
+-- 
+-- SDL3 was configured with the following options:
+-- 
+-- Platform: Windows-10.0.26100
+-- 64-bit:   TRUE
+-- Compiler: C:/Program Files/Microsoft Visual Studio/18/Insiders/VC/Tools/MSVC/14.51.36231/bin/Hostx64/x64/cl.exe
+-- Revision: SDL-3.4.16-release-3.4.16
+-- Vendor:   
+-- 
+-- Subsystems:
+--   Audio:    ON
+--   Video:    ON
+--   GPU:      ON
+--   Render:   ON
+--   Camera:   ON
+--   Joystick: ON
+--   Haptic:   ON
+--   Hidapi:   ON
+--   Power:    ON
+--   Sensor:   ON
+--   Dialog:   ON
+--   Tray:     ON
+-- 
+-- Options:
+--   SDL_ALSA                    (Wanted: OFF): OFF
+--   SDL_ALSA_SHARED             (Wanted: OFF): OFF
+--   SDL_ALTIVEC                 (Wanted: OFF): OFF
+--   SDL_ARMNEON                 (Wanted: OFF): OFF
+--   SDL_ASAN                    (Wanted: OFF): OFF
+--   SDL_ASSEMBLY                (Wanted: ON): ON
+--   SDL_ASSERTIONS              (Wanted: auto): auto
+--   SDL_AVX                     (Wanted: ON): ON
+--   SDL_AVX2                    (Wanted: ON): ON
+--   SDL_AVX512F                 (Wanted: ON): ON
+--   SDL_BACKGROUNDING_SIGNAL    (Wanted: OFF): OFF
+--   SDL_CCACHE                  (Wanted: OFF): OFF
+--   SDL_CLANG_TIDY              (Wanted: OFF): OFF
+--   SDL_CLOCK_GETTIME           (Wanted: OFF): OFF
+--   SDL_COCOA                   (Wanted: OFF): OFF
+--   SDL_DBUS                    (Wanted: OFF): OFF
+--   SDL_DEPS_SHARED             (Wanted: ON): OFF
+--   SDL_DIRECTX                 (Wanted: ON): ON
+--   SDL_DISKAUDIO               (Wanted: ON): ON
+--   SDL_DLOPEN_NOTES            (Wanted: OFF): OFF
+--   SDL_DUMMYAUDIO              (Wanted: ON): ON
+--   SDL_DUMMYCAMERA             (Wanted: ON): ON
+--   SDL_DUMMYVIDEO              (Wanted: ON): ON
+--   SDL_EXAMPLES                (Wanted: OFF): OFF
+--   SDL_EXAMPLES_LINK_SHARED    (Wanted: ON): OFF
+--   SDL_FOREGROUNDING_SIGNAL    (Wanted: OFF): OFF
+--   SDL_FRIBIDI                 (Wanted: OFF): OFF
+--   SDL_FRIBIDI_SHARED          (Wanted: OFF): OFF
+--   SDL_GCC_ATOMICS             (Wanted: OFF): OFF
+--   SDL_HIDAPI                  (Wanted: ON): ON
+--   SDL_HIDAPI_JOYSTICK         (Wanted: ON): ON
+--   SDL_HIDAPI_LIBUSB           (Wanted: ON): OFF
+--   SDL_HIDAPI_LIBUSB_SHARED    (Wanted: ON): OFF
+--   SDL_IBUS                    (Wanted: OFF): OFF
+--   SDL_INSTALL                 (Wanted: OFF): OFF
+--   SDL_INSTALL_TESTS           (Wanted: OFF): OFF
+--   SDL_JACK                    (Wanted: OFF): OFF
+--   SDL_JACK_SHARED             (Wanted: OFF): OFF
+--   SDL_KMSDRM                  (Wanted: OFF): OFF
+--   SDL_KMSDRM_SHARED           (Wanted: OFF): OFF
+--   SDL_LASX                    (Wanted: OFF): OFF
+--   SDL_LIBC                    (Wanted: ON): ON
+--   SDL_LIBICONV                (Wanted: OFF): OFF
+--   SDL_LIBTHAI                 (Wanted: OFF): OFF
+--   SDL_LIBTHAI_SHARED          (Wanted: OFF): OFF
+--   SDL_LIBUDEV                 (Wanted: ON): OFF
+--   SDL_LIBURING                (Wanted: OFF): OFF
+--   SDL_LSX                     (Wanted: OFF): OFF
+--   SDL_METAL                   (Wanted: OFF): OFF
+--   SDL_MMX                     (Wanted: ON): OFF
+--   SDL_OFFSCREEN               (Wanted: ON): ON
+--   SDL_OPENGL                  (Wanted: ON): ON
+--   SDL_OPENGLES                (Wanted: ON): ON
+--   SDL_OPENVR                  (Wanted: OFF): OFF
+--   SDL_OSS                     (Wanted: OFF): OFF
+--   SDL_PIPEWIRE                (Wanted: OFF): OFF
+--   SDL_PIPEWIRE_SHARED         (Wanted: OFF): OFF
+--   SDL_PTHREADS                (Wanted: OFF): OFF
+--   SDL_PTHREADS_SEM            (Wanted: OFF): OFF
+--   SDL_PULSEAUDIO              (Wanted: OFF): OFF
+--   SDL_PULSEAUDIO_SHARED       (Wanted: OFF): OFF
+--   SDL_RENDER_D3D              (Wanted: ON): ON
+--   SDL_RENDER_D3D11            (Wanted: ON): ON
+--   SDL_RENDER_D3D12            (Wanted: ON): ON
+--   SDL_RENDER_GPU              (Wanted: ON): ON
+--   SDL_RENDER_METAL            (Wanted: OFF): OFF
+--   SDL_RENDER_VULKAN           (Wanted: ON): ON
+--   SDL_ROCKCHIP                (Wanted: OFF): OFF
+--   SDL_RPATH                   (Wanted: OFF): OFF
+--   SDL_RPI                     (Wanted: OFF): OFF
+--   SDL_SNDIO                   (Wanted: OFF): OFF
+--   SDL_SNDIO_SHARED            (Wanted: OFF): OFF
+--   SDL_SSE                     (Wanted: ON): ON
+--   SDL_SSE2                    (Wanted: ON): ON
+--   SDL_SSE3                    (Wanted: ON): ON
+--   SDL_SSE4_1                  (Wanted: ON): ON
+--   SDL_SSE4_2                  (Wanted: ON): OFF
+--   SDL_SYSTEM_ICONV            (Wanted: OFF): OFF
+--   SDL_TESTS                   (Wanted: OFF): OFF
+--   SDL_TESTS_LINK_SHARED       (Wanted: ON): OFF
+--   SDL_UNINSTALL               (Wanted: OFF): OFF
+--   SDL_VIRTUAL_JOYSTICK        (Wanted: ON): ON
+--   SDL_VIVANTE                 (Wanted: OFF): OFF
+--   SDL_VULKAN                  (Wanted: ON): ON
+--   SDL_WASAPI                  (Wanted: ON): ON
+--   SDL_WAYLAND                 (Wanted: OFF): OFF
+--   SDL_WAYLAND_LIBDECOR        (Wanted: OFF): OFF
+--   SDL_WAYLAND_LIBDECOR_SHARED (Wanted: OFF): OFF
+--   SDL_WAYLAND_SHARED          (Wanted: OFF): OFF
+--   SDL_X11                     (Wanted: OFF): OFF
+--   SDL_X11_SHARED              (Wanted: OFF): OFF
+--   SDL_X11_XCURSOR             (Wanted: OFF): OFF
+--   SDL_X11_XDBE                (Wanted: OFF): OFF
+--   SDL_X11_XFIXES              (Wanted: OFF): OFF
+--   SDL_X11_XINPUT              (Wanted: OFF): OFF
+--   SDL_X11_XRANDR              (Wanted: OFF): OFF
+--   SDL_X11_XSCRNSAVER          (Wanted: OFF): OFF
+--   SDL_X11_XSHAPE              (Wanted: OFF): OFF
+--   SDL_X11_XSYNC               (Wanted: OFF): OFF
+--   SDL_X11_XTEST               (Wanted: OFF): OFF
+--   SDL_XINPUT                  (Wanted: ON): ON
+-- 
+--  Build Shared Library: ON
+--  Build Static Library: OFF
+-- 
+-- Enabled backends:
+--   Video drivers: dummy offscreen windows
+--   Render drivers: d3d d3d11 d3d12 gpu ogl ogl_es2 vulkan
+--   GPU drivers: d3d12 vulkan
+--   Audio drivers: disk dsound dummy wasapi
+--   Joystick drivers: dinput gameinput hidapi rawinput virtual wgi xinput
+--   Camera drivers: dummy mediafoundation
+-- 
+-- Found Vulkan: C:/VulkanSDK/1.4.357.0/Lib/vulkan-1.lib (found version "1.4.357") found components: glslc glslangValidator
+-- Configuring done (295.2s)
+-- Generating done (3.0s)
+-- Build files have been written to: C:/Users/U439644/Projects/untitled/build/timing/windows-msvc

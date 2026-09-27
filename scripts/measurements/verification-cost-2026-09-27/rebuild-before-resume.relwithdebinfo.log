@@ -1,0 +1,36 @@
+[0/2] Re-checking globbed directories...
+[1/36] Building CXX object CMakeFiles/orbsim_view.dir/src/view/Camera.cpp.obj
+[2/36] Building CXX object CMakeFiles/orbsim.dir/src/render/Pipeline.cpp.obj
+[3/36] Building CXX object CMakeFiles/test_pipeline_inputs.dir/tests/test_pipeline_inputs.cpp.obj
+[4/36] Building CXX object CMakeFiles/test_projection.dir/tests/test_projection.cpp.obj
+[5/36] Building CXX object CMakeFiles/test_view_math.dir/tests/test_view_math.cpp.obj
+[6/36] Building CXX object CMakeFiles/test_camera.dir/tests/test_camera.cpp.obj
+[7/36] Building CXX object CMakeFiles/test_probe_sidecar.dir/tests/test_probe_sidecar.cpp.obj
+[8/36] Building CXX object CMakeFiles/orbsim_view.dir/src/view/ProbeSidecar.cpp.obj
+[9/36] Linking CXX static library orbsim_view.lib
+[10/36] Building CXX object CMakeFiles/orbsim.dir/src/app/main.cpp.obj
+[11/36] Building CXX object CMakeFiles/orbsim.dir/src/app/ProbeMode.cpp.obj
+[12/36] Building CXX object CMakeFiles/orbsim_view_header_selfcheck.dir/selfcheck/orbsim_view_header_selfcheck_view_Mat4_hpp.cpp.obj
+[13/36] Building CXX object CMakeFiles/orbsim_view_header_selfcheck.dir/selfcheck/orbsim_view_header_selfcheck_view_Projection_hpp.cpp.obj
+[14/36] Building CXX object CMakeFiles/orbsim_view_header_selfcheck.dir/selfcheck/orbsim_view_header_selfcheck_view_Camera_hpp.cpp.obj
+[15/36] Building CXX object CMakeFiles/orbsim.dir/src/render/Probes.cpp.obj
+[16/36] Building CXX object CMakeFiles/orbsim_view_header_selfcheck.dir/selfcheck/orbsim_view_header_selfcheck_view_ProbeSidecar_hpp.cpp.obj
+[17/36] Building CXX object CMakeFiles/orbsim.dir/src/render/ResolvePass.cpp.obj
+[18/36] Building CXX object CMakeFiles/orbsim.dir/src/render/VulkanContext.cpp.obj
+[19/36] Building CXX object CMakeFiles/orbsim_view_header_selfcheck.dir/selfcheck/orbsim_view_header_selfcheck_view_VertexLayout_hpp.cpp.obj
+[20/36] Building CXX object CMakeFiles/orbsim_render_header_selfcheck.dir/selfcheck/orbsim_render_header_selfcheck_render_Pipeline_hpp.cpp.obj
+[21/36] Building CXX object CMakeFiles/orbsim_render_header_selfcheck.dir/selfcheck/orbsim_render_header_selfcheck_render_Probes_hpp.cpp.obj
+[22/36] Linking CXX executable test_camera.exe
+[23/36] Linking CXX executable test_pipeline_inputs.exe
+[24/36] Linking CXX executable test_exposure.exe
+[25/36] Linking CXX executable test_half.exe
+[26/36] Linking CXX executable test_render_quality.exe
+[27/36] Linking CXX executable test_probe_sidecar.exe
+[28/36] Linking CXX executable test_projection.exe
+[29/36] Linking CXX executable test_hdr_dump.exe
+[30/36] Linking CXX executable test_image_files.exe
+[31/36] Building CXX object CMakeFiles/orbsim_render_header_selfcheck.dir/selfcheck/orbsim_render_header_selfcheck_render_ResolvePass_hpp.cpp.obj
+[32/36] Linking CXX executable test_srgb.exe
+[33/36] Linking CXX executable test_tonemap.exe
+[34/36] Linking CXX executable test_view_math.exe
+[35/36] Linking CXX executable orbsim.exe

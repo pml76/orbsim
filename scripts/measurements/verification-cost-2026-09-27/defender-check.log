@@ -1,0 +1,11 @@
+unique     n= 5  median  0.964 s  min  0.917  max  1.102  all [1.102, 0.923, 0.997, 0.917, 0.964]
+identical  n= 5  median  0.208 s  min  0.176  max  0.227  all [0.208, 0.217, 0.176, 0.227, 0.192]
+repeat     n=15  median  0.032 s  min  0.029  max  0.037  all [0.037, 0.029, 0.033, 0.032, 0.03, 0.03, 0.036, 0.034, 0.035, 0.033, 0.03, 0.031, 0.032, 0.032, 0.029]
+C:\Users\U439644\.claude\jobs\53b6dd2e/tmp/who_scans.py:4: SyntaxWarning: "\," is an invalid escape sequence. Such sequences will not work in the future. Did you mean "\\,"? A raw string is also an option.
+  case = "a block size of zero is reported by name\, not assumed away"
+new   10 starts: wall  9.78 s; scanner CPU seconds {'cyserver.exe': 1.03, 'MsMpEng.exe': 5.69}
+same  10 starts: wall  2.89 s; scanner CPU seconds {'cyserver.exe': 0.75, 'MsMpEng.exe': 1.7}
+new   10 starts: wall 11.67 s; scanner CPU seconds {'cyserver.exe': 3.58, 'MsMpEng.exe': 5.75}
+vcvars64 run 1: 7.43 s
+vcvars64 run 2: 5.78 s
+vcvars64 run 3: 6.33 s
