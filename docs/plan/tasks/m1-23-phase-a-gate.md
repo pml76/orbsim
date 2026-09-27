@@ -30,8 +30,8 @@ wsl -d Ubuntu -u root -- bash -c "cd /mnt/c/Users/U439644/Projects/untitled && \
 
 wsl -d Ubuntu -u root -- bash -c "… --preset linux-gcc … && ctest --test-dir build/linux-gcc …"
 
-wsl -d Ubuntu -u root -- bash -c "… --preset linux-fuzz … && ./build/linux-fuzz/fuzz_orbit -max_total_time=240"
-wsl -d Ubuntu -u root -- bash -c "… --preset linux-fuzz … && ./build/linux-fuzz/fuzz_time  -max_total_time=240"
+wsl -d Ubuntu -u root -- bash -c "… --preset linux-fuzz … && ./build/linux-fuzz/fuzz_orbit tests/corpus/fuzz_orbit -max_total_time=240"
+wsl -d Ubuntu -u root -- bash -c "… --preset linux-fuzz … && ./build/linux-fuzz/fuzz_time  tests/corpus/fuzz_time  -max_total_time=900"
 ```
 
 **Both fuzz targets, not one.** `fuzz_time` was added on 2026-09-18 with M1-04
@@ -82,7 +82,8 @@ now reaches both the physics and the renderer.
 ## Done when
 
 - [ ] All six configurations pass, with matching assertion counts.
-- [ ] Both fuzzers — `fuzz_orbit` and `fuzz_time` — run four minutes clean.
+- [ ] Both fuzzers — `fuzz_orbit` and `fuzz_time` — run clean for their budgets,
+      from their committed corpora ([`VERIFICATION.md`](../../VERIFICATION.md) rule 13; amended 2026-09-27, M1-93).
 - [ ] Coverage is measured and the uncovered lines have been read, not just
       counted.
 - [ ] `PROJECT_STATE.md` describes the tree as it now is.

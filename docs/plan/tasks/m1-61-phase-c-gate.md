@@ -28,7 +28,8 @@ and the only preset that builds the renderer against a second compiler.)*
 
 - **Five fuzz targets** now: `fuzz_orbit`, `fuzz_time`, `fuzz_ktx2`,
   `fuzz_ztree` (which reaches the DDS and `.elv` parsers) and
-  `fuzz_elevation`. Four minutes each,
+  `fuzz_elevation`. Each for its budget from its committed corpus
+  ([`VERIFICATION.md`](../../VERIFICATION.md) rule 13; amended 2026-09-27, M1-93),
   clean, and any crash found becomes a committed corpus entry and a named test.
 - **The streaming suites under TSan**, since the loader, the cache and the
   eviction policy now run together under a moving camera.

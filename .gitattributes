@@ -12,3 +12,7 @@
 *.spv   binary
 *.ttf   binary
 *.msh   binary
+
+# Fuzz corpora (M1-93) are raw bytes a fuzzer found; rewriting a CR LF in one
+# would commit a different input from the one that reached the coverage.
+tests/corpus/** binary

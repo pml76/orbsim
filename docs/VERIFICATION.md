@@ -285,6 +285,35 @@ exactly once in this document — in a line of run totals. The same pass correct
 four gate tasks that were counting fuzzers one short, and this is the same
 defect in the document that governs them.)*
 
+**How long, from what, and when: since 2026-09-27**
+([ADR 0024](adr/0024-verification-costs-what-changed.md), M1-93). This
+paragraph is the one place the budgets live; everywhere else points here.
+
+- **Every target starts from its committed corpus**, `tests/corpus/<target>/`:
+  the collection of inputs that reached new code, which libFuzzer reads at
+  start and adds to as it runs. Before this, every run started empty and
+  spent its budget re-finding what the last run had found.
+- **Each target has its own budget, set from its measured coverage curve**
+  and measured again when the target changes:
+
+  | Target | Budget | Why |
+  |---|---|---|
+  | `fuzz_orbit` | 240 s | found everything in the first 4 minutes, and nothing in the next 26 |
+  | `fuzz_time` | 900 s | still finding new paths at 240 s; stopped at about 900 s |
+
+  Each target added later gets a 30-minute run from empty, and its budget is
+  written here from that curve.
+- **The command** is
+  `fuzz_<target>.exe tests/corpus/<target> -max_total_time=<budget>`. New
+  inputs land in the corpus directory, and are committed after
+  `fuzz_<target>.exe -merge=1 <fresh dir> tests/corpus/<target>` has trimmed
+  them to the ones that add coverage.
+- **Not only at the gates.** A task that changes code a fuzzer reaches runs
+  that fuzzer for its budget, from the corpus, before its commit. Both
+  targets today link only `orbsim_core`, so that means a change under
+  `src/core/`, `src/orbit/` or `src/astro/`, a change to ERFA's pin, or a
+  change to a `tests/fuzz_*.cpp` file.
+
 **Moved to Windows, 2026-09-12.** It ran under WSL only, on the claim that
 clang's libFuzzer has no MSVC-ABI target. That was false — it builds there, it
 runs, and both sanitizers are live, proven with planted bugs rather than

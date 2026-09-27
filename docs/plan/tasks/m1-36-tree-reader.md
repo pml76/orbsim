@@ -76,6 +76,8 @@ the same tiles as loose files and is not needed once the archive reads.
 The standing rules, plus `fuzz_ztree -max_total_time=240` clean, and the target
 added to the phase gate list.
 
+**Its budget and corpus** ([ADR 0024](../../adr/0024-verification-costs-what-changed.md), M1-93): run the new target for 30 minutes from an empty corpus, write its budget into [`VERIFICATION.md`](../../VERIFICATION.md) rule 13 from where its coverage stops growing, and commit its trimmed corpus under `tests/corpus/<target>/`. *(Added 2026-09-27.)*
+
 ## Done when
 
 - [ ] `check` green in both trees.

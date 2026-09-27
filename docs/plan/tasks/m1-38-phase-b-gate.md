@@ -21,12 +21,13 @@ wsl … --preset linux-sanitize   # ASan + UBSan
 wsl … --preset linux-gcc        # the second compiler
 wsl … --preset linux-tsan       # the first thread, new in M1-33
 wsl … --preset linux-fuzz && for t in fuzz_orbit fuzz_time fuzz_ktx2 fuzz_ztree; do
-    ./build/linux-fuzz/$t -max_total_time=240; done
+    ./build/linux-fuzz/$t tests/corpus/$t -max_total_time=$(budget of $t); done   # VERIFICATION.md rule 13
 ```
 
 ## What to check, beyond "it passed"
 
-- **Four fuzz targets, four minutes each, clean.** Any crash found on the way
+- **Four fuzz targets, each for its budget from its committed corpus, clean**
+  ([`VERIFICATION.md`](../../VERIFICATION.md) rule 13; amended 2026-09-27, M1-93). Any crash found on the way
   becomes a committed regression corpus entry and a named test, per rule 6.
 - **ThreadSanitizer is live**, not merely configured, and the loader and cache
   suites run under it.

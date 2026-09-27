@@ -16,7 +16,10 @@ The full sweep from M1-61 — ASan, MSVC, Linux clang with ASan and UBSan, gcc-1
 TSan, GPU validation layers — plus:
 
 - **Six fuzz targets**: `fuzz_orbit`, `fuzz_time`, `fuzz_ktx2`, `fuzz_ztree`,
-  `fuzz_elevation` and `fuzz_integrator`. The last gets ten minutes.
+  `fuzz_elevation` and `fuzz_integrator`. Each for its budget from its
+  committed corpus ([`VERIFICATION.md`](../../VERIFICATION.md) rule 13); `fuzz_integrator`'s budget is set by M1-73
+  from its measured curve. *(Amended 2026-09-27, M1-93: the last "got ten
+  minutes".)*
 - **A long-arc run**: 30 days of simulated time at high acceleration, with the
   monitors live in a Debug build, watching for a drift the 24-hour tests cannot
   see. Energy drift, angular-momentum drift and the embedded error estimate are

@@ -27,8 +27,10 @@ that makes the next machine, or the next month, cheap.
   toolbox has, one final time".)*
 - `linux-sanitize` (ASan + UBSan), `linux-gcc` (the second compiler),
   `linux-tsan` (the threaded code).
-- **Six fuzz targets**, ten minutes each rather than four, since this is the
-  last run before the milestone is called done.
+- **Six fuzz targets**, each for ten minutes or its budget if that is longer
+  ([`VERIFICATION.md`](../../VERIFICATION.md) rule 13), from its committed corpus, since this
+  is the last run before the milestone is called done. *(Amended 2026-09-27,
+  M1-93: "ten minutes each rather than four".)*
 - GPU-assisted validation and synchronization validation, by hand.
 - Coverage across the whole tree, with the uncovered lines read.
 - The thirty-minute soak from M1-61, extended to the complete scene with the
