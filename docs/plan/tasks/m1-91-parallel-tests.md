@@ -1,6 +1,6 @@
 # M1-91 — Tests in parallel
 
-Phase: A | Status: planned
+Phase: A | Status: **done, 2026-09-27**
 Prerequisites: M1-90
 Decided by: [ADR 0024](../../adr/0024-verification-costs-what-changed.md); register decision 211
 
@@ -29,10 +29,22 @@ is independent and CPU-bound.
 
 ## Done when
 
-- [ ] A test lists the GPU tests and requires each to hold the lock. It was
-      seen failing first on a GPU test without it.
-- [ ] Twenty parallel runs per tree, each case's result the same as a serial
-      run's.
-- [ ] The time before and after, recorded, and the unexplained 10-second
-      stalls looked at again.
-- [ ] `check` passes in both trees.
+- [x] **`parallel_tests` was seen failing first**, for the right reasons: all 7
+      GPU tests without the lock, and "the check target's ctest command runs
+      the tests one at a time (no -j)". Its self-test reports each of five
+      broken inputs. The three `test_probe_clear` cases take their lock only
+      once the program is rebuilt, because Catch2's test discovery bakes the
+      properties in.
+- [x] **Twenty parallel runs per tree, each case's result the same as a serial
+      run's**, at `-j 10`:
+
+  | Tree | Serial | Parallel, 20 runs | Runs differing |
+  |---|---|---|---|
+  | release | 26.8 s | median 15.5 s, 14.5–17.2 | 0 of 20 |
+  | Debug | 65.9 s | median 36.5 s, 33.7–41.0 | 0 of 20 |
+
+- [x] **The unexplained stalls.** No small case stalled for about 10 s in any
+      of the 40 parallel runs. The slowest case in each run is now a GPU probe
+      under its lock: 3.8–4.7 s in release and 9.2–11.5 s in Debug.
+- [x] `check` passes in both trees, 274 of 274. The whole target took 52 s in
+      release and 100 s in Debug after this change.

@@ -1094,7 +1094,10 @@ add_custom_command(TARGET orbsim POST_BUILD
 # leave it out with --label-exclude gpu; `ctest -LE gpu` is the spelling, and
 # docs/STATUS.md says what each list comes to.
 add_test(NAME orbsim_smoke COMMAND orbsim --validate --seconds 2)
-set_tests_properties(orbsim_smoke PROPERTIES LABELS gpu)
+# Every test that needs the GPU holds one lock, so that `check`'s parallel
+# ctest never runs two of them at once (M1-91, ADR 0024). The CTest test
+# parallel_tests refuses a gpu-labelled test without it.
+set_tests_properties(orbsim_smoke PROPERTIES LABELS gpu RESOURCE_LOCK gpu)
 
 # The probes (M1-16; ADR 0008; register decisions 192-194).
 #
@@ -1118,9 +1121,9 @@ add_test(NAME probe_clear_determinism
                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}/probes-rerun
                 -DCOMPARE_WITH=${ORBSIM_PROBE_DIR}
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/RunProbe.cmake)
-set_tests_properties(probe_clear PROPERTIES LABELS gpu FIXTURES_SETUP probe_clear_frame)
+set_tests_properties(probe_clear PROPERTIES LABELS gpu RESOURCE_LOCK gpu FIXTURES_SETUP probe_clear_frame)
 set_tests_properties(probe_clear_determinism PROPERTIES
-        LABELS gpu FIXTURES_REQUIRED probe_clear_frame)
+        LABELS gpu RESOURCE_LOCK gpu FIXTURES_REQUIRED probe_clear_frame)
 
 # The frame read back and checked number by number (decision 194): an
 # ordinary suite of the tests' own, linking no Vulkan, that runs after
@@ -1129,7 +1132,7 @@ add_executable(test_probe_clear tests/test_probe_clear.cpp)
 target_link_libraries(test_probe_clear PRIVATE orbsim_abort_behaviour orbsim_test_support)
 target_compile_definitions(test_probe_clear PRIVATE ORBSIM_PROBE_DIR="${ORBSIM_PROBE_DIR}")
 catch_discover_tests(test_probe_clear
-        PROPERTIES FIXTURES_REQUIRED probe_clear_frame LABELS gpu)
+        PROPERTIES FIXTURES_REQUIRED probe_clear_frame LABELS gpu RESOURCE_LOCK gpu)
 
 # A build tree whose shaders are missing is reported, by path, and the
 # application exits 1 rather than starting (M1-13, register decision 148). It
@@ -1142,7 +1145,7 @@ add_test(NAME shader_missing_is_reported
                 -DMISSING=${CMAKE_CURRENT_BINARY_DIR}/no-such-shader-directory
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/VerifyMissingShader.cmake
 )
-set_tests_properties(shader_missing_is_reported PROPERTIES LABELS gpu)
+set_tests_properties(shader_missing_is_reported PROPERTIES LABELS gpu RESOURCE_LOCK gpu)
 
 endif() # ORBSIM_BUILD_APP
 
@@ -1555,6 +1558,37 @@ else()
 endif()
 set_tests_properties(lint_pool lint_pool_self_test PROPERTIES LABELS fixtures)
 
+# `check` runs the tests in parallel, on half the processor threads (M1-91,
+# ADR 0024, register decision 211). Nearly every test is an independent
+# program; run one at a time they took 48-52 s in release and 103-113 s in
+# Debug (docs/measurements/verification-cost.md). The GPU tests hold one lock
+# so they never overlap; the probes write to separate directories and
+# test_image_files gives each case its own scratch file. Those scratch names
+# are the same in both trees, so the two trees' `check` still run one after
+# the other. Checked by the CTest test parallel_tests, which reads CTest's own
+# description of the tests and computes the job count itself.
+cmake_host_system_information(RESULT orbsim_logical_cores QUERY NUMBER_OF_LOGICAL_CORES)
+math(EXPR ORBSIM_TEST_JOBS "${orbsim_logical_cores} / 2")
+if(ORBSIM_TEST_JOBS LESS 1)
+    set(ORBSIM_TEST_JOBS 1)
+endif()
+message(STATUS "check: tests run ${ORBSIM_TEST_JOBS} at a time (${orbsim_logical_cores} threads / 2)")
+if(ORBSIM_PYTHON)
+    add_test(NAME parallel_tests
+            COMMAND ${ORBSIM_PYTHON}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-parallel-tests.py
+                    ${CMAKE_BINARY_DIR} ${CMAKE_CTEST_COMMAND}
+    )
+    add_test(NAME parallel_tests_self_test
+            COMMAND ${ORBSIM_PYTHON}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-parallel-tests.py --self-test
+    )
+else()
+    add_test(NAME parallel_tests COMMAND ${CMAKE_COMMAND} -E false)
+    add_test(NAME parallel_tests_self_test COMMAND ${CMAKE_COMMAND} -E false)
+endif()
+set_tests_properties(parallel_tests parallel_tests_self_test PROPERTIES LABELS fixtures)
+
 # The abort listener in every suite (M1-90, ADR 0024): each Catch2 program is
 # asked through --list-listeners, and each must name AbortWithoutADialog. A
 # suite that stopped linking orbsim_abort_behaviour would otherwise build and
@@ -1621,7 +1655,7 @@ endif()
 set_tests_properties(horizons_fixture_converter PROPERTIES LABELS fixtures)
 
 add_custom_target(check
-        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure
+        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -j ${ORBSIM_TEST_JOBS}
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
         COMMENT "ctest: every suite, and the GPU smoke test where there is a GPU"
         VERBATIM
