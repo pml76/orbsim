@@ -66,7 +66,9 @@ same precision and no new script.)*
     suppressed in `.clang-tidy`, so it found nothing, which was the wrong
     instrument rather than a hole.
 - [x] The self-test reports each of the eleven faults it is given.
-- [ ] A mutation pass on the check, `scripts/mutants/m1-89.json`, run after
+- [x] A mutation pass on the check, `scripts/mutants/m1-89.json`, run after
       this task's commit, since the harness refuses a file with uncommitted
-      changes.
+      changes: **9 of 9 caught**. M1-88's owed pass ran with it
+      (`scripts/mutants/m1-88.json`) and found a self-test case that tested
+      nothing of its own, fixed; its second run caught 7 of 7.
 - [x] `check` passes in both trees.

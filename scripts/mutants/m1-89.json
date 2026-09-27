@@ -1,0 +1,142 @@
+{
+  "task": "M1-89",
+  "tree": "build/relwithdebinfo",
+  "note": "The lint-dependency check, scripts/check-lint-deps.py. Each mutant switches off one fault the check exists for; the judges are its self-test and the real check against this tree. A Python script needs no build, but the harness always builds, so every mutant names orbsim_shaders, the cheapest target that always builds, as a no-op. The order-only `break` has no mutant: the only order-only input Ninja writes for a lint step is CMake's ordering phony, which no rule here reads, so turning it into `continue` would be equivalent. Writing the pass found two holes in the self-test before it ran, both closed first: no case for a source the compile database does not know, and none for a missing --verify-config stamp. **Run once on 2026-09-27: 9 of 9 caught, none invalid, none hung.** Every mutant is caught by the self-test; the one that stops resolving paths relative to the build tree is also caught by lint_deps against the real tree, since Ninja writes every object that way.",
+  "mutants": [
+    {
+      "name": "a missing object is not reported",
+      "file": "scripts/check-lint-deps.py",
+      "find": "        for obj in sorted(objects - ins):",
+      "replace": "        for obj in sorted(objects - ins - objects):",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "lint_deps_self_test",
+        "lint_deps"
+      ]
+    },
+    {
+      "name": "a source the compile database does not know is accepted",
+      "file": "scripts/check-lint-deps.py",
+      "find": "        if not objects:",
+      "replace": "        if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "lint_deps_self_test",
+        "lint_deps"
+      ]
+    },
+    {
+      "name": "a step without .clang-tidy is accepted",
+      "file": "scripts/check-lint-deps.py",
+      "find": "        if norm(root_n + \".clang-tidy\") not in ins:",
+      "replace": "        if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "lint_deps_self_test",
+        "lint_deps"
+      ]
+    },
+    {
+      "name": "a step without a verify stamp is accepted",
+      "file": "scripts/check-lint-deps.py",
+      "find": "        if not any(re.search(",
+      "replace": "        if False and not any(re.search(",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "lint_deps_self_test",
+        "lint_deps"
+      ]
+    },
+    {
+      "name": "a step without the clang-tidy executable is accepted",
+      "file": "scripts/check-lint-deps.py",
+      "find": "        if norm(tidy_exe) not in ins:",
+      "replace": "        if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "lint_deps_self_test",
+        "lint_deps"
+      ]
+    },
+    {
+      "name": "project headers listed directly are accepted",
+      "file": "scripts/check-lint-deps.py",
+      "find": "        if headers:",
+      "replace": "        if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "lint_deps_self_test",
+        "lint_deps"
+      ]
+    },
+    {
+      "name": "__clang_analyzer__ is not reported",
+      "file": "scripts/check-lint-deps.py",
+      "find": "    for hit in analyzer_hits:",
+      "replace": "    for hit in []:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "lint_deps_self_test",
+        "lint_deps"
+      ]
+    },
+    {
+      "name": "paths relative to the build tree are not resolved",
+      "file": "scripts/check-lint-deps.py",
+      "find": "        ins = {norm(i if os.path.isabs(i) else os.path.join(build, i)) for i in inputs}",
+      "replace": "        ins = {norm(i) for i in inputs}",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "lint_deps_self_test",
+        "lint_deps"
+      ]
+    },
+    {
+      "name": "no lint steps at all is accepted",
+      "file": "scripts/check-lint-deps.py",
+      "find": "    if not edges:",
+      "replace": "    if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "lint_deps_self_test",
+        "lint_deps"
+      ]
+    }
+  ]
+}
