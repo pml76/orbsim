@@ -100,7 +100,10 @@ def self_test() -> int:
         "a lint step outside the pool": (good.replace("  pool = orbsim_lint\n\nbuild lint/b", "\nbuild lint/b"), 4, 1),
         "the wrong depth": (good, 5, 1),
         "no pool at all": (good.replace(f"pool {POOL}\n  depth = 4\n\n", ""), 4, 1),
-        "no lint steps": ("build a.obj: CXX a.cpp\n  FLAGS = -O2\n", 4, 1),
+        # A correct pool, so that the missing lint steps are this case's only
+        # fault -- without it the case was reported for the missing pool and
+        # the mutation pass showed it tested nothing of its own (M1-88's pass).
+        "no lint steps": (f"pool {POOL}\n  depth = 4\n\nbuild a.obj: CXX a.cpp\n  FLAGS = -O2\n", 4, 1),
     }
     failures = 0
     for name, (text, depth, want_problem) in cases.items():
