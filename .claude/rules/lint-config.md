@@ -88,6 +88,14 @@ comparison means for NaN. See [`docs/PROJECT_STATE.md`](../../docs/PROJECT_STATE
 section 8 before running `clang-tidy --fix` over the tree, and before
 reshaping code to satisfy one of them.
 
+**The lint steps run in a pool sized from memory**
+([ADR 0024](../../docs/adr/0024-verification-costs-what-changed.md), M1-88):
+`orbsim_lint`, one job per 3 GiB of physical memory, at least one, because
+each clang-tidy process needs about 1.04 GB and Ninja's default ran one out of
+memory. Every lint step belongs in it -- a new one added outside it fails the
+CTest test `lint_pool`, which reads the generated Ninja files and computes the
+depth itself.
+
 **Every clang upgrade is a small triage.** `.clang-tidy` lists check *families*
 with `WarningsAsErrors: '*'`, so checks new in a release enrol themselves as
 build-breaking errors. That is the config working as designed. The header

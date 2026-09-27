@@ -1279,6 +1279,26 @@ file(GLOB_RECURSE ORBSIM_OWN_SOURCES CONFIGURE_DEPENDS
 )
 list(FILTER ORBSIM_OWN_SOURCES EXCLUDE REGEX "VmaImpl\\.cpp$")
 
+# How many clang-tidy processes may run at once (M1-88, ADR 0024, register
+# decision 208). Each needs about 1.04 GB on this project -- mp-units is most of
+# it -- and Ninja's default, one job per thread plus two, asked for about 22 GB
+# on a 32 GB machine: it ran the lint step out of memory beside an open IDE on
+# 2026-09-27 (docs/measurements/verification-cost.md). So the lint steps share a
+# pool sized from the machine's physical memory, one job per 3 GiB -- a third of
+# which the process needs, the rest headroom for the IDE and the compiler -- and
+# at least one. 10 on the 32 GB development machine, measured safe there.
+# Compiling keeps Ninja's default: every from-scratch compile fitted. Checked by
+# the CTest test `lint_pool`, which reads the generated Ninja files and computes
+# the depth itself.
+cmake_host_system_information(RESULT orbsim_physical_memory_mib QUERY TOTAL_PHYSICAL_MEMORY)
+math(EXPR ORBSIM_LINT_JOBS "${orbsim_physical_memory_mib} / 3072")
+if(ORBSIM_LINT_JOBS LESS 1)
+    set(ORBSIM_LINT_JOBS 1)
+endif()
+set_property(GLOBAL APPEND PROPERTY JOB_POOLS orbsim_lint=${ORBSIM_LINT_JOBS})
+message(STATUS "lint: at most ${ORBSIM_LINT_JOBS} clang-tidy processes at once "
+               "(${orbsim_physical_memory_mib} MiB / 3 GiB)")
+
 if(ORBSIM_CLANG_TIDY)
     file(MAKE_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/lint)
 
@@ -1330,6 +1350,7 @@ if(ORBSIM_CLANG_TIDY)
                 COMMAND ${CMAKE_COMMAND} -E touch ${stamp}
                 DEPENDS ${ORBSIM_TIDY_CONFIGS}
                 COMMENT "clang-tidy --verify-config for ${orbsim_lint_dir}/"
+                JOB_POOL orbsim_lint
                 VERBATIM
         )
         list(APPEND orbsim_verify_stamps ${stamp})
@@ -1349,6 +1370,7 @@ if(ORBSIM_CLANG_TIDY)
                         ${ORBSIM_TIDY_CONFIGS}
                         ${orbsim_verify_stamps}
                 COMMENT "clang-tidy ${source}"
+                JOB_POOL orbsim_lint
                 VERBATIM
         )
         list(APPEND orbsim_lint_stamps ${stamp})
@@ -1462,6 +1484,27 @@ else()
     add_test(NAME tonemap_constants_self_test COMMAND ${CMAKE_COMMAND} -E false)
 endif()
 set_tests_properties(tonemap_constants_self_test PROPERTIES LABELS fixtures)
+
+# The lint pool (M1-88, ADR 0024): every lint step in `orbsim_lint`, at the
+# depth the memory rule gives -- read from the Ninja files this tree generated,
+# with the depth computed again from the operating system's own figure. And its
+# self-test, so that a change which blinds the parser fails `check` rather than
+# passing it.
+if(ORBSIM_PYTHON)
+    add_test(NAME lint_pool
+            COMMAND ${ORBSIM_PYTHON}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-lint-pool.py
+                    ${CMAKE_BINARY_DIR}
+    )
+    add_test(NAME lint_pool_self_test
+            COMMAND ${ORBSIM_PYTHON}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-lint-pool.py --self-test
+    )
+else()
+    add_test(NAME lint_pool COMMAND ${CMAKE_COMMAND} -E false)
+    add_test(NAME lint_pool_self_test COMMAND ${CMAKE_COMMAND} -E false)
+endif()
+set_tests_properties(lint_pool lint_pool_self_test PROPERTIES LABELS fixtures)
 
 # The Horizons converter's golden test (M1-06). The converter sits in the
 # provenance chain of every Horizons fixture, so it is tested in `check` like

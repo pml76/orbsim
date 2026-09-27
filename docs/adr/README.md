@@ -39,6 +39,7 @@ usually enough.
 | [0021](0021-transforms-carry-their-frames.md) | A transform carries the frames it maps between, and the transpose is a dual map | accepted | 2026-09-20 |
 | [0022](0022-a-bounded-scalar-validates-itself.md) | A scalar with a physical bound validates itself | accepted | 2026-09-22 |
 | [0023](0023-the-processor-we-assume.md) | The processor this project assumes: x86-64 with SSE4.2, FMA3, AVX2, F16C and BMI2, set for every file compiled | accepted | 2026-09-26 |
+| [0024](0024-verification-costs-what-changed.md) | Verification re-does only what a change can affect: a memory-sized lint pool, per-file lint dependencies, parallel tests, a strict mutation-rerun rule, committed fuzz corpora | accepted | 2026-09-27 |
 
 **0008 to 0015 record the decisions taken on 2026-09-08**, before milestone 1
 started. All twenty-six of those decisions are in
