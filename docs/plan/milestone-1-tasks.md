@@ -1,6 +1,6 @@
 # Milestone 1 — the task queue
 
-Status: **planned 2026-09-08.** 87 tasks, in one order. (84 until 2026-09-13,
+Status: **planned 2026-09-08.** 94 tasks, in one order. (84 until 2026-09-13,
 when an audit found phase F had no gate although the rule below says every
 phase ends with one. The new task is **M1-85**, sitting between 77 and 78:
 renumbering seven tasks to make it "78" would have broken the identifiers that
@@ -8,7 +8,9 @@ commits and records cite -- decision 30. 85 until 2026-09-19, when UT1 from TT
 was split out of M1-07 as **M1-86**, sitting before it -- decision 73. 86 until
 2026-09-22, when a consistency pass over the source found `orbit/` answering the
 same bad input three different ways and **M1-87** was added before M1-11 to
-close it -- decision 109.)
+close it -- decision 109. 87 until 2026-09-27, when **M1-88 to M1-94** were
+added before M1-17 to make verification re-do only what a change can affect --
+decision 207.)
 Which of them are done is in [`../STATUS.md`](../STATUS.md), not here.
 
 This is the working document for [milestone 1](milestone-1-earth.md): Earth, an
@@ -154,6 +156,12 @@ M1-86 is the conversion that gives one without the leap-second table.
 interface of `orbit/` and two types in `core/Units.hpp` that every later task
 builds on, and the cost of that grows with every call site written first.
 
+**88 to 94 run before 17**, since 2026-09-27 (decision 207): they change how
+verification runs -- lint, tests, mutation reruns and fuzzing -- after it was
+measured ([`../measurements/verification-cost.md`](../measurements/verification-cost.md)),
+and every later task is verified under them. The numbers continue the
+sequence, as decision 30 did for 85. [ADR 0024](../adr/0024-verification-costs-what-changed.md).
+
 | # | Task | Prerequisites | Ends with |
 |---|---|---|---|
 | [03](tasks/m1-03-timepoint.md) | `TimePoint` and the time scales | 01 | A time that knows which scale it is in |
@@ -172,6 +180,13 @@ builds on, and the cost of that grows with every call site written first.
 | [14](tasks/m1-14-hdr-target.md) | The HDR render target | 13 | Shaders stop writing display-ready colour |
 | [15](tasks/m1-15-exposure-and-agx.md) | Exposure and the AgX tonemap | 14 | Radiance in, sRGB out, once, at the end |
 | [16](tasks/m1-16-probe-mode.md) | Probe mode: deterministic frames | 03, 11, 12, 13, 15 | A frame you can look at, every run |
+| [88](tasks/m1-88-lint-pool.md) | The lint pool, sized from memory | — | No more clang-tidy processes than the machine holds |
+| [89](tasks/m1-89-lint-what-changed.md) | Re-lint only what changed | 88 | A file is linted again exactly when its text changes |
+| [90](tasks/m1-90-abort-listener-once.md) | The abort listener, compiled once | 88 | One compile and one lint instead of 23 |
+| [91](tasks/m1-91-parallel-tests.md) | Tests in parallel | 90 | The same tests, on half the threads |
+| [92](tasks/m1-92-mutation-reruns.md) | When an older mutant file runs again | 88 | A needed rerun that cannot be forgotten |
+| [93](tasks/m1-93-fuzz-corpus.md) | Fuzz corpora and per-target budgets | — | Each gate continues where the last one stopped |
+| [94](tasks/m1-94-split-test-files.md) | Split the two slowest test files | 89, 91 | Shorter longest steps, every case unchanged |
 | [17](tasks/m1-17-golden-images.md) | Golden-image comparison | 16 | An approved frame becomes a test |
 | [18](tasks/m1-18-radiometry-probe.md) | Numeric probes, and the radiometry budget | 15, 16 | 0.5 % of an analytic radiance |
 | [19](tasks/m1-19-line-renderer.md) | The line renderer | 11, 12, 13 | Lines, camera-relative |
