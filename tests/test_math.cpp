@@ -129,7 +129,7 @@ enum class Branch : std::uint8_t { W, X, Y, Z };
 }
 
 // The engine, read directly rather than through a std:: distribution, for the
-// reason tests/test_time.cpp gives: the distributions' algorithms differ
+// reason tests/TimeTestSupport.hpp gives: the distributions' algorithms differ
 // between standard libraries, and a sweep built on them would test different
 // rotations under each toolchain.
 class Sampler {

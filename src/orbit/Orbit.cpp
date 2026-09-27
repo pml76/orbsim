@@ -945,7 +945,7 @@ void assignConic(Elements& el, const ExactState& state) {
 //
 // The first line is not a typo: of 30,000 nearly radial states, 1 + e cos v
 // came out zero for 417 and negative for 3,960. What is left is the elements'
-// own floor -- tests/test_orbit_scales.cpp states it as a conditioning law.
+// own floor -- tests/test_orbit_elements.cpp states it as a conditioning law.
 // The switch point is not delicate: -1/4 and -3/4 were measured too, and move
 // the worst case by less than a quarter.
 // e - 1, from p and a rather than from e: e^2 - 1 = -p/a, so

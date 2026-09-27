@@ -42,7 +42,7 @@ using namespace orb;
 using namespace orb::test;
 
 // Catch2 prints an unknown type as "{?}"; an instant prints as its two stored
-// numbers, as in tests/test_time.cpp. Exempt from gcc's -Wabi-tag for the
+// numbers, as in tests/TimeTestSupport.hpp. Exempt from gcc's -Wabi-tag for the
 // reason given on WithinAbsOf::describe() in tests/OrbitTestSupport.hpp: the
 // std::string is Catch2's.
 namespace Catch {
@@ -377,7 +377,7 @@ TEST_CASE("TDB - TT changes within a day as the annual term does", "[astro][tdb]
 
 // Within a picosecond, both ways, over a seeded sweep of 1990-2050 (decision
 // 57). Instants are drawn as a day and a fraction of it straight from the
-// engine, as test_time.cpp draws its dates, so that the sweep is the same under
+// engine, as tests/TimeTestSupport.hpp draws its dates, so that the sweep is the same under
 // every standard library.
 //
 // **And exact almost everywhere, which is what shows the series is evaluated at

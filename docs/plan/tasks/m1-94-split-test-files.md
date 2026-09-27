@@ -1,6 +1,6 @@
 # M1-94 — Split the two slowest test files
 
-Phase: A | Status: planned
+Phase: A | Status: **done, 2026-09-27**
 Prerequisites: M1-89, M1-91
 Decided by: [ADR 0024](../../adr/0024-verification-costs-what-changed.md); register decision 214
 
@@ -28,8 +28,34 @@ the headers it includes, so splitting it would add work, not remove it.
 
 ## Done when
 
-- [ ] Suite by suite, the case and assertion counts after the split add up
-      exactly to those before.
-- [ ] The seeds are unchanged.
-- [ ] `STATUS.md`'s suite table is updated.
-- [ ] `check` passes in both trees.
+- [x] **Suite by suite, the case and assertion counts after the split add up
+      exactly to those before, and the case names are identical**, from a
+      script that moved the sections by their marker lines rather than by hand:
+
+  | Before | After |
+  |---|---|
+  | `test_time`: 772,933 assertions in 47 cases | `test_time` 420,790 in 20 + `test_time_leap` 105,793 in 12 + `test_time_ut1` 246,350 in 15 |
+  | `test_orbit_scales`: 85,672 in 30 | `test_orbit_scales` 3,600 in 21 + `test_orbit_elements` 82,072 in 9 |
+
+- [x] **What the suites share moved into two headers**, `tests/TimeTestSupport.hpp`
+      and `tests/OrbitSweepSupport.hpp`. Each is added to the test header
+      self-check. The helpers' anonymous namespaces became named ones, which a
+      header needs, and their non-template functions became `inline`. The
+      leap-second section's two helper blocks moved too, because the UT1 cases
+      use them. The one approved `NOLINTNEXTLINE`, on each sampler, moved with
+      its line; no new suppression was written.
+- [x] **The seeds are unchanged**, 20260910 and 20260905, now in the two headers,
+      and every case still builds its own `Sampler`, so no draw changed.
+- [x] **Lint clean.** The 31 findings after the move were all includes a new
+      file no longer used, and all were removed.
+- [x] **Every reference that pointed at a moved case was corrected**:
+  - ten code comments: two in `Orbit.hpp`, one in `Orbit.cpp`, three in
+    `LeapSeconds.hpp`, and four across three test files;
+  - `VERIFICATION.md` rule 12's seed location;
+  - M1-87's mutant file, whose seven mutants judged by `test_orbit_scales` now
+    name `test_orbit_elements` too.
+- [ ] `STATUS.md`'s suite table is updated, in the closing records commit.
+- [x] `check` passes in both trees.
+- [ ] **The full mutation rerun** (decision 219). It runs after this commit,
+      because `mutate.py` records a pass only for committed code, and nothing
+      is pushed before it has run clean.

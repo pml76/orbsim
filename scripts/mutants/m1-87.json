@@ -1,7 +1,7 @@
 {
   "task": "M1-87",
   "tree": "build/relwithdebinfo",
-  "note": "Eccentricity and GravParam validated at construction. The question this pass asks is not whether the suite covers the new factories -- tests/test_units_validated.cpp exists for that and was written for it -- but whether it covers them for the right reasons.\n\n**It ran twice, and the first run is the reason to keep this file.** 11 caught, 1 survived: \"Eccentricity::from accepts a non-finite value\". The code was right; the *test* was not. Every refusal case read `REQUIRE(ecc.error() == ...)` with no `has_value()` guard before it, and `std::expected::error()` on an expected that holds a value is undefined behaviour -- in practice it reads the storage and compares equal to NotFinite, the zero enumerator. So the case passed while the factory accepted the NaN it was written to refuse.\n\nThe guard had been dropped while splitting the suite to clear a readability-function-cognitive-complexity finding: a fix for a lint finding had quietly removed the thing the test was for. That is VERIFICATION.md rule 23 -- a check that stops checking looks exactly like one that passes.\n\n**Two mutants of the same shape pin the mechanism down rather than leaving it a theory.** \"GravParam::from loses the NaN\" was caught in both runs, because there the NaN is still refused, only under the wrong name, so error() is well-defined. The Eccentricity one survived because there the NaN is accepted, so error() is undefined. Same mutation, opposite outcomes, and the difference is exactly the missing guard.\n\nSecond run, with the guard restored: 12 caught, 0 survived, 0 invalid -- seven at compile time on the static_asserts beside the types, five by tests. That is the pass this file records; the first is what earned it.",
+  "note": "Eccentricity and GravParam validated at construction. The question this pass asks is not whether the suite covers the new factories -- tests/test_units_validated.cpp exists for that and was written for it -- but whether it covers them for the right reasons.\n\n**It ran twice, and the first run is the reason to keep this file.** 11 caught, 1 survived: \"Eccentricity::from accepts a non-finite value\". The code was right; the *test* was not. Every refusal case read `REQUIRE(ecc.error() == ...)` with no `has_value()` guard before it, and `std::expected::error()` on an expected that holds a value is undefined behaviour -- in practice it reads the storage and compares equal to NotFinite, the zero enumerator. So the case passed while the factory accepted the NaN it was written to refuse.\n\nThe guard had been dropped while splitting the suite to clear a readability-function-cognitive-complexity finding: a fix for a lint finding had quietly removed the thing the test was for. That is VERIFICATION.md rule 23 -- a check that stops checking looks exactly like one that passes.\n\n**Two mutants of the same shape pin the mechanism down rather than leaving it a theory.** \"GravParam::from loses the NaN\" was caught in both runs, because there the NaN is still refused, only under the wrong name, so error() is well-defined. The Eccentricity one survived because there the NaN is accepted, so error() is undefined. Same mutation, opposite outcomes, and the difference is exactly the missing guard.\n\nSecond run, with the guard restored: 12 caught, 0 survived, 0 invalid -- seven at compile time on the static_asserts beside the types, five by tests. That is the pass this file records; the first is what earned it. **Since 2026-09-27 (M1-94)** the element-accuracy half of test_orbit_scales is test_orbit_elements, so every mutant judged by the first names the second too: a judge can only add kills, never remove one.",
   "mutants": [
     {
       "name": "Eccentricity::from accepts a negative value",
@@ -11,7 +11,8 @@
       "suites": [
         "test_units_validated",
         "test_orbit",
-        "test_orbit_scales"
+        "test_orbit_scales",
+        "test_orbit_elements"
       ],
       "expect": "caught",
       "note": "Widened rather than deleted, so the parameter stays used and the branch stays reachable -- an `if (false)` would be a -Wunreachable-code error and read as a kill without testing anything (PROJECT_STATE.md section 8). Expected to die at compile time on the static_assert that Eccentricity::from(-0.5) has no value, before any test runs."
@@ -46,7 +47,8 @@
       "suites": [
         "test_units_validated",
         "test_orbit",
-        "test_orbit_scales"
+        "test_orbit_scales",
+        "test_orbit_elements"
       ],
       "expect": "caught",
       "note": "One ulp, in the direction that keeps every value inside its bound, so no refusal changes. Only the bit-identity case can see this -- every tolerance in the file would accept it, which is the reason that case is written bit for bit."
@@ -59,7 +61,8 @@
       "suites": [
         "test_units_validated",
         "test_orbit",
-        "test_orbit_scales"
+        "test_orbit_scales",
+        "test_orbit_elements"
       ],
       "expect": "caught",
       "note": "The off-by-one-comparison that matters: a massless central body becomes constructible. Expected at compile time, on the static_assert that GravParam::from(0.0) has no value."
@@ -72,7 +75,8 @@
       "suites": [
         "test_units_validated",
         "test_orbit",
-        "test_orbit_scales"
+        "test_orbit_scales",
+        "test_orbit_elements"
       ],
       "expect": "caught",
       "note": "The condition this whole task exists to hold. If this survives, nothing in the suite is actually asking whether mu is positive."
@@ -117,7 +121,8 @@
       "replace": "        el.ecc = eccentricityAdjacentToOne(2.0);",
       "suites": [
         "test_orbit",
-        "test_orbit_scales"
+        "test_orbit_scales",
+        "test_orbit_elements"
       ],
       "expect": "caught",
       "note": "An ellipse whose eccentricity is nudged to just above 1 instead of just below. This mutant is aimed at the helper the refactor introduced: the values it produces are still valid eccentricities, so the factory cannot catch it and only the conic classification can."
@@ -129,7 +134,8 @@
       "replace": "    const auto ecc = Eccentricity::from(toDouble(state.ecc));\n    if (!ecc) return std::unexpected(OrbitError::RectilinearOrbit);",
       "suites": [
         "test_orbit",
-        "test_orbit_scales"
+        "test_orbit_scales",
+        "test_orbit_elements"
       ],
       "expect": "caught",
       "note": "The error a caller sees, changed. The value is still refused, so anything asking only whether elementsFromState failed would pass. If this survives it means no test reaches this path by name, and the honest answer would be to say so rather than invent one."
@@ -142,7 +148,8 @@
       "suites": [
         "test_units_validated",
         "test_orbit",
-        "test_orbit_scales"
+        "test_orbit_scales",
+        "test_orbit_elements"
       ],
       "expect": "caught",
       "note": "Elements holds one as an aggregate member, so this is what an element set starts with. Expected at compile time, on the static_assert that a default Eccentricity is zero."

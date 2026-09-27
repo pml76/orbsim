@@ -226,7 +226,7 @@ static_assert(describe(OrbitError::NotFinite) != describe(OrbitError::Degenerate
 // all three were measured disagreeing between the UCRT and glibc on identical
 // inputs. A caller that needs reproducibility across machines may rely on the
 // three magnitudes and must not rely on it for the angles.
-// `tests/test_orbit_scales.cpp` pins the first half with a committed checksum.
+// `tests/test_orbit_elements.cpp` pins the first half with a committed checksum.
 [[nodiscard]] std::expected<Elements, OrbitError> elementsFromState(const StateVector& sv,
                                                                     GravParam mu);
 // The reverse conversion, and it reports too, since 2026-09-13 --
@@ -261,7 +261,7 @@ static_assert(describe(OrbitError::NotFinite) != describe(OrbitError::Degenerate
 // with kappa = |r.v| / |h| for the radius and |r.v| mu / (r v^2 |h|) for the
 // speed -- the two log-derivatives with respect to the anomaly -- and
 // alpha r = 2 - r v^2 / mu, which is how steeply they depend on an anomaly that
-// is only a double. `tests/test_orbit_scales.cpp` asserts the law over a seeded
+// is only a double. `tests/test_orbit_elements.cpp` asserts the law over a seeded
 // sweep, now out to r/|a| = 1e6 and down to e = 1e-16; the second factor used
 // to carry `elementsFromState`'s own error as well, because far out on a
 // hyperbola its eccentricity vector cancelled, and that is fixed.

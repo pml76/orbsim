@@ -260,7 +260,8 @@ than implementation.
 
 ### Rule 12. Seeded randomised sweeps, with the seed written down
 
-Already done — seed `20260905` is in `test_orbit_scales.cpp` and a failure prints
+Already done — seed `20260905` is in `tests/OrbitSweepSupport.hpp`, which
+`test_orbit_scales.cpp` and `test_orbit_elements.cpp` share since M1-94, and a failure prints
 the failing case's parameters. Keep this pattern for every new numerical
 component, and keep printing the parameters: a failure you cannot reproduce is a
 failure you cannot fix.

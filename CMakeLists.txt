@@ -713,6 +713,7 @@ set(ORBSIM_TESTS
         test_image_files
         test_math
         test_orbit
+        test_orbit_elements
         test_orbit_scales
         test_pipeline_inputs
         test_probe_sidecar
@@ -721,6 +722,8 @@ set(ORBSIM_TESTS
         test_srgb
         test_sun
         test_time
+        test_time_leap
+        test_time_ut1
         test_tonemap
         test_units_validated
         test_view_math
@@ -1205,7 +1208,9 @@ orbsim_add_header_selfcheck(orbsim_test_header_selfcheck orbsim_test_support
         tests/CountWraparound.hpp
         tests/FixtureFile.hpp
         tests/HdrDumpFile.hpp
+        tests/OrbitSweepSupport.hpp
         tests/OrbitTestSupport.hpp
+        tests/TimeTestSupport.hpp
 )
 add_dependencies(test_orbit orbsim_header_selfcheck orbsim_test_header_selfcheck)
 add_dependencies(test_view_math orbsim_view_header_selfcheck)

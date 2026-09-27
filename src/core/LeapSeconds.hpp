@@ -22,7 +22,7 @@
 //     https://hpiers.obspm.fr/iers/bul/bulc/ntp/leap-seconds.list
 //
 // That file is keyed by NTP seconds; the MJDs below were converted from it
-// independently rather than copied, and tests/test_time.cpp checks every one of
+// independently rather than copied, and tests/test_time_leap.cpp checks every one of
 // them again against std::chrono, which shares no line of code with this file.
 //
 // **Why the table ends where it does.** Bulletin C 72 rules out a leap second
@@ -283,7 +283,7 @@ struct TaiLookup {
 // The shape of the table, not its truth: that it is sorted, that it steps by
 // whole seconds the mechanism allows, and that its ends are the published ones.
 // Whether row 14 really is 1985-07-01 is a question for a calendar this file
-// does not contain, and tests/test_time.cpp asks std::chrono.
+// does not contain, and tests/test_time_leap.cpp asks std::chrono.
 
 static_assert(!kIersLeapSeconds.empty(), "a table with no rows has no era to begin");
 static_assert(kIersLeapSeconds.front().utcMjd == kLeapSecondEraFirstMjd,
@@ -318,7 +318,7 @@ static_assert(leapSecondTableIsWellFormed(),
 // Every published step is a *positive* leap second. The arithmetic handles a
 // negative one -- the mechanism allows it and the Earth's rotation has been
 // making one likelier -- but nothing in the committed table exercises that
-// path, which is why tests/test_time.cpp drives the span overloads above with a
+// path, which is why tests/test_time_leap.cpp drives the span overloads above with a
 // synthetic table instead of pretending the case is covered.
 consteval bool everyPublishedStepIsPositive() {
     for (std::size_t i = 1; i < kIersLeapSeconds.size(); ++i) {
