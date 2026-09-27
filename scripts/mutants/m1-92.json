@@ -17,7 +17,8 @@
         "mutants_due_self_test",
         "mutants_due",
         "mutants_due_shaders",
-        "mutants_due_scripts"
+        "mutants_due_scripts",
+        "mutants_due_unmet_expectation_fails"
       ]
     },
     {
@@ -34,7 +35,8 @@
         "mutants_due_self_test",
         "mutants_due",
         "mutants_due_shaders",
-        "mutants_due_scripts"
+        "mutants_due_scripts",
+        "mutants_due_unmet_expectation_fails"
       ]
     },
     {
@@ -51,7 +53,8 @@
         "mutants_due_self_test",
         "mutants_due",
         "mutants_due_shaders",
-        "mutants_due_scripts"
+        "mutants_due_scripts",
+        "mutants_due_unmet_expectation_fails"
       ]
     },
     {
@@ -68,7 +71,8 @@
         "mutants_due_self_test",
         "mutants_due",
         "mutants_due_shaders",
-        "mutants_due_scripts"
+        "mutants_due_scripts",
+        "mutants_due_unmet_expectation_fails"
       ]
     },
     {
@@ -85,7 +89,8 @@
         "mutants_due_self_test",
         "mutants_due",
         "mutants_due_shaders",
-        "mutants_due_scripts"
+        "mutants_due_scripts",
+        "mutants_due_unmet_expectation_fails"
       ],
       "why": "Equivalent in this repository, measured 2026-09-27: `ninja -t inputs orbsim.exe` already lists all 7 shader sources, because orbsim depends on orbsim_shaders for its build order, so removing the explicit run-time path changes no verdict. The path is kept as a safeguard for the day that build-order dependency changes, and this survivor declared on the owner's ruling (register decision 218)."
     },
@@ -103,7 +108,8 @@
         "mutants_due_self_test",
         "mutants_due",
         "mutants_due_shaders",
-        "mutants_due_scripts"
+        "mutants_due_scripts",
+        "mutants_due_unmet_expectation_fails"
       ]
     },
     {
@@ -120,7 +126,8 @@
         "mutants_due_self_test",
         "mutants_due",
         "mutants_due_shaders",
-        "mutants_due_scripts"
+        "mutants_due_scripts",
+        "mutants_due_unmet_expectation_fails"
       ]
     }
   ]
