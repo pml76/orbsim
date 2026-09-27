@@ -1531,6 +1531,15 @@ if(ORBSIM_PYTHON)
                     ${CMAKE_BINARY_DIR} --assume-changed scripts/check-tonemap-constants.py
                     --only-assumed --expect-due m1-15.json
     )
+    # And the expectation itself must be able to fail: a file expected due that
+    # is not must fail the run. Added after M1-92's mutation pass found that
+    # nothing checked it -- every real run above expects a file that is due.
+    add_test(NAME mutants_due_unmet_expectation_fails
+            COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutants-due.py
+                    ${CMAKE_BINARY_DIR} --assume-changed README.md --only-assumed
+                    --expect-due m1-12.json
+    )
+    set_tests_properties(mutants_due_unmet_expectation_fails PROPERTIES WILL_FAIL TRUE)
     add_test(NAME mutants_due_self_test
             COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutants-due.py --self-test
     )
@@ -1538,9 +1547,11 @@ else()
     add_test(NAME mutants_due COMMAND ${CMAKE_COMMAND} -E false)
     add_test(NAME mutants_due_shaders COMMAND ${CMAKE_COMMAND} -E false)
     add_test(NAME mutants_due_scripts COMMAND ${CMAKE_COMMAND} -E false)
+    add_test(NAME mutants_due_unmet_expectation_fails COMMAND ${CMAKE_COMMAND} -E false)
     add_test(NAME mutants_due_self_test COMMAND ${CMAKE_COMMAND} -E false)
 endif()
-set_tests_properties(mutants_due mutants_due_shaders mutants_due_scripts mutants_due_self_test
+set_tests_properties(mutants_due mutants_due_shaders mutants_due_scripts
+        mutants_due_unmet_expectation_fails mutants_due_self_test
         PROPERTIES LABELS fixtures)
 
 # AgX is written twice -- shaders/tonemap.frag and src/view/Tonemap.hpp -- and

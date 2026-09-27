@@ -1,7 +1,7 @@
 {
   "task": "M1-92",
   "tree": "build/relwithdebinfo",
-  "note": "The strict rerun rule's script, scripts/mutants-due.py. Each mutant switches off one path by which a change makes a mutant file due; the judges are the self-test and the three real runs against this tree -- a header between a mutant and its tests (core/Scalar.hpp, which must make m1-12 and m1-87 due, the second only through its headers), a shader no mutant touches (which must make m1-13 due through its application judge), and a script on a ctest command line (which must make m1-15 due). A Python mutant needs no build, but the harness always builds, so every mutant names orbsim_shaders as a no-op. Not mutated: the line that adds each mutated file to its own inputs, because every mutated file here is also reached another way -- its judges are built from it, or read it at run time, or it is in the always-due set -- so removing that line changes no verdict in this repository; and mutate.py's record_pass, which only the harness itself exercises, checked by hand instead (a pass over an uncommitted tree must say 'pass not recorded').",
+  "note": "The strict rerun rule's script, scripts/mutants-due.py. Each mutant switches off one path by which a change makes a mutant file due; the judges are the self-test and the three real runs against this tree -- a header between a mutant and its tests (core/Scalar.hpp, which must make m1-12 and m1-87 due, the second only through its headers), a shader no mutant touches (which must make m1-13 due through its application judge), and a script on a ctest command line (which must make m1-15 due). A Python mutant needs no build, but the harness always builds, so every mutant names orbsim_shaders as a no-op. Not mutated: the line that adds each mutated file to its own inputs, because every mutated file here is also reached another way -- its judges are built from it, or read it at run time, or it is in the always-due set -- so removing that line changes no verdict in this repository; and mutate.py's record_pass, which only the harness itself exercises, checked by hand instead (a pass over an uncommitted tree must say 'pass not recorded'). **First run, 2026-09-27: 5 caught, 2 survived.** 'An expected file that is not due is not reported' was a real hole -- every real run expected a file that is due -- closed by mutants_due_unmet_expectation_fails, which must fail. 'Shaders are no longer an input' is equivalent here and declared, on the owner's ruling (decision 218).",
   "mutants": [
     {
       "name": "a file with no recorded pass is not due",
@@ -76,7 +76,7 @@
       "file": "scripts/mutants-due.py",
       "find": "        if program == \"orbsim\":",
       "replace": "        if False:",
-      "expect": "caught",
+      "expect": "survives",
       "suites": [],
       "targets": [
         "orbsim_shaders"
@@ -86,7 +86,8 @@
         "mutants_due",
         "mutants_due_shaders",
         "mutants_due_scripts"
-      ]
+      ],
+      "why": "Equivalent in this repository, measured 2026-09-27: `ninja -t inputs orbsim.exe` already lists all 7 shader sources, because orbsim depends on orbsim_shaders for its build order, so removing the explicit run-time path changes no verdict. The path is kept as a safeguard for the day that build-order dependency changes, and this survivor declared on the owner's ruling (register decision 218)."
     },
     {
       "name": "files on a ctest command line are ignored",
