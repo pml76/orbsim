@@ -105,9 +105,17 @@ minutes**, over half of it lint. On top of that, per task:
   - any declared survivor its new tests are meant to kill, which is today's
     habit written down as a rule.
 - **Saving.** Reruns of untouched files, 2–9 minutes each.
-- **Why no bug gets through.** A mutant's verdict can only change if the file
-  it mutates changes, or if the tests that judge it change. Both are exactly
-  the trigger.
+- **Corrected 2026-09-27: the rule as first written does not keep the chance
+  level.** It said a mutant's verdict "can only change if the file it mutates
+  changes, or if the tests that judge it change". That is false. A verdict can
+  also change when code *between* the mutated line and the test changes: a
+  test helper, or production code the test runs through. Two versions follow.
+  - **Strict:** re-run every older file whose judge *programs* were rebuilt by
+    the task. That keeps the chance level, but after an edit to a core header
+    it means nearly all files, so it saves little.
+  - **Loose:** as first written, with the full pass at every gate as the safety
+    net. It saves more, but a test weakened between gates can go unnoticed
+    until the next gate, up to about 15 tasks.
 - **How it is checked.** At the next gate, run all eleven files in full. Any
   verdict that differs from the last selective run is a hole in the rule.
 
