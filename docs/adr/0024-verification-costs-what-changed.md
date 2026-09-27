@@ -74,3 +74,16 @@ a check seen to fail first, and a measurement.
   run one tree after the other, as it always has been.
 - **Fuzzing costs more per gate and in some tasks**: `fuzz_time` goes from 240
   s to 900 s. This is a deliberate rise in cost that buys coverage.
+
+## Update, 2026-09-27: how M1-89 knows what a file includes
+
+Decision 2 above said each lint step writes the file's own dependency list as a
+depfile, through a wrapper script. Before any of it was written, a simpler
+mechanism with the same precision was found and put to the owner, who chose it
+(register decision 217). **Each lint step depends on its own file's compiled
+object**, in every target that compiles the file.
+
+Ninja already records every header the compiler reports for each object -- 377
+for `src/view/Camera.cpp`, MSVC's `cassert` among them -- and rebuilds the
+object exactly when one of them changes. So there is no script, and no
+splitting of Windows command strings. The rest of decision 2 is unchanged.

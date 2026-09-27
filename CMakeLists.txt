@@ -1356,17 +1356,57 @@ if(ORBSIM_CLANG_TIDY)
         list(APPEND orbsim_verify_stamps ${stamp})
     endforeach()
 
+    # A file is re-linted exactly when the text clang-tidy reads for it can
+    # have changed (M1-89, ADR 0024, register decisions 209 and 217). Each lint
+    # step depends on the file's own compiled object -- in every target that
+    # compiles it, since each can see different flags -- and Ninja rebuilds an
+    # object exactly when the file or anything it includes changes: it records
+    # every header the compiler reports, system headers too. Until 2026-09-27
+    # every step depended on every project header instead, so any header edit
+    # re-linted all 48 files, 206-313 s per tree. The configurations, the
+    # verify stamps and clang-tidy itself stay inputs, so changing any of them
+    # still re-lints everything. The CTest test `lint_deps` checks all of it
+    # against the generated Ninja file and the compile database, and refuses
+    # `__clang_analyzer__`, the one way the linter could read text the
+    # compiler does not.
+    set(orbsim_lint_targets
+            orbsim_core orbsim_view orbsim_test_support orbsim_fuzz_objects ${ORBSIM_TESTS})
+    foreach(operation IN LISTS ORBSIM_COUNT_WRAPAROUND_OPERATIONS)
+        list(APPEND orbsim_lint_targets count_wraparound_${operation})
+    endforeach()
+    if(ORBSIM_BUILD_APP)
+        list(APPEND orbsim_lint_targets orbsim test_probe_clear)
+    endif()
+
     set(orbsim_lint_stamps "")
     foreach(source IN LISTS ORBSIM_LINT_SOURCES)
         string(REPLACE "/" "_" stem "${source}")
         set(stamp "${CMAKE_CURRENT_BINARY_DIR}/lint/${stem}.ok")
+        # The paths here hold only letters, digits, '_', '/' and '.', so
+        # escaping the dots is all the regular expression needs.
+        string(REPLACE "." "[.]" source_pattern "${source}")
+        set(source_objects "")
+        foreach(target IN LISTS orbsim_lint_targets)
+            get_target_property(target_sources ${target} SOURCES)
+            if("${source}" IN_LIST target_sources
+                    OR "${CMAKE_CURRENT_SOURCE_DIR}/${source}" IN_LIST target_sources)
+                list(APPEND source_objects
+                        "$<FILTER:$<TARGET_OBJECTS:${target}>,INCLUDE,/${source_pattern}[.]o(bj)?$>")
+            endif()
+        endforeach()
+        if(NOT source_objects)
+            message(FATAL_ERROR "lint: no target compiles ${source}, so its lint step "
+                                "would have nothing to re-run on; add the target to "
+                                "orbsim_lint_targets")
+        endif()
         add_custom_command(
                 OUTPUT ${stamp}
                 COMMAND ${ORBSIM_CLANG_TIDY} --quiet -p ${CMAKE_BINARY_DIR}
                         ${CMAKE_CURRENT_SOURCE_DIR}/${source}
                 COMMAND ${CMAKE_COMMAND} -E touch ${stamp}
                 DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/${source}
-                        ${ORBSIM_OWN_HEADERS}
+                        ${source_objects}
+                        ${ORBSIM_CLANG_TIDY}
                         ${ORBSIM_TIDY_CONFIGS}
                         ${orbsim_verify_stamps}
                 COMMENT "clang-tidy ${source}"
@@ -1505,6 +1545,27 @@ else()
     add_test(NAME lint_pool_self_test COMMAND ${CMAKE_COMMAND} -E false)
 endif()
 set_tests_properties(lint_pool lint_pool_self_test PROPERTIES LABELS fixtures)
+
+# The lint steps' dependencies (M1-89, ADR 0024): each on its own objects, the
+# configurations, a verify stamp and clang-tidy, and on no project header
+# directly; and no `__clang_analyzer__` anywhere in src/ or tests/. Read from
+# the Ninja file and the compile database this tree generated. And its
+# self-test, which feeds it each fault it exists to catch.
+if(ORBSIM_PYTHON)
+    add_test(NAME lint_deps
+            COMMAND ${ORBSIM_PYTHON}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-lint-deps.py
+                    ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    add_test(NAME lint_deps_self_test
+            COMMAND ${ORBSIM_PYTHON}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-lint-deps.py --self-test
+    )
+else()
+    add_test(NAME lint_deps COMMAND ${CMAKE_COMMAND} -E false)
+    add_test(NAME lint_deps_self_test COMMAND ${CMAKE_COMMAND} -E false)
+endif()
+set_tests_properties(lint_deps lint_deps_self_test PROPERTIES LABELS fixtures)
 
 # The Horizons converter's golden test (M1-06). The converter sits in the
 # provenance chain of every Horizons fixture, so it is tested in `check` like

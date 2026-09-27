@@ -1,8 +1,8 @@
 # M1-89 — Re-lint only what changed
 
-Phase: A | Status: planned
+Phase: A | Status: **done, 2026-09-27**
 Prerequisites: M1-88
-Decided by: [ADR 0024](../../adr/0024-verification-costs-what-changed.md); register decision 209
+Decided by: [ADR 0024](../../adr/0024-verification-costs-what-changed.md); register decisions 209 and 217
 
 ## Purpose
 
@@ -15,39 +15,58 @@ its file includes.
 
 ## What to do
 
-- **A wrapper for each lint step**, `scripts/lint-one.py`:
-  - it reads the file's entry in `compile_commands.json`, and refuses if there
-    is not exactly one;
-  - it runs the compiler in dependency-listing mode (`-M`) with those exact
-    flags, which lists every header the file includes, system headers too;
-  - it runs clang-tidy;
-  - on success it writes the stamp and a Ninja depfile. A *depfile* is the
-    list of files a step depends on, which Ninja reads back after the step
-    has run.
+*(Amended before any code, 2026-09-27, register decision 217: the wrapper
+script and depfile first written here were replaced by a mechanism with the
+same precision and no new script.)*
+
+- **Each lint step depends on its own file's compiled object**, in every target
+  that compiles the file. CMake gives the object path through
+  `$<TARGET_OBJECTS:...>`, filtered to the file.
+  - Ninja records every header the compiler reports for each object -- 377 for
+    `src/view/Camera.cpp`, system headers included, measured -- and rebuilds
+    the object exactly when one changes.
+  - A linted file that no target compiles stops the configure step with an
+    error, so it cannot quietly lose its dependency.
 - **The lint step's inputs** become:
   - its source;
+  - its objects;
   - the `.clang-tidy` configurations;
   - the verify stamps;
   - the clang-tidy executable;
-  - its depfile, in place of "every header".
-- **A grep check** in `check` refuses any include guarded by
-  `__clang_analyzer__`, the one way clang-tidy could read text the compiler
-  does not.
-- **A self-test for the wrapper**, as a CTest test: on a synthetic source and
-  header, the depfile must name the header, and a failed clang-tidy must leave
-  no stamp.
+  - in place of "every header".
+- **`scripts/check-lint-deps.py`**, as the CTest test `lint_deps`, holds all of
+  it against the generated Ninja file and the compile database, and refuses
+  `__clang_analyzer__` under `src/` and `tests/`, the one way clang-tidy could
+  read text the compiler does not. Its self-test is `lint_deps_self_test`.
 
 ## Done when
 
-- [ ] The self-test was seen failing first, against a wrapper that writes no
-      depfile.
-- [ ] **Planted edits**, each compared with the files that actually include
-      the edit (from the compile database):
-  - a leaf header re-lints exactly its includers;
-  - a core header re-lints what includes it;
-  - a source file re-lints only itself;
-  - `.clang-tidy` re-lints everything.
-- [ ] A lint finding planted in a header is caught through each of its
-      includers.
-- [ ] A mutation pass on the wrapper, `scripts/mutants/m1-89.json`.
-- [ ] `check` passes in both trees.
+- [x] `lint_deps` failed on the tree before the change, for the right reason:
+  - 70 objects missing, 48 steps listing project headers directly, and 48
+    without the clang-tidy executable;
+  - 166 problems in 48 steps.
+- [x] **Planted edits, by real lint runs.** Ninja's dry run stops at
+      "Re-running CMake" on this tree, so it cannot answer the question. Each
+      set re-linted was compared with the files whose recorded dependencies
+      hold the edit, and was **identical**:
+
+  | Edit | Re-linted | Before |
+  |---|---|---|
+  | `src/view/Camera.hpp` | 11 | 48 |
+  | `src/core/Units.hpp` | 32 | 48 |
+  | `tests/OrbitTestSupport.hpp` | 9 | 48 |
+  | `src/view/Camera.cpp` | 1 | 1 |
+  | `.clang-tidy` | 48 | 48 |
+
+- [x] **A lint finding planted in `src/view/Camera.hpp` was caught through each
+      of its 11 includers**, and through nothing else.
+  - The finding was a local variable never changed but not `const`
+    (`misc-const-correctness`).
+  - A first attempt used a one-letter name. That check is one of the four
+    suppressed in `.clang-tidy`, so it found nothing, which was the wrong
+    instrument rather than a hole.
+- [x] The self-test reports each of the eleven faults it is given.
+- [ ] A mutation pass on the check, `scripts/mutants/m1-89.json`, run after
+      this task's commit, since the harness refuses a file with uncommitted
+      changes.
+- [x] `check` passes in both trees.

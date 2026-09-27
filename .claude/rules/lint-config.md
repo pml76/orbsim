@@ -96,6 +96,15 @@ memory. Every lint step belongs in it -- a new one added outside it fails the
 CTest test `lint_pool`, which reads the generated Ninja files and computes the
 depth itself.
 
+**A file is re-linted exactly when its text can have changed** (M1-89): each
+lint step depends on its own compiled object in every target that compiles
+it, never on "every header". Ninja rebuilds an object exactly when the file or
+anything it includes changes. A new linted file must be compiled by a target in
+`orbsim_lint_targets`, or the configure step stops; the CTest test `lint_deps`
+checks the dependencies against the generated Ninja file. **Never guard an
+include with `__clang_analyzer__`**: it is the one way the linter could read
+text the compiler does not, and `lint_deps` refuses it.
+
 **Every clang upgrade is a small triage.** `.clang-tidy` lists check *families*
 with `WarningsAsErrors: '*'`, so checks new in a release enrol themselves as
 build-breaking errors. That is the config working as designed. The header
