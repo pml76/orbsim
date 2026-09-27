@@ -1,0 +1,82 @@
+{
+  "task": "M1-90",
+  "tree": "build/relwithdebinfo",
+  "note": "The abort listener compiled once, and the check that every suite has it, scripts/check-abort-listener.py. The CMake mutant drops the OBJECT library from every suite and is judged by abort_listener against the real programs; the script mutants switch off one judgement each and are judged by its self-test and the real check. A Python mutant needs no build, but the harness always builds, so those name orbsim_shaders as a no-op. The CMake mutant is last on purpose: it rebuilds suites without the listener, and the harness restores the file but rebuilds only each later mutant's targets, so any mutant after it would be judged against programs still missing the listener -- which is exactly what the first run did, counting two kills for the wrong reason. **Run twice on 2026-09-27.** First: 4 caught, 1 survived -- 'a missing listener is not reported', a real hole, since the self-test judged one listing at a time and never the tally across suites -- and two of the four caught for the wrong reason, by programs the CMake mutant, then first, had left without the listener. The tally became a pure function the self-test reaches (its own commit), and the CMake mutant moved last. Second run: 5 of 5 caught, none invalid, none hung, the script mutants by the self-test and the CMake mutant by abort_listener against the rebuilt programs.",
+  "mutants": [
+    {
+      "name": "a failed program counts as carrying the listener",
+      "file": "scripts/check-abort-listener.py",
+      "find": "    if returncode != 0:\n        return False",
+      "replace": "    if returncode != 0:\n        pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "abort_listener_self_test",
+        "abort_listener"
+      ]
+    },
+    {
+      "name": "the name anywhere in the listing counts",
+      "file": "scripts/check-abort-listener.py",
+      "find": "    return LISTENER in names",
+      "replace": "    return LISTENER in listing",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "abort_listener_self_test",
+        "abort_listener"
+      ]
+    },
+    {
+      "name": "a missing listener is not reported",
+      "file": "scripts/check-abort-listener.py",
+      "find": "    missing = [program for program, listing, code in results if not carries_listener(listing, code)]",
+      "replace": "    missing = []",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "abort_listener_self_test",
+        "abort_listener"
+      ]
+    },
+    {
+      "name": "no suites at all passes",
+      "file": "scripts/check-abort-listener.py",
+      "find": "    if missing or not results:",
+      "replace": "    if missing:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "abort_listener_self_test",
+        "abort_listener"
+      ]
+    },
+    {
+      "name": "the suites no longer link the listener",
+      "file": "CMakeLists.txt",
+      "find": "    target_link_libraries(${test_name} PRIVATE orbsim_abort_behaviour orbsim_test_support)",
+      "replace": "    target_link_libraries(${test_name} PRIVATE orbsim_test_support)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "test_math",
+        "test_orbit"
+      ],
+      "ctest": [
+        "abort_listener"
+      ]
+    }
+  ]
+}

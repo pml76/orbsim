@@ -36,6 +36,10 @@ have that problem: CMake links its compiled files into each program directly.
       `test_probe_clear`.
 - [x] The self-test judges each of five listings right, including the
       listener's name appearing only inside another listener's description.
-- [ ] A mutation pass on the check, `scripts/mutants/m1-90.json`, run after
-      this task's commit.
+- [x] A mutation pass on the check, `scripts/mutants/m1-90.json`, run after
+      this task's commit: **5 of 5 caught** on its second run. The first found a
+      real hole -- the self-test never reached the tally across suites -- and
+      two kills for the wrong reason, from programs the CMake mutant had left
+      stale; both fixed, and the harness weakness behind the second is an open
+      item in `docs/STATUS.md`.
 - [x] `check` passes in both trees.
