@@ -54,8 +54,12 @@ the headers it includes, so splitting it would add work, not remove it.
   - `VERIFICATION.md` rule 12's seed location;
   - M1-87's mutant file, whose seven mutants judged by `test_orbit_scales` now
     name `test_orbit_elements` too.
-- [ ] `STATUS.md`'s suite table is updated, in the closing records commit.
+- [x] `STATUS.md`'s suite table is updated, in the closing records commit.
 - [x] `check` passes in both trees.
-- [ ] **The full mutation rerun** (decision 219). It runs after this commit,
+- [x] **The full mutation rerun** (decision 219). It ran after this commit,
       because `mutate.py` records a pass only for committed code, and nothing
-      is pushed before it has run clean.
+      was pushed before it had run clean.
+  - All 15 files matched their expected results, and every pass is recorded at
+    this commit.
+  - One M1-87 mutant first reported "hung", because its build straddled the
+    machine's overnight sleep. Run again awake, the file caught 12 of 12.

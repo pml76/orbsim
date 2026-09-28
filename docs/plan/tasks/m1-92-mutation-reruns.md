@@ -61,8 +61,13 @@ The full pass costs 54 minutes, and a single file 2–9
     - a header between (`mutants_due`);
     - a shader (`mutants_due_shaders`);
     - a script on a command line (`mutants_due_scripts`).
-- [ ] A mutation pass on the script, `scripts/mutants/m1-92.json`, run after
+- [x] A mutation pass on the script, `scripts/mutants/m1-92.json`, run after
       this task's commit.
-- [ ] **The rule applied to itself.** Every file due after this commit was run,
-      and its pass recorded.
+  - The first run: 5 caught, 2 survived. One survivor was a real hole, closed
+    by a test that must fail; the other is equivalent and was declared on the
+    owner's ruling (decision 218).
+  - The second run: 6 caught, plus the 1 declared survivor.
+- [x] **The rule applied to itself.** Every file due after this commit was run,
+      and its pass recorded; then again after M1-94 (decision 219), ending with
+      0 of 15 due.
 - [x] `check` passes in both trees.
