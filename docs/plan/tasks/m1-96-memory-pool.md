@@ -52,4 +52,9 @@ more than the machine holds.
 - [x] `check` passes in both trees, 279 of 279: release after the clean
       rebuild, Debug in 180 s with the pool alone and free memory never below
       6.9 GB.
-- [ ] One full mutation rerun after this commit (decision 223).
+- [x] One full mutation rerun after this commit (decision 223).
+  - All 17 mutant files matched their expected results, and every pass is
+    recorded at `041690e`, leaving 0 of 17 due.
+  - The run was stopped once for low memory, while the owner worked on the
+    machine, and resumed capped at 4 jobs. The mutant it left in
+    `src/view/PushConstants.hpp` was identified exactly and restored from git.
