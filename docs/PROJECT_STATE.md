@@ -89,6 +89,17 @@ a Vulkan SDK, `-DORBSIM_BUILD_APP=OFF` builds the core and its tests. Python is
 not optional: `check` runs `scripts/check-doc-links.py` and the Horizons
 converter's golden test, and both fail rather than pass when it is missing.
 
+**In CLion, switch off the automatic CMake reload** (since 2026-09-28,
+register decision 226): Settings, Build, Execution, Deployment, Build Tools,
+and clear "Reload project after changes in the build scripts". CLion uses the
+same build trees as `check`, and reloading on its own while `CMakeLists.txt`
+is being edited -- by you, or by a mutation pass -- collided with a pass once
+and can leave a tree set up from half-edited text. The setting is kept in
+`.idea/workspace.xml`, which is not in the repository, so it has to be set on
+every machine; it reads `autoReloadType` `NONE` once it is. Reload by hand
+when you want CLion to see a change. Should a stale tree slip through anyway,
+M1-98's guard refuses it with the command that sets it up again.
+
 **Then generate the reference data, once per machine** (since 2026-09-19).
 JPL Horizons output is queried, never committed, so a fresh clone has none,
 and `check` reports two tests skipped -- `horizons_fixture_checksums` and "the
@@ -282,7 +293,7 @@ Part 4 records which of them a machine currently checks and which do not yet
 exist. `CLAUDE.md` points at both.
 
 **Milestone 1 has two documents of its own, and both are load-bearing.**
-[`plan/milestone-1-tasks.md`](plan/milestone-1-tasks.md) is the queue: 96 tasks
+[`plan/milestone-1-tasks.md`](plan/milestone-1-tasks.md) is the queue: 98 tasks
 in one order, each with its own document under `plan/tasks/`, and the standing
 rules every task inherits.
 [`plan/milestone-1-decisions.md`](plan/milestone-1-decisions.md) is the

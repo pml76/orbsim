@@ -1,0 +1,97 @@
+{
+  "task": "M1-98",
+  "tree": "build/relwithdebinfo",
+  "note": "The stale-tree guard (register decision 225). The script mutants blind scripts/check-configure-current.py one way each and are judged by its self-test; the module mutants break the configure-time refusal or its record and are judged by configure_guard, which configures a scratch project that edits itself, and by configure_current on this tree; the CMake mutants unhook the guard from this project and are judged by configure_current against the tree they regenerate. Nothing here needs a compile, but the harness always builds, so every mutant names orbsim_shaders -- which, after a CMakeLists.txt mutant, also regenerates the tree.",
+  "mutants": [
+    {
+      "name": "a changed file is not reported",
+      "file": "scripts/check-configure-current.py",
+      "find": "        elif fingerprint(file) != was:",
+      "replace": "        elif False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": ["orbsim_shaders"],
+      "ctest": ["configure_current_self_test", "configure_current"]
+    },
+    {
+      "name": "an empty record passes",
+      "file": "scripts/check-configure-current.py",
+      "find": "    if not entries:\n        found.append(",
+      "replace": "    if False:\n        found.append(",
+      "expect": "caught",
+      "suites": [],
+      "targets": ["orbsim_shaders"],
+      "ctest": ["configure_current_self_test", "configure_current"]
+    },
+    {
+      "name": "a record without CMakeLists.txt passes",
+      "file": "scripts/check-configure-current.py",
+      "find": "    if not any(same_path(path, root / \"CMakeLists.txt\") for _, path in entries):",
+      "replace": "    if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": ["orbsim_shaders"],
+      "ctest": ["configure_current_self_test", "configure_current"]
+    },
+    {
+      "name": "a check that does not wait for the step passes",
+      "file": "scripts/check-configure-current.py",
+      "find": "    if edge is None or STEP not in edge.group(0).split(\":\", 1)[-1].split():",
+      "replace": "    if edge is None:",
+      "expect": "caught",
+      "suites": [],
+      "targets": ["orbsim_shaders"],
+      "ctest": ["configure_current_self_test", "configure_current"]
+    },
+    {
+      "name": "the configure accepts an edit made while it ran",
+      "file": "cmake/ConfigureInputs.cmake",
+      "find": "        if(NOT now STREQUAL was)",
+      "replace": "        if(FALSE)",
+      "expect": "caught",
+      "suites": [],
+      "targets": ["orbsim_shaders"],
+      "ctest": ["configure_guard", "configure_current"]
+    },
+    {
+      "name": "the configure records no fingerprints",
+      "file": "cmake/ConfigureInputs.cmake",
+      "find": "        string(APPEND record \"${was}  ${path}\\n\")",
+      "replace": "        # no record",
+      "expect": "caught",
+      "suites": [],
+      "targets": ["orbsim_shaders"],
+      "ctest": ["configure_guard", "configure_current"]
+    },
+    {
+      "name": "CMakeLists.txt is not fingerprinted",
+      "file": "CMakeLists.txt",
+      "find": "orbsim_configure_input(\"${CMAKE_CURRENT_LIST_FILE}\")",
+      "replace": "# not fingerprinted",
+      "expect": "caught",
+      "suites": [],
+      "targets": ["orbsim_shaders"],
+      "ctest": ["configure_current"]
+    },
+    {
+      "name": "the configure never compares or records",
+      "file": "CMakeLists.txt",
+      "find": "orbsim_configure_inputs_unchanged(\"${CMAKE_BINARY_DIR}/orbsim-configured-from.sha256\")",
+      "replace": "# never compared",
+      "expect": "caught",
+      "suites": [],
+      "targets": ["orbsim_shaders"],
+      "ctest": ["configure_current"]
+    },
+    {
+      "name": "check does not wait for configure-current",
+      "file": "CMakeLists.txt",
+      "find": "        mutant-anchors\n        configure-current\n)",
+      "replace": "        mutant-anchors\n)",
+      "expect": "caught",
+      "suites": [],
+      "targets": ["orbsim_shaders"],
+      "ctest": ["configure_current"]
+    }
+  ]
+}

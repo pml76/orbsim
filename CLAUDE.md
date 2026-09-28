@@ -179,9 +179,11 @@ a task's commit**, outside `check` because they take minutes:
   `src/astro/`, a `tests/fuzz_*.cpp`), run that fuzzer for its budget from its
   committed corpus (rule 13).
 
-If CLion has the project open, it may regenerate `build/debug` from a
-`CMakeLists.txt` it read mid-edit. Regenerate by hand
-(`cmake -S . -B build/debug`) before trusting `check` after editing it.
+A tree set up from text no longer on disk -- CLion reloading while
+`CMakeLists.txt` is edited -- is refused, by the configure and by `check`'s
+`configure-current` step, with the command that sets it up again (M1-98).
+Keep CLion's automatic reload switched off on every machine;
+`docs/PROJECT_STATE.md` section 2 says where.
 
 Presets: `asan` and `windows-msvc` before a milestone lands, and `linux-sanitize` and `linux-gcc`
 for UndefinedBehaviorSanitizer and the second compiler.
@@ -242,7 +244,7 @@ and the conventions and the finishing checklist are in
 ## Current work
 
 [Milestone 1](docs/plan/milestone-1-earth.md): Earth, orbit track, Orbit MFD,
-broken into 96 tasks. Phases run **A → B → D → C → E → F → G** — atmosphere
+broken into 98 tasks. Phases run **A → B → D → C → E → F → G** — atmosphere
 deliberately before the quadtree, because it is what makes the image read as
 Earth and it gives a correct reference while debugging tile seams. **Which task
 is next is in [`docs/STATUS.md`](docs/STATUS.md)**, not here. The plan was

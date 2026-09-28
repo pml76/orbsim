@@ -108,3 +108,24 @@ Two findings of the work above became tasks (register decisions 221 to 223).
   - The rule sizes the pool from *total* physical memory. A virtual machine
     holding 14.7 GB left free memory at 572 MiB at its lowest, and the rule
     cannot see that.
+
+## Update, 2026-09-28: a faster restore, and no stale tree
+
+Two more tasks, M1-97 and M1-98 (register decisions 224 to 226).
+
+- **The harness rebuilds only what the next mutant does not build itself**
+  (M1-97). M1-95's restore rebuilt the previous mutant's programs, and the
+  next mutant usually built the same ones again. `m1-09.json` took 801 s
+  before and 332 s after, with every verdict the same. The rule is one
+  function, `rebuild_plan` in `scripts/mutate.py`, with a self-test.
+- **A build tree set up from text no longer on disk is refused** (M1-98).
+  CMake reads `CMakeLists.txt` when a configure starts and writes the
+  build plan when it ends. Ninja compares dates, so an edit in between left
+  a plan from the old text that nothing replaced. This was reproduced in a
+  scratch project first.
+  - The configure fingerprints what it reads and fails if any of it
+    changes before the end.
+  - `check` waits for `configure-current`, which compares the fingerprints
+    with the files on disk once more.
+  - CLion's automatic reload, which caused it, is switched off on each
+    machine (`docs/PROJECT_STATE.md` section 2).
