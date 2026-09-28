@@ -5,6 +5,7 @@
     mutate.py scripts/mutants/m1-08.json --verify        check the anchors only
     mutate.py scripts/mutants --verify                   every task's anchors
     mutate.py scripts/mutants/m1-08.json --tree build/debug
+    mutate.py --self-test                                prove the rebuild plan right
 
 Why this exists: VERIFICATION.md rule 19 calls mutation testing "an act, not a
 state", and it has been run by hand on M1-04, M1-05, M1-06, M1-07, M1-86 and
@@ -155,7 +156,7 @@ def run_mutant(root: Path, cmake: str, tree: str, mutant: dict) -> tuple:
     path.write_text(text.replace(mutant["find"], mutant["replace"]),
                     encoding="utf-8", newline="\n")
 
-    targets = list(mutant["suites"]) + list(mutant.get("targets", []))
+    targets = built_by(mutant)
     try:
         build = subprocess.run([cmake, "--build", tree, "--target", *targets],
                                cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace",
@@ -243,6 +244,8 @@ def verify(root: Path, given: Path) -> int:
 
 
 def main(argv: list) -> int:
+    if argv[1:] == ["--self-test"]:
+        return self_test()
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("mutants",
                         help="a JSON mutant file, or a directory of them with --verify")
@@ -277,20 +280,13 @@ def main(argv: list) -> int:
         return 2
 
     results = []
-    previous = None
     try:
-        for mutant in mutants:
+        for mutant, rebuild in zip(mutants, rebuild_plan(mutants)):
             restore(root, files)
             # Rebuild what the previous mutant built, now that its file is back
-            # (M1-95, register decision 221). Ninja notices the restored file but
-            # rebuilds only what it is asked to build, and run_mutant asks only
-            # for this mutant's targets -- so a program the previous mutant
-            # rebuilt would otherwise be judged still built from the mutated
-            # code. M1-90's first pass counted two kills that way. Only the
-            # restored file is recompiled and those programs relinked.
-            if previous is not None:
-                rebuild_targets(root, args.cmake, tree, previous)
-            previous = mutant
+            # (M1-95, register decision 221), less what this mutant builds
+            # itself (M1-97, decision 224) -- see rebuild_plan.
+            rebuild_targets(root, args.cmake, tree, rebuild)
             verdict, detail = run_mutant(root, args.cmake, tree, mutant)
             results.append((mutant, verdict, detail))
             print(f"{verdict:24} {mutant['name']}"
@@ -325,19 +321,84 @@ def main(argv: list) -> int:
     return 0
 
 
-def rebuild_targets(root: Path, cmake: str, tree: str, mutant: dict) -> None:
-    """Rebuild a restored mutant's targets, or fail the pass loudly if that fails:
-    a program that could not be rebuilt from the real code would judge the next
-    mutant wrongly, and a pass must not continue on it."""
-    targets = list(mutant["suites"]) + list(mutant.get("targets", []))
+def built_by(mutant: dict) -> list:
+    """The targets a mutant's own build asks for: its suites, then its targets."""
+    return list(mutant["suites"]) + list(mutant.get("targets", []))
+
+
+def rebuild_plan(mutants: list) -> list:
+    """For each mutant, the targets to rebuild after restoring the one before it.
+
+    Ninja notices a restored file but rebuilds only what it is asked to build,
+    and run_mutant asks only for its own mutant's targets -- so a program the
+    previous mutant rebuilt would otherwise be judged still built from the
+    mutated code. M1-90's first pass counted two kills that way, and since M1-95
+    (register decision 221) the harness rebuilds them.
+
+    Less what the mutant about to run builds itself (M1-97, decision 224): its
+    own build rebuilds those from the restored file anyway, so building them
+    first as well only doubled the work -- 191 of the 225 rebuilds M1-95 added
+    across the 17 files of 2026-09-28. Why nothing is left stale: before a
+    mutant's build, a program built from another mutant's code can only be one
+    the previous mutant asked for, because the step before rebuilt all the
+    rest. This step rebuilds those, except the ones this mutant asks for. Its
+    build then either succeeds, and every program it asked for is built from
+    this mutant, or fails, and nothing is judged. Either way, the programs
+    built from a mutant are again only ones this mutant asked for, which is
+    where the next step starts.
+    """
+    plan = [[]]
+    for previous, following in zip(mutants, mutants[1:]):
+        own = set(built_by(following))
+        plan.append([t for t in dict.fromkeys(built_by(previous)) if t not in own])
+    return plan[:len(mutants)]
+
+
+def rebuild_targets(root: Path, cmake: str, tree: str, targets: list) -> None:
+    """Rebuild targets from the restored tree, or fail the pass loudly if that
+    fails: a program that could not be rebuilt from the real code would judge
+    the next mutant wrongly, and a pass must not continue on it."""
     if not targets:
         return
     build = subprocess.run([cmake, "--build", tree, "--target", *targets], cwd=root,
                            capture_output=True, text=True, encoding="utf-8", errors="replace",
                            timeout=BUILD_TIMEOUT_SECONDS, check=False)
     if build.returncode != 0:
-        raise RuntimeError(f"the restored tree does not build the targets of "
-                           f"'{mutant['name']}' again:\n{(build.stdout + build.stderr)[-2000:]}")
+        raise RuntimeError(f"the restored tree does not build {', '.join(targets)} "
+                           f"again:\n{(build.stdout + build.stderr)[-2000:]}")
+
+
+def self_test() -> int:
+    """Prove rebuild_plan right before a pass trusts it (M1-97)."""
+    def m(suites=(), targets=()):
+        return {"suites": list(suites), "targets": list(targets)}
+
+    cases = {
+        "a shared program is left to the next mutant's own build":
+            ([m(targets=["a", "b"]), m(targets=["b"])], [[], ["a"]]),
+        "a program the next mutant does not build is rebuilt (m1-95.json's shape)":
+            ([m(targets=["test_math"]), m(targets=["orbsim_shaders"])], [[], ["test_math"]]),
+        "the same programs are not rebuilt twice":
+            ([m(suites=["t"]), m(suites=["t"])], [[], []]),
+        "a previous suite counts as built by a following target":
+            ([m(suites=["t"]), m(targets=["t"])], [[], []]),
+        "a previous target counts as built by a following suite":
+            ([m(targets=["t"]), m(suites=["t"])], [[], []]),
+        "each step looks at its own neighbour, not the first mutant":
+            ([m(targets=["a"]), m(targets=["b"]), m(targets=["c"])], [[], ["a"], ["b"]]),
+        "the first mutant rebuilds nothing, and one plan entry per mutant":
+            ([m(targets=["a"])], [[]]),
+        "no mutants, no plan": ([], []),
+        "a target named twice is rebuilt once":
+            ([m(suites=["t"], targets=["t"]), m(targets=["x"])], [[], ["t"]]),
+    }
+    failures = 0
+    for name, (mutants, want) in cases.items():
+        got = rebuild_plan(mutants)
+        status = "ok" if got == want else f"WRONG, got {got}"
+        failures += got != want
+        print(f"self-test: {name}: {status}")
+    return 1 if failures else 0
 
 
 # Where a clean pass is recorded, file by file: the commit it ran at. The strict

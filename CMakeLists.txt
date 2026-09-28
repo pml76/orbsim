@@ -1513,6 +1513,19 @@ else()
     )
 endif()
 
+# The harness's rebuild plan (M1-97, register decision 224): after restoring a
+# mutant, rebuild what it built, less what the next mutant builds itself. The
+# rule is one function, proven by its self-test; the loop that uses it is
+# proven by the pass of scripts/mutants/m1-95.json.
+if(ORBSIM_PYTHON)
+    add_test(NAME mutate_self_test
+            COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutate.py --self-test
+    )
+else()
+    add_test(NAME mutate_self_test COMMAND ${CMAKE_COMMAND} -E false)
+endif()
+set_tests_properties(mutate_self_test PROPERTIES LABELS fixtures)
+
 # Which mutant files a change makes due to run again (M1-92, ADR 0024, register
 # decision 212): the strict rule, that a file is due when anything its judges
 # depend on has changed since scripts/mutation-passes.json says it last passed.
