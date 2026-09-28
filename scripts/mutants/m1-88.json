@@ -1,12 +1,12 @@
 {
   "task": "M1-88",
   "tree": "build/relwithdebinfo",
-  "note": "The lint-pool check, scripts/check-lint-pool.py, run after M1-88 was committed: its pass was owed, since every task since M1-08 has one, and was run with M1-89's. Each mutant switches off one fault the check exists for, or bends the depth rule; the judges are its self-test and the real check against this tree. A Python script needs no build, but the harness always builds, so every mutant names orbsim_shaders, the cheapest target that always builds, as a no-op. The pool itself -- the CMake that declares it -- is judged by lint_pool too: removing JOB_POOL from a lint step is its first mutant. **Run twice on 2026-09-27.** First: 6 caught and 1 survived -- 'no lint steps at all is accepted', because the self-test's case for that fault also declared no pool and was reported for that instead, so it tested nothing of its own. The case was given a correct pool (its own commit). Second run: 7 of 7 caught, none invalid, none hung; the CMake mutant is caught by lint_pool against the real tree.",
+  "note": "The lint-pool check, scripts/check-lint-pool.py, run after M1-88 was committed: its pass was owed, since every task since M1-08 has one, and was run with M1-89's. Each mutant switches off one fault the check exists for, or bends the depth rule; the judges are its self-test and the real check against this tree. A Python script needs no build, but the harness always builds, so every mutant names orbsim_shaders, the cheapest target that always builds, as a no-op. The pool itself -- the CMake that declares it -- is judged by lint_pool too: removing JOB_POOL from a lint step is its first mutant. **Run twice on 2026-09-27.** First: 6 caught and 1 survived -- 'no lint steps at all is accepted', because the self-test's case for that fault also declared no pool and was reported for that instead, so it tested nothing of its own. The case was given a correct pool (its own commit). Second run: 7 of 7 caught, none invalid, none hung; the CMake mutant is caught by lint_pool against the real tree. **Renamed by M1-96, 2026-09-28**: the pool is orbsim_memory, the script check-memory-pool.py and its tests memory_pool and memory_pool_self_test; the mutants are the same.",
   "mutants": [
     {
       "name": "a lint step leaves the pool",
       "file": "CMakeLists.txt",
-      "find": "                COMMENT \"clang-tidy ${source}\"\n                JOB_POOL orbsim_lint",
+      "find": "                COMMENT \"clang-tidy ${source}\"\n                JOB_POOL orbsim_memory",
       "replace": "                COMMENT \"clang-tidy ${source}\"",
       "expect": "caught",
       "suites": [],
@@ -14,12 +14,12 @@
         "orbsim_shaders"
       ],
       "ctest": [
-        "lint_pool"
+        "memory_pool"
       ]
     },
     {
       "name": "one job per 2 GiB instead of 3",
-      "file": "scripts/check-lint-pool.py",
+      "file": "scripts/check-memory-pool.py",
       "find": "GIB_PER_JOB = 3  #",
       "replace": "GIB_PER_JOB = 2  #",
       "expect": "caught",
@@ -28,13 +28,13 @@
         "orbsim_shaders"
       ],
       "ctest": [
-        "lint_pool_self_test",
-        "lint_pool"
+        "memory_pool_self_test",
+        "memory_pool"
       ]
     },
     {
       "name": "the floor of one job is lost",
-      "file": "scripts/check-lint-pool.py",
+      "file": "scripts/check-memory-pool.py",
       "find": "    return max(1, memory_mib // (GIB_PER_JOB * 1024))",
       "replace": "    return max(0, memory_mib // (GIB_PER_JOB * 1024))",
       "expect": "caught",
@@ -43,13 +43,13 @@
         "orbsim_shaders"
       ],
       "ctest": [
-        "lint_pool_self_test",
-        "lint_pool"
+        "memory_pool_self_test",
+        "memory_pool"
       ]
     },
     {
       "name": "a missing pool is not reported",
-      "file": "scripts/check-lint-pool.py",
+      "file": "scripts/check-memory-pool.py",
       "find": "        found.append(f\"no pool named {POOL}\")",
       "replace": "        pass",
       "expect": "caught",
@@ -58,13 +58,13 @@
         "orbsim_shaders"
       ],
       "ctest": [
-        "lint_pool_self_test",
-        "lint_pool"
+        "memory_pool_self_test",
+        "memory_pool"
       ]
     },
     {
       "name": "a wrong depth is accepted",
-      "file": "scripts/check-lint-pool.py",
+      "file": "scripts/check-memory-pool.py",
       "find": "    elif declared[POOL] != depth:",
       "replace": "    elif False:",
       "expect": "caught",
@@ -73,13 +73,13 @@
         "orbsim_shaders"
       ],
       "ctest": [
-        "lint_pool_self_test",
-        "lint_pool"
+        "memory_pool_self_test",
+        "memory_pool"
       ]
     },
     {
       "name": "a step outside the pool is accepted",
-      "file": "scripts/check-lint-pool.py",
+      "file": "scripts/check-memory-pool.py",
       "find": "            found.append(f\"lint step outside the pool: {outputs.split()[0]}\")",
       "replace": "            pass",
       "expect": "caught",
@@ -88,13 +88,13 @@
         "orbsim_shaders"
       ],
       "ctest": [
-        "lint_pool_self_test",
-        "lint_pool"
+        "memory_pool_self_test",
+        "memory_pool"
       ]
     },
     {
       "name": "no lint steps at all is accepted",
-      "file": "scripts/check-lint-pool.py",
+      "file": "scripts/check-memory-pool.py",
       "find": "        found.append(\"no lint steps found -- the check would be checking nothing\")",
       "replace": "        pass",
       "expect": "caught",
@@ -103,8 +103,8 @@
         "orbsim_shaders"
       ],
       "ctest": [
-        "lint_pool_self_test",
-        "lint_pool"
+        "memory_pool_self_test",
+        "memory_pool"
       ]
     }
   ]

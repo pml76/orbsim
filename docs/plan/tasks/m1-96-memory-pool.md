@@ -1,6 +1,6 @@
 # M1-96 — Compiles and lint share one memory-sized pool
 
-Phase: A | Status: planned
+Phase: A | Status: **done, 2026-09-28**
 Prerequisites: M1-88, M1-95
 Decided by: [ADR 0024](../../adr/0024-verification-costs-what-changed.md); register decisions 222 and 223
 
@@ -30,9 +30,26 @@ more than the machine holds.
 
 ## Done when
 
-- [ ] The check was seen failing first, on compiles outside the pool.
-- [ ] A clean rebuild of a tree runs without `CMAKE_BUILD_PARALLEL_LEVEL`, and
-      never more than the pool's depth of heavy processes; its time is recorded
-      against the unpooled measurement.
-- [ ] `check` passes in both trees.
+- [x] **The check was seen failing first**, for the right reasons: "no pool
+      named orbsim_memory", the lint steps still in the old pool, and all 345
+      compiles of this project outside it. Its self-test found a flaw in the
+      new check before it was trusted: `notlint/a.ok` was read as a lint step,
+      because `lint` was not matched as a whole directory name. Fixed; the
+      self-test now judges seven cases right.
+- [x] **A clean rebuild of the release tree through `check`, at full
+      parallelism, with no `CMAKE_BUILD_PARALLEL_LEVEL`**: 807 s, 279 of 279.
+      Sampled every second, **never more than 10 heavy processes at once**,
+      the pool's depth: 10 of this project's compiles, with 5 dependency
+      compiles beside them at that moment.
+  - The comparison is not like for like. The unpooled from-scratch compile
+    measured 190-232 s on 2026-09-27 and excluded lint and tests; this run is
+    compile, lint and tests together.
+  - **Lowest free memory: 572 MiB.** A VMware virtual machine was running and
+    holding 14.7 GB, leaving 2.8 GB free at rest. The pool is sized from total
+    physical memory, so it cannot know that half of it is taken. Within what
+    was left, 10 heavy processes fitted, barely. This is a limit of the rule,
+    recorded as one. The owner closed the VM for the remaining runs.
+- [x] `check` passes in both trees, 279 of 279: release after the clean
+      rebuild, Debug in 180 s with the pool alone and free memory never below
+      6.9 GB.
 - [ ] One full mutation rerun after this commit (decision 223).

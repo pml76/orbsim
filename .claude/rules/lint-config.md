@@ -88,13 +88,15 @@ comparison means for NaN. See [`docs/PROJECT_STATE.md`](../../docs/PROJECT_STATE
 section 8 before running `clang-tidy --fix` over the tree, and before
 reshaping code to satisfy one of them.
 
-**The lint steps run in a pool sized from memory**
-([ADR 0024](../../docs/adr/0024-verification-costs-what-changed.md), M1-88):
-`orbsim_lint`, one job per 3 GiB of physical memory, at least one, because
-each clang-tidy process needs about 1.04 GB and Ninja's default ran one out of
-memory. Every lint step belongs in it -- a new one added outside it fails the
-CTest test `lint_pool`, which reads the generated Ninja files and computes the
-depth itself.
+**The lint steps, and this project's own compiles, run in one pool sized from
+memory** ([ADR 0024](../../docs/adr/0024-verification-costs-what-changed.md),
+M1-88 and M1-96): `orbsim_memory`, one job per 3 GiB of physical memory, at
+least one. Each clang-tidy needs about 1.04 GB and each compile 0.6-1 GB, and
+both Ninja's default lint and a full rebuild with lint beside it ran out of
+memory. Every lint step, and every compile of a target the top-level
+`CMakeLists.txt` defines, belongs in it; the CTest test `memory_pool` fails on
+one outside it, reading the generated Ninja files and computing the depth
+itself. Dependencies built in their own directories keep Ninja's default.
 
 **A file is re-linted exactly when its text can have changed** (M1-89): each
 lint step depends on its own compiled object in every target that compiles

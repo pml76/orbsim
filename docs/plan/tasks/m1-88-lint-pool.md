@@ -4,6 +4,11 @@ Phase: A | Status: **done, 2026-09-27**
 Prerequisites: none. Runs **before M1-17**, first of M1-88 to M1-94 (decision 207)
 Decided by: [ADR 0024](../../adr/0024-verification-costs-what-changed.md); register decision 208
 
+*(Since M1-96, 2026-09-28, the pool is `orbsim_memory` and holds this
+project's own compiles too; the script is `scripts/check-memory-pool.py` and
+its tests `memory_pool` and `memory_pool_self_test`. What follows is M1-88 as
+it was done.)*
+
 ## Purpose
 
 **A `check` should not fail because the machine ran out of memory.**

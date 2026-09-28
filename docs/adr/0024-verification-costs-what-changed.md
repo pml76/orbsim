@@ -87,3 +87,24 @@ Ninja already records every header the compiler reports for each object -- 377
 for `src/view/Camera.cpp`, MSVC's `cassert` among them -- and rebuilds the
 object exactly when one of them changes. So there is no script, and no
 splitting of Windows command strings. The rest of decision 2 is unchanged.
+
+## Update, 2026-09-28: the harness restores, and compiles join the pool
+
+Two findings of the work above became tasks (register decisions 221 to 223).
+
+- **The mutation harness rebuilds what it restored** (M1-95). Ninja notices a
+  restored file, but it rebuilds only what it is asked to build, and the
+  harness asked only for the next mutant's targets. So a program the previous
+  mutant rebuilt was judged still built from the mutated code. M1-90's first
+  pass counted two kills that way. `scripts/mutants/m1-95.json` recreates that
+  situation as a regression test.
+- **Decision 1 is widened** (M1-96). The pool is `orbsim_memory`, and it holds
+  this project's own compiles as well as the lint steps: every library and
+  program target the top-level `CMakeLists.txt` defines. A full rebuild had
+  run `check` out of memory, with about 20 compiles beside the 10 lint jobs.
+  Dependencies built in their own directories keep Ninja's default.
+  - Measured on a clean rebuild through `check`: never more than 10 heavy
+    processes at once.
+  - The rule sizes the pool from *total* physical memory. A virtual machine
+    holding 14.7 GB left free memory at 572 MiB at its lowest, and the rule
+    cannot see that.

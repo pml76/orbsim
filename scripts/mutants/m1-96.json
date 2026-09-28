@@ -1,0 +1,66 @@
+{
+  "task": "M1-96",
+  "tree": "build/relwithdebinfo",
+  "note": "The compile half of the memory pool (register decision 222). The CMake mutant stops the top-level targets compiling in the pool and is judged by memory_pool against the regenerated Ninja file; the script mutants switch off the compile check and are judged by its self-test and the real check. Python and a regenerated Ninja file need no build, but the harness always builds, so every mutant names orbsim_shaders as a no-op.",
+  "mutants": [
+    {
+      "name": "a compile of this project outside the pool is not reported",
+      "file": "scripts/check-memory-pool.py",
+      "find": "    for obj in outside[:5]:\n        found.append(f\"compile outside the pool: {obj}\")",
+      "replace": "    for obj in outside[:0]:\n        found.append(f\"compile outside the pool: {obj}\")",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "memory_pool_self_test",
+        "memory_pool"
+      ]
+    },
+    {
+      "name": "a dependency's compile counts as this project's",
+      "file": "scripts/check-memory-pool.py",
+      "find": "if re.match(r\"(C|CXX)_COMPILER__\", rule) and outputs.startswith(\"CMakeFiles/\")]",
+      "replace": "if re.match(r\"(C|CXX)_COMPILER__\", rule)]",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "memory_pool_self_test",
+        "memory_pool"
+      ]
+    },
+    {
+      "name": "no compiles found passes",
+      "file": "scripts/check-memory-pool.py",
+      "find": "    if not compiles:\n        found.append(",
+      "replace": "    if False:\n        found.append(",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "memory_pool_self_test",
+        "memory_pool"
+      ]
+    },
+    {
+      "name": "the top-level targets no longer compile in the pool",
+      "file": "CMakeLists.txt",
+      "find": "        set_property(TARGET ${target} PROPERTY JOB_POOL_COMPILE orbsim_memory)",
+      "replace": "        set_property(TARGET ${target} PROPERTY LABELS orbsim_memory)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "memory_pool"
+      ]
+    }
+  ]
+}

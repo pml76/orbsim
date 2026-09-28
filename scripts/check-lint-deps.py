@@ -160,7 +160,7 @@ def self_test() -> int:
             parts.append(tidy.replace(":", "$:"))
         parts += extra_inputs.split()
         return (f"build lint/src_a.cpp.ok: CUSTOM_COMMAND {' '.join(parts)} || cmake_object_order_depends\n"
-                "  COMMAND = tidy\n  pool = orbsim_lint\n")
+                "  COMMAND = tidy\n  pool = orbsim_memory\n")
 
     db = [{"file": f"{root}/src/a.cpp", "directory": f"{root}/build",
            "output": f"{root}/build/CMakeFiles/t.dir/src/a.cpp.obj"}]
