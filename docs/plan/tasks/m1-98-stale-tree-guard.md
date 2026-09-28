@@ -1,6 +1,6 @@
 # M1-98 — Refuse a build tree set up from text no longer on disk
 
-Phase: A | Status: **in progress, 2026-09-28**
+Phase: A | Status: **done, 2026-09-28**
 Prerequisites: M1-97
 Decided by: [ADR 0024](../../adr/0024-verification-costs-what-changed.md); register decisions 225 and 226
 
@@ -75,4 +75,8 @@ printed `built-from-A`, while the file on disk said `B`.
     27.4 s to exit: Ninja lets jobs it has already started finish, and eight
     header self-check compiles of about 25 s each had started beside it.
 - [x] `check` passes in both trees, 283 of 283, 2026-09-28.
-- [ ] One full mutation rerun after M1-97 and M1-98 (decision 226).
+- [x] One full mutation rerun after M1-97 and M1-98 (decision 226), 2026-09-28,
+      at full parallelism: 18 of 19 files matched their expectations in 79
+      minutes, against about three hours for the same kind of run that
+      morning. `m1-98.json` found one redundant check, removed under decision
+      227, and then passed, 8 of 8 caught. 0 of 19 files due.

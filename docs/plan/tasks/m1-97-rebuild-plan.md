@@ -1,6 +1,6 @@
 # M1-97 — The harness rebuilds only what the next mutant does not
 
-Phase: A | Status: **in progress, 2026-09-28**
+Phase: A | Status: **done, 2026-09-28**
 Prerequisites: M1-95
 Decided by: [ADR 0024](../../adr/0024-verification-costs-what-changed.md); register decisions 224 and 226
 
@@ -39,6 +39,10 @@ was 191 of the 225 rebuilds M1-95 added.
       at full parallelism, 2026-09-28: **801 s before, 332 s after**, 2.4 times
       faster. Every verdict was the same: 14 caught, 1 declared survivor.
       Two kills listed the same failing cases in a different order.
-- [ ] `m1-95.json` still passes: 1 caught, 1 declared survivor.
+- [x] `m1-95.json` still passes: 1 caught, 1 declared survivor, in the rerun.
 - [x] `check` passes in both trees, 283 of 283, 2026-09-28.
-- [ ] One full mutation rerun after M1-97 and M1-98 (decision 226).
+- [x] One full mutation rerun after M1-97 and M1-98 (decision 226), 2026-09-28,
+      at full parallelism: 18 of 19 files matched their expectations in 79
+      minutes, against about three hours for the same kind of run that
+      morning. `m1-98.json` found one redundant check, removed under decision
+      227, and then passed, 8 of 8 caught. 0 of 19 files due.
