@@ -61,8 +61,9 @@ def problems(record_text, root: pathlib.Path, ninja_text: str) -> list:
             found.append(f"a line of {RECORD} is not '<sha256>  <path>': {line!r}")
             continue
         entries.append((match.group(1), match.group(2)))
-    if not entries:
-        found.append(f"{RECORD} lists no files -- the check would be checking nothing")
+    # This also refuses an empty record, which would check nothing. A separate
+    # "lists no files" check stood here until M1-98's mutation pass showed it
+    # could never decide anything on its own (register decision 227).
     if not any(same_path(path, root / "CMakeLists.txt") for _, path in entries):
         found.append(f"{RECORD} does not list {root / 'CMakeLists.txt'}")
     for was, path in entries:

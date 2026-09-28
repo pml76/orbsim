@@ -50,7 +50,11 @@ printed `built-from-A`, while the file on disk said `B`.
   - `configure_current_self_test`;
   - `configure_guard`, which configures a scratch project that edits its own
     `CMakeLists.txt` mid-configure (`cmake/TestConfigureGuard.cmake`).
-- **Mutants**: `scripts/mutants/m1-98.json`.
+- **Mutants**: `scripts/mutants/m1-98.json`, eight of them. A ninth, on a
+  "record lists no files" check, survived the first pass: the requirement that
+  the record list `CMakeLists.txt` already refuses an empty record, so that
+  check could never decide anything. The check and its mutant were removed
+  (decision 227).
 - **The known gap**: an edit in the milliseconds between CMake reading a file
   and the fingerprint line running. CMake offers no earlier hook.
 

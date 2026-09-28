@@ -10,18 +10,13 @@
       "replace": "        elif False:",
       "expect": "caught",
       "suites": [],
-      "targets": ["orbsim_shaders"],
-      "ctest": ["configure_current_self_test", "configure_current"]
-    },
-    {
-      "name": "an empty record passes",
-      "file": "scripts/check-configure-current.py",
-      "find": "    if not entries:\n        found.append(",
-      "replace": "    if False:\n        found.append(",
-      "expect": "caught",
-      "suites": [],
-      "targets": ["orbsim_shaders"],
-      "ctest": ["configure_current_self_test", "configure_current"]
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "configure_current_self_test",
+        "configure_current"
+      ]
     },
     {
       "name": "a record without CMakeLists.txt passes",
@@ -30,8 +25,13 @@
       "replace": "    if False:",
       "expect": "caught",
       "suites": [],
-      "targets": ["orbsim_shaders"],
-      "ctest": ["configure_current_self_test", "configure_current"]
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "configure_current_self_test",
+        "configure_current"
+      ]
     },
     {
       "name": "a check that does not wait for the step passes",
@@ -40,8 +40,13 @@
       "replace": "    if edge is None:",
       "expect": "caught",
       "suites": [],
-      "targets": ["orbsim_shaders"],
-      "ctest": ["configure_current_self_test", "configure_current"]
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "configure_current_self_test",
+        "configure_current"
+      ]
     },
     {
       "name": "the configure accepts an edit made while it ran",
@@ -50,8 +55,13 @@
       "replace": "        if(FALSE)",
       "expect": "caught",
       "suites": [],
-      "targets": ["orbsim_shaders"],
-      "ctest": ["configure_guard", "configure_current"]
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "configure_guard",
+        "configure_current"
+      ]
     },
     {
       "name": "the configure records no fingerprints",
@@ -60,8 +70,13 @@
       "replace": "        # no record",
       "expect": "caught",
       "suites": [],
-      "targets": ["orbsim_shaders"],
-      "ctest": ["configure_guard", "configure_current"]
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "configure_guard",
+        "configure_current"
+      ]
     },
     {
       "name": "CMakeLists.txt is not fingerprinted",
@@ -70,8 +85,12 @@
       "replace": "# not fingerprinted",
       "expect": "caught",
       "suites": [],
-      "targets": ["orbsim_shaders"],
-      "ctest": ["configure_current"]
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "configure_current"
+      ]
     },
     {
       "name": "the configure never compares or records",
@@ -80,8 +99,12 @@
       "replace": "# never compared",
       "expect": "caught",
       "suites": [],
-      "targets": ["orbsim_shaders"],
-      "ctest": ["configure_current"]
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "configure_current"
+      ]
     },
     {
       "name": "check does not wait for configure-current",
@@ -90,8 +113,12 @@
       "replace": "        mutant-anchors\n)",
       "expect": "caught",
       "suites": [],
-      "targets": ["orbsim_shaders"],
-      "ctest": ["configure_current"]
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "configure_current"
+      ]
     }
   ]
 }
