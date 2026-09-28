@@ -277,9 +277,20 @@ def main(argv: list) -> int:
         return 2
 
     results = []
+    previous = None
     try:
         for mutant in mutants:
             restore(root, files)
+            # Rebuild what the previous mutant built, now that its file is back
+            # (M1-95, register decision 221). Ninja notices the restored file but
+            # rebuilds only what it is asked to build, and run_mutant asks only
+            # for this mutant's targets -- so a program the previous mutant
+            # rebuilt would otherwise be judged still built from the mutated
+            # code. M1-90's first pass counted two kills that way. Only the
+            # restored file is recompiled and those programs relinked.
+            if previous is not None:
+                rebuild_targets(root, args.cmake, tree, previous)
+            previous = mutant
             verdict, detail = run_mutant(root, args.cmake, tree, mutant)
             results.append((mutant, verdict, detail))
             print(f"{verdict:24} {mutant['name']}"
@@ -312,6 +323,21 @@ def main(argv: list) -> int:
         return 1
     record_pass(root, given, tree)
     return 0
+
+
+def rebuild_targets(root: Path, cmake: str, tree: str, mutant: dict) -> None:
+    """Rebuild a restored mutant's targets, or fail the pass loudly if that fails:
+    a program that could not be rebuilt from the real code would judge the next
+    mutant wrongly, and a pass must not continue on it."""
+    targets = list(mutant["suites"]) + list(mutant.get("targets", []))
+    if not targets:
+        return
+    build = subprocess.run([cmake, "--build", tree, "--target", *targets], cwd=root,
+                           capture_output=True, text=True, encoding="utf-8", errors="replace",
+                           timeout=BUILD_TIMEOUT_SECONDS, check=False)
+    if build.returncode != 0:
+        raise RuntimeError(f"the restored tree does not build the targets of "
+                           f"'{mutant['name']}' again:\n{(build.stdout + build.stderr)[-2000:]}")
 
 
 # Where a clean pass is recorded, file by file: the commit it ran at. The strict

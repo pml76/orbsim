@@ -1,0 +1,28 @@
+{
+  "task": "M1-95",
+  "tree": "build/relwithdebinfo",
+  "note": "The mutation harness's own regression test (register decision 221). Mutant A removes the abort listener from every suite's link and rebuilds test_math; mutant B changes nothing but a comment and is judged by abort_listener, which runs test_math among the suites. Until M1-95 the harness restored A's file but rebuilt only B's targets, so B was judged against a test_math still built without the listener, and was 'caught' -- M1-90's two kills for the wrong reason, recreated on purpose. Since M1-95 the harness rebuilds A's targets after restoring, and B survives, as declared. The order is the test: A must come first.",
+  "mutants": [
+    {
+      "name": "the suites no longer link the listener",
+      "file": "CMakeLists.txt",
+      "find": "    target_link_libraries(${test_name} PRIVATE orbsim_abort_behaviour orbsim_test_support)",
+      "replace": "    target_link_libraries(${test_name} PRIVATE orbsim_test_support)",
+      "expect": "caught",
+      "suites": [],
+      "targets": ["test_math"],
+      "ctest": ["abort_listener"]
+    },
+    {
+      "name": "a comment only, judged against the programs mutant A rebuilt",
+      "file": "scripts/check-abort-listener.py",
+      "find": "LISTENER = \"AbortWithoutADialog\"",
+      "replace": "LISTENER = \"AbortWithoutADialog\"  # M1-95: a comment changes nothing",
+      "expect": "survives",
+      "why": "Equivalent by construction: a Python comment changes no behaviour. It exists to be judged right after mutant A, and it survives only if the harness rebuilt test_math after restoring A's file (M1-95, register decision 221).",
+      "suites": [],
+      "targets": ["orbsim_shaders"],
+      "ctest": ["abort_listener"]
+    }
+  ]
+}
