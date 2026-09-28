@@ -1,6 +1,6 @@
 # Milestone 1 — the task queue
 
-Status: **planned 2026-09-08.** 94 tasks, in one order. (84 until 2026-09-13,
+Status: **planned 2026-09-08.** 96 tasks, in one order. (84 until 2026-09-13,
 when an audit found phase F had no gate although the rule below says every
 phase ends with one. The new task is **M1-85**, sitting between 77 and 78:
 renumbering seven tasks to make it "78" would have broken the identifiers that
@@ -10,7 +10,8 @@ was split out of M1-07 as **M1-86**, sitting before it -- decision 73. 86 until
 same bad input three different ways and **M1-87** was added before M1-11 to
 close it -- decision 109. 87 until 2026-09-27, when **M1-88 to M1-94** were
 added before M1-17 to make verification re-do only what a change can affect --
-decision 207.)
+decision 207. 94 until 2026-09-28, when **M1-95 and M1-96** were added to
+close two findings of that work -- decisions 221 to 223.)
 Which of them are done is in [`../STATUS.md`](../STATUS.md), not here.
 
 This is the working document for [milestone 1](milestone-1-earth.md): Earth, an
@@ -44,7 +45,7 @@ one starts.
 
 ### The standing rules, which every task inherits
 
-These are not repeated in the 94 documents. They apply to all of them.
+These are not repeated in the 96 documents. They apply to all of them.
 
 1. **The test is written first and seen to fail**, for the right reason
    ([`../VERIFICATION.md`](../VERIFICATION.md) rule 1). The failure message goes
@@ -164,7 +165,7 @@ M1-86 is the conversion that gives one without the leap-second table.
 interface of `orbit/` and two types in `core/Units.hpp` that every later task
 builds on, and the cost of that grows with every call site written first.
 
-**88 to 94 run before 17**, since 2026-09-27 (decision 207): they change how
+**88 to 96 run before 17**, since 2026-09-27 (decision 207): they change how
 verification runs -- lint, tests, mutation reruns and fuzzing -- after it was
 measured ([`../measurements/verification-cost.md`](../measurements/verification-cost.md)),
 and every later task is verified under them. The numbers continue the
@@ -195,6 +196,8 @@ sequence, as decision 30 did for 85. [ADR 0024](../adr/0024-verification-costs-w
 | [92](tasks/m1-92-mutation-reruns.md) | When an older mutant file runs again | 88 | A needed rerun that cannot be forgotten |
 | [93](tasks/m1-93-fuzz-corpus.md) | Fuzz corpora and per-target budgets | — | Each gate continues where the last one stopped |
 | [94](tasks/m1-94-split-test-files.md) | Split the two slowest test files | 89, 91 | Shorter longest steps, every case unchanged |
+| [95](tasks/m1-95-harness-restores.md) | The mutation harness rebuilds what it restored | 92 | No program judged stale after a mutant |
+| [96](tasks/m1-96-memory-pool.md) | Compiles and lint share one memory-sized pool | 88, 95 | A full rebuild that fits in memory |
 | [17](tasks/m1-17-golden-images.md) | Golden-image comparison | 16 | An approved frame becomes a test |
 | [18](tasks/m1-18-radiometry-probe.md) | Numeric probes, and the radiometry budget | 15, 16 | 0.5 % of an analytic radiance |
 | [19](tasks/m1-19-line-renderer.md) | The line renderer | 11, 12, 13 | Lines, camera-relative |

@@ -1,6 +1,6 @@
 # M1-16 — Probe mode: deterministic frames
 
-Phase: A | Status: **built 2026-09-26; done once the owner has looked at `clear.png`**
+Phase: A | Status: **done, 2026-09-28**, when the owner looked at `clear.png` (register decision 220)
 Prerequisites: M1-03, M1-11, M1-12, M1-13, M1-15 *(Corrected 2026-09-21: the queue says each task lists its true
 prerequisites so that a reordering can be reasoned about, and this task pins a
 fixed epoch as a `TimePoint` (M1-03), a fixed camera pose (M1-11) and a fixed
@@ -138,7 +138,10 @@ PNG.
 - [x] The PNG, the HDR dump and the sidecar are written on a failing run too
       -- shown by hand with a planted validation error, and first by accident
       on a real one (below).
-- [ ] The owner has looked at `clear.png` and said so.
+- [x] The owner has looked at `clear.png` and said so, 2026-09-28: five stripes,
+      the lowest black; above it white, red, green and blue, each from black
+      through saturated colour to a whitish tint, uniform within the stripe,
+      and smooth. That matches decision 189 (register decision 220).
 
 ## What was built
 
