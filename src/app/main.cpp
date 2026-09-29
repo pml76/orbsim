@@ -34,6 +34,7 @@
 #include <expected>
 #include <filesystem>
 #include <memory>
+#include <optional>
 #include <print>
 #include <span>
 #include <string>
@@ -47,7 +48,9 @@ namespace {
 using orb::Seconds;
 using orb::app::SdlError;
 
+using orb::app::GoldenAction;
 using orb::app::kExitFailure;
+using orb::app::kExitGoldenMismatch;
 using orb::app::kExitUsage;
 using orb::app::kExitValidationErrors;
 
@@ -55,7 +58,30 @@ constexpr std::string_view kUsage =
     "usage: orbsim [--validate | --no-validate] [--seconds <n>] [--shader-dir <path>]\n"
     "       orbsim [--validate | --no-validate] --probe <name> [--probe-out <dir>] "
     "[--shader-dir <path>]\n"
-    "       orbsim --probe-list\n";
+    "              [--golden <path> [--accept-golden]]\n"
+    "       orbsim --probe-list\n"
+    "       orbsim --help\n";
+
+// `--help` (M1-17, register decision 234): every option, one line each, with
+// --accept-golden's rule beside it -- ADR 0008 asks that the help text say it.
+constexpr std::string_view kHelp =
+    "\n"
+    "  --validate, --no-validate  the Vulkan validation layers on or off; on by default in a\n"
+    "                             Debug build\n"
+    "  --seconds <n>              run the window for n seconds, then exit\n"
+    "  --shader-dir <path>        where the compiled shaders are\n"
+    "  --probe <name>             render one probe's frame at 1280x720, write its files, exit\n"
+    "  --probe-out <dir>          where a probe writes its files; the build tree's probes/ by\n"
+    "                             default\n"
+    "  --probe-list               list the probes\n"
+    "  --golden <path>            compare the probe's frame, halved to 640x360, with this\n"
+    "                             golden PNG; on a mismatch write <name>.diff.png and exit 4\n"
+    "  --accept-golden            write the probe's halved frame to the --golden path as the\n"
+    "                             new approved frame. Run by the owner, after looking at the\n"
+    "                             frame -- never by a script and never from `check` (ADR 0008)\n"
+    "  --help                     this text\n"
+    "\n"
+    "exit codes: 0 success, 1 failure, 2 usage, 3 validation errors, 4 golden mismatch\n";
 
 // The camera the application exposes the scene with (M1-15, register decision
 // 176): **f/16, 1/125 s, ISO 100 -- the "sunny 16" rule**, a photographer's
@@ -94,13 +120,14 @@ constexpr Uint32 kIdleDelayMs = 16;
     return std::filesystem::path{utf8};
 }
 
-// What a run is for (M1-16): the interactive window, one probe's frame, or
-// the list of probes. An enum rather than two booleans, which could both be
-// set (non-negotiable 2).
+// What a run is for (M1-16): the interactive window, one probe's frame, the
+// list of probes, or since M1-17 the help text. An enum rather than several
+// booleans, which could be set together (non-negotiable 2).
 enum class Mode : std::uint8_t {
     Window,
     Probe,
     ListProbes,
+    Help,
 };
 
 struct Options {
@@ -114,6 +141,10 @@ struct Options {
 #else
     orb::gfx::Validation validation{orb::gfx::Validation::Enabled};
 #endif
+    // What --validate or --no-validate asked for, if either was given:
+    // --accept-golden refuses --no-validate (register decision 232), which
+    // the default alone cannot tell apart from a request.
+    std::optional<orb::gfx::Validation> validationAsked;
 
     // Runs the loop for a fixed wall-clock time and exits cleanly. Gives an
     // automated smoke test a way to exercise startup, the frame loop and
@@ -130,6 +161,11 @@ struct Options {
     // default, where CMake points ORBSIM_PROBE_DIR (register decision 192).
     std::string probe;
     std::filesystem::path probeOut{pathFromUtf8(ORBSIM_PROBE_DIR)};
+
+    // --golden's path and what to do with it (M1-17, register decisions
+    // 230-232). Absent unless --golden was given.
+    std::optional<std::filesystem::path> goldenPath;
+    GoldenAction golden{GoldenAction::None};
 };
 
 // Whether a person is at the window: a run without --seconds goes on until
@@ -155,12 +191,39 @@ struct Options {
     return Seconds{value};
 }
 
+// What --accept-golden refuses (register decisions 232 and 233), in this
+// order: it runs under the validation layers, so --no-validate is refused
+// first, and it writes to --golden's path, so without one there is nowhere to
+// write. Validation is then turned on whatever the build's default.
+[[nodiscard]] std::expected<Options, SdlError> checkAcceptGolden(Options options) {
+    if (options.golden != GoldenAction::Accept) return options;
+    if (options.validationAsked == orb::gfx::Validation::Disabled) {
+        return std::unexpected(SdlError{
+            .message = "--accept-golden runs under the validation layers; --no-validate "
+                       "cannot go with it",
+        });
+    }
+    if (!options.goldenPath) {
+        return std::unexpected(
+            SdlError{.message = "--accept-golden needs --golden <path>, the golden to write"});
+    }
+    options.validation = orb::gfx::Validation::Enabled;
+    return options;
+}
+
 // The combinations a probe run refuses (register decision 192). A probe is one
 // frame and exits, so a running time means nothing to it; and a name must be
 // one the registry knows, which is said here with the list rather than
 // discovered after a window and a device have been made.
 [[nodiscard]] std::expected<Options, SdlError> checkProbeOptions(Options options) {
-    if (options.mode != Mode::Probe) return options;
+    if (options.mode == Mode::Help) return options;
+    if (options.mode != Mode::Probe) {
+        if (options.golden != GoldenAction::None) {
+            return std::unexpected(
+                SdlError{.message = "--golden and --accept-golden need --probe <name>"});
+        }
+        return options;
+    }
     if (options.runFor.value() > 0.0) {
         return std::unexpected(
             SdlError{.message = "--probe renders one frame; --seconds does not apply"});
@@ -174,7 +237,66 @@ struct Options {
             .message = "no probe named '" + options.probe + "'; the probes are: " + names,
         });
     }
-    return options;
+    return checkAcceptGolden(options);
+}
+
+// A switch that stands alone. Returns false when `arg` is not one, so the
+// caller can try the options that take a value (M1-17 split these out of
+// parseArguments, which had grown past the lint's size and complexity limits).
+[[nodiscard]] bool applySwitch(Options& options, std::string_view arg) {
+    if (arg == "--validate") {
+        options.validation = orb::gfx::Validation::Enabled;
+        options.validationAsked = options.validation;
+    } else if (arg == "--no-validate") {
+        options.validation = orb::gfx::Validation::Disabled;
+        options.validationAsked = options.validation;
+    } else if (arg == "--probe-list") {
+        options.mode = Mode::ListProbes;
+    } else if (arg == "--accept-golden") {
+        options.golden = GoldenAction::Accept;
+    } else if (arg == "--help") {
+        options.mode = Mode::Help;
+    } else {
+        return false;
+    }
+    return true;
+}
+
+// What an option that takes a value is missing when it has none, as the
+// message says it -- or nothing, when `arg` is not such an option.
+[[nodiscard]] std::optional<std::string_view> valueNeededBy(std::string_view arg) {
+    if (arg == "--seconds") return "a value";
+    if (arg == "--shader-dir") return "a path";
+    if (arg == "--probe") return "a probe's name";
+    if (arg == "--probe-out") return "a directory";
+    if (arg == "--golden") return "a path";
+    return std::nullopt;
+}
+
+// An option and the value that followed it, by name, so the two cannot be
+// handed over the wrong way round (non-negotiable 1).
+struct OptionValue {
+    std::string_view option;
+    std::string_view value;
+};
+
+[[nodiscard]] std::expected<void, SdlError> applyValue(Options& options, OptionValue given) {
+    if (given.option == "--seconds") {
+        auto seconds = parseSeconds(given.value);
+        if (!seconds) return std::unexpected(seconds.error());
+        options.runFor = *seconds;
+    } else if (given.option == "--shader-dir") {
+        options.shaderDirectory = pathFromUtf8(given.value);
+    } else if (given.option == "--probe") {
+        options.mode = Mode::Probe;
+        options.probe = std::string(given.value);
+    } else if (given.option == "--probe-out") {
+        options.probeOut = pathFromUtf8(given.value);
+    } else if (given.option == "--golden") {
+        options.goldenPath = pathFromUtf8(given.value);
+        if (options.golden == GoldenAction::None) options.golden = GoldenAction::Compare;
+    }
+    return {};
 }
 
 // The arguments arrive as a span rather than the (int, char**) pair main is
@@ -187,38 +309,19 @@ struct Options {
     Options options;
     for (std::size_t i = 1; i < tokens.size(); ++i) {
         const std::string_view arg = tokens.at(i);
-        if (arg == "--validate") {
-            options.validation = orb::gfx::Validation::Enabled;
-        } else if (arg == "--no-validate") {
-            options.validation = orb::gfx::Validation::Disabled;
-        } else if (arg == "--seconds") {
-            if (i + 1 >= tokens.size()) {
-                return std::unexpected(SdlError{.message = "--seconds needs a value"});
-            }
-            auto seconds = parseSeconds(tokens.at(++i));
-            if (!seconds) return std::unexpected(seconds.error());
-            options.runFor = *seconds;
-        } else if (arg == "--shader-dir") {
-            if (i + 1 >= tokens.size()) {
-                return std::unexpected(SdlError{.message = "--shader-dir needs a path"});
-            }
-            options.shaderDirectory = pathFromUtf8(tokens.at(++i));
-        } else if (arg == "--probe") {
-            if (i + 1 >= tokens.size()) {
-                return std::unexpected(SdlError{.message = "--probe needs a probe's name"});
-            }
-            options.mode = Mode::Probe;
-            options.probe = std::string(tokens.at(++i));
-        } else if (arg == "--probe-out") {
-            if (i + 1 >= tokens.size()) {
-                return std::unexpected(SdlError{.message = "--probe-out needs a directory"});
-            }
-            options.probeOut = pathFromUtf8(tokens.at(++i));
-        } else if (arg == "--probe-list") {
-            options.mode = Mode::ListProbes;
-        } else {
+        if (applySwitch(options, arg)) continue;
+        const std::optional<std::string_view> needed = valueNeededBy(arg);
+        if (!needed) {
             return std::unexpected(
                 SdlError{.message = "unknown argument '" + std::string(arg) + "'"});
+        }
+        if (i + 1 >= tokens.size()) {
+            return std::unexpected(
+                SdlError{.message = std::string(arg) + " needs " + std::string(*needed)});
+        }
+        if (auto applied = applyValue(options, {.option = arg, .value = tokens.at(++i)});
+            !applied) {
+            return std::unexpected(applied.error());
         }
     }
     return checkProbeOptions(options);
@@ -366,6 +469,35 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
     return status;
 }
 
+// 3 if the validation layers reported anything, read once the renderer is
+// torn down -- teardown is where validation errors hide.
+[[nodiscard]] int validationVerdict(uint32_t errors) {
+    if (errors == 0) return 0;
+    std::print(stderr, "orbsim: {} validation error(s) reported; see the log above\n", errors);
+    return kExitValidationErrors;
+}
+
+// A probe run's exit code, in register decision 230's order -- a failure,
+// then validation errors, then a golden mismatch -- and the golden accepted
+// only once all three are clear (decision 232).
+[[nodiscard]] int
+finishProbe(const orb::app::ProbeOutcome& outcome, uint32_t errors, const Options& options) {
+    if (outcome.exitCode != 0 && outcome.exitCode != kExitGoldenMismatch) return outcome.exitCode;
+    if (const int verdict = validationVerdict(errors); verdict != 0) {
+        if (outcome.toAccept) {
+            std::print(stderr,
+                       "orbsim: --accept-golden: nothing written, because of the "
+                       "validation errors\n");
+        }
+        return verdict;
+    }
+    if (outcome.exitCode == kExitGoldenMismatch) return kExitGoldenMismatch;
+    if (outcome.toAccept && options.goldenPath) {
+        return orb::app::acceptGolden(*options.goldenPath, *outcome.toAccept);
+    }
+    return 0;
+}
+
 [[nodiscard]] int run(std::span<char* const> args) {
     const auto options = parseArguments(args);
     if (!options) {
@@ -373,6 +505,10 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
         return kExitUsage;
     }
 
+    if (options->mode == Mode::Help) {
+        std::print("{}{}", kUsage, kHelp);
+        return 0;
+    }
     if (options->mode == Mode::ListProbes) {
         orb::app::listProbes();
         return 0;
@@ -405,22 +541,23 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
     // Counted outside the renderer's lifetime, because teardown is where
     // validation errors hide and the count has to survive it.
     std::atomic<uint32_t> validationErrors{0};
-    const int status = options->mode == Mode::Probe
-                           ? orb::app::runProbe(window->get(),
-                                                {
-                                                    .probe = options->probe,
-                                                    .outDirectory = options->probeOut,
-                                                    .shaderDirectory = options->shaderDirectory,
-                                                    .validation = options->validation,
-                                                },
-                                                validationErrors)
-                           : runRenderer(window->get(), *options, validationErrors);
-    if (status != 0) return status;
-    if (const uint32_t errors = validationErrors.load(); errors > 0) {
-        std::print(stderr, "orbsim: {} validation error(s) reported; see the log above\n", errors);
-        return kExitValidationErrors;
+    if (options->mode != Mode::Probe) {
+        const int status = runRenderer(window->get(), *options, validationErrors);
+        if (status != 0) return status;
+        return validationVerdict(validationErrors.load());
     }
-    return 0;
+    const orb::app::ProbeOutcome outcome =
+        orb::app::runProbe(window->get(),
+                           {
+                               .probe = options->probe,
+                               .outDirectory = options->probeOut,
+                               .shaderDirectory = options->shaderDirectory,
+                               .validation = options->validation,
+                               .golden = options->golden,
+                               .goldenPath = options->goldenPath.value_or(std::filesystem::path{}),
+                           },
+                           validationErrors);
+    return finishProbe(outcome, validationErrors.load(), *options);
 }
 
 } // namespace

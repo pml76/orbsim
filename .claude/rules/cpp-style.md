@@ -85,11 +85,14 @@ cmake -S coding-guidelines-example -B coding-guidelines-example/build -G Ninja \
   `tests/test_camera.cpp`, `tests/test_render_quality.cpp`,
   `tests/test_pipeline_inputs.cpp`, `tests/test_srgb.cpp` (M1-14),
   `tests/test_exposure.cpp` and `tests/test_tonemap.cpp` (M1-15),
-  and `tests/test_half.cpp`, `tests/test_hdr_dump.cpp` and
-  `tests/test_image_files.cpp` (M1-16) additionally link `orbsim_view`, which
-  links `orbsim_core` and -- privately, since M1-16 -- the two image libraries
-  behind `src/view/ImageFiles.cpp`, lodepng and OpenEXR, neither of them a
-  graphics library. *(The fourth was added to `CMakeLists.txt` by
+  `tests/test_half.cpp`, `tests/test_hdr_dump.cpp`,
+  `tests/test_image_files.cpp` and `tests/test_probe_sidecar.cpp` (M1-16),
+  and `tests/test_image_compare.cpp` (M1-17) additionally link `orbsim_view`,
+  which links `orbsim_core` and -- privately, since M1-16 -- the image
+  libraries behind `src/view/ImageFiles.cpp`: lodepng and OpenEXR, and since
+  M1-17 stb_image's decoder, none of them a graphics library.
+  *(`test_probe_sidecar` has linked it since M1-16 and was missing from this
+  list until M1-17 found it, 2026-09-29.)* *(The fourth was added to `CMakeLists.txt` by
   M1-12 on 2026-09-24 and to this list on the same day, by a consistency pass
   rather than by the task — an enumeration kept "so the exception set is
   visible" is worth nothing while it is one short.)* They are named one

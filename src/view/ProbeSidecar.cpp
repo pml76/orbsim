@@ -1,12 +1,15 @@
 #include "view/ProbeSidecar.hpp" // SF.5: own header, first
 #include "core/Math.hpp"
+#include "core/Scalar.hpp"
 #include "core/Time.hpp"
 #include "view/Camera.hpp"
 #include "view/Exposure.hpp"
+#include "view/ImageCompare.hpp"
 
 #include <array>
 #include <cstdint>
 #include <format>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -58,6 +61,19 @@ struct Entry {
     return text;
 }
 
+// A measurement beside its limit, or that there was none.
+[[nodiscard]] std::string formatLargestLine(const SidecarGolden& golden) {
+    if (!golden.difference) return "not measured";
+    return std::format("{} (limit {}/255)", formatLargest(*golden.difference), kGoldenLargestSteps);
+}
+
+[[nodiscard]] std::string formatMeanLine(const SidecarGolden& golden) {
+    if (!golden.difference) return "not measured";
+    const f64 limit =
+        static_cast<f64>(kGoldenMeanNumerator) / static_cast<f64>(kGoldenMeanDenominator);
+    return std::format("{} (limit under {}/255)", formatMean(*golden.difference), limit);
+}
+
 [[nodiscard]] std::string formatPosition(const Position& position) {
     return std::format("{} {} {} m", position.x.value(), position.y.value(), position.z.value());
 }
@@ -78,6 +94,14 @@ std::string formatSidecar(const SidecarFields& fields) {
         Entry{.key = "probe", .value = std::string(fields.probe)},
         Entry{.key = "description", .value = std::string(fields.description)},
         Entry{.key = "outcome", .value = std::string(fields.outcome)},
+        Entry{
+            .key = "golden",
+            .value =
+                fields.golden.path.empty() ? std::string("none") : std::string(fields.golden.path),
+        },
+        Entry{.key = "golden.verdict", .value = std::string(fields.golden.verdict)},
+        Entry{.key = "golden.largest", .value = formatLargestLine(fields.golden)},
+        Entry{.key = "golden.mean", .value = formatMeanLine(fields.golden)},
         Entry{.key = "epoch", .value = formatEpoch(fields.epoch)},
         Entry{.key = "camera.position", .value = formatPosition(fields.camera.position())},
         Entry{.key = "camera.orientation", .value = formatOrientation(fields.camera.orientation())},

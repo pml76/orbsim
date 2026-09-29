@@ -20,6 +20,7 @@
 // odd, so a swapped channel, a swapped byte, a transposed row or a dropped
 // column each changes the answer.
 //
+#include "view/ImageCompare.hpp"
 #include "view/ImageFiles.hpp"
 #include "view/ProbeImage.hpp"
 
@@ -52,6 +53,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 using namespace orb::view;
@@ -209,6 +211,130 @@ TEST_CASE("an 8-bit PNG holds the RGB it was given, and no alpha") {
     const Decoded<stbi_uc> decoded = decodePng<stbi_uc>(*png);
     REQUIRE(decoded.channels == 3);
     REQUIRE(decoded.samples == withoutAlpha(rgba));
+}
+
+// --- reading a golden (M1-17, register decision 235) ----------------------------
+
+namespace {
+
+// An RGB image with a distinct value in every channel of every pixel.
+[[nodiscard]] Rgb8Image rgb8Image() {
+    auto image = Rgb8Image::from(kSize, withoutAlpha(rgba8Pattern()));
+    REQUIRE(image.has_value());
+    return *std::move(image);
+}
+
+[[nodiscard]] std::vector<std::uint8_t> valuesOf(const Rgb8Image& image) {
+    std::vector<std::uint8_t> values(image.valueCount());
+    for (std::size_t i = 0; i < values.size(); ++i) {
+        values.at(i) = image.value(i);
+    }
+    return values;
+}
+
+// A refusal, and which one: the name is the claim (standing rule 6).
+void requireRefused(const std::expected<Rgb8Image, PngReadFailure>& read, PngReadError expected) {
+    REQUIRE(!read.has_value());
+    INFO(describe(read.error().error) << ": " << read.error().detail);
+    REQUIRE(read.error().error == expected);
+}
+
+} // namespace
+
+namespace {
+
+// The PNG encodePng8 wrote for an RGB image: 8-bit RGB by its own header.
+[[nodiscard]] std::vector<std::byte> goldenPngOf(const Rgb8Image& image) {
+    const auto png = encodePng8(image);
+    REQUIRE(png.has_value());
+    const PngHeader header = pngHeaderOf(*png);
+    REQUIRE(header.bitDepth == 8U);
+    REQUIRE(header.colourType == 2U);
+    return *png;
+}
+
+// The image decodePng8 read, required to exist.
+[[nodiscard]] Rgb8Image readGolden(std::span<const std::byte> png) {
+    auto read = decodePng8(png);
+    INFO((read.has_value() ? std::string("read") : read.error().detail));
+    REQUIRE(read.has_value());
+    return *std::move(read);
+}
+
+} // namespace
+
+TEST_CASE("an 8-bit RGB image survives a PNG written by lodepng and read back as a golden") {
+    const Rgb8Image image = rgb8Image();
+    const Rgb8Image read = readGolden(goldenPngOf(image));
+    REQUIRE(read.size().width == kSize.width);
+    REQUIRE(read.size().height == kSize.height);
+    REQUIRE(valuesOf(read) == valuesOf(image));
+}
+
+// Found by M1-17 on 2026-09-29: lodepng chooses the smallest colour type an
+// image allows unless told not to, so a 320x180 crop of `clear` came out as a
+// palette PNG (colour type 3) -- not the 8-bit RGB decision 191 says every
+// probe PNG is, and not one a golden can be read from (decision 235).
+TEST_CASE("an image of few colours is still written as 8-bit RGB, not as a palette") {
+    // Two colours in 256 pixels: small enough that a palette would be chosen.
+    std::vector<std::uint8_t> rgb(std::size_t{16} * 16 * 3, 0);
+    for (std::size_t i = 0; i < rgb.size(); i += 6) {
+        rgb.at(i) = 200;
+    }
+    const auto image = Rgb8Image::from({.width = 16, .height = 16}, rgb);
+    REQUIRE(image.has_value());
+    const auto png = encodePng8(*image);
+    REQUIRE(png.has_value());
+    const PngHeader header = pngHeaderOf(*png);
+    REQUIRE(header.bitDepth == 8U);
+    REQUIRE(header.colourType == 2U);
+    REQUIRE(valuesOf(readGolden(*png)) == rgb);
+}
+
+TEST_CASE("a grey image is still written as RGB, not as grey") {
+    const std::vector<std::uint8_t> rgba(pixelCount(kSize) * kChannelsPerPixel, 77);
+    const auto png = encodePng8(kSize, rgba);
+    REQUIRE(png.has_value());
+    REQUIRE(pngHeaderOf(*png).colourType == 2U);
+}
+
+TEST_CASE("a 16-bit image whose values fit in 8 bits is still written at 16 bits") {
+    // Every value a multiple of 257, which an 8-bit PNG could hold exactly.
+    const std::vector<std::uint16_t> rgba(pixelCount(kSize) * kChannelsPerPixel, 257U * 9U);
+    const auto png = encodePng16(kSize, rgba);
+    REQUIRE(png.has_value());
+    const PngHeader header = pngHeaderOf(*png);
+    REQUIRE(header.bitDepth == 16U);
+    REQUIRE(header.colourType == 2U);
+}
+
+TEST_CASE("a 16-bit PNG is refused as a golden rather than converted") {
+    const auto png = encodePng16(kSize, rgba16Pattern());
+    REQUIRE(png.has_value());
+    requireRefused(decodePng8(*png), PngReadError::NotEightBitRgb);
+}
+
+TEST_CASE("a PNG of another colour type is refused as a golden rather than converted") {
+    auto png = encodePng8(rgb8Image());
+    REQUIRE(png.has_value());
+    // Byte 25 is IHDR's colour type (PNG specification, section 11.2.2); 6 is
+    // RGB with alpha. Refused on the header, before anything is decoded.
+    png->at(25) = std::byte{6};
+    requireRefused(decodePng8(*png), PngReadError::NotEightBitRgb);
+}
+
+TEST_CASE("bytes that are not a PNG are refused by name") {
+    requireRefused(decodePng8({}), PngReadError::NotPng);
+    const std::vector<std::byte> text(64, std::byte{'x'});
+    requireRefused(decodePng8(text), PngReadError::NotPng);
+}
+
+TEST_CASE("a PNG whose image data is cut short is refused by name") {
+    const auto png = encodePng8(rgb8Image());
+    REQUIRE(png.has_value());
+    // The signature and the whole header survive; the image data does not.
+    const std::span<const std::byte> cut = std::span(*png).first(40);
+    requireRefused(decodePng8(cut), PngReadError::Undecodable);
 }
 
 TEST_CASE("a 16-bit PNG holds the RGB it was given, most significant byte first") {

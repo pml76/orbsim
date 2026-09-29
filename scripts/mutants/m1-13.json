@@ -144,8 +144,8 @@
     {
       "name": "--shader-dir is accepted and ignored",
       "file": "src/app/main.cpp",
-      "find": "            options.shaderDirectory = pathFromUtf8(tokens.at(++i));",
-      "replace": "            static_cast<void>(pathFromUtf8(tokens.at(++i)));",
+      "find": "        options.shaderDirectory = pathFromUtf8(given.value);",
+      "replace": "        static_cast<void>(pathFromUtf8(given.value));",
       "suites": [],
       "targets": ["orbsim"],
       "ctest": ["shader_missing_is_reported"],

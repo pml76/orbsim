@@ -523,10 +523,11 @@ target_link_libraries(orbsim_core
 # (measured 2026-09-26), which is the same arrangement ERFA has.
 #
 # **stb** has no releases or tags, so it is pinned by commit (2026-08-02).
-# Only its decoder is used, and only by the tests, to read both PNGs back
-# independently of the encoder that wrote them; M1-17 uses it for goldens.
-# Header-only: there is nothing to build until a translation unit defines
-# STB_IMAGE_IMPLEMENTATION, which tests/StbImageImpl.cpp does.
+# Only its decoder is used: by the tests, to read both PNGs back independently
+# of the encoder that wrote them, and since M1-17 by orbsim_view, to read
+# golden images. Header-only: there is nothing to build until a translation
+# unit defines STB_IMAGE_IMPLEMENTATION, which src/view/StbImageImpl.cpp does,
+# compiled once as orbsim_stb_image for both (register decision 235).
 #
 # **lodepng** writes both PNGs, 8 and 16 bits per channel. No releases or tags
 # either, so pinned by commit (2026-05-28). Its file I/O is compiled out: paths
@@ -562,6 +563,15 @@ FetchContent_MakeAvailable(stb lodepng)
 
 add_library(orbsim_stb INTERFACE)
 target_include_directories(orbsim_stb SYSTEM INTERFACE "${stb_SOURCE_DIR}")
+# stb_image's implementation, once: orbsim_view and the tests each compiling it
+# would define every function twice. Built with this project's warnings; the
+# header is SYSTEM, so what it expands is not judged as ours.
+set(ORBSIM_STB_IMAGE_SOURCES src/view/StbImageImpl.cpp)
+add_library(orbsim_stb_image STATIC ${ORBSIM_STB_IMAGE_SOURCES})
+target_link_libraries(orbsim_stb_image
+        PUBLIC orbsim_stb
+        PRIVATE orbsim_warnings orbsim_sanitizers
+)
 
 add_library(orbsim_lodepng STATIC "${lodepng_SOURCE_DIR}/lodepng.cpp")
 target_include_directories(orbsim_lodepng SYSTEM PUBLIC "${lodepng_SOURCE_DIR}")
@@ -600,8 +610,8 @@ unset(BUILD_SHARED_LIBS)
 # ---------------------------------------------------------------------------
 # orbsim_view -- the render-side maths that Vulkan never touches (ADR 0012).
 #
-# It links orbsim_core and, privately since M1-16, the two image libraries
-# below -- nothing graphical. orbsim_render and the application
+# It links orbsim_core and, privately since M1-16, the image libraries
+# above -- nothing graphical. orbsim_render and the application
 # link it; orbsim_core does not, and cannot, which is what makes "nothing
 # under tests/ includes a Vulkan or SDL header" a property of the link graph
 # rather than of anyone's memory.
@@ -615,17 +625,20 @@ unset(BUILD_SHARED_LIBS)
 # ---------------------------------------------------------------------------
 set(ORBSIM_VIEW_SOURCES
         src/view/Camera.cpp
+        src/view/ImageCompare.cpp
         src/view/ImageFiles.cpp
         src/view/ProbeImage.cpp
         src/view/ProbeSidecar.cpp
 )
 add_library(orbsim_view STATIC ${ORBSIM_VIEW_SOURCES})
-# Privately, since M1-16: the PNG and EXR encoders' two libraries, seen by
-# view/ImageFiles.cpp alone. Neither is a graphics library, so the claim above
-# -- nothing under tests/ reaches Vulkan or SDL through this target -- stands.
+# Privately, since M1-16: the PNG and EXR encoders' two libraries, and since
+# M1-17 the PNG decoder that reads goldens, seen by view/ImageFiles.cpp alone.
+# None is a graphics library, so the claim above -- nothing under tests/
+# reaches Vulkan or SDL through this target -- stands.
 target_link_libraries(orbsim_view
         PUBLIC orbsim_core
         PRIVATE orbsim_warnings orbsim_sanitizers orbsim_lodepng OpenEXR::OpenEXRCore
+                orbsim_stb_image
 )
 
 # The structural claim, checked rather than remembered (ADR 0012, and
@@ -693,7 +706,6 @@ set(ORBSIM_TEST_SUPPORT_SOURCES
         tests/FixtureFile.cpp
         tests/HdrDumpFile.cpp
         tests/OrbitTestSupport.cpp
-        tests/StbImageImpl.cpp
 )
 add_library(orbsim_test_support STATIC ${ORBSIM_TEST_SUPPORT_SOURCES})
 target_include_directories(orbsim_test_support PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
@@ -701,7 +713,7 @@ target_link_libraries(orbsim_test_support PUBLIC
         orbsim_core
         orbsim_warnings
         orbsim_sanitizers
-        orbsim_stb
+        orbsim_stb_image
         Catch2::Catch2WithMain
 )
 # Where the suites find reference data: data/ in the source tree, named by the
@@ -721,6 +733,7 @@ set(ORBSIM_TESTS
         test_fixture_file
         test_half
         test_hdr_dump
+        test_image_compare
         test_image_files
         test_math
         test_orbit
@@ -774,6 +787,7 @@ target_link_libraries(test_tonemap PRIVATE orbsim_view)
 target_link_libraries(test_half PRIVATE orbsim_view)
 target_link_libraries(test_hdr_dump PRIVATE orbsim_view)
 target_link_libraries(test_probe_sidecar PRIVATE orbsim_view)
+target_link_libraries(test_image_compare PRIVATE orbsim_view)
 # And OpenEXR itself: the EXR is read back through the reference
 # implementation's own decoder, which is the check that the file is one.
 target_link_libraries(test_image_files PRIVATE orbsim_view OpenEXR::OpenEXRCore)
@@ -1122,11 +1136,20 @@ set_tests_properties(orbsim_smoke PROPERTIES LABELS gpu RESOURCE_LOCK gpu)
 # probe_clear_determinism renders it again into probes-rerun/ and requires the
 # two HDR dumps byte-identical (VERIFICATION.md rule 16). Both are the fixture
 # test_probe_clear reads the frame from.
+#
+# Since M1-17 probe_clear also compares the frame with its golden image,
+# tests/golden/clear.png, and requires it to match (ADR 0008; register
+# decisions 228-231) -- with a diff image from an "earlier run" planted first,
+# which the application must remove (decision 231).
+set(ORBSIM_GOLDEN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/tests/golden")
 add_test(NAME probe_clear
         COMMAND ${CMAKE_COMMAND}
                 -DORBSIM=$<TARGET_FILE:orbsim>
                 -DPROBE=clear
                 -DOUT=${ORBSIM_PROBE_DIR}
+                -DGOLDEN=${ORBSIM_GOLDEN_DIR}/clear.png
+                -DPLANT_DIFF=ON
+                "-DEXPECT_STDOUT=: matches"
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/RunProbe.cmake)
 add_test(NAME probe_clear_determinism
         COMMAND ${CMAKE_COMMAND}
@@ -1147,6 +1170,73 @@ target_link_libraries(test_probe_clear PRIVATE orbsim_abort_behaviour orbsim_tes
 target_compile_definitions(test_probe_clear PRIVATE ORBSIM_PROBE_DIR="${ORBSIM_PROBE_DIR}")
 catch_discover_tests(test_probe_clear
         PROPERTIES FIXTURES_REQUIRED probe_clear_frame LABELS gpu RESOURCE_LOCK gpu)
+
+# A golden mismatch, caught end to end (M1-17, register decision 236).
+#
+# make_broken_goldens writes three altered copies of the committed golden into
+# the build tree -- a 16x16 block moved by 8 steps, which only the cap
+# catches; every value moved by 1 step, which only the mean catches; and a
+# 320x180 crop, which cannot be compared at all. It links orbsim_view and no
+# Vulkan. The probe is then run against each, and against a golden that does
+# not exist, and each run must end as decision 230 says: exit 4 with the diff
+# image and both numbers on stderr for a mismatch, exit 1 with the reason for
+# a golden that cannot be compared -- and in every case the five usual files,
+# which is decision 193's permanent test of a failing run's artefacts.
+add_executable(make_broken_goldens tests/make_broken_goldens.cpp)
+target_link_libraries(make_broken_goldens PRIVATE orbsim_view orbsim_warnings orbsim_sanitizers)
+set(ORBSIM_BROKEN_GOLDEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/golden-broken")
+add_test(NAME broken_goldens
+        COMMAND make_broken_goldens ${ORBSIM_GOLDEN_DIR}/clear.png ${ORBSIM_BROKEN_GOLDEN_DIR})
+set_tests_properties(broken_goldens PROPERTIES FIXTURES_SETUP broken_goldens)
+
+function(orbsim_add_golden_test name golden expect_exit)
+    add_test(NAME probe_golden_${name}
+            COMMAND ${CMAKE_COMMAND}
+                    -DORBSIM=$<TARGET_FILE:orbsim>
+                    -DPROBE=clear
+                    -DOUT=${CMAKE_CURRENT_BINARY_DIR}/probes-golden-${name}
+                    -DGOLDEN=${golden}
+                    -DEXPECT_EXIT=${expect_exit}
+                    ${ARGN}
+                    -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/RunProbe.cmake)
+    set_tests_properties(probe_golden_${name} PROPERTIES LABELS gpu RESOURCE_LOCK gpu)
+    # Only an altered golden needs make_broken_goldens to have run first.
+    string(FIND "${golden}" "${ORBSIM_BROKEN_GOLDEN_DIR}/" in_broken_dir)
+    if(in_broken_dir EQUAL 0)
+        set_tests_properties(probe_golden_${name} PROPERTIES FIXTURES_REQUIRED broken_goldens)
+    endif()
+endfunction()
+orbsim_add_golden_test(block ${ORBSIM_BROKEN_GOLDEN_DIR}/clear-block.png 4
+        -DEXPECT_DIFF=ON
+        "-DEXPECT_STDERR=largest difference 8/255, over the limit of 4/255|mean difference 0.00889/255, within the limit")
+orbsim_add_golden_test(shift ${ORBSIM_BROKEN_GOLDEN_DIR}/clear-shift.png 4
+        -DEXPECT_DIFF=ON
+        "-DEXPECT_STDERR=largest difference 1/255, within the limit of 4/255|mean difference 1.00000/255, over the limit")
+orbsim_add_golden_test(missing ${CMAKE_CURRENT_BINARY_DIR}/no-such-golden.png 1
+        "-DEXPECT_STDERR=cannot compare with the golden|no-such-golden.png")
+orbsim_add_golden_test(wrong_size ${ORBSIM_BROKEN_GOLDEN_DIR}/clear-wrong-size.png 1
+        "-DEXPECT_STDERR=the golden is 320x180 and the frame halves to 640x360")
+
+# What --golden, --accept-golden and their neighbours refuse, each a usage
+# error with its reason (M1-17, register decisions 232 and 233). No device is
+# made: the arguments are refused first. `--accept-golden` never appears here
+# beside `--golden`, which the CTest test accept_golden refuses (decision 233).
+function(orbsim_add_usage_test name arguments expect)
+    add_test(NAME usage_${name}
+            COMMAND ${CMAKE_COMMAND}
+                    -DORBSIM=$<TARGET_FILE:orbsim>
+                    "-DARGS=${arguments}"
+                    "-DEXPECT=${expect}"
+                    -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/RunUsage.cmake)
+endfunction()
+# The expected texts leave the other flag out: accept_golden refuses any
+# command line that names both, and a message is part of the command line.
+orbsim_add_usage_test(accept_without_golden "--probe|clear|--accept-golden"
+        "the golden to write")
+orbsim_add_usage_test(accept_without_validation "--probe|clear|--accept-golden|--no-validate"
+        "--no-validate cannot go with it")
+orbsim_add_usage_test(golden_without_probe "--golden|x.png"
+        "need --probe <name>")
 
 # A build tree whose shaders are missing is reported, by path, and the
 # application exits 1 rather than starting (M1-13, register decision 148). It
@@ -1202,6 +1292,7 @@ orbsim_add_header_selfcheck(orbsim_view_header_selfcheck orbsim_view
         view/Exposure.hpp
         view/Frame.hpp
         view/Half.hpp
+        view/ImageCompare.hpp
         view/ImageFiles.hpp
         view/Mat4.hpp
         view/Projection.hpp
@@ -1236,6 +1327,7 @@ add_dependencies(test_half orbsim_view_header_selfcheck)
 add_dependencies(test_hdr_dump orbsim_view_header_selfcheck)
 add_dependencies(test_image_files orbsim_view_header_selfcheck)
 add_dependencies(test_probe_sidecar orbsim_view_header_selfcheck)
+add_dependencies(test_image_compare orbsim_view_header_selfcheck)
 
 if(ORBSIM_BUILD_APP)
     orbsim_add_header_selfcheck(orbsim_render_header_selfcheck orbsim_render_deps
@@ -1286,12 +1378,13 @@ list(APPEND ORBSIM_LINT_SOURCES tests/AbortBehaviour.cpp)
 # 2026-09-25: the list named the core, test and application sources and not
 # these, so src/view/Camera.cpp had never been through clang-tidy since M1-11
 # added it. Found by M1-15; added on the owner's ruling (register decision 185).
-list(APPEND ORBSIM_LINT_SOURCES ${ORBSIM_VIEW_SOURCES})
+list(APPEND ORBSIM_LINT_SOURCES ${ORBSIM_VIEW_SOURCES} ${ORBSIM_STB_IMAGE_SOURCES})
 foreach(operation IN LISTS ORBSIM_COUNT_WRAPAROUND_OPERATIONS)
     list(APPEND ORBSIM_LINT_SOURCES tests/count_wraparound_${operation}.cpp)
 endforeach()
 if(ORBSIM_BUILD_APP)
-    list(APPEND ORBSIM_LINT_SOURCES ${ORBSIM_APP_SOURCES} tests/test_probe_clear.cpp)
+    list(APPEND ORBSIM_LINT_SOURCES ${ORBSIM_APP_SOURCES} tests/test_probe_clear.cpp
+            tests/make_broken_goldens.cpp)
 endif()
 
 # Formatting covers everything that is ours, whether or not it is built in
@@ -1401,13 +1494,13 @@ if(ORBSIM_CLANG_TIDY)
     # `__clang_analyzer__`, the one way the linter could read text the
     # compiler does not.
     set(orbsim_lint_targets
-            orbsim_core orbsim_view orbsim_test_support orbsim_fuzz_objects
+            orbsim_core orbsim_view orbsim_stb_image orbsim_test_support orbsim_fuzz_objects
             orbsim_abort_behaviour ${ORBSIM_TESTS})
     foreach(operation IN LISTS ORBSIM_COUNT_WRAPAROUND_OPERATIONS)
         list(APPEND orbsim_lint_targets count_wraparound_${operation})
     endforeach()
     if(ORBSIM_BUILD_APP)
-        list(APPEND orbsim_lint_targets orbsim test_probe_clear)
+        list(APPEND orbsim_lint_targets orbsim test_probe_clear make_broken_goldens)
     endif()
 
     set(orbsim_lint_stamps "")
@@ -1720,6 +1813,34 @@ else()
 endif()
 set_tests_properties(parallel_tests parallel_tests_self_test PROPERTIES LABELS fixtures)
 
+# No test can accept a golden image (M1-17, ADR 0008, register decision 233):
+# --accept-golden is run by the owner, never by a script and never from
+# `check`. Read from CTest's own description of the tests, as parallel_tests
+# is. Only where the application is built, since only there is a golden
+# compared at all -- and the check refuses a tree where nothing passes
+# --golden, rather than passing by looking in the wrong place.
+if(ORBSIM_PYTHON AND ORBSIM_BUILD_APP)
+    add_test(NAME accept_golden
+            COMMAND ${ORBSIM_PYTHON}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-accept-golden.py
+                    ${CMAKE_BINARY_DIR} ${CMAKE_CTEST_COMMAND}
+    )
+elseif(ORBSIM_BUILD_APP)
+    add_test(NAME accept_golden COMMAND ${CMAKE_COMMAND} -E false)
+endif()
+if(ORBSIM_PYTHON)
+    add_test(NAME accept_golden_self_test
+            COMMAND ${ORBSIM_PYTHON}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-accept-golden.py --self-test
+    )
+else()
+    add_test(NAME accept_golden_self_test COMMAND ${CMAKE_COMMAND} -E false)
+endif()
+if(ORBSIM_BUILD_APP)
+    set_tests_properties(accept_golden PROPERTIES LABELS fixtures)
+endif()
+set_tests_properties(accept_golden_self_test PROPERTIES LABELS fixtures)
+
 # The abort listener in every suite (M1-90, ADR 0024): each Catch2 program is
 # asked through --list-listeners, and each must name AbortWithoutADialog. A
 # suite that stopped linking orbsim_abort_behaviour would otherwise build and
@@ -1815,7 +1936,9 @@ if(ORBSIM_BUILD_APP)
     # test_probe_clear with the application it checks: a suite `check` does
     # not build is one ctest reports as NOT_BUILT (M1-16, found the first time
     # a fresh tree ran it).
-    add_dependencies(check orbsim orbsim_render_header_selfcheck test_probe_clear)
+    # make_broken_goldens for the golden tests' fixture (M1-17).
+    add_dependencies(check orbsim orbsim_render_header_selfcheck test_probe_clear
+            make_broken_goldens)
 endif()
 
 # Every library and program this file defines compiles in the memory pool

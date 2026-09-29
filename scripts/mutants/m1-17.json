@@ -1,0 +1,232 @@
+{
+  "task": "M1-17",
+  "tree": "build/debug",
+  "note": "Golden-image comparison (ADR 0008; register decisions 228-241). Judged three ways: the downsample, the two tolerances and the diff image by test_image_compare, against hand-worked and 50-digit references; the golden reader and the encoder's colour type by test_image_files and the sidecar's golden lines by test_probe_sidecar; and the application's golden path by the probe tests, which render the frame with the mutant and hold it against tests/golden/clear.png and its altered copies. **Two survivors are declared, and both are the rulings' doing rather than a hole a test could fill**: the write that --accept-golden makes, which decision 233 forbids any test to run, and the order of a validation error before a mismatch, which needs both at once -- and a validation error can be planted only by a fault in the product, which decision 193 refuses.",
+  "mutants": [
+    {
+      "name": "the straight segment is taken to end at 11",
+      "file": "src/view/ImageCompare.hpp",
+      "find": "inline constexpr std::uint8_t kLastStraightValue = 10;",
+      "replace": "inline constexpr std::uint8_t kLastStraightValue = 11;",
+      "suites": ["test_image_compare"],
+      "expect": "caught"
+    },
+    {
+      "name": "a tie on the straight segment rounds down",
+      "file": "src/view/ImageCompare.cpp",
+      "find": "        return static_cast<std::uint8_t>((sum + 2U) / 4U);",
+      "replace": "        return static_cast<std::uint8_t>((sum + 1U) / 4U);",
+      "suites": ["test_image_compare"],
+      "expect": "caught"
+    },
+    {
+      "name": "the curved segment's average is truncated rather than rounded",
+      "file": "src/view/ImageCompare.cpp",
+      "find": "    const f64 steps = std::round(encoded * kSteps);",
+      "replace": "    const f64 steps = std::floor(encoded * kSteps);",
+      "suites": ["test_image_compare"],
+      "expect": "caught"
+    },
+    {
+      "name": "the light of four values is divided by two",
+      "file": "src/view/ImageCompare.cpp",
+      "find": "    const f64 encoded = srgbEncode(LinearValue{light / 4.0}).value();",
+      "replace": "    const f64 encoded = srgbEncode(LinearValue{light / 2.0}).value();",
+      "suites": ["test_image_compare"],
+      "expect": "caught"
+    },
+    {
+      "name": "the block's top-right pixel is read from the top-left",
+      "file": "src/view/ImageCompare.cpp",
+      "find": "                        at({.column = left + 1, .row = top, .channel = channel}),",
+      "replace": "                        at({.column = left, .row = top, .channel = channel}),",
+      "suites": ["test_image_compare"],
+      "expect": "caught"
+    },
+    {
+      "name": "an odd width is halved rather than refused",
+      "file": "src/view/ImageCompare.cpp",
+      "find": "    if (size.width % 2 != 0 || size.height % 2 != 0) {",
+      "replace": "    if (size.height % 2 != 0) {",
+      "suites": ["test_image_compare"],
+      "expect": "caught"
+    },
+    {
+      "name": "the largest difference is the last one rather than the largest",
+      "file": "src/view/ImageCompare.cpp",
+      "find": "        difference.largest = std::max(difference.largest, d);",
+      "replace": "        difference.largest = d;",
+      "suites": ["test_image_compare"],
+      "expect": "caught"
+    },
+    {
+      "name": "a mean of exactly half a step passes",
+      "file": "src/view/ImageCompare.hpp",
+      "find": "    return difference.sum * kGoldenMeanDenominator < difference.count * kGoldenMeanNumerator;",
+      "replace": "    return difference.sum * kGoldenMeanDenominator <= difference.count * kGoldenMeanNumerator;",
+      "suites": ["test_image_compare"],
+      "expect": "caught"
+    },
+    {
+      "name": "a difference of exactly 4 steps fails the cap",
+      "file": "src/view/ImageCompare.hpp",
+      "find": "    return difference.largest <= kGoldenLargestSteps;",
+      "replace": "    return difference.largest < kGoldenLargestSteps;",
+      "suites": ["test_image_compare"],
+      "expect": "caught"
+    },
+    {
+      "name": "the cap is 5 steps",
+      "file": "src/view/ImageCompare.hpp",
+      "find": "inline constexpr std::uint32_t kGoldenLargestSteps = 4;",
+      "replace": "inline constexpr std::uint32_t kGoldenLargestSteps = 5;",
+      "suites": ["test_image_compare"],
+      "expect": "caught"
+    },
+    {
+      "name": "the diff panel magnifies by 16",
+      "file": "src/view/ImageCompare.hpp",
+      "find": "inline constexpr std::uint32_t kDiffAmplification = 32;",
+      "replace": "inline constexpr std::uint32_t kDiffAmplification = 16;",
+      "suites": ["test_image_compare"],
+      "expect": "caught"
+    },
+    {
+      "name": "the diff image's first panel shows the golden",
+      "file": "src/view/ImageCompare.cpp",
+      "find": "                rgb.at(panel(0)) = pair.frame;",
+      "replace": "                rgb.at(panel(0)) = pair.golden;",
+      "suites": ["test_image_compare"],
+      "expect": "caught"
+    },
+    {
+      "name": "two images of different heights are taken to be the same size",
+      "file": "src/view/ImageCompare.cpp",
+      "find": "    return frame.size().width == golden.size().width && frame.size().height == golden.size().height;",
+      "replace": "    return frame.size().width == golden.size().width;",
+      "suites": ["test_image_compare"],
+      "expect": "caught"
+    },
+    {
+      "name": "a frame read back as RGBA is read one channel late",
+      "file": "src/view/ImageCompare.cpp",
+      "find": "        const auto pixel = rgba.subspan(i, kRgbChannels);",
+      "replace": "        const auto pixel = rgba.subspan(i + 1, kRgbChannels);",
+      "suites": ["test_image_compare"],
+      "expect": "caught"
+    },
+    {
+      "name": "a golden of another colour type is decoded rather than refused",
+      "file": "src/view/ImageFiles.cpp",
+      "find": "    if (bitDepth != 8 || colourType != kPngColourTypeRgb) {",
+      "replace": "    if (bitDepth != 8) {",
+      "suites": ["test_image_files"],
+      "expect": "caught"
+    },
+    {
+      "name": "a 16-bit golden is decoded rather than refused",
+      "file": "src/view/ImageFiles.cpp",
+      "find": "    if (bitDepth != 8 || colourType != kPngColourTypeRgb) {",
+      "replace": "    if (colourType != kPngColourTypeRgb) {",
+      "suites": ["test_image_files"],
+      "expect": "caught"
+    },
+    {
+      "name": "lodepng chooses the colour type again",
+      "file": "src/view/ImageFiles.cpp",
+      "find": "    state.encoder.auto_convert = 0;",
+      "replace": "    state.encoder.auto_convert = 1;",
+      "suites": ["test_image_files"],
+      "expect": "caught"
+    },
+    {
+      "name": "the sidecar's golden.largest line holds the mean",
+      "file": "src/view/ProbeSidecar.cpp",
+      "find": "        Entry{.key = \"golden.largest\", .value = formatLargestLine(fields.golden)},",
+      "replace": "        Entry{.key = \"golden.largest\", .value = formatMeanLine(fields.golden)},",
+      "suites": ["test_probe_sidecar"],
+      "expect": "caught"
+    },
+    {
+      "name": "a golden mismatch exits 0",
+      "file": "src/app/ProbeMode.cpp",
+      "find": "    return {.exitCode = kExitGoldenMismatch, .toAccept = std::nullopt};",
+      "replace": "    return {.exitCode = 0, .toAccept = std::nullopt};",
+      "suites": [],
+      "targets": ["orbsim", "make_broken_goldens"],
+      "ctest": ["probe_golden_block", "probe_golden_shift"],
+      "expect": "caught"
+    },
+    {
+      "name": "the diff image is written over the frame's PNG",
+      "file": "src/app/ProbeMode.cpp",
+      "find": "    if (!writeEncoded(run, run.files.diff, view::encodePng8(*diff))) {",
+      "replace": "    if (!writeEncoded(run, run.files.png8, view::encodePng8(*diff))) {",
+      "suites": [],
+      "targets": ["orbsim", "make_broken_goldens"],
+      "ctest": ["probe_golden_block", "probe_golden_shift"],
+      "expect": "caught"
+    },
+    {
+      "name": "--golden is accepted and ignored",
+      "file": "src/app/ProbeMode.cpp",
+      "find": "    if (request.golden == GoldenAction::None) return {};",
+      "replace": "    if (request.golden != GoldenAction::Accept) return {};",
+      "suites": [],
+      "targets": ["orbsim", "make_broken_goldens"],
+      "ctest": ["probe_clear", "probe_golden_block", "probe_golden_shift", "probe_golden_missing"],
+      "expect": "caught"
+    },
+    {
+      "name": "a diff image from an earlier run is left in place",
+      "file": "src/app/ProbeMode.cpp",
+      "find": "    std::filesystem::remove(run.outDirectory / run.files.diff, error);",
+      "replace": "    error.clear();",
+      "suites": [],
+      "targets": ["orbsim"],
+      "ctest": ["probe_clear"],
+      "expect": "caught"
+    },
+    {
+      "name": "--no-validate is let through beside --accept-golden",
+      "file": "src/app/main.cpp",
+      "find": "    if (options.validationAsked == orb::gfx::Validation::Disabled) {",
+      "replace": "    if (options.validationAsked == orb::gfx::Validation::Enabled) {",
+      "suites": [],
+      "targets": ["orbsim"],
+      "ctest": ["usage_accept_without_validation"],
+      "expect": "caught"
+    },
+    {
+      "name": "--accept-golden never puts the golden in place",
+      "file": "src/app/ProbeMode.cpp",
+      "find": "    std::filesystem::rename(partial, golden, error);",
+      "replace": "    std::filesystem::remove(partial, error);",
+      "suites": [],
+      "targets": ["orbsim"],
+      "ctest": ["probe_clear"],
+      "expect": "survives",
+      "why": "No test may run --accept-golden with --golden (register decision 233; the CTest test accept_golden refuses one), so nothing automated writes a golden. The path was exercised once, by the owner, on 2026-09-29 (decision 241), and its result checked value for value against an independent implementation. Declared for the owner's acceptance."
+    },
+    {
+      "name": "a golden mismatch outranks a validation error",
+      "file": "src/app/main.cpp",
+      "find": "    if (outcome.exitCode != 0 && outcome.exitCode != kExitGoldenMismatch) return outcome.exitCode;",
+      "replace": "    if (outcome.exitCode != 0) return outcome.exitCode;",
+      "suites": [],
+      "targets": ["orbsim", "make_broken_goldens"],
+      "ctest": ["probe_clear", "probe_golden_block", "probe_golden_shift"],
+      "expect": "survives",
+      "why": "Telling decision 230's order apart needs a run with a validation error and a mismatch at once, and a validation error can be planted only by a fault in the product -- the hidden switch decision 193 refuses. The order is written in finishProbe in main.cpp and stated beside it. Declared for the owner's acceptance."
+    },
+    {
+      "name": "the guard does not read the scripts a test runs",
+      "file": "scripts/check-accept-golden.py",
+      "find": "        for script in scripts_of(command):",
+      "replace": "        for script in []:",
+      "suites": [],
+      "ctest": ["accept_golden_self_test", "accept_golden"],
+      "expect": "caught"
+    }
+  ]
+}

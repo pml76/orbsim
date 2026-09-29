@@ -1,27 +1,41 @@
 # Run one probe under the validation layers and check what it wrote (M1-16;
-# ADR 0008; register decisions 192-194).
+# ADR 0008; register decisions 192-194), and since M1-17 what it made of its
+# golden image (register decisions 230, 231 and 236).
 #
 #     cmake -DORBSIM=<path to orbsim> -DPROBE=<name> -DOUT=<directory>
 #           [-DCOMPARE_WITH=<an earlier run's directory>]
+#           [-DGOLDEN=<golden PNG>] [-DEXPECT_EXIT=<code>] [-DEXPECT_DIFF=ON] [-DPLANT_DIFF=ON]
+#           [-DEXPECT_STDOUT=<text>|<text>...] [-DEXPECT_STDERR=<text>|<text>...]
 #           -P cmake/RunProbe.cmake
 #
-# Run by CTest as `probe_clear` and, with COMPARE_WITH, as
-# `probe_clear_determinism`.
+# Run by CTest as `probe_clear`, with COMPARE_WITH as `probe_clear_determinism`,
+# and with a broken or missing golden as the `probe_golden_*` tests.
 #
 # **The files are checked whatever the exit code, and before it** (decision
 # 193): a probe writes its five files on every run, pass or fail, so a run
 # that failed is reported with what it left behind rather than instead of it.
-# Then the exit code must be 0. With COMPARE_WITH, the HDR dump must be byte
-# for byte the one the earlier run wrote -- determinism as a tested property
-# (VERIFICATION.md rule 16): a frame that depends on the clock, on memory
-# nobody initialised, or on a race is caught here.
+# Then the exit code must be EXPECT_EXIT, 0 unless said otherwise. The diff
+# image must exist exactly when EXPECT_DIFF is ON: a mismatch has to be
+# diagnosable from the files, and a run that matched must not leave one. With
+# COMPARE_WITH, the HDR dump must be byte for byte the one the earlier run
+# wrote -- determinism as a tested property (VERIFICATION.md rule 16): a
+# frame that depends on the clock, on memory nobody initialised, or on a race
+# is caught here. With PLANT_DIFF, a diff image is left where this run's
+# would go before it starts, standing for one from an earlier failed run: the
+# application must remove it (decision 231), and a run that matches must end
+# without one. EXPECT_STDOUT and EXPECT_STDERR are texts, separated by `|`,
+# that the run must have printed -- on stderr for a mismatch, where decision
+# 230 puts the two measured numbers.
 #
-# A script rather than CTest's own properties because the claim has three
-# halves -- the files, the exit code, the comparison -- and each property
-# checks at most one.
+# A script rather than CTest's own properties because the claim has several
+# halves -- the files, the exit code, the output, the comparison -- and each
+# property checks at most one.
 
 if(NOT DEFINED ORBSIM OR NOT DEFINED PROBE OR NOT DEFINED OUT)
     message(FATAL_ERROR "pass -DORBSIM=<path to orbsim> -DPROBE=<name> -DOUT=<directory>")
+endif()
+if(NOT DEFINED EXPECT_EXIT)
+    set(EXPECT_EXIT 0)
 endif()
 
 # Every file this run is to write is removed first, so that a file left by an
@@ -32,12 +46,20 @@ set(files
         "${PROBE}.16.png"
         "${PROBE}.exr"
         "${PROBE}.txt")
-foreach(file IN LISTS files)
+set(diff "${PROBE}.diff.png")
+foreach(file IN LISTS files diff)
     file(REMOVE "${OUT}/${file}")
 endforeach()
+if(PLANT_DIFF)
+    file(WRITE "${OUT}/${diff}" "a diff image left by an earlier run")
+endif()
 
+set(golden_arguments "")
+if(DEFINED GOLDEN)
+    set(golden_arguments --golden "${GOLDEN}")
+endif()
 execute_process(
-        COMMAND "${ORBSIM}" --validate --probe "${PROBE}" --probe-out "${OUT}"
+        COMMAND "${ORBSIM}" --validate --probe "${PROBE}" --probe-out "${OUT}" ${golden_arguments}
         RESULT_VARIABLE exit_code
         OUTPUT_VARIABLE stdout_text
         ERROR_VARIABLE stderr_text
@@ -63,13 +85,46 @@ if(missing)
 endif()
 message(STATUS "probe ${PROBE}: all five files written to ${OUT}, exit code ${exit_code}")
 
-# 0 is a clean run. 1 is kExitFailure, 2 kExitUsage and 3
-# kExitValidationErrors, in src/app/ExitCodes.hpp.
-if(NOT exit_code EQUAL 0)
+# 0 is a clean run. 1 is kExitFailure, 2 kExitUsage, 3 kExitValidationErrors
+# and 4 kExitGoldenMismatch, in src/app/ExitCodes.hpp.
+if(NOT exit_code EQUAL EXPECT_EXIT)
     message(FATAL_ERROR
-            "probe ${PROBE} wrote its files but exited with '${exit_code}'. "
+            "probe ${PROBE} wrote its files and exited with '${exit_code}', not ${EXPECT_EXIT}. "
             "Output:\n${stdout_text}${stderr_text}")
 endif()
+
+set(diff_path "${OUT}/${diff}")
+if(EXPECT_DIFF)
+    if(NOT EXISTS "${diff_path}")
+        message(FATAL_ERROR "probe ${PROBE} reported a mismatch and wrote no ${diff}. "
+                            "Output:\n${stdout_text}${stderr_text}")
+    endif()
+    file(SIZE "${diff_path}" size)
+    if(size EQUAL 0)
+        message(FATAL_ERROR "probe ${PROBE} wrote an empty ${diff}")
+    endif()
+    message(STATUS "probe ${PROBE}: ${diff} written")
+elseif(EXISTS "${diff_path}")
+    message(FATAL_ERROR "probe ${PROBE} left a ${diff} although no mismatch was expected. "
+                        "Output:\n${stdout_text}${stderr_text}")
+endif()
+
+# Each expected text, found in the stream it belongs to. `|` separates them,
+# because a `;` does not survive the trip through add_test.
+foreach(stream IN ITEMS STDOUT STDERR)
+    if(NOT DEFINED EXPECT_${stream})
+        continue()
+    endif()
+    string(TOLOWER "${stream}" name)
+    string(REPLACE "|" ";" expected_texts "${EXPECT_${stream}}")
+    foreach(text IN LISTS expected_texts)
+        string(FIND "${${name}_text}" "${text}" at)
+        if(at EQUAL -1)
+            message(FATAL_ERROR "probe ${PROBE} did not print '${text}' on ${name}, which was:\n"
+                                "${${name}_text}")
+        endif()
+    endforeach()
+endforeach()
 
 if(DEFINED COMPARE_WITH)
     set(this_dump "${OUT}/${PROBE}.hdr.f32")

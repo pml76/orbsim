@@ -18,8 +18,10 @@
 #include "core/Time.hpp"
 #include "view/Camera.hpp"
 #include "view/Exposure.hpp"
+#include "view/ImageCompare.hpp"
 
 #include <cstdint>
+#include <optional>
 #include <span>
 #include <string>
 #include <string_view>
@@ -44,6 +46,14 @@ struct SidecarBuild {
     std::string_view compiler;
 };
 
+// What the run did with a golden image (M1-17, register decision 237).
+struct SidecarGolden {
+    std::string_view path;    // empty when no golden was named
+    std::string_view verdict; // "not compared", "matches", "mismatch", "accept requested",
+                              // or why no comparison could be made
+    std::optional<ImageDifference> difference; // absent when nothing was measured
+};
+
 // Everything the sidecar records.
 struct SidecarFields {
     std::string_view probe;
@@ -51,6 +61,7 @@ struct SidecarFields {
     // "rendered", or what went wrong: a run that could not render still
     // writes its sidecar (register decision 193).
     std::string_view outcome;
+    SidecarGolden golden;
     TtTime epoch;
     Camera camera;
     std::string_view qualityPreset;

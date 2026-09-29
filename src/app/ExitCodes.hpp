@@ -12,6 +12,10 @@ namespace orb::app {
 inline constexpr int kExitFailure = 1;
 inline constexpr int kExitUsage = 2;
 inline constexpr int kExitValidationErrors = 3;
+// A probe's frame differs from its golden image by more than ADR 0008's
+// tolerances (M1-17, register decision 230). Only for a measured mismatch,
+// which always leaves a diff image; a golden that could not be read is 1.
+inline constexpr int kExitGoldenMismatch = 4;
 
 } // namespace orb::app
 

@@ -15,6 +15,7 @@
 #include "core/Units.hpp"
 #include "view/Camera.hpp"
 #include "view/Exposure.hpp"
+#include "view/ImageCompare.hpp"
 #include "view/ProbeSidecar.hpp"
 
 #include <catch2/catch_message.hpp>
@@ -25,6 +26,7 @@
 #include <cmath>
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -77,7 +79,14 @@ namespace {
     return value;
 }
 
-[[nodiscard]] std::string sidecarText() {
+// A run that named no golden -- what every probe run did before M1-17.
+constexpr SidecarGolden kNoGolden{
+    .path = "",
+    .verdict = "not compared",
+    .difference = std::nullopt,
+};
+
+[[nodiscard]] std::string sidecarText(const SidecarGolden& golden = kNoGolden) {
     const auto camera = Camera::from(Position{1.5, -2.0, 3.25}, Quat{}, Radians{0.5}, Metres{0.25});
     REQUIRE(camera.has_value());
     const std::array<std::string_view, 2> files{{"a.png", "a.exr"}};
@@ -85,6 +94,7 @@ namespace {
         .probe = "clear",
         .description = "a description",
         .outcome = "rendered",
+        .golden = golden,
         .epoch = kJ2000,
         .camera = *camera,
         .qualityPreset = "high",
@@ -161,4 +171,25 @@ TEST_CASE("the sidecar's exposure agrees with its definitions") {
     INFO("ev100 " << ev100Text << ", factor " << factorText);
     REQUIRE(std::abs(leadingNumber(ev100Text) - ev100) <= 1e-12);
     REQUIRE(std::abs((leadingNumber(factorText) / factor) - 1.0) <= 1e-12);
+}
+
+TEST_CASE("the sidecar records the golden, its verdict and both measurements") {
+    // M1-17, register decision 237. 691 of 691,200 is a mean of 0.001 steps.
+    const std::vector<std::string> lines = linesOf(sidecarText({
+        .path = "tests/golden/clear.png",
+        .verdict = "mismatch",
+        .difference = ImageDifference{.largest = 7, .sum = 691, .count = 691'200},
+    }));
+    REQUIRE(valueOf(lines, "golden") == "tests/golden/clear.png");
+    REQUIRE(valueOf(lines, "golden.verdict") == "mismatch");
+    REQUIRE(valueOf(lines, "golden.largest") == "7/255 (limit 4/255)");
+    REQUIRE(valueOf(lines, "golden.mean") == "0.00100/255 (limit under 0.5/255)");
+}
+
+TEST_CASE("a run that named no golden says so, and that nothing was measured") {
+    const std::vector<std::string> lines = linesOf(sidecarText());
+    REQUIRE(valueOf(lines, "golden") == "none");
+    REQUIRE(valueOf(lines, "golden.verdict") == "not compared");
+    REQUIRE(valueOf(lines, "golden.largest") == "not measured");
+    REQUIRE(valueOf(lines, "golden.mean") == "not measured");
 }

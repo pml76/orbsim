@@ -11,16 +11,34 @@
 // renderer has been torn down, by main, so it decides the exit code but
 // cannot stop a file being written.
 //
+// **`--golden <path>`** (M1-17; ADR 0008; register decisions 228-237): once
+// the files are written, the 8-bit frame is halved to 640x360 in linear light
+// and held against the golden. A mismatch writes `<name>.diff.png` and ends in
+// exit 4; a golden that cannot be read ends in exit 1, with the reason.
+// **`--accept-golden`** compares too, if a golden is there, and hands the
+// halved frame back to main, which writes it only once the renderer is torn
+// down and the validation count is known to be zero (decision 232).
+//
 #include "render/VulkanContext.hpp"
+#include "view/ImageCompare.hpp"
 
 #include <atomic>
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 #include <string_view>
 
 struct SDL_Window;
 
 namespace orb::app {
+
+// What a probe run does with a golden image. An enum rather than two
+// booleans, which could both be set (non-negotiable 2).
+enum class GoldenAction : std::uint8_t {
+    None,    // no --golden
+    Compare, // --golden <path>
+    Accept,  // --golden <path> --accept-golden
+};
 
 // What a probe run is asked for.
 struct ProbeRequest {
@@ -28,13 +46,28 @@ struct ProbeRequest {
     std::filesystem::path outDirectory; // created if it does not exist
     std::filesystem::path shaderDirectory;
     gfx::Validation validation{gfx::Validation::Disabled};
+    GoldenAction golden{GoldenAction::None};
+    std::filesystem::path goldenPath; // empty unless golden is Compare or Accept
 };
 
-// Renders the probe and writes its files. Returns an exit code: 0 once every
-// file is written, kExitFailure otherwise; main adds the validation verdict.
-[[nodiscard]] int runProbe(SDL_Window* window,
-                           const ProbeRequest& request,
-                           std::atomic<std::uint32_t>& validationErrors);
+// What a probe run leaves for main: an exit code before the validation
+// verdict -- 0, kExitFailure or kExitGoldenMismatch -- and, when a golden is
+// to be accepted and every file was written, the halved frame to write.
+struct ProbeOutcome {
+    int exitCode{};
+    std::optional<view::Rgb8Image> toAccept;
+};
+
+// Renders the probe, writes its files and compares its frame with the golden,
+// if one was named. main adds the validation verdict (decision 230).
+[[nodiscard]] ProbeOutcome runProbe(SDL_Window* window,
+                                    const ProbeRequest& request,
+                                    std::atomic<std::uint32_t>& validationErrors);
+
+// Writes `frame` to `golden` as the new approved frame: to a temporary file
+// beside it, then renamed over it, so a failed write never leaves half a
+// golden (decision 232). Returns 0, or kExitFailure with the reason printed.
+[[nodiscard]] int acceptGolden(const std::filesystem::path& golden, const view::Rgb8Image& frame);
 
 // `--probe-list`: every probe's name and description, one to a line. Needs
 // neither a window nor a device.

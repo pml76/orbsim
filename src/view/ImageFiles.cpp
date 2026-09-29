@@ -1,5 +1,6 @@
 #include "view/ImageFiles.hpp" // SF.5: own header, first
 #include "core/Contract.hpp"
+#include "view/ImageCompare.hpp"
 #include "view/ProbeImage.hpp"
 
 #include <lodepng.h>
@@ -10,6 +11,7 @@
 #include <openexr_encode.h>
 #include <openexr_errors.h>
 #include <openexr_part.h>
+#include <stb_image.h>
 
 #include <algorithm>
 #include <array>
@@ -18,6 +20,8 @@
 #include <cstdint>
 #include <expected>
 #include <filesystem>
+#include <format>
+#include <limits>
 #include <memory>
 #include <ranges>
 #include <span>
@@ -38,14 +42,70 @@ namespace {
 // failure it can name.
 [[nodiscard]] std::expected<std::vector<std::byte>, ImageFileError>
 encodePngRgb(ImageSize size, const std::vector<unsigned char>& rgb, unsigned bitDepth) {
+    // RGB at the stated depth, always: lodepng otherwise chooses the smallest
+    // colour type the pixels allow -- a palette, grey, even 1 bit -- which is
+    // not the 8- or 16-bit RGB decision 191 says a probe's PNG is, and not a
+    // golden decision 235 can read. Found by M1-17 on 2026-09-29, when a
+    // 320x180 crop of `clear` came out as a palette.
+    lodepng::State state;
+    state.info_raw.colortype = LCT_RGB;
+    state.info_raw.bitdepth = bitDepth;
+    state.info_png.color.colortype = LCT_RGB;
+    state.info_png.color.bitdepth = bitDepth;
+    state.encoder.auto_convert = 0;
     std::vector<unsigned char> png;
-    const unsigned error = lodepng::encode(png, rgb, size.width, size.height, LCT_RGB, bitDepth);
+    const unsigned error = lodepng::encode(png, rgb, size.width, size.height, state);
     if (error != 0) return fail(std::string("PNG encoding failed: ") + lodepng_error_text(error));
     std::vector<std::byte> bytes(png.size());
     std::ranges::transform(
         png, bytes.begin(), [](unsigned char c) noexcept { return std::byte{c}; });
     return bytes;
 }
+
+// --- reading a golden (M1-17) ------------------------------------------------
+
+[[nodiscard]] std::unexpected<PngReadFailure> refuse(PngReadError error, std::string detail) {
+    return std::unexpected(PngReadFailure{.error = error, .detail = std::move(detail)});
+}
+
+// The PNG specification's layout (sections 5.2 and 11.2.2): an 8-byte
+// signature, then the IHDR chunk -- its length (13), its type, then width,
+// height, bit depth and colour type -- and its CRC, 33 bytes in all.
+constexpr std::array<std::uint8_t, 8> kPngSignature{{137, 80, 78, 71, 13, 10, 26, 10}};
+constexpr std::size_t kIhdrLengthAt = 8;
+constexpr std::size_t kIhdrTypeAt = 12;
+constexpr std::size_t kIhdrWidthAt = 16;
+constexpr std::size_t kIhdrHeightAt = 20;
+constexpr std::size_t kIhdrBitDepthAt = 24;
+constexpr std::size_t kIhdrColourTypeAt = 25;
+constexpr std::size_t kIhdrEnd = 33;
+constexpr std::uint32_t kIhdrLength = 13;
+constexpr std::uint32_t kIhdrType = 0x49484452U; // "IHDR"
+constexpr unsigned kPngColourTypeRgb = 2;        // truecolour, no alpha
+constexpr int kRgbChannelsAsInt = 3;             // stb_image's desired channel count
+
+[[nodiscard]] std::uint32_t bigEndian32(std::span<const std::byte> bytes, std::size_t at) {
+    std::uint32_t value = 0;
+    for (const std::byte b : bytes.subspan(at, 4)) {
+        value = (value << 8U) | std::to_integer<std::uint32_t>(b);
+    }
+    return value;
+}
+
+[[nodiscard]] bool hasPngHeader(std::span<const std::byte> png) {
+    if (png.size() < kIhdrEnd) return false;
+    const bool signature = std::ranges::equal(
+        png.first(kPngSignature.size()), kPngSignature, [](std::byte b, std::uint8_t s) noexcept {
+            return std::to_integer<std::uint8_t>(b) == s;
+        });
+    return signature && bigEndian32(png, kIhdrLengthAt) == kIhdrLength &&
+           bigEndian32(png, kIhdrTypeAt) == kIhdrType;
+}
+
+// stb_image's pixels, owned, freed by stb_image.
+struct StbFree {
+    void operator()(stbi_uc* pixels) const noexcept { stbi_image_free(pixels); }
+};
 
 // --- EXR ---------------------------------------------------------------------
 
@@ -331,6 +391,81 @@ encodePng8(ImageSize size, std::span<const std::uint8_t> rgba) {
         rgb.insert(rgb.end(), pixel.begin(), pixel.end());
     }
     return encodePngRgb(size, rgb, 8);
+}
+
+std::expected<std::vector<std::byte>, ImageFileError> encodePng8(const Rgb8Image& image) {
+    std::vector<unsigned char> rgb(image.valueCount());
+    for (std::size_t i = 0; i < rgb.size(); ++i) {
+        rgb.at(i) = image.value(i);
+    }
+    return encodePngRgb(image.size(), rgb, 8);
+}
+
+std::expected<Rgb8Image, PngReadFailure> decodePng8(std::span<const std::byte> png) {
+    // The PNG's own layout first, so that what stb_image is handed is known
+    // to be 8-bit RGB and it converts nothing (register decision 235).
+    if (!hasPngHeader(png)) {
+        return refuse(PngReadError::NotPng,
+                      "it does not begin with the PNG signature and an IHDR chunk");
+    }
+    const auto bitDepth = std::to_integer<unsigned>(png.subspan(kIhdrBitDepthAt, 1).front());
+    const auto colourType = std::to_integer<unsigned>(png.subspan(kIhdrColourTypeAt, 1).front());
+    if (bitDepth != 8 || colourType != kPngColourTypeRgb) {
+        return refuse(PngReadError::NotEightBitRgb,
+                      std::format("its bit depth is {} and its colour type {}; a golden's are 8 "
+                                  "and 2 (RGB)",
+                                  bitDepth,
+                                  colourType));
+    }
+    const std::uint32_t width = bigEndian32(png, kIhdrWidthAt);
+    const std::uint32_t height = bigEndian32(png, kIhdrHeightAt);
+    if (png.size() > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
+        return refuse(PngReadError::Undecodable, "it is larger than stb_image reads");
+    }
+
+    std::vector<stbi_uc> input(png.size());
+    std::ranges::transform(
+        png, input.begin(), [](std::byte b) noexcept { return std::to_integer<stbi_uc>(b); });
+    int decodedWidth = 0;
+    int decodedHeight = 0;
+    int channelsInFile = 0;
+    const std::unique_ptr<stbi_uc, StbFree> pixels{
+        stbi_load_from_memory(input.data(),
+                              static_cast<int>(input.size()),
+                              &decodedWidth,
+                              &decodedHeight,
+                              &channelsInFile,
+                              kRgbChannelsAsInt)};
+    if (pixels == nullptr) {
+        const char* reason = stbi_failure_reason();
+        return refuse(PngReadError::Undecodable,
+                      std::string("stb_image: ") +
+                          (reason != nullptr ? reason : "no reason given"));
+    }
+    if (std::cmp_not_equal(decodedWidth, width) || std::cmp_not_equal(decodedHeight, height)) {
+        return refuse(PngReadError::Undecodable,
+                      std::format("stb_image decoded {}x{} where the header says {}x{}",
+                                  decodedWidth,
+                                  decodedHeight,
+                                  width,
+                                  height));
+    }
+    const ImageSize size{.width = width, .height = height};
+    const std::size_t count = pixelCount(size) * kRgbChannels;
+    // stb_image returns a pointer; its size is what it reported alongside. A
+    // span of the two is the only way to give them bounds, which is the
+    // construction -Wunsafe-buffer-usage-in-container reports (ADR 0017).
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-container"
+#endif
+    const std::span<const stbi_uc> decoded(pixels.get(), count);
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
+    auto image = Rgb8Image::from(size, std::vector<std::uint8_t>(decoded.begin(), decoded.end()));
+    if (!image) return refuse(PngReadError::Undecodable, std::string(describe(image.error())));
+    return *std::move(image);
 }
 
 std::expected<std::vector<std::byte>, ImageFileError>

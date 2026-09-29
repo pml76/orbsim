@@ -43,6 +43,7 @@ import pathlib
 import re
 import subprocess
 import sys
+import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 PASSES = ROOT / "scripts" / "mutation-passes.json"
@@ -152,7 +153,7 @@ class Tree:
                         # Only a program this tree builds has build inputs; cmake
                         # or python running a wrapper is a tool, not a judge.
                         inside = norm(path).startswith(norm(self.tree) + "/")
-                        if inside and (path.suffix.lower() == ".exe" or os.access(path, os.X_OK)):
+                        if inside and is_program(path, os.name):
                             files |= self.build_inputs(os.path.relpath(path, self.tree).replace("\\", "/"))
                             files |= self.runtime_inputs(path.stem)
         return files
@@ -194,6 +195,19 @@ def main_check(tree: pathlib.Path, assumed: list, only_assumed: bool, expect_due
     return 1 if missing else 0
 
 
+def is_program(path: pathlib.Path, system: str) -> bool:
+    """Whether a file a test names is a program the build made.
+
+    On Windows only an .exe is: Windows has no execute bit, so os.access with
+    X_OK is true of any file that exists -- which made a golden image a test
+    writes into the build tree look like a program, and Ninja then refused to
+    name its inputs (found by M1-17, 2026-09-29, once the golden tests put
+    clear-block.png there). Elsewhere the execute bit decides."""
+    if system == "nt":
+        return path.suffix.lower() == ".exe"
+    return os.access(path, os.X_OK)
+
+
 def self_test() -> int:
     root = norm(ROOT) + "/"
     inputs = {root + "src/view/camera.cpp", root + "tests/test_camera.cpp", root + "src/core/units.hpp"}
@@ -215,6 +229,25 @@ def self_test() -> int:
         status = "ok" if got == want else "WRONG"
         failures += status == "WRONG"
         print(f"self-test: {name}: {'due' if got else 'current'} ({status})")
+    # Which files a test names are programs: an image is not, on either system.
+    with tempfile.TemporaryDirectory() as scratch:
+        image = pathlib.Path(scratch) / "clear-block.png"
+        image.write_bytes(b"not a program")
+        program = pathlib.Path(scratch) / "orbsim.exe"
+        program.write_bytes(b"a program")
+        program_cases = {
+            "an image, on Windows": (image, "nt", False),
+            "an .exe, on Windows": (program, "nt", True),
+        }
+        # The execute bit can only be asked about where there is one.
+        if os.name != "nt":
+            image.chmod(0o644)
+            program_cases["an image without the execute bit, elsewhere"] = (image, "posix", False)
+        for name, (path, system, want) in program_cases.items():
+            got = is_program(path, system)
+            status = "ok" if got == want else "WRONG"
+            failures += status == "WRONG"
+            print(f"self-test: {name}: {'a program' if got else 'not a program'} ({status})")
     return 1 if failures else 0
 
 

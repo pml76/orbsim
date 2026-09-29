@@ -1,12 +1,15 @@
 #ifndef ORBSIM_VIEW_IMAGEFILES_HPP
 #define ORBSIM_VIEW_IMAGEFILES_HPP
 //
-// PNG and EXR files (M1-16; register decisions 191, 196, 197 and 204).
+// PNG and EXR files (M1-16; register decisions 191, 196, 197 and 204), and
+// reading a golden image back (M1-17; register decision 235).
 //
-// **The two libraries are hidden behind this header.** lodepng writes both
-// PNGs and OpenEXR's C library the EXR; their headers are seen by
-// view/ImageFiles.cpp and nothing else, as ERFA's are seen only by
-// src/astro/*.cpp, so no other file of this project compiles against them.
+// **The three libraries are hidden behind this header.** lodepng writes both
+// PNGs, OpenEXR's C library the EXR, and stb_image reads a golden; their
+// headers are seen by view/ImageFiles.cpp and nothing else, as ERFA's are seen
+// only by src/astro/*.cpp, so no other file of this project compiles against
+// them. (The tests include stb_image themselves, to read lodepng's output
+// with a library that did not write it.)
 //
 // **The PNGs as bytes, the EXR to a path.** lodepng's file writer takes a
 // `char*` path in the Windows code page -- the failure CODING_GUIDELINES
@@ -33,6 +36,7 @@
 //     channels are (view/Exposure.hpp), so a viewer shows its colours right,
 //     and a comment naming the unit.
 //
+#include "view/ImageCompare.hpp"
 #include "view/ProbeImage.hpp"
 
 #include <cstddef>
@@ -66,6 +70,10 @@ struct ImageFileError {
 #pragma GCC diagnostic pop
 #endif
 
+// An 8-bit PNG of an 8-bit RGB image: a golden, or a diff image (M1-17).
+[[nodiscard]] std::expected<std::vector<std::byte>, ImageFileError>
+encodePng8(const Rgb8Image& image);
+
 // An 8-bit PNG from 8-bit RGBA, rows top to bottom. `rgba` must hold
 // pixelCount(size) * 4 values; that is asserted, as encodeHdrDump asserts it.
 [[nodiscard]] std::expected<std::vector<std::byte>, ImageFileError>
@@ -85,6 +93,54 @@ encodePng16(ImageSize size, std::span<const std::uint16_t> rgba);
                                                            ImageSize size,
                                                            std::span<const std::uint16_t> rgbaHalf,
                                                            std::string_view comment);
+
+// --- reading a golden (M1-17; register decision 235) --------------------------
+
+// Why a PNG was not read as a golden. Reported rather than asserted: a golden
+// is a file, and a file can hold anything (ADR 0002).
+enum class PngReadError : std::uint8_t {
+    NotPng,         // the bytes do not begin with a PNG signature and header
+    NotEightBitRgb, // a PNG, but not 8 bits per channel of R, G and B
+    Undecodable,    // the header is right and the image data is not
+};
+
+[[nodiscard]] constexpr std::string_view describe(PngReadError error) noexcept {
+    switch (error) {
+    case PngReadError::NotPng:
+        return "the file is not a PNG";
+    case PngReadError::NotEightBitRgb:
+        return "the PNG is not 8 bits per channel of R, G and B, which a golden is";
+    case PngReadError::Undecodable:
+        return "the PNG's image data could not be decoded";
+    }
+    return "unknown PNG reading error";
+}
+
+// The refusal, and what was found: a bit depth, a colour type, or the
+// decoder's own words.
+// gcc's -Wabi-tag: std::string carries libstdc++'s "cxx11" ABI tag, and
+// gcc wants everything holding or returning one to carry it too. The tag
+// guards code shipped as a binary against the old string ABI; this project
+// builds everything from source with one ABI. Off at this site alone, for
+// gcc alone -- register decision 52's ruling and shape.
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wabi-tag"
+#endif
+struct PngReadFailure {
+    PngReadError error{};
+    std::string detail;
+};
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#endif
+
+// An 8-bit RGB PNG, decoded. **Nothing else is read, and nothing is
+// converted**: the header's bit depth and colour type are checked from the PNG
+// specification's layout before stb_image decodes, so a 16-bit, grey,
+// palette or alpha PNG is refused by name rather than turned into something
+// that is not what was committed.
+[[nodiscard]] std::expected<Rgb8Image, PngReadFailure> decodePng8(std::span<const std::byte> png);
 
 } // namespace orb::view
 

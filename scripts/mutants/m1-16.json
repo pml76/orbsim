@@ -279,8 +279,8 @@
     {
       "name": "--probe-out is ignored",
       "file": "src/app/main.cpp",
-      "find": "            options.probeOut = pathFromUtf8(tokens.at(++i));",
-      "replace": "            static_cast<void>(tokens.at(++i));",
+      "find": "        options.probeOut = pathFromUtf8(given.value);",
+      "replace": "        static_cast<void>(given.value);",
       "suites": [],
       "targets": [
         "orbsim",
