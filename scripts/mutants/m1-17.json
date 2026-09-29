@@ -119,7 +119,7 @@
       "name": "a golden of another colour type is decoded rather than refused",
       "file": "src/view/ImageFiles.cpp",
       "find": "    if (bitDepth != 8 || colourType != kPngColourTypeRgb) {",
-      "replace": "    if (bitDepth != 8) {",
+      "replace": "    if (bitDepth != 8 || colourType > kPngColourTypeRgb + 4U) {",
       "suites": ["test_image_files"],
       "expect": "caught"
     },
@@ -142,8 +142,8 @@
     {
       "name": "the sidecar's golden.largest line holds the mean",
       "file": "src/view/ProbeSidecar.cpp",
-      "find": "        Entry{.key = \"golden.largest\", .value = formatLargestLine(fields.golden)},",
-      "replace": "        Entry{.key = \"golden.largest\", .value = formatMeanLine(fields.golden)},",
+      "find": "    return std::format(\"{} (limit {}/255)\", formatLargest(*golden.difference), kGoldenLargestSteps);",
+      "replace": "    return std::format(\"{} (limit {}/255)\", formatMean(*golden.difference), kGoldenLargestSteps);",
       "suites": ["test_probe_sidecar"],
       "expect": "caught"
     },
@@ -225,6 +225,7 @@
       "find": "        for script in scripts_of(command):",
       "replace": "        for script in []:",
       "suites": [],
+      "targets": ["orbsim_shaders"],
       "ctest": ["accept_golden_self_test", "accept_golden"],
       "expect": "caught"
     }

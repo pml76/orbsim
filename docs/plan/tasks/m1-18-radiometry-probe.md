@@ -69,6 +69,13 @@ Any scene with more than one surface. Auto-exposure.
   remove each declaration it kills. The analytic 129.97 W/(m^2 sr) is
   unchanged by M1-15, which replaced 179 lm/W with sunlight's 98.9225 lm/W
   after the radiance, not before it -- register decision 175.)*
+  *(Amended 2026-09-29 by M1-17: its golden already kills one of the three --
+  the shader that skips the exposure -- and its declaration is gone. **Two
+  remain, the two clamps**, and they survived the golden because `clear`
+  holds no negative light and nothing above AgX's white, so neither clamp
+  changes a pixel of it. A port check at one well-exposed centre pixel will
+  not see them either: to kill them it must also hold a value the clamps act
+  on -- a negative channel, and a radiance above AgX's white.)*
 
 ## Error budget
 

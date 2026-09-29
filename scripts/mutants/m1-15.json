@@ -1,7 +1,7 @@
 {
   "task": "M1-15",
   "tree": "build/debug",
-  "note": "Exposure and the AgX tonemap. Three halves, judged three ways. view/Exposure.hpp by test_exposure and view/Tonemap.hpp by test_tonemap, both against scripts/tonemap-reference.py's 50-digit values. The shader's constants by the CTest test tonemap_constants, which holds them to view/Tonemap.hpp's; its operations cannot be judged before a pixel is read back (M1-16), so those mutants are declared survivors, killed by M1-18's port check. The render mutants build the application and are judged by orbsim_smoke under the validation layers. **Run once on 2026-09-25: 25 caught, 4 survived as declared, 0 invalid, 0 hung** -- 8 of the 25 by a static_assert before a test ran (the 1.2 of ISO 12232 catching both of its factors, the curve's two ends catching a coefficient and a wrong Horner step, the settings' refusals, the efficacy, and the zero clear colour). Two render mutants are caught by orbsim_smoke's validation layers: a push-constant range declared for the wrong stage, and an exposure that is never pushed. The three shader-operation survivors wait for M1-18's port check; the fourth, the floor before log2, is equivalent on the CPU by construction, and the owner accepted it on 2026-09-25 (decision 185). **Run a second time the same day**, after a change to the suite's settings helper: the same 25 caught and 4 survived. **Re-run 2026-09-26 with M1-16:** the three shader-operation survivors survive the probe's judges too -- they act after the HDR target its numeric check reads -- and stay declared for M1-18.",
+  "note": "Exposure and the AgX tonemap. Three halves, judged three ways. view/Exposure.hpp by test_exposure and view/Tonemap.hpp by test_tonemap, both against scripts/tonemap-reference.py's 50-digit values. The shader's constants by the CTest test tonemap_constants, which holds them to view/Tonemap.hpp's; its operations cannot be judged before a pixel is read back (M1-16), so those mutants are declared survivors, killed by M1-18's port check. The render mutants build the application and are judged by orbsim_smoke under the validation layers. **Run once on 2026-09-25: 25 caught, 4 survived as declared, 0 invalid, 0 hung** -- 8 of the 25 by a static_assert before a test ran (the 1.2 of ISO 12232 catching both of its factors, the curve's two ends catching a coefficient and a wrong Horner step, the settings' refusals, the efficacy, and the zero clear colour). Two render mutants are caught by orbsim_smoke's validation layers: a push-constant range declared for the wrong stage, and an exposure that is never pushed. The three shader-operation survivors wait for M1-18's port check; the fourth, the floor before log2, is equivalent on the CPU by construction, and the owner accepted it on 2026-09-25 (decision 185). **Run a second time the same day**, after a change to the suite's settings helper: the same 25 caught and 4 survived. **Re-run 2026-09-26 with M1-16:** the three shader-operation survivors survive the probe's judges too -- they act after the HDR target its numeric check reads -- and stay declared for M1-18. **Re-run 2026-09-29 with M1-17**, with probe_clear -- which since M1-17 holds the frame against tests/golden/clear.png -- added as a judge of the survivors that act after the HDR target: the shader does not apply the exposure now caught by it, and their declarations removed. The two clamps still survive -- `clear` holds no negative light and nothing above AgX's white, so neither clamp changes a pixel -- and remain M1-18's.",
   "mutants": [
     {
       "name": "EV100 takes N rather than N squared",
@@ -249,15 +249,15 @@
       "file": "shaders/tonemap.frag",
       "find": "    vec3 exposed = radiance * exposure.radianceExposure;",
       "replace": "    vec3 exposed = radiance;",
-      "expect": "survives",
-      "why": "A resolve pass that computes the wrong display value is a valid Vulkan program. M1-16's numeric check (tests/test_probe_clear.cpp) reads the HDR target, which is before the resolve pass, so it cannot see this either -- measured 2026-09-26, when this mutant survived the probe's judges too. M1-18's port check compares the shader with view/Tonemap.hpp to 1/255 and is what must kill it. Accepted in advance by the owner on 2026-09-25 (M1-15 question 11, register decision 182).",
+      "expect": "caught",
       "suites": [],
       "targets": [
         "orbsim"
       ],
       "ctest": [
         "tonemap_constants",
-        "orbsim_smoke"
+        "orbsim_smoke",
+        "probe_clear"
       ]
     },
     {
@@ -266,14 +266,15 @@
       "find": "    vec3 v = kAgxInset * max(exposed, vec3(0.0));",
       "replace": "    vec3 v = kAgxInset * exposed;",
       "expect": "survives",
-      "why": "A resolve pass that computes the wrong display value is a valid Vulkan program. M1-16's numeric check (tests/test_probe_clear.cpp) reads the HDR target, which is before the resolve pass, so it cannot see this either -- measured 2026-09-26, when this mutant survived the probe's judges too. M1-18's port check compares the shader with view/Tonemap.hpp to 1/255 and is what must kill it. Accepted in advance by the owner on 2026-09-25 (M1-15 question 11, register decision 182).",
+      "why": "A resolve pass that computes the wrong display value is a valid Vulkan program. M1-16's numeric check (tests/test_probe_clear.cpp) reads the HDR target, which is before the resolve pass, so it cannot see this either -- measured 2026-09-26, when this mutant survived the probe's judges too. M1-18's port check compares the shader with view/Tonemap.hpp to 1/255 and is what must kill it. Accepted in advance by the owner on 2026-09-25 (M1-15 question 11, register decision 182). Re-run 2026-09-29 with M1-17's golden as a judge (probe_clear): it still survives, because nothing in `clear` is negative light or brighter than AgX's white, so the clamp changes no pixel of it. M1-18's port check remains what must kill it.",
       "suites": [],
       "targets": [
         "orbsim"
       ],
       "ctest": [
         "tonemap_constants",
-        "orbsim_smoke"
+        "orbsim_smoke",
+        "probe_clear"
       ]
     },
     {
@@ -282,14 +283,15 @@
       "find": "    return pow(clamp(v, 0.0, 1.0), vec3(kAgxDisplayExponent));",
       "replace": "    return pow(v, vec3(kAgxDisplayExponent));",
       "expect": "survives",
-      "why": "A resolve pass that computes the wrong display value is a valid Vulkan program. M1-16's numeric check (tests/test_probe_clear.cpp) reads the HDR target, which is before the resolve pass, so it cannot see this either -- measured 2026-09-26, when this mutant survived the probe's judges too. M1-18's port check compares the shader with view/Tonemap.hpp to 1/255 and is what must kill it. Accepted in advance by the owner on 2026-09-25 (M1-15 question 11, register decision 182).",
+      "why": "A resolve pass that computes the wrong display value is a valid Vulkan program. M1-16's numeric check (tests/test_probe_clear.cpp) reads the HDR target, which is before the resolve pass, so it cannot see this either -- measured 2026-09-26, when this mutant survived the probe's judges too. M1-18's port check compares the shader with view/Tonemap.hpp to 1/255 and is what must kill it. Accepted in advance by the owner on 2026-09-25 (M1-15 question 11, register decision 182). Re-run 2026-09-29 with M1-17's golden as a judge (probe_clear): it still survives, because nothing in `clear` is negative light or brighter than AgX's white, so the clamp changes no pixel of it. M1-18's port check remains what must kill it.",
       "suites": [],
       "targets": [
         "orbsim"
       ],
       "ctest": [
         "tonemap_constants",
-        "orbsim_smoke"
+        "orbsim_smoke",
+        "probe_clear"
       ]
     },
     {

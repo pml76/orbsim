@@ -1,6 +1,6 @@
 # M1-17 — Golden-image comparison
 
-Phase: A | Status: **code, tests and the first golden done 2026-09-29; the mutation pass follows the commit** (the harness runs only on committed code)
+Phase: A | Status: **done, 2026-09-29** -- code, tests and the first golden, and the mutation pass run on the committed code
 Prerequisites: M1-16
 Decided by: [ADR 0008](../../adr/0008-renderer-verification.md)
 
@@ -185,12 +185,40 @@ readable.
 
 ## The mutation pass
 
-`scripts/mutants/m1-17.json`: 26 mutants, **two declared survivors, accepted
-by the owner on 2026-09-29 (decision 242)**: the write `--accept-golden` makes, which decision 233 forbids a
-test to run, and decision 230's order of a validation error before a
-mismatch, which needs a validation error planted in the product. To be run
-after the commit, with every file `mutants-due.py` lists and the five
-survivors M1-14 and M1-15 handed to this task.
+`scripts/mutants/m1-17.json`: **26 mutants, 24 caught, 2 survived as
+declared, none invalid or hung** -- one by a `static_assert` before a test
+ran. The two survivors were accepted by the owner (decision 242): the write
+`--accept-golden` makes, which decision 233 forbids a test to run, and
+decision 230's order of a validation error before a mismatch, which needs a
+validation error planted in the product (decision 193).
+
+**The first run found three mutants invalid**, and each was rewritten to
+compile and run again: removing the colour-type refusal left
+`kPngColourTypeRgb` unused, and pointing the sidecar's `golden.largest` line
+at the mean left `formatLargestLine` unused -- both errors under this
+project's warnings, so neither said anything about a test; and the guard's
+Python mutant named nothing to build, which the harness needs. The colour
+type is now defeated by `colourType > kPngColourTypeRgb + 4U`, which no PNG
+colour type satisfies, and the sidecar's line prints the mean from inside its
+own formatter.
+
+**Every other mutant file was due** -- `CMakeLists.txt` changed -- and all 19
+ran clean on the committed code, 2026-09-29, in 71 minutes (19:00 to 20:11).
+
+**The survivors handed to this task, re-run with the golden as their judge**:
+until now their only judge was `orbsim_smoke`, which cannot see a pixel, so
+`probe_clear` -- which holds the frame against `tests/golden/clear.png` --
+was added to five of them. Measured, not predicted: **three are caught** and
+their declarations removed -- M1-14's 2.2 encode and resolve pass never
+drawn, and M1-15's shader that skips the exposure. **M1-15's two clamps still
+survive**: `clear` holds no negative light and nothing above AgX's white, so
+neither clamp changes a pixel of it. They stay M1-18's, and a note in its
+task document says what its check must contain to see them.
+
+**A rerun was stopped once** by Claude Code for want of memory while the
+session was idle, before it recorded anything; the owner asked for it to be
+run again, and it was, one file at a time, with
+`CMAKE_BUILD_PARALLEL_LEVEL=4`. `mutants-due.py` then listed nothing due.
 
 ## Other compilers
 
