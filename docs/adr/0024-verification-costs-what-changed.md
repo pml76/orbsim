@@ -129,3 +129,31 @@ Two more tasks, M1-97 and M1-98 (register decisions 224 to 226).
     with the files on disk once more.
   - CLion's automatic reload, which caused it, is switched off on each
     machine (`docs/PROJECT_STATE.md` section 2).
+
+## Update, 2026-09-30: a build-definition change, judged by what it changed
+
+Register decision 250, task M1-103. **The strict rule of M1-92 is narrowed for
+the build definition only.** Every task since M1-92 but one had changed
+`CMakeLists.txt`, and each change made every mutant file due: on 2026-09-30,
+22 files and 118 minutes for a change that altered none of their programs.
+
+- A clean pass records a **fingerprint of each judge** in
+  `scripts/mutation-passes.json`: for a program, Ninja's full command list and
+  the contents of every file it is built from that git does not track and no
+  build step makes -- the fetched dependencies and the toolchain's own
+  headers and libraries; for a CTest entry, its command and properties. The
+  repository's and the tree's paths are placeholders, so a record travels.
+- `CMakeLists.txt`, `cmake/` and `CMakePresets.json` then make a file due only
+  through a changed fingerprint. Where none can be compared -- no record of
+  them, another tree -- the strict rule stands. `scripts/mutate.py` and
+  `data/` still make every file due.
+- Measured before it was proposed: 0 of 26 test programs' command lists moved
+  between 849b899 and 41001ba, 26 of 26 under a control edit. And after it was
+  built, on the real tree: a comment in `CMakeLists.txt` changed no
+  fingerprint, and a compile definition on `orbsim_core` made due every file
+  whose judges link it, naming each program.
+- **What it still costs**: a file whose mutants mutate `CMakeLists.txt` itself
+  is due whenever that file changes -- seven of them on 2026-09-30, about 30
+  minutes -- and a toolchain update now makes the affected files due, which
+  the strict rule never noticed.
+

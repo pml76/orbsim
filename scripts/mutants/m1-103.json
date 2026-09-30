@@ -1,0 +1,105 @@
+{
+  "task": "M1-103",
+  "tree": "build/relwithdebinfo",
+  "note": "A build-definition change judged by its effect (register decision 250). Each mutant takes away one part of the rule or of its fallbacks: the build definition ignored where no fingerprint can speak, a changed fingerprint ignored, a new judge ignored, a test's line number counted, the placeholders applied to nothing, untracked files left out of a program's fingerprint, and a pass that records no fingerprints. Judged by the self-tests of mutants-due.py and mutate.py, which hold each rule as a case. Not a mutant here: main_check's use of the comparison, which only a record from a real pass can exercise -- it was measured instead on the real tree on 2026-09-30 (a comment in CMakeLists.txt made no fingerprint change; a compile definition on orbsim_core made due every file whose judges link it). Python needs no build, but the harness always builds, so every mutant names orbsim_shaders as a no-op.",
+  "mutants": [
+    {
+      "name": "a record without fingerprints ignores a build-definition change",
+      "file": "scripts/mutants-due.py",
+      "find": "    watched = ALWAYS + BUILD_DEFINITION if judged is None else ALWAYS",
+      "replace": "    watched = ALWAYS",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "a changed fingerprint is ignored",
+      "file": "scripts/mutants-due.py",
+      "find": "    reasons = hits + sorted(set(always) - set(hits)) + sorted(judged or [])",
+      "replace": "    reasons = hits + sorted(set(always) - set(hits))",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "a judge that is new since the pass is ignored",
+      "file": "scripts/mutants-due.py",
+      "find": "if was.get(key) != now.get(key)]",
+      "replace": "if was.get(key) != now.get(key) and key in was]",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "a test's line number counts",
+      "file": "scripts/mutants-due.py",
+      "find": "    kept = {key: value for key, value in test.items() if key != \"backtrace\"}",
+      "replace": "    kept = dict(test)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "the placeholders touch nothing",
+      "file": "scripts/mutants-due.py",
+      "find": "    for path, mark in ((tree, \"<TREE>\"), (root, \"<ROOT>\")):",
+      "replace": "    for path, mark in ():",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "untracked files are left out of a program's fingerprint",
+      "file": "scripts/mutants-due.py",
+      "find": "    return fingerprint(placeholders(commands, tree, root) + \"\\n--\\n\" + listed)",
+      "replace": "    return fingerprint(placeholders(commands, tree, root))",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "a pass records no fingerprints",
+      "file": "scripts/mutate.py",
+      "find": "    if judges is not None:\n        record[\"judges\"] = judges",
+      "replace": "    if False:\n        record[\"judges\"] = judges",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "mutate_self_test"
+      ]
+    }
+  ]
+}

@@ -1720,6 +1720,15 @@ if(ORBSIM_PYTHON AND ORBSIM_BUILD_APP)
                     ${CMAKE_BINARY_DIR} --assume-changed README.md --only-assumed
                     --expect-due m1-12.json
     )
+    # The fingerprints that decide what a build-definition change made due
+    # (M1-103, register decision 250), taken twice from two fresh readings of
+    # this tree and required to agree: one that moved on its own would make
+    # files due at random. m1-17.json, because its judges include the
+    # application, the largest program. About 10 s.
+    add_test(NAME mutants_due_fingerprints
+            COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutants-due.py
+                    ${CMAKE_BINARY_DIR} --fingerprints m1-17.json
+    )
     # It passes on its own message, not on any failure: a script that refused
     # the tree, or crashed, also exits non-zero, and was a pass under WILL_FAIL
     # (M1-102, register decision 249).
@@ -1729,14 +1738,15 @@ if(ORBSIM_PYTHON AND ORBSIM_BUILD_APP)
     # size threshold Ninja rewrites that record whenever it is read -- two
     # readers at once on Windows can destroy it (M1-102, register decision 249;
     # parallel_tests requires the lock).
-    set_tests_properties(mutants_due mutants_due_shaders mutants_due_scripts
+    set_tests_properties(mutants_due mutants_due_shaders mutants_due_scripts mutants_due_fingerprints
             mutants_due_unmet_expectation_fails PROPERTIES LABELS fixtures RESOURCE_LOCK ninja_deps)
 elseif(ORBSIM_BUILD_APP)
     add_test(NAME mutants_due COMMAND ${CMAKE_COMMAND} -E false)
     add_test(NAME mutants_due_shaders COMMAND ${CMAKE_COMMAND} -E false)
     add_test(NAME mutants_due_scripts COMMAND ${CMAKE_COMMAND} -E false)
     add_test(NAME mutants_due_unmet_expectation_fails COMMAND ${CMAKE_COMMAND} -E false)
-    set_tests_properties(mutants_due mutants_due_shaders mutants_due_scripts
+    add_test(NAME mutants_due_fingerprints COMMAND ${CMAKE_COMMAND} -E false)
+    set_tests_properties(mutants_due mutants_due_shaders mutants_due_scripts mutants_due_fingerprints
             mutants_due_unmet_expectation_fails PROPERTIES LABELS fixtures)
 endif()
 if(ORBSIM_PYTHON)

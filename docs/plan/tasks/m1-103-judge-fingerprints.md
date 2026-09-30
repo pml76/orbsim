@@ -1,6 +1,6 @@
 # M1-103 — Judge a build-definition change by what it changed
 
-Phase: A | Status: not started
+Phase: A | Status: **done, 2026-09-30** -- its mutation pass is the full pass that follows
 Prerequisites: M1-92, M1-102
 Decided by: [ADR 0024](../../adr/0024-verification-costs-what-changed.md); register decisions 248 and 250
 
@@ -67,11 +67,26 @@ fingerprints, so it is one pass, not two.
 
 ## Done when
 
-- [ ] The self-tests were seen failing first on each new rule.
-- [ ] On the real tree: a comment added to `CMakeLists.txt` makes no file due;
-      a compile definition added to `orbsim_core` makes due every file whose
-      judges link it.
-- [ ] `check` passes in both Windows trees.
+- [x] The self-tests were seen failing first on each new rule: five of the
+      fingerprint and decision cases, and the record case in `mutate.py`. The
+      one case written after its code -- the comparison naming a changed, a
+      new and a lost judge -- has a mutant in `m1-103.json` instead.
+- [x] On the real tree, 2026-09-30, with every record set to that commit and
+      its fingerprints, and both files restored byte for byte afterwards:
+      - **a comment added to `CMakeLists.txt` changed no fingerprint.** It
+        still made seven files due, and that was expected on reflection, not
+        foreseen when this box was written: `m1-88`, `m1-90`, `m1-95`,
+        `m1-96`, `m1-98`, `m1-100` and `m1-102` hold mutants *of*
+        `CMakeLists.txt`, and a change to a file a mutant mutates makes it due
+        under decision 212 -- about 30 minutes, not 118;
+      - **a compile definition added to `orbsim_core` made 20 of 23 files
+        due**, each naming the programs whose commands moved; the three left
+        are judged by scripts alone.
+- [x] Fingerprints are stable on the real tree: `--fingerprints` found the same
+      7, 13 and 4 judges' fingerprints twice for `m1-12`, `m1-17` and `m1-100`,
+      in 3-10 s; the CTest test `mutants_due_fingerprints` holds that for
+      `m1-17`, under the `ninja_deps` lock.
+- [x] `check` passes in both Windows trees, 320 of 320, 2026-09-30.
 - [ ] The full mutation pass, recording the first fingerprints; then
       `mutants-due.py` lists nothing due.
 - [ ] `scripts/mutants/m1-103.json` passes.

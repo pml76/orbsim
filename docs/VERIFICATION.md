@@ -585,12 +585,22 @@ changed since `scripts/mutation-passes.json` says it last passed. That covers:
 - the shaders for a judge that runs the application;
 - `data/`;
 - the scripts the judges run;
-- the build definition and the harness itself.
+- the harness itself;
+- **and a change to the build definition** -- `CMakeLists.txt`, `cmake/`,
+  `CMakePresets.json` -- **only through what it changed** (M1-103, since
+  2026-09-30): a clean pass records a fingerprint of each judge, a program's
+  full Ninja command list with the contents of every untracked file it is
+  built from, toolchain files included, and a CTest entry's definition. The
+  build definition makes a file due through a changed fingerprint, or where
+  no fingerprint was recorded in this tree. A file that mutates
+  `CMakeLists.txt` itself is still due whenever it changes.
 
 `mutate.py` writes a file's entry after a clean run, and only when the code
 matches the commit, since otherwise the record would vouch for code that is
-not committed. After an edit to a core header, or to `CMakeLists.txt`, nearly
-everything is due, and that is the rule working. The full pass still runs at
+not committed. After an edit to a core header, nearly everything is due, and
+that is the rule working. *(An edit to `CMakeLists.txt` did the same until
+M1-103: on 2026-09-30 all 22 files, 118 minutes, for a change none of their
+programs could see.)* The full pass still runs at
 every gate. The script over-approximates on purpose: listing a file that did
 not need to run costs minutes, and missing one costs a hole nobody sees.
 

@@ -61,6 +61,7 @@ is a failure rather than a line nobody reads. A declared survivor carries a
 
 import argparse
 import datetime
+import importlib.util
 import json
 import re
 import subprocess
@@ -317,7 +318,7 @@ def main(argv: list) -> int:
               "so find out why before believing anything else in this run")
     if bad or invalid or hung:
         return 1
-    record_pass(root, given, tree)
+    record_pass(root, given, tree, spec)
     return 0
 
 
@@ -398,7 +399,47 @@ def self_test() -> int:
         status = "ok" if got == want else f"WRONG, got {got}"
         failures += got != want
         print(f"self-test: {name}: {status}")
+    # A pass records its judges' fingerprints (M1-103): without them the build
+    # definition makes the file due again, whatever the change did.
+    judges = {"ctest t": "0123456789abcdef"}
+    record_cases = {
+        "a record holds the judges' fingerprints": pass_record("c0ffee", "build/rel", judges).get("judges") == judges,
+        "a record without fingerprints says nothing about them":
+            "judges" not in pass_record("c0ffee", "build/rel", None),
+        "a record holds its commit and tree": pass_record("c0ffee", "build/rel", judges)["commit"] == "c0ffee"
+            and pass_record("c0ffee", "build/rel", judges)["tree"] == "build/rel",
+    }
+    for name, ok in record_cases.items():
+        failures += not ok
+        print(f"self-test: {name}: {'ok' if ok else 'WRONG'}")
     return 1 if failures else 0
+
+
+def pass_record(head: str, tree: str, judges) -> dict:
+    """What mutation-passes.json holds for a clean pass."""
+    record = {"commit": head, "tree": tree, "date": datetime.date.today().isoformat()}
+    if judges is not None:
+        record["judges"] = judges
+    return record
+
+
+def judge_fingerprints(root: Path, tree: str, spec: dict):
+    """The judges' fingerprints, computed by mutants-due.py's own code so that
+    the two can never disagree about what one is (M1-103); None, with the
+    reason printed, if they cannot be taken -- the file then stays under the
+    strict rule, which is the safe side."""
+    sys.dont_write_bytecode = True  # no __pycache__ in scripts/
+    loader = importlib.util.spec_from_file_location("mutants_due", root / "scripts" / "mutants-due.py")
+    module = importlib.util.module_from_spec(loader)
+    try:
+        loader.loader.exec_module(module)
+        reading = module.Tree((root / tree).resolve())
+        found = reading.fingerprints(spec)
+        reading.save_hashes()
+        return found
+    except (SystemExit, OSError, ValueError, subprocess.CalledProcessError) as error:
+        print(f"no fingerprints recorded, so the build definition keeps this file due: {error}")
+        return None
 
 
 # Where a clean pass is recorded, file by file: the commit it ran at. The strict
@@ -411,7 +452,7 @@ PASSES = "scripts/mutation-passes.json"
 VOUCHED_PATHS = ("CMakeLists.txt", "cmake", "data", "scripts", "shaders", "src", "tests")
 
 
-def record_pass(root: Path, given: Path, tree: str) -> None:
+def record_pass(root: Path, given: Path, tree: str, spec: dict) -> None:
     status = subprocess.run(["git", "status", "--porcelain", "--", *VOUCHED_PATHS], cwd=root,
                             capture_output=True, text=True, check=True).stdout
     uncommitted = [line for line in status.splitlines()
@@ -425,8 +466,7 @@ def record_pass(root: Path, given: Path, tree: str) -> None:
                           text=True, check=True).stdout.strip()
     path = root / PASSES
     passes = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
-    passes[given.name] = {"commit": head, "tree": tree,
-                          "date": datetime.date.today().isoformat()}
+    passes[given.name] = pass_record(head, tree, judge_fingerprints(root, tree, spec))
     path.write_text(json.dumps(dict(sorted(passes.items())), indent=2) + "\n",
                     encoding="utf-8", newline="\n")
     print(f"pass recorded in {PASSES}: {given.name} at {head[:12]}")
