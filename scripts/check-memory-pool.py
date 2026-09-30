@@ -78,7 +78,10 @@ def problems(ninja_text: str, depth: int) -> list:
         found.append(f"pool {POOL} has depth {declared[POOL]}, the rule gives {depth}")
 
     # A build edge: "build <outputs>: <rule> <inputs>" followed by indented variables.
-    edges = re.findall(r"^build ([^\n]*?): (\S+)[^\n]*\n((?:[ \t]+[^\n]*\n)*)", ninja_text, re.MULTILINE)
+    # Outputs are read with forward slashes: CMake writes the MSVC tree's with
+    # backslashes, and a check for "CMakeFiles/" found no compiles there (M1-101).
+    edges = [(outputs.replace("\\", "/"), rule, body) for outputs, rule, body in
+             re.findall(r"^build ([^\n]*?): (\S+)[^\n]*\n((?:[ \t]+[^\n]*\n)*)", ninja_text, re.MULTILINE)]
 
     # `lint` as a whole directory name: `notlint/a.ok` is not a lint step.
     lint_edges = [(outputs, body) for outputs, _, body in edges
@@ -122,6 +125,8 @@ def self_test() -> int:
             f"build lint/b.cpp.ok: CUSTOM_COMMAND y\n  COMMAND = tidy\n  pool = {POOL}\n\n"
             f"build CMakeFiles/t.dir/a.cpp.obj: CXX_COMPILER__t_unscanned_Debug a.cpp\n  FLAGS = -O2\n  pool = {POOL}\n\n"
             "build _deps/x-build/CMakeFiles/x.dir/y.c.obj: C_COMPILER__x_unscanned_Debug y.c\n  FLAGS = -O2\n")
+    msvc = good.replace("build lint/", "build lint\\").replace("build CMakeFiles/t.dir/", "build CMakeFiles\\t.dir\\")
+    msvc = msvc.replace("build _deps/x-build/CMakeFiles/x.dir/", "build _deps\\x-build\\CMakeFiles\\x.dir\\")
     cases = {
         "a correct pool, a dependency's compile outside it": (good, 4, 0),
         "a lint step outside the pool": (good.replace(f"  pool = {POOL}\n\nbuild lint/b", "\nbuild lint/b"), 4, 1),
@@ -134,6 +139,13 @@ def self_test() -> int:
         # a missing pool instead, and so tested nothing of its own.
         "no lint steps": (good.replace("build lint/", "build notlint/"), 4, 1),
         "no compiles of this project": (good.replace("build CMakeFiles/t.dir/", "build _deps/t-build/"), 4, 1),
+        # CMake's Ninja generator writes the MSVC tree's paths with backslashes
+        # (M1-101): read that way, the check found no compiles there at all.
+        "a correct pool, with backslashes": (msvc, 4, 0),
+        "a compile of this project outside the pool, with backslashes": (
+            msvc.replace(f"  FLAGS = -O2\n  pool = {POOL}\n", "  FLAGS = -O2\n"), 4, 1),
+        "no compiles of this project, with backslashes": (
+            msvc.replace("build CMakeFiles\\t.dir\\", "build _deps\\t-build\\"), 4, 1),
     }
     failures = 0
     for name, (text, depth, want_problem) in cases.items():

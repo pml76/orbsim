@@ -74,7 +74,9 @@ def problems(record_text, root: pathlib.Path, ninja_text: str) -> list:
             found.append(f"{path} has changed since this tree was configured")
     # The step `check` runs this through: CMake writes `check`'s dependencies
     # as order-only inputs of its CUSTOM_COMMAND edge; any input makes it wait.
-    edge = re.search(r"^build CMakeFiles/check[ |][^\n]*", ninja_text, re.MULTILINE)
+    # Either separator: CMake writes the MSVC tree's paths with backslashes, and
+    # a search for "CMakeFiles/check" found no edge there (M1-101).
+    edge = re.search(r"^build CMakeFiles[/\\]check[ |][^\n]*", ninja_text, re.MULTILINE)
     if edge is None or STEP not in edge.group(0).split(":", 1)[-1].split():
         found.append(f"`check` does not wait for `{STEP}`")
     return found
@@ -105,6 +107,7 @@ def self_test() -> int:
         other.write_bytes(b"set(y 1)\n")
         good = f"{fingerprint(lists)}  {lists.as_posix()}\n{fingerprint(other)}  {other.as_posix()}\n"
         ninja = f"build CMakeFiles/check | $x: CUSTOM_COMMAND || lint {STEP} doc-links\n  COMMAND = ctest\n"
+        msvc = ninja.replace("CMakeFiles/check", "CMakeFiles\\check")
         cases = {
             "a record that matches": (good, ninja, None, False),
             "a changed file": (good, ninja, (other, b"set(y 2)\n"), True),
@@ -114,6 +117,10 @@ def self_test() -> int:
             "a record without CMakeLists.txt": (good.split("\n", 1)[1], ninja, None, True),
             "a malformed line": (good + "not a fingerprint\n", ninja, None, True),
             "check does not wait for the step": (good, ninja.replace(f" {STEP}", ""), None, True),
+            # CMake's Ninja generator writes the MSVC tree's paths with
+            # backslashes (M1-101): read that way, the check found no edge.
+            "check waits, with backslashes": (good, msvc, None, False),
+            "check does not wait, with backslashes": (good, msvc.replace(f" {STEP}", ""), None, True),
         }
         failures = 0
         for name, (record, ninja_text, change, want) in cases.items():

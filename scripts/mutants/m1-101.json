@@ -1,0 +1,52 @@
+{
+  "task": "M1-101",
+  "tree": "build/relwithdebinfo",
+  "note": "Paths read with either separator (register decision 247). Each mutant takes away the reading of one separator and is judged by its script's self-test, which holds a tree written with backslashes as well as one written with forward slashes, and by the real check on this tree. Python needs no build, but the harness always builds, so every mutant names orbsim_shaders as a no-op.",
+  "mutants": [
+    {
+      "name": "the memory pool check reads compiles with forward slashes only",
+      "file": "scripts/check-memory-pool.py",
+      "find": "    edges = [(outputs.replace(\"\\\\\", \"/\"), rule, body) for outputs, rule, body in",
+      "replace": "    edges = [(outputs, rule, body) for outputs, rule, body in",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "memory_pool_self_test",
+        "memory_pool"
+      ]
+    },
+    {
+      "name": "configure-current finds check's edge with forward slashes only",
+      "file": "scripts/check-configure-current.py",
+      "find": "    edge = re.search(r\"^build CMakeFiles[/\\\\]check[ |][^\\n]*\", ninja_text, re.MULTILINE)",
+      "replace": "    edge = re.search(r\"^build CMakeFiles/check[ |][^\\n]*\", ninja_text, re.MULTILINE)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "configure_current_self_test",
+        "configure_current"
+      ]
+    },
+    {
+      "name": "configure-current finds check's edge with backslashes only",
+      "file": "scripts/check-configure-current.py",
+      "find": "    edge = re.search(r\"^build CMakeFiles[/\\\\]check[ |][^\\n]*\", ninja_text, re.MULTILINE)",
+      "replace": "    edge = re.search(r\"^build CMakeFiles[\\\\]check[ |][^\\n]*\", ninja_text, re.MULTILINE)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "configure_current_self_test",
+        "configure_current"
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 # M1-101 — Read the MSVC tree's paths
 
-Phase: A | Status: not started
+Phase: A | Status: **done, 2026-09-30**
 Prerequisites: M1-96, M1-98
 Decided by: [ADR 0024](../../adr/0024-verification-costs-what-changed.md); register decisions 243, 244 and 247
 
@@ -49,10 +49,14 @@ finding `check`'s edge with forward slashes only and with backslashes only.
 
 ## Done when
 
-- [ ] Both self-tests were seen failing on the MSVC form of a correct tree,
-      before the change.
-- [ ] `configure_current` and `memory_pool` pass in `build/windows-msvc`.
-- [ ] `check` passes in both Windows trees.
+- [x] Both self-tests were seen failing on the MSVC form of a correct tree,
+      before the change: "a correct pool, with backslashes: reported" and
+      "check waits, with backslashes: reported". Then ten of ten, each.
+- [x] `configure_current` and `memory_pool` pass in `build/windows-msvc`,
+      set up again on 2026-09-30: "every file the configure read is
+      unchanged", and "every lint step and every compile of this project is
+      in orbsim_memory, depth 10".
+- [x] `check` passes in both Windows trees, 319 of 319, 2026-09-30.
 - [ ] `scripts/mutants/m1-101.json` passes.
 - [ ] The other compilers' full runs, after this task (decision 244):
       `windows-msvc`, `linux-sanitize` and `linux-gcc`, every test passing.
