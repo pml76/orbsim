@@ -1685,7 +1685,14 @@ set_tests_properties(configure_current configure_current_self_test configure_gua
 # claims -- its decision function, by its self-test, and its reading of this
 # very tree, by assuming core/Scalar.hpp changed and requiring the two mutant
 # files that mutate it to be listed. About 8 s.
-if(ORBSIM_PYTHON)
+#
+# The four that read the tree are registered only where the application is
+# built (M1-100, register decision 246). Several mutant files are judged by the
+# application and its tests, and a tree that builds the core only cannot say
+# what those depend on: there the script stopped on the first of them, and the
+# test that must fail passed by crashing. Mutation passes run in a tree that
+# builds everything. The self-test reads no tree, so it runs everywhere.
+if(ORBSIM_PYTHON AND ORBSIM_BUILD_APP)
     add_test(NAME mutants_due
             COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutants-due.py
                     ${CMAKE_BINARY_DIR} --assume-changed src/core/Scalar.hpp --only-assumed
@@ -1714,19 +1721,24 @@ if(ORBSIM_PYTHON)
                     --expect-due m1-12.json
     )
     set_tests_properties(mutants_due_unmet_expectation_fails PROPERTIES WILL_FAIL TRUE)
-    add_test(NAME mutants_due_self_test
-            COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutants-due.py --self-test
-    )
-else()
+    set_tests_properties(mutants_due mutants_due_shaders mutants_due_scripts
+            mutants_due_unmet_expectation_fails PROPERTIES LABELS fixtures)
+elseif(ORBSIM_BUILD_APP)
     add_test(NAME mutants_due COMMAND ${CMAKE_COMMAND} -E false)
     add_test(NAME mutants_due_shaders COMMAND ${CMAKE_COMMAND} -E false)
     add_test(NAME mutants_due_scripts COMMAND ${CMAKE_COMMAND} -E false)
     add_test(NAME mutants_due_unmet_expectation_fails COMMAND ${CMAKE_COMMAND} -E false)
+    set_tests_properties(mutants_due mutants_due_shaders mutants_due_scripts
+            mutants_due_unmet_expectation_fails PROPERTIES LABELS fixtures)
+endif()
+if(ORBSIM_PYTHON)
+    add_test(NAME mutants_due_self_test
+            COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutants-due.py --self-test
+    )
+else()
     add_test(NAME mutants_due_self_test COMMAND ${CMAKE_COMMAND} -E false)
 endif()
-set_tests_properties(mutants_due mutants_due_shaders mutants_due_scripts
-        mutants_due_unmet_expectation_fails mutants_due_self_test
-        PROPERTIES LABELS fixtures)
+set_tests_properties(mutants_due_self_test PROPERTIES LABELS fixtures)
 
 # AgX is written twice -- shaders/tonemap.frag and src/view/Tonemap.hpp -- and
 # nothing reads a pixel back until M1-18 (M1-15, register decision 182). This
@@ -1790,18 +1802,26 @@ set_tests_properties(memory_pool memory_pool_self_test PROPERTIES LABELS fixture
 # test_image_files gives each case its own scratch file. Those scratch names
 # are the same in both trees, so the two trees' `check` still run one after
 # the other. Checked by the CTest test parallel_tests, which reads CTest's own
-# description of the tests and computes the job count itself.
+# description of the tests and computes the job count itself. It is told
+# whether this tree builds the application: where it does, a tree with no GPU
+# test would be checking nothing; where it does not -- the core-only Linux
+# presets -- a GPU test would be the fault (M1-100, register decision 246).
 cmake_host_system_information(RESULT orbsim_logical_cores QUERY NUMBER_OF_LOGICAL_CORES)
 math(EXPR ORBSIM_TEST_JOBS "${orbsim_logical_cores} / 2")
 if(ORBSIM_TEST_JOBS LESS 1)
     set(ORBSIM_TEST_JOBS 1)
 endif()
 message(STATUS "check: tests run ${ORBSIM_TEST_JOBS} at a time (${orbsim_logical_cores} threads / 2)")
+if(ORBSIM_BUILD_APP)
+    set(orbsim_gpu_tests expected)
+else()
+    set(orbsim_gpu_tests none)
+endif()
 if(ORBSIM_PYTHON)
     add_test(NAME parallel_tests
             COMMAND ${ORBSIM_PYTHON}
                     ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-parallel-tests.py
-                    ${CMAKE_BINARY_DIR} ${CMAKE_CTEST_COMMAND}
+                    ${CMAKE_BINARY_DIR} ${CMAKE_CTEST_COMMAND} --gpu-tests ${orbsim_gpu_tests}
     )
     add_test(NAME parallel_tests_self_test
             COMMAND ${ORBSIM_PYTHON}

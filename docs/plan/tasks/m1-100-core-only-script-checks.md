@@ -1,6 +1,6 @@
 # M1-100 — The script checks in a tree that builds the core only
 
-Phase: A | Status: not started
+Phase: A | Status: **done, 2026-09-30**
 Prerequisites: M1-91, M1-92
 Decided by: [ADR 0024](../../adr/0024-verification-costs-what-changed.md); register decisions 243, 244 and 246
 
@@ -61,11 +61,14 @@ harness runs, so it is judged instead by the core-only trees' own runs below.
 
 ## Done when
 
-- [ ] `parallel_tests_self_test` was seen failing on the two core-only cases
-      that describe the fault, before the change.
-- [ ] In `build/linux-sanitize` and `build/linux-gcc`: the four `mutants_due`
-      tests are not registered, `mutants_due_self_test` and `parallel_tests`
-      pass.
-- [ ] `check` passes in both Windows trees, where the `mutants_due` tests and
-      `parallel_tests` run as before.
+- [x] `parallel_tests_self_test` was seen failing on the two core-only cases
+      that describe the fault, before the change: the correct core-only
+      listing "reported", the GPU test "accepted". Then nine of nine.
+- [x] In `build/linux-sanitize`, 2026-09-30: the four `mutants_due` tests are
+      not registered, and `mutants_due_self_test`, `parallel_tests` ("ctest -j
+      10, and no test needs the GPU") and its self-test pass. `build/linux-gcc`
+      in the other compilers' full run, after M1-101.
+- [x] `check` passes in both Windows trees, 319 of 319, 2026-09-30, where the
+      `mutants_due` tests run as before and `parallel_tests` reports "every GPU
+      test holds the gpu lock".
 - [ ] `scripts/mutants/m1-100.json` passes.

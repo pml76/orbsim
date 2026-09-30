@@ -1,0 +1,63 @@
+{
+  "task": "M1-100",
+  "tree": "build/relwithdebinfo",
+  "note": "The script checks in a tree that builds the core only (register decision 246). The script mutants remove the core-only rule either way and are judged by parallel_tests_self_test, since the tree that runs a pass builds the application; the CMake mutants tell a tree that builds the application that it builds none, and register the mutants_due checks only where it is not built, and are judged by the real tests. The opposite mutant -- the mutants_due checks registered in every tree -- changes nothing in a tree that builds the application, so it is judged instead by the core-only Linux trees' own runs. Python and a regenerated Ninja file need no build, but the harness always builds, so every mutant names orbsim_shaders as a no-op.",
+  "mutants": [
+    {
+      "name": "a GPU test in a core-only tree passes",
+      "file": "scripts/check-parallel-tests.py",
+      "find": "    if gpu_tests == \"none\":",
+      "replace": "    if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "parallel_tests_self_test"
+      ]
+    },
+    {
+      "name": "a core-only tree must have a GPU test",
+      "file": "scripts/check-parallel-tests.py",
+      "find": "    if gpu_tests == \"expected\" and not gpu:",
+      "replace": "    if not gpu:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "parallel_tests_self_test"
+      ]
+    },
+    {
+      "name": "a tree that builds the application is checked as core-only",
+      "file": "CMakeLists.txt",
+      "find": "    set(orbsim_gpu_tests expected)",
+      "replace": "    set(orbsim_gpu_tests none)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "parallel_tests"
+      ]
+    },
+    {
+      "name": "the mutants_due checks are registered only where the application is not built",
+      "file": "CMakeLists.txt",
+      "find": "if(ORBSIM_PYTHON AND ORBSIM_BUILD_APP)\n    add_test(NAME mutants_due\n",
+      "replace": "if(ORBSIM_PYTHON AND NOT ORBSIM_BUILD_APP)\n    add_test(NAME mutants_due\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "mutants_due"
+      ]
+    }
+  ]
+}
