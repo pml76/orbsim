@@ -1,0 +1,49 @@
+{
+  "task": "M1-104",
+  "tree": "build/relwithdebinfo",
+  "note": "A restore that did not happen stops the pass (register decision 252). Each mutant takes one signal away -- git's exit status, the files still modified afterwards -- or the stop itself, and is judged by mutate.py's self-test, which holds each as a case and runs restore in a scratch repository. Python needs no build, but the harness always builds, so every mutant names orbsim_shaders as a no-op.",
+  "mutants": [
+    {
+      "name": "a failed git checkout is accepted",
+      "file": "scripts/mutate.py",
+      "find": "    if checkout_status != 0:",
+      "replace": "    if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "mutate_self_test"
+      ]
+    },
+    {
+      "name": "a file still modified after the checkout is accepted",
+      "file": "scripts/mutate.py",
+      "find": "    if left.strip():",
+      "replace": "    if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "mutate_self_test"
+      ]
+    },
+    {
+      "name": "a restore that failed does not stop the pass",
+      "file": "scripts/mutate.py",
+      "find": "        if problem:\n            raise RuntimeError(f\"the mutated files",
+      "replace": "        if False:\n            raise RuntimeError(f\"the mutated files",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "mutate_self_test"
+      ]
+    }
+  ]
+}

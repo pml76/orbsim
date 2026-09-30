@@ -66,6 +66,7 @@ import json
 import re
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 # CLion's cmake, which is the one the build trees were configured with
@@ -115,9 +116,19 @@ def dirty_files(root: Path, files: set) -> list:
 
 
 def restore(root: Path, files: set) -> None:
+    """Put the mutated files back, and stop the pass if they are not: a mutant
+    left in the tree would be judged under by every later mutant and every
+    later mutant file (M1-104, register decision 252)."""
     if files:
-        subprocess.run(["git", "checkout", "--"] + sorted(files),
-                       cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
+        done = subprocess.run(["git", "checkout", "--"] + sorted(files),
+                              cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
+        left = subprocess.run(["git", "status", "--porcelain", "--"] + sorted(files),
+                              cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                              check=False).stdout
+        problem = restore_problem(done.returncode, left)
+        if problem:
+            raise RuntimeError(f"the mutated files could not be put back ({problem}; {done.stderr.strip()}). "
+                               "Stop, and restore them with `git checkout --` before anything else runs.")
 
 
 def first_error(text: str) -> str:
@@ -412,7 +423,38 @@ def self_test() -> int:
     for name, ok in record_cases.items():
         failures += not ok
         print(f"self-test: {name}: {'ok' if ok else 'WRONG'}")
+    # A restore that did not happen must stop the pass (M1-104): on 2026-09-30 a
+    # mutant stayed in src/core/Scalar.hpp after its restore, and the next
+    # mutant files ran on top of it.
+    restore_cases = {
+        "a restore that worked is accepted": restore_problem(0, "") is None,
+        "a failed git checkout is refused": restore_problem(1, "") is not None,
+        "a file still modified after the checkout is refused": restore_problem(0, " M src/core/Scalar.hpp\n") is not None,
+    }
+    # And the stop itself, in a scratch repository: a checkout that fails -- here
+    # a file git does not know, which fails the same way on every system; on
+    # Windows a file still held open fails it too, exit status 255, measured
+    # 2026-09-30 -- must raise, not return.
+    with tempfile.TemporaryDirectory() as scratch:
+        subprocess.run(["git", "init", "-q", scratch], check=True, capture_output=True)
+        try:
+            restore(Path(scratch), {"not-in-git.hpp"})
+            stopped = False
+        except RuntimeError:
+            stopped = True
+    failures += not stopped
+    print(f"self-test: a restore that fails stops the pass: {'ok' if stopped else 'WRONG'}")
     return 1 if failures else 0
+
+
+def restore_problem(checkout_status: int, left: str):
+    """Why a restore did not put the files back, or None: git's own exit status,
+    and what `git status` still reports for the files afterwards."""
+    if checkout_status != 0:
+        return f"git checkout exited {checkout_status}"
+    if left.strip():
+        return f"still modified after git checkout: {' '.join(line.strip() for line in left.splitlines())}"
+    return None
 
 
 def pass_record(head: str, tree: str, judges) -> dict:

@@ -1,6 +1,6 @@
 # Milestone 1 — the task queue
 
-Status: **planned 2026-09-08.** 103 tasks, in one order. (84 until 2026-09-13,
+Status: **planned 2026-09-08.** 104 tasks, in one order. (84 until 2026-09-13,
 when an audit found phase F had no gate although the rule below says every
 phase ends with one. The new task is **M1-85**, sitting between 77 and 78:
 renumbering seven tasks to make it "78" would have broken the identifiers that
@@ -18,7 +18,8 @@ a guard against a build tree set up from text no longer on disk -- decisions
 M1-18: the three older failures M1-17's run of the other compilers showed --
 decisions 243 and 244. 101 until later that day, when **M1-102 and M1-103**
 were added: a race on Ninja's header record, and judging a build-definition
-change by its effect -- decisions 248 to 250.)
+change by its effect -- decisions 248 to 250. 103 until the same evening, when
+**M1-104** was added: the mutation harness stops if a restore fails -- decision 252.)
 Which of them are done is in [`../STATUS.md`](../STATUS.md), not here.
 
 This is the working document for [milestone 1](milestone-1-earth.md): Earth, an
@@ -178,7 +179,7 @@ measured ([`../measurements/verification-cost.md`](../measurements/verification-
 and every later task is verified under them. The numbers continue the
 sequence, as decision 30 did for 85. [ADR 0024](../adr/0024-verification-costs-what-changed.md).
 
-**99 to 103 run before 18**, since 2026-09-30 (decisions 243, 244 and 248): the
+**99 to 104 run before 18**, since 2026-09-30 (decisions 243, 244, 248 and 252): the
 owner wants M1-18 begun on a clean slate, with every tree -- the other
 compilers' included -- passing.
 
@@ -217,6 +218,7 @@ compilers' included -- passing.
 | [101](tasks/m1-101-backslash-paths.md) | Read the MSVC tree's paths | 96, 98 | Both checks judge the MSVC tree, and find it right |
 | [102](tasks/m1-102-ninja-deps-race.md) | Ask Ninja for the header record one test at a time | 91, 92 | No test destroys the record, and an empty one is refused |
 | [103](tasks/m1-103-judge-fingerprints.md) | Judge a build-definition change by what it changed | 92, 102 | A task reruns only the mutant files its change can reach |
+| [104](tasks/m1-104-restore-is-checked.md) | The mutation harness stops if a restore fails | 95 | No mutant is ever judged under another |
 | [18](tasks/m1-18-radiometry-probe.md) | Numeric probes, and the radiometry budget | 15, 16 | 0.5 % of an analytic radiance |
 | [19](tasks/m1-19-line-renderer.md) | The line renderer | 11, 12, 13 | Lines, camera-relative |
 | [20](tasks/m1-20-planetary-grid.md) | The planetary grid, and the jitter budget | 17, 19 | Phase A's stated acceptance: no jitter |
