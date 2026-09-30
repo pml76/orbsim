@@ -48,10 +48,15 @@ As decided (decision 249):
   header dependencies … the check would be checking nothing", exit status 1.
   That also covers a hand run that meets a build. Test first: the self-test
   case was seen accepting an empty record before the change.
-- **`mutants_due_unmet_expectation_fails` passes on its own message**,
-  "expected m1-12.json to be due, and it is not", instead of on any failure:
-  under "expected to fail" a refusal or a crash was a pass. Measured in a
-  scratch CTest project: the message passes, a refusal and a crash fail.
+- **`mutants_due_unmet_expectation_fails` requires the failure and the
+  message both** (decision 251): under "expected to fail" a refusal or a crash
+  was a pass. Its first form here, a CTest message rule, was a mistake the
+  full mutation pass found the same day: `m1-92.json`'s mutant that makes the
+  check return 0 while still printing the message survived. Measured in a
+  scratch CTest project: no combination of CTest's own rules gets all three
+  cases right. So `mutants-due.py --expect-unmet m1-12.json` runs the check and
+  passes only if it returned a failure *and* named the file; with that mutant
+  applied by hand it fails, "it returned 0, and said so".
 - **The MSVC tree was repaired**: the stray file removed and the tree rebuilt,
   all 891 steps, since Ninja rebuilds whatever it has no header record for.
 

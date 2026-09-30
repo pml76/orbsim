@@ -1,7 +1,7 @@
 {
   "task": "M1-102",
   "tree": "build/relwithdebinfo",
-  "note": "Ninja's header record read one query at a time, and never trusted empty (register decision 249). The CMake mutant takes the lock away and is judged by parallel_tests on this tree; the script mutants switch off the refusal of an empty record, the lock rule, or its exemption for a self-test, and are judged by the self-tests and the real check. Not a mutant here: the unmet-expectation test's message rule, whose weakening changes nothing on a sound tree -- it was measured instead, in a scratch CTest project where a refusal and a crash fail it and the expected message passes it (2026-09-30). Python needs no build, but the harness always builds, so every mutant names orbsim_shaders as a no-op.",
+  "note": "Ninja's header record read one query at a time, and never trusted empty (register decision 249). The CMake mutant takes the lock away and is judged by parallel_tests on this tree; the script mutants switch off the refusal of an empty record, the lock rule, or its exemption for a self-test, and are judged by the self-tests and the real check. Not a mutant here: how the unmet-expectation test decides. Its first form, a CTest message rule, let m1-92.json's mutant that returns 0 survive in the full pass of 2026-09-30; it became --expect-unmet in mutants-due.py, which requires the failure and the message both (decision 251), and m1-92.json's mutant is its judge. Python needs no build, but the harness always builds, so every mutant names orbsim_shaders as a no-op.",
   "mutants": [
     {
       "name": "the tests that ask Ninja run without the lock",

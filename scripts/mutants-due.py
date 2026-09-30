@@ -41,7 +41,9 @@ function changed files inside and outside a file's inputs, and no record at
 all, and exits non-zero unless each is judged right.
 """
 
+import contextlib
 import hashlib
+import io
 import json
 import os
 import pathlib
@@ -359,6 +361,27 @@ def main_check(tree: pathlib.Path, assumed: list, only_assumed: bool, expect_due
     return 1 if missing else 0
 
 
+def main_expect_unmet(tree: pathlib.Path, assumed: list, name: str) -> int:
+    """--expect-unmet: the expectation must be able to fail. Expecting `name` to be
+    due where it is not must make the check fail *and* say so, and this passes
+    only when both happen. A CTest rule could check one or the other, never both:
+    "expected to fail" also passed a script that refused the tree or crashed, and
+    a message rule passed one that said so but exited 0 (register decision 251,
+    measured in a scratch CTest project on 2026-09-30). A refusal still fails
+    here, since it leaves by SystemExit."""
+    said = io.StringIO()
+    with contextlib.redirect_stdout(said):
+        code = main_check(tree, assumed, True, [name])
+    sys.stdout.write(said.getvalue())
+    reported = f"mutants-due: expected {name} to be due, and it is not" in said.getvalue()
+    if code == 1 and reported:
+        print(f"mutants-due: expecting {name} failed the check and said so, as it must")
+        return 0
+    print(f"mutants-due: expecting {name} where it is not due must fail the check and say so; "
+          f"it returned {code}, and {'said' if reported else 'did not say'} so")
+    return 1
+
+
 def main_fingerprints(tree: pathlib.Path, name: str) -> int:
     """--fingerprints: one mutant file's judges, fingerprinted twice from two
     fresh readings of the tree. A fingerprint that is not the same twice would
@@ -512,6 +535,9 @@ def main() -> int:
     # --only-assumed: ignore git and the records, and judge only the files named
     # with --assume-changed -- how the rule's precision is checked.
     expect_due = [args[i + 1] for i, a in enumerate(args) if a == "--expect-due" and i + 1 < len(args)]
+    unmet = [args[i + 1] for i, a in enumerate(args) if a == "--expect-unmet" and i + 1 < len(args)]
+    if len(unmet) == 1 and not expect_due:
+        return main_expect_unmet(tree, assumed, unmet[0])
     return main_check(tree, assumed, "--only-assumed" in args, expect_due)
 
 

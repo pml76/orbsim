@@ -1718,7 +1718,7 @@ if(ORBSIM_PYTHON AND ORBSIM_BUILD_APP)
     add_test(NAME mutants_due_unmet_expectation_fails
             COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutants-due.py
                     ${CMAKE_BINARY_DIR} --assume-changed README.md --only-assumed
-                    --expect-due m1-12.json
+                    --expect-unmet m1-12.json
     )
     # The fingerprints that decide what a build-definition change made due
     # (M1-103, register decision 250), taken twice from two fresh readings of
@@ -1729,11 +1729,10 @@ if(ORBSIM_PYTHON AND ORBSIM_BUILD_APP)
             COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutants-due.py
                     ${CMAKE_BINARY_DIR} --fingerprints m1-17.json
     )
-    # It passes on its own message, not on any failure: a script that refused
-    # the tree, or crashed, also exits non-zero, and was a pass under WILL_FAIL
-    # (M1-102, register decision 249).
-    set_tests_properties(mutants_due_unmet_expectation_fails PROPERTIES
-            PASS_REGULAR_EXPRESSION "expected m1-12\\.json to be due, and it is not")
+    # --expect-unmet requires the check to fail and to say why, both: CTest's own
+    # rules can require one or the other, and each let a defect through -- a
+    # refusal or a crash under WILL_FAIL, a check that said so but exited 0
+    # under a message rule (M1-102, register decisions 249 and 251).
     # One at a time: each asks Ninja for the tree's header record, and past a
     # size threshold Ninja rewrites that record whenever it is read -- two
     # readers at once on Windows can destroy it (M1-102, register decision 249;
