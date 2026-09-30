@@ -1,6 +1,6 @@
 # Milestone 1 — the task queue
 
-Status: **planned 2026-09-08.** 98 tasks, in one order. (84 until 2026-09-13,
+Status: **planned 2026-09-08.** 101 tasks, in one order. (84 until 2026-09-13,
 when an audit found phase F had no gate although the rule below says every
 phase ends with one. The new task is **M1-85**, sitting between 77 and 78:
 renumbering seven tasks to make it "78" would have broken the identifiers that
@@ -14,7 +14,9 @@ decision 207. 94 until 2026-09-28, when **M1-95 and M1-96** were added to
 close two findings of that work -- decisions 221 to 223. 96 until later that
 day, when **M1-97 and M1-98** were added: a faster restore in the harness, and
 a guard against a build tree set up from text no longer on disk -- decisions
-224 to 226.)
+224 to 226. 98 until 2026-09-30, when **M1-99 to M1-101** were added before
+M1-18: the three older failures M1-17's run of the other compilers showed --
+decisions 243 and 244.)
 Which of them are done is in [`../STATUS.md`](../STATUS.md), not here.
 
 This is the working document for [milestone 1](milestone-1-earth.md): Earth, an
@@ -174,6 +176,10 @@ measured ([`../measurements/verification-cost.md`](../measurements/verification-
 and every later task is verified under them. The numbers continue the
 sequence, as decision 30 did for 85. [ADR 0024](../adr/0024-verification-costs-what-changed.md).
 
+**99 to 101 run before 18**, since 2026-09-30 (decisions 243 and 244): the
+owner wants M1-18 begun on a clean slate, with every tree -- the other
+compilers' included -- passing.
+
 | # | Task | Prerequisites | Ends with |
 |---|---|---|---|
 | [03](tasks/m1-03-timepoint.md) | `TimePoint` and the time scales | 01 | A time that knows which scale it is in |
@@ -204,6 +210,9 @@ sequence, as decision 30 did for 85. [ADR 0024](../adr/0024-verification-costs-w
 | [97](tasks/m1-97-rebuild-plan.md) | The harness rebuilds only what the next mutant does not | 95 | The same verdicts, less than half the time |
 | [98](tasks/m1-98-stale-tree-guard.md) | Refuse a build tree set up from text no longer on disk | 97 | `check` never tests text that is not there |
 | [17](tasks/m1-17-golden-images.md) | Golden-image comparison | 16 | An approved frame becomes a test |
+| [99](tasks/m1-99-gcc-unused-constants.md) | gcc builds every suite again | 94 | No constant in a test header that a suite does not use |
+| [100](tasks/m1-100-core-only-script-checks.md) | The script checks in a tree that builds the core only | 91, 92 | Every test passes in the Linux trees, and none by crashing |
+| [101](tasks/m1-101-backslash-paths.md) | Read the MSVC tree's paths | 96, 98 | Both checks judge the MSVC tree, and find it right |
 | [18](tasks/m1-18-radiometry-probe.md) | Numeric probes, and the radiometry budget | 15, 16 | 0.5 % of an analytic radiance |
 | [19](tasks/m1-19-line-renderer.md) | The line renderer | 11, 12, 13 | Lines, camera-relative |
 | [20](tasks/m1-20-planetary-grid.md) | The planetary grid, and the jitter budget | 17, 19 | Phase A's stated acceptance: no jitter |
