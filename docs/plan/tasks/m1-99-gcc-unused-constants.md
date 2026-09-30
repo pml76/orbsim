@@ -40,7 +40,8 @@ As decided (decision 245):
   - `kJ2000JulianDate`, `kMjdZeroJulianDate` and `kUnixEpochJulianDate` into
     `tests/test_time.cpp`.
 - **A constant more than one suite uses becomes `inline constexpr`** in its
-  header: `kInf` in the orbit header, `kNaN` and `kInf` in the time header.
+  header: `kInf` in the orbit header, `kNaN` and `kInf` in the time header --
+  and `kSweepCases` in the time header, found afterwards (below).
 - Each header's opening comment says what moved and why.
 
 Considered and not taken: every one of the seven `inline constexpr`. Nothing
@@ -58,4 +59,11 @@ not run (decision 244). No fuzz target includes either header.
       420,790, `test_time_leap` 105,793, `test_time_ut1` 246,350. Measured on
       2026-09-30, and the same five counts in `build/debug` under clang.
 - [x] `check` passes in both Windows trees, 319 of 319, 2026-09-30.
-- [ ] The other compilers' full runs, after M1-101 (decision 244).
+- [x] **The whole `linux-gcc` tree builds**, 2026-09-30. This box was missing
+      at first, and so was the check: the five suites were built, not the
+      tree, and the tree's header self-check -- which compiles each header on
+      its own -- then reported one more, `kSweepCases`, which all three time
+      suites use. It became `inline constexpr` under the same ruling, in a
+      follow-up commit; a build with `-k 0` then found no other error, and the
+      three time suites kept their counts.
+- [ ] The other compilers' full runs, after M1-103 (decisions 244 and 248).

@@ -160,7 +160,9 @@ template <TimeScale Scale> [[nodiscard]] TimePoint<Scale> instant(const Calendar
 
 // A seeded sweep, with the seed written down. VERIFICATION.md rule 12.
 constexpr std::uint64_t kSweepSeed = 20260910ULL; // the date this suite was written
-constexpr std::size_t kSweepCases = 10'000;
+// Inline, as kNaN above: all three suites use it, and the header's own
+// self-check compile, which uses none, is where gcc reported it (M1-99).
+inline constexpr std::size_t kSweepCases = 10'000;
 
 // The two ends of a draw, as one parameter, for the same reason as Span.
 struct Range {
