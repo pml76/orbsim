@@ -20,6 +20,10 @@ fail on some, which is the worst kind of test. So:
     presets do, states `--gpu-tests none`, and there a test labelled `gpu` is
     the fault instead (M1-100). There is no default: a tree that stated
     nothing would be checked against a guess;
+  * every test that runs a script asking Ninja for the tree's header record
+    (`ninja -t deps`, from mutants-due.py) must hold the lock `ninja_deps`:
+    past a size threshold Ninja rewrites that record whenever it is read, and
+    two readers at once on Windows can destroy it (M1-102);
   * the `check` target's ctest command must carry `-j N`, with N computed here
     again from the operating system's thread count, a second implementation of
     the rule rather than a copy of it.
@@ -40,6 +44,11 @@ import sys
 
 
 GPU_TESTS = ("expected", "none")
+# The scripts that ask Ninja for a tree's header record, `ninja -t deps`. Past
+# a size threshold Ninja rewrites that record whenever it is read, and on
+# Windows two readers at once can destroy it (M1-102, reproduced 2026-09-30):
+# so a test running one of these on a tree holds the lock `ninja_deps`.
+NINJA_QUERIES = ("mutants-due.py",)
 
 
 def expected_jobs(threads: int) -> int:
@@ -58,6 +67,12 @@ def problems(tests: list, check_command: str, jobs: int, gpu_tests: str) -> list
         locks = [p["value"] for p in test.get("properties", []) if p["name"] == "RESOURCE_LOCK"]
         if not any("gpu" in value for value in locks):
             found.append(f"GPU test without the gpu lock: {test['name']}")
+    for test in tests:
+        command = [str(part) for part in test.get("command", [])]
+        asks_ninja = any(part.endswith(NINJA_QUERIES) for part in command) and "--self-test" not in command
+        locks = [p["value"] for p in test.get("properties", []) if p["name"] == "RESOURCE_LOCK"]
+        if asks_ninja and not any("ninja_deps" in value for value in locks):
+            found.append(f"a test that asks Ninja for the header record without the ninja_deps lock: {test['name']}")
     match = re.search(r"--output-on-failure\s+-j\s*(\d+)|-j\s*(\d+)\s+--output-on-failure", check_command)
     if not match:
         found.append("the check target's ctest command runs the tests one at a time (no -j)")
@@ -92,6 +107,13 @@ def self_test() -> int:
             props.append({"name": "RESOURCE_LOCK", "value": ["gpu"]})
         return {"name": name, "properties": props}
 
+    def query(name, locked, argument="build/tree"):
+        props = [{"name": "LABELS", "value": ["fixtures"]}]
+        if locked:
+            props.append({"name": "RESOURCE_LOCK", "value": ["ninja_deps"]})
+        return {"name": name, "command": ["python", "scripts/mutants-due.py", argument],
+                "properties": props}
+
     good_tests = [test("smoke", True, True), test("probe", True, True), test("math", False, False)]
     good_cmd = "ctest.exe --output-on-failure -j 10"
     core_tests = [test("math", False, False)]
@@ -107,6 +129,14 @@ def self_test() -> int:
         "core only, a GPU test": (core_tests + [test("smoke", True, True)], good_cmd, 10, "none", True),
         "core only, no -j": (core_tests, "ctest.exe --output-on-failure", 10, "none", True),
         "core only, the wrong N": (core_tests, good_cmd, 8, "none", True),
+        # A test that asks Ninja for the tree's header record (M1-102): two at
+        # once can destroy it, so each holds the ninja_deps lock. The script's
+        # self-test reads no tree and needs none.
+        "a Ninja query holding the lock": (good_tests + [query("due", True)], good_cmd, 10, "expected", False),
+        "a Ninja query without the lock": (good_tests + [query("due", False)], good_cmd, 10, "expected", True),
+        "a Ninja query without the lock, core only": (core_tests + [query("due", False)], good_cmd, 10, "none", True),
+        "the query script's self-test, without the lock": (
+            good_tests + [query("due_self_test", False, "--self-test")], good_cmd, 10, "expected", False),
     }
     failures = 0
     for name, (tests, cmd, jobs, gpu_tests, want) in cases.items():

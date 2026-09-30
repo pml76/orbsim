@@ -1,0 +1,64 @@
+{
+  "task": "M1-102",
+  "tree": "build/relwithdebinfo",
+  "note": "Ninja's header record read one query at a time, and never trusted empty (register decision 249). The CMake mutant takes the lock away and is judged by parallel_tests on this tree; the script mutants switch off the refusal of an empty record, the lock rule, or its exemption for a self-test, and are judged by the self-tests and the real check. Not a mutant here: the unmet-expectation test's message rule, whose weakening changes nothing on a sound tree -- it was measured instead, in a scratch CTest project where a refusal and a crash fail it and the expected message passes it (2026-09-30). Python needs no build, but the harness always builds, so every mutant names orbsim_shaders as a no-op.",
+  "mutants": [
+    {
+      "name": "the tests that ask Ninja run without the lock",
+      "file": "CMakeLists.txt",
+      "find": "mutants_due_unmet_expectation_fails PROPERTIES LABELS fixtures RESOURCE_LOCK ninja_deps)",
+      "replace": "mutants_due_unmet_expectation_fails PROPERTIES LABELS fixtures)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "parallel_tests"
+      ]
+    },
+    {
+      "name": "an empty header record is accepted",
+      "file": "scripts/mutants-due.py",
+      "find": "    if not found:\n        return (f\"mutants-due: Ninja reported no header dependencies",
+      "replace": "    if False:\n        return (f\"mutants-due: Ninja reported no header dependencies",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "a test that asks Ninja without the lock passes",
+      "file": "scripts/check-parallel-tests.py",
+      "find": "        if asks_ninja and not any(\"ninja_deps\" in value for value in locks):",
+      "replace": "        if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "parallel_tests_self_test"
+      ]
+    },
+    {
+      "name": "a self-test that reads no tree must hold the lock too",
+      "file": "scripts/check-parallel-tests.py",
+      "find": " and \"--self-test\" not in command",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim_shaders"
+      ],
+      "ctest": [
+        "parallel_tests_self_test",
+        "parallel_tests"
+      ]
+    }
+  ]
+}

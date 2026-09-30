@@ -1720,9 +1720,17 @@ if(ORBSIM_PYTHON AND ORBSIM_BUILD_APP)
                     ${CMAKE_BINARY_DIR} --assume-changed README.md --only-assumed
                     --expect-due m1-12.json
     )
-    set_tests_properties(mutants_due_unmet_expectation_fails PROPERTIES WILL_FAIL TRUE)
+    # It passes on its own message, not on any failure: a script that refused
+    # the tree, or crashed, also exits non-zero, and was a pass under WILL_FAIL
+    # (M1-102, register decision 249).
+    set_tests_properties(mutants_due_unmet_expectation_fails PROPERTIES
+            PASS_REGULAR_EXPRESSION "expected m1-12\\.json to be due, and it is not")
+    # One at a time: each asks Ninja for the tree's header record, and past a
+    # size threshold Ninja rewrites that record whenever it is read -- two
+    # readers at once on Windows can destroy it (M1-102, register decision 249;
+    # parallel_tests requires the lock).
     set_tests_properties(mutants_due mutants_due_shaders mutants_due_scripts
-            mutants_due_unmet_expectation_fails PROPERTIES LABELS fixtures)
+            mutants_due_unmet_expectation_fails PROPERTIES LABELS fixtures RESOURCE_LOCK ninja_deps)
 elseif(ORBSIM_BUILD_APP)
     add_test(NAME mutants_due COMMAND ${CMAKE_COMMAND} -E false)
     add_test(NAME mutants_due_shaders COMMAND ${CMAKE_COMMAND} -E false)

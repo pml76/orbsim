@@ -87,6 +87,31 @@ def ctest_program(tree: pathlib.Path) -> str:
     return "ctest"
 
 
+def parse_deps(listing: str, tree: pathlib.Path) -> dict:
+    """object -> headers, from the text of `ninja -t deps`."""
+    found, current = {}, None
+    for line in listing.splitlines():
+        if line and not line.startswith(" ") and ": #deps" in line:
+            current = norm(tree / line.split(": #deps")[0])
+            found[current] = set()
+        elif line.startswith("    ") and current:
+            found[current].add(norm(line.strip()))
+    return found
+
+
+def deps_problem(found: dict, tree: pathlib.Path):
+    """Why these header dependencies cannot be used, or None.
+
+    Every tree this reads has compiled something, so an empty record is never
+    the truth: it is a record lost or being rewritten (M1-102, reproduced on
+    2026-09-30 with three `ninja -t deps` at once on Windows)."""
+    if not found:
+        return (f"mutants-due: Ninja reported no header dependencies for {tree} -- the "
+                "check would be checking nothing. Is the tree built, and is nothing else "
+                "reading or building it?")
+    return None
+
+
 class Tree:
     def __init__(self, tree: pathlib.Path):
         self.tree = tree
@@ -98,13 +123,10 @@ class Tree:
 
     def _headers(self) -> dict:
         """object -> the headers the compiler reported for it, from Ninja's log."""
-        found, current = {}, None
-        for line in run([self.ninja, "-t", "deps"], self.tree).splitlines():
-            if line and not line.startswith(" ") and ": #deps" in line:
-                current = norm(self.tree / line.split(": #deps")[0])
-                found[current] = set()
-            elif line.startswith("    ") and current:
-                found[current].add(norm(line.strip()))
+        found = parse_deps(run([self.ninja, "-t", "deps"], self.tree), self.tree)
+        problem = deps_problem(found, self.tree)
+        if problem:
+            raise SystemExit(problem)
         return found
 
     def build_inputs(self, target: str) -> set:
@@ -229,6 +251,24 @@ def self_test() -> int:
         status = "ok" if got == want else "WRONG"
         failures += status == "WRONG"
         print(f"self-test: {name}: {'due' if got else 'current'} ({status})")
+    # Ninja's header record (M1-102). Read while it is being compacted, it can
+    # come back empty with exit status 0, and every judge would then seem to
+    # include no header -- fewer files due, and nothing said. So an empty
+    # answer is refused, and a real one must parse.
+    tree = pathlib.Path(tempfile.gettempdir()) / "tree"
+    listing = ("CMakeFiles/t.dir/a.cpp.obj: #deps 2, deps mtime 1 (VALID)\n"
+               "    src/a.cpp\n    src/core/Units.hpp\n\n")
+    parsed = parse_deps(listing, tree)
+    deps_cases = {
+        "a header record parses": (parsed == {norm(tree / "CMakeFiles/t.dir/a.cpp.obj"):
+                                              {norm("src/a.cpp"), norm("src/core/Units.hpp")}}, True),
+        "a header record is accepted": (deps_problem(parsed, tree) is None, True),
+        "an empty header record is refused": (deps_problem(parse_deps("", tree), tree) is not None, True),
+    }
+    for name, (got, want) in deps_cases.items():
+        status = "ok" if got == want else "WRONG"
+        failures += status == "WRONG"
+        print(f"self-test: {name} ({status})")
     # Which files a test names are programs: an image is not, on either system.
     with tempfile.TemporaryDirectory() as scratch:
         image = pathlib.Path(scratch) / "clear-block.png"
