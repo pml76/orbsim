@@ -5,7 +5,9 @@
 // decision 214). This is that file's opening, moved unchanged except that its
 // anonymous namespace is named -- a header cannot hold one -- and its
 // non-template functions are inline. Every sweep builds its own Sampler, so
-// splitting the file changed no draw.
+// splitting the file changed no draw. Since M1-99, the three published Julian
+// dates, which only test_time uses, are in that file, because gcc reports them
+// unused in the other two suites.
 //
 #ifndef ORBSIM_TESTS_TIMETESTSUPPORT_HPP
 #define ORBSIM_TESTS_TIMETESTSUPPORT_HPP
@@ -61,8 +63,13 @@ template <orb::TimeScale Scale> struct StringMaker<orb::TimePoint<Scale>> {
 
 namespace orb::test::timesuite {
 
-constexpr f64 kNaN = std::numeric_limits<f64>::quiet_NaN();
-constexpr f64 kInf = std::numeric_limits<f64>::infinity();
+// Inline, so that the program holds one of each rather than one per suite:
+// gcc's -Wunused-const-variable=2 reports a plain constexpr variable in a
+// header that a suite including it does not use, and test_time_leap uses
+// neither. A constant only one suite uses lives in that suite instead, where
+// an unused one is still reported (M1-99).
+inline constexpr f64 kNaN = std::numeric_limits<f64>::quiet_NaN();
+inline constexpr f64 kInf = std::numeric_limits<f64>::infinity();
 
 // One day in picoseconds, typed here rather than taken from Time.hpp, so that
 // the header's constant is checked against a number written independently.
@@ -86,13 +93,6 @@ constexpr Tolerance kRoundTripDesign{0.5e-12 + 0x1p-47};
 // The Modified Julian Day of 1970-01-01, which is day zero of
 // std::chrono::sys_days: JD 2440587.5 (US Naval Observatory) less 2400000.5.
 constexpr std::int64_t kMjdOfSysDaysZero = 40'587;
-
-// The published epochs, as the US Naval Observatory states them: J2000.0 from
-// its page on Terrestrial Time ("Julian date 2451545.0 TT, or 2000 January 1,
-// 12h TT"), the other two from its Julian-date service, queried 2026-09-10.
-constexpr f64 kJ2000JulianDate = 2451545.0;
-constexpr f64 kMjdZeroJulianDate = 2400000.5;
-constexpr f64 kUnixEpochJulianDate = 2440587.5;
 
 [[nodiscard]] inline std::int64_t mjdByTheStandardLibrary(std::chrono::year_month_day date) {
     const auto daysSince1970 = std::chrono::sys_days{date}.time_since_epoch().count();

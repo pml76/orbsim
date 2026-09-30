@@ -1,6 +1,6 @@
 # M1-99 — gcc builds every suite again
 
-Phase: A | Status: not started
+Phase: A | Status: **done, 2026-09-30**
 Prerequisites: M1-94
 Decided by: [ADR 0017](../../adr/0017-every-warning-is-an-error.md); register decisions 243, 244 and 245
 
@@ -52,9 +52,10 @@ not run (decision 244). No fuzz target includes either header.
 
 ## Done when
 
-- [ ] `build/linux-gcc` builds all five suites that include the two headers,
+- [x] `build/linux-gcc` builds all five suites that include the two headers,
       and each passes with the assertion count it has on Windows, unchanged:
       `test_orbit_scales` 3,600, `test_orbit_elements` 82,072, `test_time`
-      420,790, `test_time_leap` 105,793, `test_time_ut1` 246,350.
-- [ ] `check` passes in both Windows trees.
+      420,790, `test_time_leap` 105,793, `test_time_ut1` 246,350. Measured on
+      2026-09-30, and the same five counts in `build/debug` under clang.
+- [x] `check` passes in both Windows trees, 319 of 319, 2026-09-30.
 - [ ] The other compilers' full runs, after M1-101 (decision 244).

@@ -108,6 +108,19 @@ static_assert(std::is_same_v<decltype(kUnixEpoch), const UtcTime>, "POSIX counts
 
 // --- the published epochs ---------------------------------------------------
 
+namespace {
+
+// The published epochs, as the US Naval Observatory states them: J2000.0 from
+// its page on Terrestrial Time ("Julian date 2451545.0 TT, or 2000 January 1,
+// 12h TT"), the other two from its Julian-date service, queried 2026-09-10.
+// Here rather than in tests/TimeTestSupport.hpp since M1-99: only this suite
+// uses them, and gcc reported them unused in the other two.
+constexpr f64 kJ2000JulianDate = 2451545.0;
+constexpr f64 kMjdZeroJulianDate = 2400000.5;
+constexpr f64 kUnixEpochJulianDate = 2440587.5;
+
+} // namespace
+
 // Each checked both ways: the calendar date to the published Julian date, and
 // the published Julian date back to the calendar date.
 // Catch2 macro expansion, not written complexity. See the note above.

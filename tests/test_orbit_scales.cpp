@@ -37,6 +37,24 @@ using namespace orb::literals;
 using namespace orb::test;
 using namespace orb::test::scales;
 
+// The constants only this suite uses, moved here from
+// tests/OrbitSweepSupport.hpp (M1-99): in the header, gcc reported them unused
+// in test_orbit_elements, which includes it too.
+namespace {
+
+constexpr f64 kNaN = std::numeric_limits<f64>::quiet_NaN();
+
+// The state libFuzzer found (2026-09-10): a hyperbola 1e-158 m across, whose
+// eccentricity came back below 1 while its energy was positive. Two cases
+// below use it, so it is written once.
+constexpr StateVector kFuzzerHyperbola{
+    .pos = {6.6047118912273269e-313, 8.8544950093349595e-159, 8.8544945874389708e-159},
+    .vel = {2.3135945642312217e-157, -9.2559606829389177e+61, -9.2559631349317831e+61},
+};
+constexpr GravParam kFuzzerMu = gravParam(4.3333423748712802e-35);
+
+} // namespace
+
 // A note on the readability-function-cognitive-complexity suppressions below.
 //
 // Catch2's REQUIRE and REQUIRE_THAT each expand to a do-while wrapping a

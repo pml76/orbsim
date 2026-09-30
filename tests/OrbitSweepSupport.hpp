@@ -6,7 +6,9 @@
 // its sweep machinery, moved unchanged except that their anonymous namespaces
 // are named -- a header cannot hold one -- and their non-template functions
 // are inline. Every case builds its own Sampler, so splitting the file changed
-// no draw.
+// no draw. Since M1-99, the constants only test_orbit_scales uses -- kNaN and
+// the fuzzer's hyperbola -- are in that file, because gcc reports them unused
+// in test_orbit_elements.
 //
 #ifndef ORBSIM_TESTS_ORBITSWEEPSUPPORT_HPP
 #define ORBSIM_TESTS_ORBITSWEEPSUPPORT_HPP
@@ -35,8 +37,12 @@ namespace orb::test::scales {
 
 using namespace orb::literals;
 
-constexpr f64 kNaN = std::numeric_limits<f64>::quiet_NaN();
-constexpr f64 kInf = std::numeric_limits<f64>::infinity();
+// Inline, so that the program holds one of it rather than one per suite:
+// gcc's -Wunused-const-variable=2 reports a plain constexpr variable in a
+// header that a suite including it does not use, and both suites use this
+// one. A constant only one suite uses lives in that suite instead, where an
+// unused one is still reported (M1-99).
+inline constexpr f64 kInf = std::numeric_limits<f64>::infinity();
 
 // The energy and the semi-major axis of a state, computed here rather than by
 // the code under test: std::hypot for the lengths, and none of the orbit
@@ -84,15 +90,6 @@ struct Comparison {
 // two orders above that and eleven below the errors these cases were written
 // for.
 constexpr Tolerance kConicBudget{1e-13};
-
-// The state libFuzzer found (2026-09-10): a hyperbola 1e-158 m across, whose
-// eccentricity came back below 1 while its energy was positive. Two cases
-// below use it, so it is written once.
-constexpr StateVector kFuzzerHyperbola{
-    .pos = {6.6047118912273269e-313, 8.8544950093349595e-159, 8.8544945874389708e-159},
-    .vel = {2.3135945642312217e-157, -9.2559606829389177e+61, -9.2559631349317831e+61},
-};
-constexpr GravParam kFuzzerMu = gravParam(4.3333423748712802e-35);
 
 // One body's worth of the sweep's parameter space.
 struct Body {
