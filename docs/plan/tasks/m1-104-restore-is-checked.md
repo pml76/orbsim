@@ -56,4 +56,11 @@ ignored, the files still modified ignored, and the stop taken away.
       was refused, "git checkout exited 255; unable to unlink old 'a.hpp'",
       then restored once released.
 - [x] `check` passes in both Windows trees, 320 of 320, 2026-09-30.
+- [x] **Its first pass found a defect in the self-test itself**, 2026-09-30:
+      "a file still modified after the checkout is accepted" survived. Adding
+      the stop case had replaced the loop that evaluates the three
+      `restore_problem` cases instead of following it, so they were built and
+      never checked. The loop is back; each of the two judging mutants,
+      applied to a copy of `mutate.py`, now fails the self-test. The pass was
+      stopped between files, since the fix makes every file due again.
 - [ ] `scripts/mutants/m1-104.json` passes, in the full pass that follows.

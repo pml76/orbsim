@@ -431,6 +431,9 @@ def self_test() -> int:
         "a failed git checkout is refused": restore_problem(1, "") is not None,
         "a file still modified after the checkout is refused": restore_problem(0, " M src/core/Scalar.hpp\n") is not None,
     }
+    for name, ok in restore_cases.items():
+        failures += not ok
+        print(f"self-test: {name}: {'ok' if ok else 'WRONG'}")
     # And the stop itself, in a scratch repository: a checkout that fails -- here
     # a file git does not know, which fails the same way on every system; on
     # Windows a file still held open fails it too, exit status 255, measured
