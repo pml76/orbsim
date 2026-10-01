@@ -87,6 +87,15 @@ fingerprints, so it is one pass, not two.
       in 3-10 s; the CTest test `mutants_due_fingerprints` holds that for
       `m1-17`, under the `ninja_deps` lock.
 - [x] `check` passes in both Windows trees, 320 of 320, 2026-09-30.
+- [x] **Both Linux trees found the self-test Windows-only**, 2026-10-01: its two
+      made-up repository locations were Windows paths, which are not absolute
+      on Linux, and one was spelled in capitals, the same path only where case
+      is ignored -- `mutants_due_self_test` failed in `linux-sanitize` and
+      `linux-gcc`, 298 of 299 each. The code was checked on Linux first, with
+      Linux paths, and was right. As the owner decided (decision 253), the
+      locations are now real paths under the temporary folder, capitals are
+      used only on Windows, and one new case holds the case rule on each
+      system; the self-test passes on both.
 - [ ] The full mutation pass, recording the first fingerprints; then
       `mutants-due.py` lists nothing due.
 - [ ] `scripts/mutants/m1-103.json` passes.

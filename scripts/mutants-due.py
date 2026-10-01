@@ -449,11 +449,17 @@ def self_test() -> int:
         print(f"self-test: {name}: {'due' if got else 'current'} ({status})")
     # The fingerprints themselves. The same tree in two places, spelled with
     # either separator and, on Windows, either case, must agree; a changed flag,
-    # a changed untracked file or a changed test property must not.
-    one, two = pathlib.Path("C:/Work/Repo"), pathlib.Path("D:/Else/Copy")
+    # a changed untracked file or a changed test property must not. The two
+    # places are real absolute paths on whichever system runs this: the first
+    # version used Windows paths, which are not absolute on Linux, and failed
+    # both Linux trees (2026-10-01).
+    scratch_root = pathlib.Path(tempfile.gettempdir()).resolve()
+    one, two = scratch_root / "repo-one", scratch_root / "elsewhere" / "copy"
     commands = "clang++ -O2 -I{r}/src -c {r}\\src\\a.cpp -o {t}/CMakeFiles/a.obj\n"
     cmds_one = commands.format(r=str(one), t=str(one / "build" / "rel"))
-    cmds_two = commands.format(r=str(two).upper(), t=str(two / "build" / "rel"))
+    # Capitals name the same path only where the file system ignores case.
+    two_spelled = str(two).upper() if os.name == "nt" else str(two)
+    cmds_two = commands.format(r=two_spelled, t=str(two / "build" / "rel"))
     files_one = {norm(one / "build/_deps/x-src/x.hpp"): "h1", "c:/sdk/include/stdio.h": "h2"}
     files_two = {norm(two / "build/_deps/x-src/x.hpp"): "h1", "c:/sdk/include/stdio.h": "h2"}
 
@@ -474,6 +480,9 @@ def self_test() -> int:
         "a changed test property changes a test's": test_fingerprint(test_one, one / "build/rel", one) != test_fingerprint(
             dict(test_one, properties=[{"name": "WILL_FAIL", "value": False}]), one / "build/rel", one),
     }
+    in_capitals = placeholders(str(one).upper() + "/x", one / "build" / "rel", one)
+    fp_cases["a path in capitals is the same path on Windows, and another one elsewhere"] = (
+        in_capitals == "<ROOT>/x" if os.name == "nt" else in_capitals == str(one).upper() + "/x")
     fp_cases["a changed, a new and a lost judge are all named, an unchanged one not"] = judged_since(
         {"judges": {"same": "1", "moved": "2", "lost": "3"}}, {"same": "1", "moved": "9", "new": "4"}) == [
         "lost: fingerprint changed", "moved: fingerprint changed", "new: fingerprint changed"]
