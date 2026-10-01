@@ -205,7 +205,7 @@ and the *publication* is M9. What makes that work is a standing rule.
 
 In the shape of the eight standing rules in
 [`milestone-1-tasks.md`](milestone-1-tasks.md), which are not repeated in the
-104 task documents because they apply to all of them:
+105 task documents because they apply to all of them:
 
 > **Every interface a third party will eventually touch is designed as public
 > interface, under the milestone 2 extension record.** Not documented as one,

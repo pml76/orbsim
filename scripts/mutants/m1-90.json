@@ -65,7 +65,7 @@
     },
     {
       "name": "the suites no longer link the listener",
-      "file": "CMakeLists.txt",
+      "file": "cmake/TestSuites.cmake",
       "find": "    target_link_libraries(${test_name} PRIVATE orbsim_abort_behaviour orbsim_test_support)",
       "replace": "    target_link_libraries(${test_name} PRIVATE orbsim_test_support)",
       "expect": "caught",

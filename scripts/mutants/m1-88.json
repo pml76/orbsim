@@ -5,7 +5,7 @@
   "mutants": [
     {
       "name": "a lint step leaves the pool",
-      "file": "CMakeLists.txt",
+      "file": "cmake/MemoryPool.cmake",
       "find": "                COMMENT \"clang-tidy ${source}\"\n                JOB_POOL orbsim_memory",
       "replace": "                COMMENT \"clang-tidy ${source}\"",
       "expect": "caught",

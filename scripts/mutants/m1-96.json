@@ -50,7 +50,7 @@
     },
     {
       "name": "the top-level targets no longer compile in the pool",
-      "file": "CMakeLists.txt",
+      "file": "cmake/MemoryPool.cmake",
       "find": "        set_property(TARGET ${target} PROPERTY JOB_POOL_COMPILE orbsim_memory)",
       "replace": "        set_property(TARGET ${target} PROPERTY LABELS orbsim_memory)",
       "expect": "caught",

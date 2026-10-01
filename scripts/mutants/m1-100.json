@@ -33,7 +33,7 @@
     },
     {
       "name": "a tree that builds the application is checked as core-only",
-      "file": "CMakeLists.txt",
+      "file": "cmake/ScriptTests.cmake",
       "find": "    set(orbsim_gpu_tests expected)",
       "replace": "    set(orbsim_gpu_tests none)",
       "expect": "caught",
@@ -47,7 +47,7 @@
     },
     {
       "name": "the mutants_due checks are registered only where the application is not built",
-      "file": "CMakeLists.txt",
+      "file": "cmake/ScriptTests.cmake",
       "find": "if(ORBSIM_PYTHON AND ORBSIM_BUILD_APP)\n    add_test(NAME mutants_due\n",
       "replace": "if(ORBSIM_PYTHON AND NOT ORBSIM_BUILD_APP)\n    add_test(NAME mutants_due\n",
       "expect": "caught",

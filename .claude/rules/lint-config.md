@@ -5,6 +5,7 @@ paths:
   - "coding-guidelines-example/.clang-tidy"
   - "coding-guidelines-example/.clang-format"
   - "CMakeLists.txt"
+  - "cmake/MemoryPool.cmake"
   - "CMakePresets.json"
 ---
 
@@ -94,9 +95,11 @@ M1-88 and M1-96): `orbsim_memory`, one job per 3 GiB of physical memory, at
 least one. Each clang-tidy needs about 1.04 GB and each compile 0.6-1 GB, and
 both Ninja's default lint and a full rebuild with lint beside it ran out of
 memory. Every lint step, and every compile of a target the top-level
-`CMakeLists.txt` defines, belongs in it; the CTest test `memory_pool` fails on
-one outside it, reading the generated Ninja files and computing the depth
-itself. Dependencies built in their own directories keep Ninja's default.
+directory defines -- `CMakeLists.txt` and the files it includes; the pool and
+the lint steps live in `cmake/MemoryPool.cmake` since M1-105 -- belongs in it.
+The CTest test `memory_pool` fails on one outside it, reading the generated
+Ninja files and computing the depth itself. Dependencies built in their own
+directories keep Ninja's default.
 
 **A file is re-linted exactly when its text can have changed** (M1-89): each
 lint step depends on its own compiled object in every target that compiles

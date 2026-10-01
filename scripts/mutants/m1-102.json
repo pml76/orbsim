@@ -5,7 +5,7 @@
   "mutants": [
     {
       "name": "the tests that ask Ninja run without the lock",
-      "file": "CMakeLists.txt",
+      "file": "cmake/ScriptTests.cmake",
       "find": "mutants_due_unmet_expectation_fails PROPERTIES LABELS fixtures RESOURCE_LOCK ninja_deps)",
       "replace": "mutants_due_unmet_expectation_fails PROPERTIES LABELS fixtures)",
       "expect": "caught",
