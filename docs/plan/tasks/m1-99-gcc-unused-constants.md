@@ -66,4 +66,4 @@ not run (decision 244). No fuzz target includes either header.
       suites use. It became `inline constexpr` under the same ruling, in a
       follow-up commit; a build with `-k 0` then found no other error, and the
       three time suites kept their counts.
-- [ ] The other compilers' full runs, after M1-103 (decisions 244 and 248).
+- [x] The other compilers' full runs, 2026-10-01: `windows-msvc` 319 of 319, `linux-sanitize` and `linux-gcc` 299 of 299 each, once M1-103's self-test was made right on Linux (decision 253).

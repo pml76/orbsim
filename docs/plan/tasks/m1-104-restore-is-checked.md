@@ -1,6 +1,6 @@
 # M1-104 — The mutation harness stops if a restore fails
 
-Phase: A | Status: **done, 2026-09-30** -- its mutation pass is the full pass that follows
+Phase: A | Status: **done, 2026-09-30**
 Prerequisites: M1-95
 Decided by: [ADR 0024](../../adr/0024-verification-costs-what-changed.md); register decisions 248 and 252
 
@@ -63,4 +63,4 @@ ignored, the files still modified ignored, and the stop taken away.
       never checked. The loop is back; each of the two judging mutants,
       applied to a copy of `mutate.py`, now fails the self-test. The pass was
       stopped between files, since the fix makes every file due again.
-- [ ] `scripts/mutants/m1-104.json` passes, in the full pass that follows.
+- [x] `scripts/mutants/m1-104.json` passes, 3 of 3, in the full pass of 2026-09-30 to 2026-10-01 at 7655041 -- 25 files, 261 caught, 13 survived, every one declared, none invalid or hung. No restore failed during it.

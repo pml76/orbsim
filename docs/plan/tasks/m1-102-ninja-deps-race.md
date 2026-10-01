@@ -1,6 +1,6 @@
 # M1-102 — Ask Ninja for the header record one test at a time
 
-Phase: A | Status: **done, 2026-09-30** -- its mutation pass follows M1-103
+Phase: A | Status: **done, 2026-09-30**
 Prerequisites: M1-91, M1-92
 Decided by: [ADR 0024](../../adr/0024-verification-costs-what-changed.md); register decisions 248 and 249
 
@@ -79,7 +79,5 @@ measured in the scratch project instead.
       `CMakeLists.txt` gave them the lock. On the damaged MSVC tree, before
       its repair, `mutants-due.py` refused with exit status 1.
 - [x] `check` passes in both Windows trees, 319 of 319, 2026-09-30.
-- [ ] `scripts/mutants/m1-102.json` passes, in the full pass after M1-103
-      (decision 248).
-- [ ] The MSVC tree passes every test, in the other compilers' run after
-      M1-103.
+- [x] `scripts/mutants/m1-102.json` passes, 4 of 4, in the full pass of 2026-09-30 to 2026-10-01 at 7655041 -- 25 files, 261 caught, 13 survived, every one declared, none invalid or hung, and again at 8253acc.
+- [x] The MSVC tree passes every test, 2026-10-01: `windows-msvc` 319 of 319, `linux-sanitize` and `linux-gcc` 299 of 299 each, once M1-103's self-test was made right on Linux (decision 253).

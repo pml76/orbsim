@@ -57,6 +57,5 @@ finding `check`'s edge with forward slashes only and with backslashes only.
       unchanged", and "every lint step and every compile of this project is
       in orbsim_memory, depth 10".
 - [x] `check` passes in both Windows trees, 319 of 319, 2026-09-30.
-- [ ] `scripts/mutants/m1-101.json` passes.
-- [ ] The other compilers' full runs, after this task (decision 244):
-      `windows-msvc`, `linux-sanitize` and `linux-gcc`, every test passing.
+- [x] `scripts/mutants/m1-101.json` passes, 3 of 3, in the full pass of 2026-09-30 to 2026-10-01 at 7655041 -- 25 files, 261 caught, 13 survived, every one declared, none invalid or hung.
+- [x] The other compilers' full runs, 2026-10-01: `windows-msvc` 319 of 319, `linux-sanitize` and `linux-gcc` 299 of 299 each, once M1-103's self-test was made right on Linux (decision 253).

@@ -71,4 +71,5 @@ harness runs, so it is judged instead by the core-only trees' own runs below.
 - [x] `check` passes in both Windows trees, 319 of 319, 2026-09-30, where the
       `mutants_due` tests run as before and `parallel_tests` reports "every GPU
       test holds the gpu lock".
-- [ ] `scripts/mutants/m1-100.json` passes.
+- [x] `scripts/mutants/m1-100.json` passes, 4 of 4, in the full pass of 2026-09-30 to 2026-10-01 at 7655041 -- 25 files, 261 caught, 13 survived, every one declared, none invalid or hung, and again at 8253acc.
+- [x] Both Linux trees pass every test, 2026-10-01: `windows-msvc` 319 of 319, `linux-sanitize` and `linux-gcc` 299 of 299 each, once M1-103's self-test was made right on Linux (decision 253).

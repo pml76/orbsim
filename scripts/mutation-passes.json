@@ -1,112 +1,342 @@
 {
   "m1-08.json": {
-    "commit": "41001ba278228c11a92216ba2ef74c24e5965200",
+    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/relwithdebinfo",
-    "date": "2026-09-30"
+    "date": "2026-09-30",
+    "judges": {
+      "program test_sun.exe": "8ff766578b8539f1",
+      "program test_earth_orientation.exe": "abd3d07e03ad12b8"
+    }
   },
   "m1-09.json": {
-    "commit": "41001ba278228c11a92216ba2ef74c24e5965200",
+    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/relwithdebinfo",
-    "date": "2026-09-30"
+    "date": "2026-09-30",
+    "judges": {
+      "program test_view_math.exe": "9cb5a8a14ab3643f"
+    }
   },
   "m1-10.json": {
-    "commit": "41001ba278228c11a92216ba2ef74c24e5965200",
+    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/relwithdebinfo",
-    "date": "2026-09-30"
+    "date": "2026-09-30",
+    "judges": {
+      "program test_projection.exe": "d699c8cbc7b45ddc",
+      "program test_view_math.exe": "9cb5a8a14ab3643f"
+    }
   },
   "m1-100.json": {
-    "commit": "41001ba278228c11a92216ba2ef74c24e5965200",
+    "commit": "8253accc42bcbdf70b80b954b2f491ceb6302cfb",
     "tree": "build/relwithdebinfo",
-    "date": "2026-09-30"
+    "date": "2026-10-01",
+    "judges": {
+      "program orbsim_shaders": "1c9b519920d94b1e",
+      "ctest parallel_tests_self_test": "246a0f1002e742db",
+      "ctest parallel_tests": "ed72d139477a34b9",
+      "ctest mutants_due": "b45757dba7422e7d"
+    }
   },
   "m1-101.json": {
-    "commit": "41001ba278228c11a92216ba2ef74c24e5965200",
+    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/relwithdebinfo",
-    "date": "2026-09-30"
+    "date": "2026-09-30",
+    "judges": {
+      "program orbsim_shaders": "1c9b519920d94b1e",
+      "ctest memory_pool_self_test": "3d9b182c5d805449",
+      "ctest memory_pool": "3e7bf191a402d00a",
+      "ctest configure_current_self_test": "90dcee767689a353",
+      "ctest configure_current": "9070524fb00563cf"
+    }
+  },
+  "m1-102.json": {
+    "commit": "8253accc42bcbdf70b80b954b2f491ceb6302cfb",
+    "tree": "build/relwithdebinfo",
+    "date": "2026-10-01",
+    "judges": {
+      "program orbsim_shaders": "1c9b519920d94b1e",
+      "ctest parallel_tests": "ed72d139477a34b9",
+      "ctest mutants_due_self_test": "124b6917cc6e8bed",
+      "ctest parallel_tests_self_test": "246a0f1002e742db"
+    }
+  },
+  "m1-103.json": {
+    "commit": "8253accc42bcbdf70b80b954b2f491ceb6302cfb",
+    "tree": "build/relwithdebinfo",
+    "date": "2026-10-01",
+    "judges": {
+      "program orbsim_shaders": "1c9b519920d94b1e",
+      "ctest mutants_due_self_test": "124b6917cc6e8bed",
+      "ctest mutate_self_test": "2e907c7dd50344c3"
+    }
+  },
+  "m1-104.json": {
+    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
+    "tree": "build/relwithdebinfo",
+    "date": "2026-09-30",
+    "judges": {
+      "program orbsim_shaders": "1c9b519920d94b1e",
+      "ctest mutate_self_test": "2e907c7dd50344c3"
+    }
   },
   "m1-11.json": {
-    "commit": "41001ba278228c11a92216ba2ef74c24e5965200",
+    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/relwithdebinfo",
-    "date": "2026-09-30"
+    "date": "2026-09-30",
+    "judges": {
+      "program test_camera.exe": "662fc264a6b77e56",
+      "program test_math.exe": "b8f21ffb641a23a5"
+    }
   },
   "m1-12-release.json": {
-    "commit": "41001ba278228c11a92216ba2ef74c24e5965200",
+    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/relwithdebinfo",
-    "date": "2026-09-30"
+    "date": "2026-09-30",
+    "judges": {
+      "program test_render_quality.exe": "a63ccf8aa1d27927"
+    }
   },
   "m1-12.json": {
-    "commit": "41001ba278228c11a92216ba2ef74c24e5965200",
+    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/debug",
-    "date": "2026-09-30"
+    "date": "2026-09-30",
+    "judges": {
+      "program test_render_quality.exe": "5e2195914a203c7d",
+      "program count_wraparound_subtraction.exe": "7730287f547393d7",
+      "ctest count_wraparound_subtraction_aborts": "ed60c2f20ac28452",
+      "program count_wraparound_addition.exe": "98f6fb854cd3d0e2",
+      "ctest count_wraparound_addition_aborts": "746dd37dcc2105c1",
+      "program count_wraparound_multiplication.exe": "27b87d843e27784a",
+      "ctest count_wraparound_multiplication_aborts": "43aa91a711fae31e"
+    }
   },
   "m1-13.json": {
-    "commit": "41001ba278228c11a92216ba2ef74c24e5965200",
+    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/debug",
-    "date": "2026-09-30"
+    "date": "2026-09-30",
+    "judges": {
+      "program test_pipeline_inputs.exe": "6b896672be3c345e",
+      "program orbsim.exe": "3a826915bbc62e32",
+      "ctest orbsim_smoke": "50442db549e7cc6b",
+      "ctest shader_missing_is_reported": "196220ec2782b8ac",
+      "program test_probe_clear.exe": "392fec97696a18ce",
+      "ctest probe_clear": "7c29146035f43e7e",
+      "ctest every band carries the ramp's radiance, to within one binary16 step": "841800cd0cb33aab",
+      "ctest the grey band's three channels are the same number": "eec08cd9ca57f761",
+      "ctest below the bands nothing is drawn, and every pixel is opaque": "7ab0e73987e5b549"
+    }
   },
   "m1-14.json": {
-    "commit": "41001ba278228c11a92216ba2ef74c24e5965200",
+    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/debug",
-    "date": "2026-09-30"
+    "date": "2026-09-30",
+    "judges": {
+      "program test_srgb.exe": "5366cf628cfb2bc4",
+      "program orbsim.exe": "3a826915bbc62e32",
+      "ctest orbsim_smoke": "50442db549e7cc6b",
+      "ctest probe_clear": "7c29146035f43e7e",
+      "program test_probe_clear.exe": "392fec97696a18ce",
+      "ctest every band carries the ramp's radiance, to within one binary16 step": "841800cd0cb33aab",
+      "ctest the grey band's three channels are the same number": "eec08cd9ca57f761",
+      "ctest below the bands nothing is drawn, and every pixel is opaque": "7ab0e73987e5b549"
+    }
   },
   "m1-15.json": {
-    "commit": "41001ba278228c11a92216ba2ef74c24e5965200",
+    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/debug",
-    "date": "2026-09-30"
+    "date": "2026-09-30",
+    "judges": {
+      "program test_exposure.exe": "ea02866b671ad6bf",
+      "program test_tonemap.exe": "9b33d76be6950e09",
+      "program orbsim.exe": "3a826915bbc62e32",
+      "ctest tonemap_constants": "a18a03375e0a6465",
+      "ctest orbsim_smoke": "50442db549e7cc6b",
+      "ctest probe_clear": "7c29146035f43e7e",
+      "program orbsim_view_header_selfcheck": "b24fbb96fe237068"
+    }
   },
   "m1-16.json": {
-    "commit": "41001ba278228c11a92216ba2ef74c24e5965200",
+    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/debug",
-    "date": "2026-09-30"
+    "date": "2026-09-30",
+    "judges": {
+      "program test_half.exe": "4952e20d46ca5a97",
+      "program test_hdr_dump.exe": "39a4e6d01e9630a9",
+      "program test_image_files.exe": "a4f548cf7b03d3e3",
+      "program test_probe_sidecar.exe": "ddf4ee686515a084",
+      "program orbsim.exe": "3a826915bbc62e32",
+      "program test_probe_clear.exe": "392fec97696a18ce",
+      "ctest probe_clear": "7c29146035f43e7e",
+      "ctest every band carries the ramp's radiance, to within one binary16 step": "841800cd0cb33aab",
+      "ctest the grey band's three channels are the same number": "eec08cd9ca57f761",
+      "ctest below the bands nothing is drawn, and every pixel is opaque": "7ab0e73987e5b549",
+      "ctest probe_clear_determinism": "1d53dc9e543f43d4"
+    }
   },
   "m1-17.json": {
-    "commit": "41001ba278228c11a92216ba2ef74c24e5965200",
+    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/debug",
-    "date": "2026-09-30"
+    "date": "2026-09-30",
+    "judges": {
+      "program test_image_compare.exe": "10b4cd29d0f70557",
+      "program test_image_files.exe": "a4f548cf7b03d3e3",
+      "program test_probe_sidecar.exe": "ddf4ee686515a084",
+      "program orbsim.exe": "3a826915bbc62e32",
+      "program make_broken_goldens.exe": "87573547952eccea",
+      "ctest probe_golden_block": "8ff381c7dc021c0e",
+      "ctest probe_golden_shift": "9bf17b35324eb6a5",
+      "ctest probe_clear": "7c29146035f43e7e",
+      "ctest probe_golden_missing": "fd2899a0cc9fcaae",
+      "ctest usage_accept_without_validation": "3ff85598e7112a69",
+      "program orbsim_shaders": "1c9b519920d94b1e",
+      "ctest accept_golden_self_test": "67a916ccf8c019a7",
+      "ctest accept_golden": "b560531f34d914e4"
+    }
   },
   "m1-87.json": {
-    "commit": "41001ba278228c11a92216ba2ef74c24e5965200",
+    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/relwithdebinfo",
-    "date": "2026-09-30"
+    "date": "2026-09-30",
+    "judges": {
+      "program test_units_validated.exe": "dd8de14ccaf9d6db",
+      "program test_orbit.exe": "267f974221efd2b0",
+      "program test_orbit_scales.exe": "ef17cc2e3833b8eb",
+      "program test_orbit_elements.exe": "a26eb122d9db9286"
+    }
   },
   "m1-88.json": {
-    "commit": "41001ba278228c11a92216ba2ef74c24e5965200",
+    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/relwithdebinfo",
-    "date": "2026-09-30"
+    "date": "2026-09-30",
+    "judges": {
+      "program orbsim_shaders": "1c9b519920d94b1e",
+      "ctest memory_pool": "3e7bf191a402d00a",
+      "ctest memory_pool_self_test": "3d9b182c5d805449"
+    }
   },
   "m1-89.json": {
-    "commit": "41001ba278228c11a92216ba2ef74c24e5965200",
+    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/relwithdebinfo",
-    "date": "2026-09-30"
+    "date": "2026-09-30",
+    "judges": {
+      "program orbsim_shaders": "1c9b519920d94b1e",
+      "ctest lint_deps_self_test": "fcadf87d44650bcf",
+      "ctest lint_deps": "9b565e96ec50d4f9"
+    }
   },
   "m1-90.json": {
-    "commit": "41001ba278228c11a92216ba2ef74c24e5965200",
+    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/relwithdebinfo",
-    "date": "2026-09-30"
+    "date": "2026-09-30",
+    "judges": {
+      "program orbsim_shaders": "1c9b519920d94b1e",
+      "ctest abort_listener_self_test": "79b1594eb33a36af",
+      "ctest abort_listener": "a3e745a29f895fe9",
+      "program test_astro_time.exe": "c6b79b567df417a2",
+      "program test_camera.exe": "662fc264a6b77e56",
+      "program test_double_double.exe": "cc3d4a5e1d011f63",
+      "program test_earth_orientation.exe": "abd3d07e03ad12b8",
+      "program test_exposure.exe": "6310ce31491ceb4b",
+      "program test_fixture_file.exe": "798a503a5603e07c",
+      "program test_half.exe": "702340c7026a9387",
+      "program test_hdr_dump.exe": "fe9b7117835ef41c",
+      "program test_image_compare.exe": "1b97d95f3f8b608d",
+      "program test_image_files.exe": "21e8f19c77a03d1c",
+      "program test_math.exe": "b8f21ffb641a23a5",
+      "program test_orbit.exe": "267f974221efd2b0",
+      "program test_orbit_elements.exe": "a26eb122d9db9286",
+      "program test_orbit_scales.exe": "ef17cc2e3833b8eb",
+      "program test_pipeline_inputs.exe": "b9e3247a3399e819",
+      "program test_probe_sidecar.exe": "a6d35665f6837c93",
+      "program test_projection.exe": "d699c8cbc7b45ddc",
+      "program test_render_quality.exe": "a63ccf8aa1d27927",
+      "program test_srgb.exe": "5df1913d6cb7f625",
+      "program test_sun.exe": "8ff766578b8539f1",
+      "program test_time.exe": "25b597be5309b837",
+      "program test_time_leap.exe": "205aadfaa37dc5ea",
+      "program test_time_ut1.exe": "e6fc0ab2d445d4dc",
+      "program test_tonemap.exe": "6737600f51253843",
+      "program test_units_validated.exe": "dd8de14ccaf9d6db",
+      "program test_view_math.exe": "9cb5a8a14ab3643f",
+      "program test_probe_clear.exe": "5d01e4a55e3ae175"
+    }
   },
   "m1-92.json": {
-    "commit": "41001ba278228c11a92216ba2ef74c24e5965200",
+    "commit": "8253accc42bcbdf70b80b954b2f491ceb6302cfb",
     "tree": "build/relwithdebinfo",
-    "date": "2026-09-30"
+    "date": "2026-10-01",
+    "judges": {
+      "program orbsim_shaders": "1c9b519920d94b1e",
+      "ctest mutants_due_self_test": "124b6917cc6e8bed",
+      "ctest mutants_due": "b45757dba7422e7d",
+      "ctest mutants_due_shaders": "dd86e8feaf08b293",
+      "ctest mutants_due_scripts": "ef5a76cc6574bb05",
+      "ctest mutants_due_unmet_expectation_fails": "e11d6e1f99f1e7f4"
+    }
   },
   "m1-95.json": {
-    "commit": "41001ba278228c11a92216ba2ef74c24e5965200",
+    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/relwithdebinfo",
-    "date": "2026-09-30"
+    "date": "2026-09-30",
+    "judges": {
+      "program test_math.exe": "b8f21ffb641a23a5",
+      "ctest abort_listener": "a3e745a29f895fe9",
+      "program test_astro_time.exe": "c6b79b567df417a2",
+      "program test_camera.exe": "662fc264a6b77e56",
+      "program test_double_double.exe": "cc3d4a5e1d011f63",
+      "program test_earth_orientation.exe": "abd3d07e03ad12b8",
+      "program test_exposure.exe": "6310ce31491ceb4b",
+      "program test_fixture_file.exe": "798a503a5603e07c",
+      "program test_half.exe": "702340c7026a9387",
+      "program test_hdr_dump.exe": "fe9b7117835ef41c",
+      "program test_image_compare.exe": "1b97d95f3f8b608d",
+      "program test_image_files.exe": "21e8f19c77a03d1c",
+      "program test_orbit.exe": "267f974221efd2b0",
+      "program test_orbit_elements.exe": "a26eb122d9db9286",
+      "program test_orbit_scales.exe": "ef17cc2e3833b8eb",
+      "program test_pipeline_inputs.exe": "b9e3247a3399e819",
+      "program test_probe_sidecar.exe": "a6d35665f6837c93",
+      "program test_projection.exe": "d699c8cbc7b45ddc",
+      "program test_render_quality.exe": "a63ccf8aa1d27927",
+      "program test_srgb.exe": "5df1913d6cb7f625",
+      "program test_sun.exe": "8ff766578b8539f1",
+      "program test_time.exe": "25b597be5309b837",
+      "program test_time_leap.exe": "205aadfaa37dc5ea",
+      "program test_time_ut1.exe": "e6fc0ab2d445d4dc",
+      "program test_tonemap.exe": "6737600f51253843",
+      "program test_units_validated.exe": "dd8de14ccaf9d6db",
+      "program test_view_math.exe": "9cb5a8a14ab3643f",
+      "program test_probe_clear.exe": "5d01e4a55e3ae175",
+      "program orbsim_shaders": "1c9b519920d94b1e"
+    }
   },
   "m1-96.json": {
-    "commit": "41001ba278228c11a92216ba2ef74c24e5965200",
+    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/relwithdebinfo",
-    "date": "2026-09-30"
+    "date": "2026-09-30",
+    "judges": {
+      "program orbsim_shaders": "1c9b519920d94b1e",
+      "ctest memory_pool_self_test": "3d9b182c5d805449",
+      "ctest memory_pool": "3e7bf191a402d00a"
+    }
   },
   "m1-97.json": {
-    "commit": "41001ba278228c11a92216ba2ef74c24e5965200",
+    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/relwithdebinfo",
-    "date": "2026-09-30"
+    "date": "2026-09-30",
+    "judges": {
+      "program orbsim_shaders": "1c9b519920d94b1e",
+      "ctest mutate_self_test": "2e907c7dd50344c3"
+    }
   },
   "m1-98.json": {
-    "commit": "41001ba278228c11a92216ba2ef74c24e5965200",
+    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/relwithdebinfo",
-    "date": "2026-09-30"
+    "date": "2026-10-01",
+    "judges": {
+      "program orbsim_shaders": "1c9b519920d94b1e",
+      "ctest configure_current_self_test": "90dcee767689a353",
+      "ctest configure_current": "9070524fb00563cf",
+      "ctest configure_guard": "052a239975a9c9e0"
+    }
   }
 }

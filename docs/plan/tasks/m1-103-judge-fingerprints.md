@@ -1,6 +1,6 @@
 # M1-103 — Judge a build-definition change by what it changed
 
-Phase: A | Status: **done, 2026-09-30** -- its mutation pass is the full pass that follows
+Phase: A | Status: **done, 2026-09-30**
 Prerequisites: M1-92, M1-102
 Decided by: [ADR 0024](../../adr/0024-verification-costs-what-changed.md); register decisions 248 and 250
 
@@ -96,6 +96,9 @@ fingerprints, so it is one pass, not two.
       locations are now real paths under the temporary folder, capitals are
       used only on Windows, and one new case holds the case rule on each
       system; the self-test passes on both.
-- [ ] The full mutation pass, recording the first fingerprints; then
-      `mutants-due.py` lists nothing due.
-- [ ] `scripts/mutants/m1-103.json` passes.
+- [x] The full mutation pass, recording the first fingerprints: the full pass of 2026-09-30 to 2026-10-01 at 7655041 -- 25 files, 261 caught, 13 survived, every one declared, none invalid or hung.
+      Then decision 253's fix to `mutants-due.py` made due exactly the four
+      files judged through it -- `m1-92`, `m1-100`, `m1-102`, `m1-103` -- and no
+      other, the rule working as designed; all four passed at 8253acc, and
+      `mutants-due.py` lists 0 of 25 due.
+- [x] `scripts/mutants/m1-103.json` passes, 7 of 7, at 7655041 and again at 8253acc.
