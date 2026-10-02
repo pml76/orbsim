@@ -42,4 +42,5 @@ a real record exercises -- measured instead, below.
       changes `mutants-due.py`, an input of their judges -- where before it was
       13 and 19.
 - [x] `check` passes in both Windows trees, 320 of 320, 2026-10-02.
-- [ ] `scripts/mutants/m1-106.json` passes.
+- [x] `scripts/mutants/m1-106.json` passes, 3 of 3, 2026-10-02 at d0d06c8, each
+      mutant caught by the self-test case it was aimed at.

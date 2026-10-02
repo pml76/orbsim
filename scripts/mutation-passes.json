@@ -26,9 +26,9 @@
     }
   },
   "m1-100.json": {
-    "commit": "8253accc42bcbdf70b80b954b2f491ceb6302cfb",
+    "commit": "d0d06c88133c899a1c90a4eb379e31e861106282",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-01",
+    "date": "2026-10-02",
     "judges": {
       "program orbsim_shaders": "1c9b519920d94b1e",
       "ctest parallel_tests_self_test": "246a0f1002e742db",
@@ -49,9 +49,9 @@
     }
   },
   "m1-102.json": {
-    "commit": "8253accc42bcbdf70b80b954b2f491ceb6302cfb",
+    "commit": "d0d06c88133c899a1c90a4eb379e31e861106282",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-01",
+    "date": "2026-10-02",
     "judges": {
       "program orbsim_shaders": "1c9b519920d94b1e",
       "ctest parallel_tests": "ed72d139477a34b9",
@@ -60,9 +60,9 @@
     }
   },
   "m1-103.json": {
-    "commit": "8253accc42bcbdf70b80b954b2f491ceb6302cfb",
+    "commit": "d0d06c88133c899a1c90a4eb379e31e861106282",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-01",
+    "date": "2026-10-02",
     "judges": {
       "program orbsim_shaders": "1c9b519920d94b1e",
       "ctest mutants_due_self_test": "124b6917cc6e8bed",
@@ -76,6 +76,15 @@
     "judges": {
       "program orbsim_shaders": "1c9b519920d94b1e",
       "ctest mutate_self_test": "2e907c7dd50344c3"
+    }
+  },
+  "m1-106.json": {
+    "commit": "d0d06c88133c899a1c90a4eb379e31e861106282",
+    "tree": "build/relwithdebinfo",
+    "date": "2026-10-02",
+    "judges": {
+      "program orbsim_shaders": "1c9b519920d94b1e",
+      "ctest mutants_due_self_test": "124b6917cc6e8bed"
     }
   },
   "m1-11.json": {
@@ -204,9 +213,9 @@
     }
   },
   "m1-88.json": {
-    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
+    "commit": "d0d06c88133c899a1c90a4eb379e31e861106282",
     "tree": "build/relwithdebinfo",
-    "date": "2026-09-30",
+    "date": "2026-10-02",
     "judges": {
       "program orbsim_shaders": "1c9b519920d94b1e",
       "ctest memory_pool": "3e7bf191a402d00a",
@@ -224,9 +233,9 @@
     }
   },
   "m1-90.json": {
-    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
+    "commit": "d0d06c88133c899a1c90a4eb379e31e861106282",
     "tree": "build/relwithdebinfo",
-    "date": "2026-09-30",
+    "date": "2026-10-02",
     "judges": {
       "program orbsim_shaders": "1c9b519920d94b1e",
       "ctest abort_listener_self_test": "79b1594eb33a36af",
@@ -261,9 +270,9 @@
     }
   },
   "m1-92.json": {
-    "commit": "8253accc42bcbdf70b80b954b2f491ceb6302cfb",
+    "commit": "d0d06c88133c899a1c90a4eb379e31e861106282",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-01",
+    "date": "2026-10-02",
     "judges": {
       "program orbsim_shaders": "1c9b519920d94b1e",
       "ctest mutants_due_self_test": "124b6917cc6e8bed",
@@ -274,9 +283,9 @@
     }
   },
   "m1-95.json": {
-    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
+    "commit": "d0d06c88133c899a1c90a4eb379e31e861106282",
     "tree": "build/relwithdebinfo",
-    "date": "2026-09-30",
+    "date": "2026-10-02",
     "judges": {
       "program test_math.exe": "b8f21ffb641a23a5",
       "ctest abort_listener": "a3e745a29f895fe9",
@@ -310,9 +319,9 @@
     }
   },
   "m1-96.json": {
-    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
+    "commit": "d0d06c88133c899a1c90a4eb379e31e861106282",
     "tree": "build/relwithdebinfo",
-    "date": "2026-09-30",
+    "date": "2026-10-02",
     "judges": {
       "program orbsim_shaders": "1c9b519920d94b1e",
       "ctest memory_pool_self_test": "3d9b182c5d805449",
@@ -329,9 +338,9 @@
     }
   },
   "m1-98.json": {
-    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
+    "commit": "d0d06c88133c899a1c90a4eb379e31e861106282",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-01",
+    "date": "2026-10-02",
     "judges": {
       "program orbsim_shaders": "1c9b519920d94b1e",
       "ctest configure_current_self_test": "90dcee767689a353",

@@ -64,7 +64,14 @@ As decided (decision 254):
       succeeded, and the comparison above is from that run. CLion's automatic
       reload is still partly on on this machine; STATUS asks the owner to
       switch it off.
-- [ ] `mutants-due.py` lists only the files the move should make due, and they
-      pass.
-- [ ] Afterwards, a comment added to `CMakeLists.txt` alone makes `m1-98` due
-      and no other file.
+- [x] `mutants-due.py` lists only the files the move should make due, and they
+      pass, 2026-10-02 at d0d06c8: `m1-88` 7 of 7, `m1-90` 5 of 5, `m1-95` 1
+      and its declared survivor, `m1-96` 4 of 4, `m1-98` 8 of 8, `m1-100` 4 of
+      4, `m1-102` 4 of 4 -- once M1-106 had each file judged in its own tree;
+      before it, one tree's view of the other's files over-reported. CLion was
+      closed for the pass. Afterwards 0 of 26 due, asked about either tree.
+- [x] Afterwards, a change to `CMakeLists.txt` alone makes `m1-98` due and no
+      other file: 1 of 26, where it was 7 before this task and 25 before
+      M1-103. Measured with `--assume-changed CMakeLists.txt`, the generated
+      files unchanged -- which is what a comment leaves them, as the
+      before-and-after comparison above showed.
