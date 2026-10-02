@@ -33,6 +33,9 @@ on" is, deliberately, more than it strictly needs:
     or recorded in another tree -- the build definition makes every file due,
     as before.
 
+Each file is judged in the tree its pass was recorded in, whichever tree is
+named (M1-106): only there can its fingerprints be compared.
+
 It over-approximates on purpose: listing a file that did not need to run
 costs minutes, and missing one costs a hole nobody sees.
 
@@ -313,6 +316,10 @@ def same_tree(recorded: str, tree: pathlib.Path) -> bool:
     return norm(ROOT / recorded) == norm(tree)
 
 
+def same_tree_path(one: pathlib.Path, two: pathlib.Path) -> bool:
+    return norm(one) == norm(two)
+
+
 def judged_since(record: dict, now: dict) -> list:
     """The judges whose fingerprint differs from the one the pass recorded."""
     was = record["judges"]
@@ -325,9 +332,35 @@ def changed_since(commit: str) -> set:
     return {norm(ROOT / n) for n in names if n}
 
 
+def judging_tree(record, named: pathlib.Path, only_assumed: bool, exists) -> tuple:
+    """(tree, why): the tree a mutant file is judged in, and what to say about it.
+
+    The tree its pass was recorded in, whatever tree was named (M1-106, register
+    decision 255): a file is judged in one tree, `m1-12` to `m1-17` in Debug and
+    the rest in RelWithDebInfo, and only there can its fingerprints be compared.
+    Asked about the other tree, the strict rule used to list it due for any
+    build-definition change -- safe, but 19 files instead of 7 on 2026-10-01.
+    The named tree where there is no record or the changes are made up
+    (--only-assumed); None, so the file is due, where the recorded tree is not
+    on this machine."""
+    if record is None or only_assumed:
+        return named, ""
+    recorded = ROOT / record["tree"]
+    if not exists(recorded):
+        return None, f"recorded in {record['tree']}, which is not here"
+    return recorded, ""
+
+
 def main_check(tree: pathlib.Path, assumed: list, only_assumed: bool, expect_due: list) -> int:
     passes = json.loads(PASSES.read_text(encoding="utf-8")) if PASSES.exists() else {}
-    t = Tree(tree)
+    readings = {}
+
+    def reading(path: pathlib.Path) -> Tree:
+        """One reading of each tree used, made when it is first needed."""
+        if norm(path) not in readings:
+            readings[norm(path)] = Tree(path.resolve())
+        return readings[norm(path)]
+
     due_count = 0
     due_names = set()
     files = sorted((ROOT / "scripts" / "mutants").glob("*.json"))
@@ -336,23 +369,32 @@ def main_check(tree: pathlib.Path, assumed: list, only_assumed: bool, expect_due
         record = passes.get(spec_path.name)
         changed = changed_since(record["commit"]) if record and not only_assumed else set()
         changed |= {norm(ROOT / a) for a in assumed}
+        where, absent = judging_tree(record, tree, only_assumed, pathlib.Path.is_dir)
+        if where is None:
+            due_count += 1
+            due_names.add(spec_path.name)
+            print(f"DUE      {spec_path.name}: {absent}")
+            continue
+        t = reading(where)
         # Fingerprints decide a build-definition change where the pass recorded
         # them in this tree; anywhere else the strict rule stands (M1-103).
         judged = None
-        if record and not only_assumed and "judges" in record and same_tree(record["tree"], tree):
+        if record and not only_assumed and "judges" in record and same_tree(record["tree"], where):
             judged = judged_since(record, t.fingerprints(spec))
         due, reasons = is_due(changed, t.judge_inputs(spec), record is not None or only_assumed, judged)
         root = norm(ROOT) + "/"
         shown = [r[len(root):] if r.startswith(root) else r for r in reasons[:3]]
+        in_tree = "" if same_tree_path(where, tree) else f" [in {os.path.relpath(where, ROOT).replace(chr(92), '/')}]"
         if due:
             due_count += 1
             due_names.add(spec_path.name)
             more = f" and {len(reasons) - 3} more" if len(reasons) > 3 else ""
-            print(f"DUE      {spec_path.name}: {', '.join(shown)}{more}")
+            print(f"DUE      {spec_path.name}{in_tree}: {', '.join(shown)}{more}")
         else:
             since = f"passed at {record['commit'][:12]}" if record else "no recorded pass, judged on the assumed changes only"
-            print(f"current  {spec_path.name} ({since})")
-    t.save_hashes()
+            print(f"current  {spec_path.name}{in_tree} ({since})")
+    for t in readings.values():
+        t.save_hashes()
     print(f"mutants-due: {due_count} of {len(files)} mutant files due")
     # --expect-due: how CTest checks the real computation against this tree.
     missing = [name for name in expect_due if name not in due_names]
@@ -487,6 +529,26 @@ def self_test() -> int:
         {"judges": {"same": "1", "moved": "2", "lost": "3"}}, {"same": "1", "moved": "9", "new": "4"}) == [
         "lost: fingerprint changed", "moved: fingerprint changed", "new: fingerprint changed"]
     for name, got in fp_cases.items():
+        status = "ok" if got else "WRONG"
+        failures += status == "WRONG"
+        print(f"self-test: {name} ({status})")
+    # Which tree a file is judged in (M1-106): the one its pass was recorded in,
+    # whatever tree was named -- where else could its fingerprints be compared?
+    # The named one where there is no record, or the changes are made up; and
+    # none, so the file is due, where the recorded tree is not on this machine.
+    named = pathlib.Path(tempfile.gettempdir()) / "build" / "relwithdebinfo"
+    in_debug = {"commit": "c0ffee", "tree": "build/debug"}
+    tree_cases = {
+        "a file is judged in the tree its pass was recorded in":
+            judging_tree(in_debug, named, False, lambda p: True)[0] == ROOT / "build" / "debug",
+        "a file with no record is judged in the named tree":
+            judging_tree(None, named, False, lambda p: True)[0] == named,
+        "made-up changes are judged in the named tree":
+            judging_tree(in_debug, named, True, lambda p: True)[0] == named,
+        "a recorded tree this machine does not have makes the file due, and says so":
+            judging_tree(in_debug, named, False, lambda p: False) == (None, "recorded in build/debug, which is not here"),
+    }
+    for name, got in tree_cases.items():
         status = "ok" if got else "WRONG"
         failures += status == "WRONG"
         print(f"self-test: {name} ({status})")

@@ -1,6 +1,6 @@
 # Milestone 1 — the task queue
 
-Status: **planned 2026-09-08.** 105 tasks, in one order. (84 until 2026-09-13,
+Status: **planned 2026-09-08.** 106 tasks, in one order. (84 until 2026-09-13,
 when an audit found phase F had no gate although the rule below says every
 phase ends with one. The new task is **M1-85**, sitting between 77 and 78:
 renumbering seven tasks to make it "78" would have broken the identifiers that
@@ -21,7 +21,8 @@ were added: a race on Ninja's header record, and judging a build-definition
 change by its effect -- decisions 248 to 250. 103 until the same evening, when
 **M1-104** was added: the mutation harness stops if a restore fails -- decision 252.
 104 until 2026-10-01, when **M1-105** was added: the mutated parts of the build
-in files of their own -- decision 254.)
+in files of their own -- decision 254. 105 until 2026-10-02, when **M1-106** was
+added: each mutant file judged in its own tree -- decision 255.)
 Which of them are done is in [`../STATUS.md`](../STATUS.md), not here.
 
 This is the working document for [milestone 1](milestone-1-earth.md): Earth, an
@@ -181,7 +182,7 @@ measured ([`../measurements/verification-cost.md`](../measurements/verification-
 and every later task is verified under them. The numbers continue the
 sequence, as decision 30 did for 85. [ADR 0024](../adr/0024-verification-costs-what-changed.md).
 
-**99 to 105 run before 18**, since 2026-09-30 (decisions 243, 244, 248, 252 and 254): the
+**99 to 106 run before 18**, since 2026-09-30 (decisions 243, 244, 248, 252, 254 and 255): the
 owner wants M1-18 begun on a clean slate, with every tree -- the other
 compilers' included -- passing.
 
@@ -222,6 +223,7 @@ compilers' included -- passing.
 | [103](tasks/m1-103-judge-fingerprints.md) | Judge a build-definition change by what it changed | 92, 102 | A task reruns only the mutant files its change can reach |
 | [104](tasks/m1-104-restore-is-checked.md) | The mutation harness stops if a restore fails | 95 | No mutant is ever judged under another |
 | [105](tasks/m1-105-cmake-split.md) | Give the mutated parts of the build their own files | 103 | A `CMakeLists.txt` edit reruns one mutant file, not seven |
+| [106](tasks/m1-106-own-tree.md) | Judge each mutant file in its own tree | 103 | Either tree gives the same answer |
 | [18](tasks/m1-18-radiometry-probe.md) | Numeric probes, and the radiometry budget | 15, 16 | 0.5 % of an analytic radiance |
 | [19](tasks/m1-19-line-renderer.md) | The line renderer | 11, 12, 13 | Lines, camera-relative |
 | [20](tasks/m1-20-planetary-grid.md) | The planetary grid, and the jitter budget | 17, 19 | Phase A's stated acceptance: no jitter |

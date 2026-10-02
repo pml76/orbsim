@@ -595,6 +595,9 @@ changed since `scripts/mutation-passes.json` says it last passed. That covers:
   no fingerprint was recorded in this tree. A file that mutates
   `CMakeLists.txt` itself is still due whenever it changes.
 
+Each file is judged in the tree its pass was recorded in, whichever tree is
+named (M1-106), so either Windows tree gives the same list.
+
 `mutate.py` writes a file's entry after a clean run, and only when the code
 matches the commit, since otherwise the record would vouch for code that is
 not committed. After an edit to a core header, nearly everything is due, and
