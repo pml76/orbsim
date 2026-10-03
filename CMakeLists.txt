@@ -1249,12 +1249,21 @@ function(orbsim_add_golden_test name golden expect_exit)
         set_tests_properties(probe_golden_${name} PROPERTIES FIXTURES_REQUIRED broken_goldens)
     endif()
 endfunction()
+#
+# **Which limit each breaks, not the two numbers themselves** (register
+# decision 275). The numbers are the alteration plus the GPU's own distance
+# from the golden, which is zero only on the GPU the golden was made on: on an
+# AMD Radeon RX 7900 XTX, on 2026-10-03, `clear` is up to 1/255 from it, mean
+# 0.01780/255 -- the size decision 238 measured between Intel and NVIDIA --
+# so the block's mean read 0.02668 rather than 0.00889, and the shift's
+# largest 2 rather than 1. The arithmetic of the two numbers is pinned
+# exactly, without a GPU, by test_image_compare.
 orbsim_add_golden_test(block ${ORBSIM_BROKEN_GOLDEN_DIR}/clear-block.png 4
         -DEXPECT_DIFF=ON
-        "-DEXPECT_STDERR=largest difference 8/255, over the limit of 4/255|mean difference 0.00889/255, within the limit")
+        "-DEXPECT_STDERR=largest difference|, over the limit of 4/255|mean difference|, within the limit of under 0.5/255")
 orbsim_add_golden_test(shift ${ORBSIM_BROKEN_GOLDEN_DIR}/clear-shift.png 4
         -DEXPECT_DIFF=ON
-        "-DEXPECT_STDERR=largest difference 1/255, within the limit of 4/255|mean difference 1.00000/255, over the limit")
+        "-DEXPECT_STDERR=largest difference|, within the limit of 4/255|mean difference|, over the limit of under 0.5/255")
 orbsim_add_golden_test(missing ${CMAKE_CURRENT_BINARY_DIR}/no-such-golden.png 1
         "-DEXPECT_STDERR=cannot compare with the golden|no-such-golden.png")
 orbsim_add_golden_test(wrong_size ${ORBSIM_BROKEN_GOLDEN_DIR}/clear-wrong-size.png 1
