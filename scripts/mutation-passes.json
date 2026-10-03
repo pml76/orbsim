@@ -106,6 +106,24 @@
       "program test_math.exe": "b8f21ffb641a23a5"
     }
   },
+  "m1-110.json": {
+    "commit": "c389741c0147ab5e0730f084736a0cd569f92bfe",
+    "tree": "build/debug",
+    "date": "2026-10-03",
+    "judges": {
+      "program test_golden_path.exe": "8e5118fbdcd81385",
+      "program orbsim.exe": "ec4178dab3fab69d",
+      "ctest probe_clear_golden": "c49638cdac19776a",
+      "ctest probe_golden_no_card": "5cdde8af0dfab2b2",
+      "ctest usage_golden_and_golden_dir": "047c8dd820786788",
+      "program make_broken_goldens.exe": "ff7f6613e247c88b",
+      "ctest probe_golden_block": "4a7424df7e4d6c7d",
+      "ctest probe_golden_shift": "46e0baf3b8273b3b",
+      "ctest probe_golden_wrong_size": "564dafe2f37fe7d8",
+      "program orbsim_shaders": "aaf9306a0b5e5d7e",
+      "ctest accept_golden_self_test": "46b66b5cf634c1d4"
+    }
+  },
   "m1-12-release.json": {
     "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/relwithdebinfo",

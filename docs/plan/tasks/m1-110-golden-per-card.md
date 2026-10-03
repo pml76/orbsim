@@ -91,8 +91,11 @@ this machine, then commit and push; the first machine runs it later.
 - [ ] `check` green on the first machine -- **later, by the owner's ruling**
       (decision 299), and recorded in `STATUS.md` until then.
 - [x] ADR 0008's update section, and decision 238's row pointing at 287.
-- [ ] `scripts/mutants/m1-110.json` run after the commit and its record
+- [x] `scripts/mutants/m1-110.json` run after the commit and its record
       committed; anchors in older mutant files that this moves, re-pointed.
+      **10 of 10 caught**, none surviving, none invalid, 2026-10-03, in
+      `build/debug` -- after a first run reported the two script mutants
+      INVALID because they named no build target, fixed as M1-17's are.
 
 ## What was built
 
