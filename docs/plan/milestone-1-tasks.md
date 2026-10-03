@@ -1,6 +1,6 @@
 # Milestone 1 — the task queue
 
-Status: **planned 2026-09-08.** 109 tasks, in one order. (84 until 2026-09-13,
+Status: **planned 2026-09-08.** 110 tasks, in one order. (84 until 2026-09-13,
 when an audit found phase F had no gate although the rule below says every
 phase ends with one. The new task is **M1-85**, sitting between 77 and 78:
 renumbering seven tasks to make it "78" would have broken the identifiers that
@@ -30,7 +30,8 @@ reachable -- decision 273. 108 until later that day, when **M1-109** was
 added, to run after M1-108: the due list made to list only what a change can
 reach, measured first -- decision 276. The same day both moved to just
 before the phase A gate, M1-23, where the mutation pass next runs in full --
-decision 277.)
+decision 277. 109 until later that day, when **M1-110** was added, to run
+before M1-19: one golden per graphics card -- decisions 287 and 288.)
 Which of them are done is in [`../STATUS.md`](../STATUS.md), not here.
 
 This is the working document for [milestone 1](milestone-1-earth.md): Earth, an
@@ -238,6 +239,7 @@ compilers' included -- passing.
 | [106](tasks/m1-106-own-tree.md) | Judge each mutant file in its own tree | 103 | Either tree gives the same answer |
 | [107](tasks/m1-107-upload-visibility.md) | An upload made visible to what runs after it | -- | `uploadBuffer` as the specification asks, before its first caller |
 | [18](tasks/m1-18-radiometry-probe.md) | Numeric probes, and the radiometry budget | 15, 16 | 0.5 % of an analytic radiance |
+| [110](tasks/m1-110-golden-per-card.md) | One golden per graphics card | 17 | Each card held to pictures approved on it |
 | [19](tasks/m1-19-line-renderer.md) | The line renderer | 11, 12, 13 | Lines, camera-relative |
 | [20](tasks/m1-20-planetary-grid.md) | The planetary grid, and the jitter budget | 17, 19 | Phase A's stated acceptance: no jitter |
 | [21](tasks/m1-21-camera-controls.md) | Camera controls and scripted paths | 11 | You can fly it, and a script can repeat it |
