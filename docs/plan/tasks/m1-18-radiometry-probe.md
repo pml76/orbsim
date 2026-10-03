@@ -1,6 +1,6 @@
 # M1-18 — Numeric probes, and the radiometry budget
 
-Phase: A | Status: **done, 2026-10-03** -- code, tests and documents; the mutation pass runs on the committed code
+Phase: A | Status: **done, 2026-10-03** -- code, tests and documents; **the mutation pass is unfinished** (below, and STATUS.md's "Still open" row)
 Prerequisites: M1-15, M1-16
 Decided by: [ADR 0008](../../adr/0008-renderer-verification.md), [ADR 0014](../../adr/0014-radiometric-chain.md)
 
@@ -190,6 +190,34 @@ Run now rather than at the gate (decision 266).
 - **MSVC found one**, the same missing braces under its own name (C5246),
   fixed the same way; it then builds the tree with no warning and passes
   **355 of 355** -- one fewer than clang, as since M1-16, having no `_Float16`.
+
+## The mutation pass
+
+**Unfinished, stopped by the owner on 2026-10-03.** After the commit
+`mutants-due.py` listed 26 of 28 files. Five ran clean on `ca25281` and are
+recorded:
+
+- **`m1-18.json`: 22 mutants, 21 caught, 1 survived**, two of them at compile
+  time (the albedo's bounds). Every GPU mutant fell to the judges aimed at it:
+  the shader without pi or without the cosine, a hard-coded irradiance, the
+  near Sun at 0.6 AU, the patch tilted 50 degrees, the wrong face culled, the
+  vertex buffer never bound, `lambert-exposure` keeping f/16, and
+  `tonemap-port` without its negative light. One kill is recorded for what it
+  was: the Sun's direction handed over as the surface's is caught by
+  `test_lambert` and could not be on the GPU, a dot product being symmetric.
+  **The survivor**, the shader lighting a surface from behind, is declared and
+  waits on the owner's ruling. **The first run found two mutants INVALID** --
+  each left a variable unused, an error under `-Werror` -- rewritten in
+  `ca25281`.
+- **`m1-15.json`: 27 caught, 2 survived** -- the negative-light clamp, a
+  declared survivor since M1-15, **caught** by the port check on
+  `tonemap-port`; the CPU floor and the clamp before the 2.2 power survive as
+  declared (decisions 185 and 262).
+- `m1-09.json` 14 caught and its declared survivor; `m1-10.json` and
+  `m1-11.json` 14 of 14 each.
+
+The other 21 are listed in STATUS.md, with how the run was stopped and what it
+left behind.
 
 ## Found on the way
 
