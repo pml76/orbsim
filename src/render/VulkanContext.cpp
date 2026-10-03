@@ -652,6 +652,37 @@ void makeWritesVisibleToHost(VkCommandBuffer cmd) {
     vkCmdPipelineBarrier2(cmd, &dep);
 }
 
+// An upload's copy made visible to every command submitted after it (M1-107,
+// register decision 272). **The fence that uploadBuffer waits on is not
+// enough**: the specification's fence signal operation has an empty second
+// access scope, and the dependency a later queue submission defines covers
+// only earlier host writes -- so nothing else orders the copy's writes before
+// a later draw's reads (chapters/synchronization.adoc, "Fence Signal
+// Operation" and "Host Write Ordering Guarantees"; Khronos's synchronization
+// examples skip this barrier only where a semaphore lies between the two
+// submissions). Its second scope is every stage and every read and write,
+// because uploadBuffer does not know what the buffer will be used for; at
+// load time the stall costs nothing anyone can see.
+//
+// **Not seen failing on this machine**, and not seeable by the validation
+// layers, which treat a host fence wait as completing everything before it.
+// The barrier is here because the specification asks for it.
+void makeUploadVisibleToLaterCommands(VkCommandBuffer cmd) {
+    const VkMemoryBarrier2 barrier{
+        .sType = VK_STRUCTURE_TYPE_MEMORY_BARRIER_2,
+        .srcStageMask = VK_PIPELINE_STAGE_2_COPY_BIT,
+        .srcAccessMask = VK_ACCESS_2_TRANSFER_WRITE_BIT,
+        .dstStageMask = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT,
+        .dstAccessMask = VK_ACCESS_2_MEMORY_READ_BIT | VK_ACCESS_2_MEMORY_WRITE_BIT,
+    };
+    const VkDependencyInfo dep{
+        .sType = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .memoryBarrierCount = 1,
+        .pMemoryBarriers = &barrier,
+    };
+    vkCmdPipelineBarrier2(cmd, &dep);
+}
+
 } // namespace
 
 // ---------------------------------------------------------------------------
@@ -1238,7 +1269,13 @@ std::expected<void, RenderError> VulkanContext::uploadBuffer(UniqueBuffer& dst,
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
-        return {};
+        // Flushed, because the next queue submission makes visible only host
+        // writes "available to the host memory domain", and memory that is
+        // not host-coherent holds them in the CPU's caches until flushed
+        // (M1-107). VMA does nothing here where the memory is coherent -- the
+        // counterpart of readBack's invalidate.
+        return vkCheck(vmaFlushAllocation(allocator_.get(), dst.allocation(), 0, data.size()),
+                       "vmaFlushAllocation (upload)");
     }
 
     auto staging = createBuffer({
@@ -1256,12 +1293,21 @@ std::expected<void, RenderError> VulkanContext::uploadBuffer(UniqueBuffer& dst,
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
+    // Flushed before the copy reads it, for the reason the direct path gives.
+    if (auto ok =
+            vkCheck(vmaFlushAllocation(allocator_.get(), staging->allocation(), 0, data.size()),
+                    "vmaFlushAllocation (staging)");
+        !ok) {
+        return ok;
+    }
 
     // Complete before return, not merely submitted: the staging buffer
     // destroys itself then.
     const VkBufferCopy copy{.srcOffset = 0, .dstOffset = 0, .size = data.size()};
-    return submitImmediate(
-        [&](VkCommandBuffer cmd) { vkCmdCopyBuffer(cmd, staging->get(), dst.get(), 1, &copy); });
+    return submitImmediate([&](VkCommandBuffer cmd) {
+        vkCmdCopyBuffer(cmd, staging->get(), dst.get(), 1, &copy);
+        makeUploadVisibleToLaterCommands(cmd);
+    });
 }
 
 // Records into the immediate-submit command buffer, submits it alone, and

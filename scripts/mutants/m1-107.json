@@ -1,0 +1,55 @@
+{
+  "task": "M1-107",
+  "tree": "build/relwithdebinfo",
+  "note": "An upload made visible to what runs after it (register decision 272). Each mutant takes one of the three additions away: the barrier after the staging copy, the flush after the direct write, the flush of the staging buffer. **All three are declared survivors, for two reasons in turn.** At M1-107's commit nothing calls uploadBuffer -- it has existed since milestone 0 and M1-18's lambert probes are its first caller -- so no judge can reach them. And once M1-18 lands they still cannot be seen on this machine: its upload memory is host-coherent, where a flush does nothing, and the validation layers treat a host fence wait as completing everything before it, so a missing barrier draws the same frame. The owner chose the fix knowing it could not be shown failing here (2026-10-03). M1-18's pass re-runs this file with the lambert probes' tests as judges and records what they make of it.",
+  "mutants": [
+    {
+      "name": "the staging copy is never made visible to later commands",
+      "file": "src/render/VulkanContext.cpp",
+      "find": "        makeUploadVisibleToLaterCommands(cmd);",
+      "replace": "        static_cast<void>(&makeUploadVisibleToLaterCommands);",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "ctest": [
+        "orbsim_smoke",
+        "probe_clear"
+      ],
+      "expect": "survives",
+      "why": "The barrier the specification asks for between the copy and any later read (chapters/synchronization.adoc: a fence signal's second access scope is empty, and a queue submission orders only earlier host writes). Nothing calls uploadBuffer before M1-18, and the validation layers cannot see a missing barrier across a host fence wait. Declared with the fix (register decision 272)."
+    },
+    {
+      "name": "a direct upload is not flushed",
+      "file": "src/render/VulkanContext.cpp",
+      "find": "        return vkCheck(vmaFlushAllocation(allocator_.get(), dst.allocation(), 0, data.size()),\n                       \"vmaFlushAllocation (upload)\");",
+      "replace": "        return {};",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "ctest": [
+        "orbsim_smoke",
+        "probe_clear"
+      ],
+      "expect": "survives",
+      "why": "The flush matters only on memory that is not host-coherent, and nothing calls uploadBuffer before M1-18. Declared with the fix (register decision 272)."
+    },
+    {
+      "name": "the staging buffer is not flushed before the copy",
+      "file": "src/render/VulkanContext.cpp",
+      "find": "            vkCheck(vmaFlushAllocation(allocator_.get(), staging->allocation(), 0, data.size()),",
+      "replace": "            vkCheck(VK_SUCCESS,",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "ctest": [
+        "orbsim_smoke",
+        "probe_clear"
+      ],
+      "expect": "survives",
+      "why": "As the direct path's flush: it matters only on memory that is not host-coherent, and nothing calls uploadBuffer before M1-18. Declared with the fix (register decision 272)."
+    }
+  ]
+}
