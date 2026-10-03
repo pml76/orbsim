@@ -83,6 +83,7 @@
       "find": "    set(card \"${vendor_hex}-${device_hex}\")",
       "replace": "    set(card \"${device_hex}-${vendor_hex}\")",
       "suites": [],
+      "targets": ["orbsim_shaders"],
       "ctest": ["probe_golden_no_card"],
       "expect": "caught"
     },
@@ -92,6 +93,7 @@
       "find": "        if any(ACCEPT in a for a in command) and any(GOLDEN in a for a in command):",
       "replace": "        if any(ACCEPT in a for a in command) and any(a == GOLDEN for a in command):",
       "suites": [],
+      "targets": ["orbsim_shaders"],
       "ctest": ["accept_golden_self_test"],
       "expect": "caught"
     }
