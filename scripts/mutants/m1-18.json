@@ -179,14 +179,15 @@
         "probe_lambert-two-au",
         "probe_lambert-tilted-60",
         "probe_lambert-exposure",
+        "probe_lambert-backlit",
         "the patch at 1 AU reads back 0.3 x 1361 / pi, within 0.5 %, at every pixel",
         "the quantisation floor is the format's, five times inside the budget",
         "the inverse-square law holds on the GPU path: 4x at 0.5 AU, 1/4 at 2 AU",
         "the patch tilted 60 degrees from the Sun reads back half the radiance",
-        "exposure does not touch the HDR frame, and only the picture differs"
+        "exposure does not touch the HDR frame, and only the picture differs",
+        "the patch lit from behind reads back no light at all, and is drawn"
       ],
-      "expect": "survives",
-      "why": "Every lambert probe lights its patch from the front -- the cosine is 1 or 0.5 -- so the clamp at zero acts on no pixel of them. A surface lit from behind arrives with the first night side, M1-32's tile; declared rather than closed by a probe the task did not ask for."
+      "expect": "caught"
     },
     {
       "name": "the vertex shader treats a position as a direction",
@@ -288,8 +289,8 @@
     {
       "name": "the near Sun is at 0.6 AU",
       "file": "src/render/Probes.cpp",
-      "find": "    return withLambert(kAstronomicalUnit * 0.5, Radians{0.0});",
-      "replace": "    return withLambert(kAstronomicalUnit * 0.6, Radians{0.0});",
+      "find": "    return withLambert(kAstronomicalUnit * 0.5, Radians{0.0}, kSunBehindCamera);",
+      "replace": "    return withLambert(kAstronomicalUnit * 0.6, Radians{0.0}, kSunBehindCamera);",
       "suites": [],
       "targets": [
         "orbsim",
@@ -312,8 +313,8 @@
     {
       "name": "the tilted patch is tilted 50 degrees",
       "file": "src/render/Probes.cpp",
-      "find": "    return withLambert(kAstronomicalUnit, Radians{std::numbers::pi / 3.0});",
-      "replace": "    return withLambert(kAstronomicalUnit, Radians{std::numbers::pi * 5.0 / 18.0});",
+      "find": "    return withLambert(kAstronomicalUnit, Radians{std::numbers::pi / 3.0}, kSunBehindCamera);",
+      "replace": "    return withLambert(kAstronomicalUnit, Radians{std::numbers::pi * 5.0 / 18.0}, kSunBehindCamera);",
       "suites": [],
       "targets": [
         "orbsim",

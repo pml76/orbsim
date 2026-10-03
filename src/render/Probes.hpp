@@ -164,6 +164,7 @@ createScene(VulkanContext& context,
 [[nodiscard]] ProbeConditions lambertTwoAuConditions();    // the Sun at 2 AU
 [[nodiscard]] ProbeConditions lambertTilted60Conditions(); // the patch tilted 60 degrees
 [[nodiscard]] ProbeConditions lambertExposureConditions(); // f/8 instead of f/16
+[[nodiscard]] ProbeConditions lambertBacklitConditions();  // the Sun beyond the patch
 
 struct Probe {
     std::string_view name;
@@ -206,6 +207,12 @@ inline constexpr std::array kProbes{
         .description = "the lambert scene at f/8 instead of f/16: the same HDR frame, "
                        "and a brighter picture",
         .conditions = lambertExposureConditions,
+    },
+    Probe{
+        .name = "lambert-backlit",
+        .description = "the lambert patch with the Sun straight beyond it, lighting only its "
+                       "back: no radiance at all, the patch drawn black",
+        .conditions = lambertBacklitConditions,
     },
     Probe{
         .name = "tonemap-port",

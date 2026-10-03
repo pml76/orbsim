@@ -49,6 +49,8 @@
 // a hard-coded irradiance passes the first and fails these. `lambert-tilted-60`
 // is the cosine, half. `lambert-exposure` is the architecture in one claim:
 // its HDR dump is byte for byte `lambert`'s, and only its picture differs.
+// `lambert-backlit` is the clamp: the Sun straight beyond the patch, a cosine
+// of exactly -1, and no light at all (register decision 274).
 //
 #include "HdrDumpFile.hpp"
 #include "core/Scalar.hpp"
@@ -211,6 +213,45 @@ void requireEveryPixel(const HdrDump& dump, f64 want) {
     REQUIRE(!failure.found);
 }
 
+// The first pixel of the frame whose R, G or B is not exactly +0, or whose
+// alpha is not one -- or none. **Exact, not within a budget**: the clamp makes
+// the cosine 0 and every other factor is positive, so the shader computes
+// +0 and a binary16 write holds it exactly; a relative budget of zero would
+// say the same with a division by it. **The alpha is what shows the patch was
+// drawn**: the clear writes alpha 0 (view/SceneClear.hpp) and lambert.frag
+// writes 1, so a patch drawn black and a patch not drawn at all, the same in
+// R, G and B, differ here.
+[[nodiscard]] FirstFailure firstNotDrawnBlack(const HdrDump& dump) {
+    for (std::uint32_t row = 0; row < kHeight; ++row) {
+        for (std::uint32_t column = 0; column < kWidth; ++column) {
+            const Pixel pixel{.column = column, .row = row};
+            int index = 0;
+            for (const Channel channel : {Channel::Red, Channel::Green, Channel::Blue}) {
+                const f32 got = dump.at(pixel, channel);
+                if (bitsOf(got) != bitsOf(0.0F)) {
+                    return {
+                        .found = true,
+                        .pixel = pixel,
+                        .value = static_cast<f64>(got),
+                        .channel = index,
+                    };
+                }
+                ++index;
+            }
+            const f32 alpha = dump.at(pixel, Channel::Alpha);
+            if (bitsOf(alpha) != bitsOf(1.0F)) {
+                return {
+                    .found = true,
+                    .pixel = pixel,
+                    .value = static_cast<f64>(alpha),
+                    .channel = 3,
+                };
+            }
+        }
+    }
+    return {};
+}
+
 // The first value at which the picture at f/8 is not brighter than at f/16,
 // or the count of values if there is none.
 // The two pictures by their exposures, so that they cannot be given the wrong
@@ -288,4 +329,17 @@ TEST_CASE("exposure does not touch the HDR frame, and only the picture differs")
     INFO("the first value not brighter at f/8 is value " << at << " of "
                                                          << pictureAtF16->valueCount());
     REQUIRE(at == pictureAtF16->valueCount());
+}
+
+TEST_CASE("the patch lit from behind reads back no light at all, and is drawn") {
+    // The radiance the definition gives without the clamp, to show what the
+    // clamp removes: the front's, negated.
+    const f64 unclamped = lambertRadiance({.distanceInAu = 1.0, .thetaRadians = std::numbers::pi});
+    REQUIRE(unclamped < -129.0);
+    const FirstFailure failure = firstNotDrawnBlack(readDump("lambert-backlit"));
+    INFO("row " << failure.pixel.row << ", column " << failure.pixel.column << ", channel "
+                << failure.channel << " (3 is alpha): got " << failure.value
+                << ", want +0 in R, G and B and 1 in alpha; without the clamp it would be "
+                << unclamped);
+    REQUIRE(!failure.found);
 }

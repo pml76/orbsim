@@ -1191,6 +1191,7 @@ set(ORBSIM_NUMERIC_PROBES
         lambert-two-au
         lambert-tilted-60
         lambert-exposure
+        lambert-backlit
         tonemap-port
 )
 foreach(probe IN LISTS ORBSIM_NUMERIC_PROBES)

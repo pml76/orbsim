@@ -89,16 +89,25 @@ constexpr f64 kSunny16 = 16.0;
 constexpr f64 kTwoStopsBrighter = 8.0;
 
 // The lambert scene's fixed parts (register decisions 269 and 270): a 100 m
-// square centred 10 m in front of the camera, lit by a Sun straight behind
-// it. The albedo is the task's, 0.3 -- about the Earth's Bond albedo, which
-// is why the task chose it, and comfortably inside 0 to 1.
+// square centred 10 m in front of the camera. The albedo is the task's, 0.3 -- about the Earth's
+// Bond albedo, which is why the task chose it, and comfortably inside 0 to 1.
 constexpr f64 kPatchAheadMetres = 10.0;
 constexpr f64 kPatchSideMetres = 100.0;
 constexpr f64 kAlbedo = 0.3;
 
-// The Sun's distance and the patch's tilt are different types, so the two
-// cannot be given the wrong way round (non-negotiable 1).
-[[nodiscard]] ProbeConditions withLambert(Metres sunDistance, Radians tilt) {
+// Where the Sun is, as the direction toward it. Straight behind the camera,
+// which looks down -z, lights the patch's front, the side the camera sees;
+// straight beyond the patch lights only its back, so the cosine is exactly
+// -1 and lambert.frag's clamp at zero is what decides every pixel (register
+// decision 274).
+constexpr Direction kSunBehindCamera{0.0, 0.0, 1.0};
+constexpr Direction kSunBeyondPatch{0.0, 0.0, -1.0};
+
+// The Sun's distance, the patch's tilt and the direction toward the Sun are
+// three different types, so none can be given in another's place
+// (non-negotiable 1).
+[[nodiscard]] ProbeConditions
+withLambert(Metres sunDistance, Radians tilt, const Direction& towardSun) {
     ProbeConditions conditions = clearConditions();
     conditions.picture = view::LambertScene{
         .albedo = view::Albedo::from(kAlbedo).value(),
@@ -112,7 +121,7 @@ constexpr f64 kAlbedo = 0.3;
                 .side = Metres{kPatchSideMetres},
                 .tilt = tilt,
             },
-        .towardSun = Direction{0.0, 0.0, 1.0},
+        .towardSun = towardSun,
     };
     return conditions;
 }
@@ -297,18 +306,24 @@ ProbeConditions tonemapPortConditions() {
     return conditions;
 }
 
-ProbeConditions lambertConditions() { return withLambert(kAstronomicalUnit, Radians{0.0}); }
+ProbeConditions lambertConditions() {
+    return withLambert(kAstronomicalUnit, Radians{0.0}, kSunBehindCamera);
+}
 
 ProbeConditions lambertHalfAuConditions() {
-    return withLambert(kAstronomicalUnit * 0.5, Radians{0.0});
+    return withLambert(kAstronomicalUnit * 0.5, Radians{0.0}, kSunBehindCamera);
 }
 
 ProbeConditions lambertTwoAuConditions() {
-    return withLambert(kAstronomicalUnit * 2.0, Radians{0.0});
+    return withLambert(kAstronomicalUnit * 2.0, Radians{0.0}, kSunBehindCamera);
 }
 
 ProbeConditions lambertTilted60Conditions() {
-    return withLambert(kAstronomicalUnit, Radians{std::numbers::pi / 3.0});
+    return withLambert(kAstronomicalUnit, Radians{std::numbers::pi / 3.0}, kSunBehindCamera);
+}
+
+ProbeConditions lambertBacklitConditions() {
+    return withLambert(kAstronomicalUnit, Radians{0.0}, kSunBeyondPatch);
 }
 
 ProbeConditions lambertExposureConditions() {
