@@ -1,0 +1,247 @@
+diff --git a/src/render/Pipeline.cpp b/src/render/Pipeline.cpp
+index 37ccd6c..2676154 100644
+--- a/src/render/Pipeline.cpp
++++ b/src/render/Pipeline.cpp
+@@ -9,6 +9,13 @@
+ #include <vulkan/utility/vk_format_utils.h>
+ #include <vulkan/vk_enum_string_helper.h>
+ #include <vulkan/vulkan_core.h>
++#include <cstdlib> // SPIKE
++namespace {
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wdeprecated-declarations"
++[[nodiscard]] bool spikeBresenham() { return std::getenv("ORBSIM_SPIKE_BRESENHAM") != nullptr; }
++#pragma clang diagnostic pop
++} // namespace
+ 
+ #include <array>
+ #include <cstddef>
+@@ -321,7 +328,15 @@ createPipeline(VkDevice device, const GraphicsPipelineDesc& desc, VkPipelineLayo
+ 
+     const VkPipelineInputAssemblyStateCreateInfo assembly = inputAssembly(desc.topology);
+     const VkPipelineViewportStateCreateInfo viewport = oneViewport();
+-    const VkPipelineRasterizationStateCreateInfo raster = rasterization(desc);
++    VkPipelineRasterizationStateCreateInfo raster = rasterization(desc);
++    // SPIKE (M1-19, not for commit): Bresenham lines when asked.
++    const VkPipelineRasterizationLineStateCreateInfoKHR spikeLine{
++        .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_KHR,
++        .lineRasterizationMode = VK_LINE_RASTERIZATION_MODE_BRESENHAM_KHR,
++    };
++    if (desc.topology == Topology::LineList && spikeBresenham()) {
++        raster.pNext = &spikeLine;
++    }
+     const VkPipelineMultisampleStateCreateInfo multisample = singleSample();
+     const VkPipelineDepthStencilStateCreateInfo depth = depthStencil(desc.depth);
+ 
+diff --git a/src/render/Probes.cpp b/src/render/Probes.cpp
+index 9ff8246..ab5db64 100644
+--- a/src/render/Probes.cpp
++++ b/src/render/Probes.cpp
+@@ -22,6 +22,7 @@
+ #include <vulkan/vulkan_core.h>
+ 
+ #include <array>
++#include <cmath> // SPIKE
+ #include <cstddef>
+ #include <cstdint>
+ #include <expected>
+@@ -264,6 +265,111 @@ createLambertScene(VulkanContext& context,
+     }};
+ }
+ 
++// SPIKE (M1-19, not for commit): three axes and a square, for measuring how
++// lines are rasterized on different GPUs.
++std::expected<ProbeScene, RenderError> createLinesScene(VulkanContext& context,
++                                                        const std::filesystem::path& shaderDirectory,
++                                                        const ProbeConditions& conditions) {
++    const view::Camera& camera = conditions.camera;
++    constexpr f32 kLevel = 130.0F; // W/(m^2 sr), about the lambert patch's radiance
++    const view::Rgba red{.r = kLevel, .g = 0.0F, .b = 0.0F, .a = 1.0F};
++    const view::Rgba green{.r = 0.0F, .g = kLevel, .b = 0.0F, .a = 1.0F};
++    const view::Rgba blue{.r = 0.0F, .g = 0.0F, .b = kLevel, .a = 1.0F};
++    const view::Rgba white{.r = kLevel, .g = kLevel, .b = kLevel, .a = 1.0F};
++    const auto v = [&](const Position& p, const view::Rgba& c) {
++        return view::LineVertex{.position = view::toRenderSpace(p, camera), .colour = c};
++    };
++    const Position o{0.0, 0.0, 0.0};
++    const Position s0{0.25, 0.25, 0.0};
++    const Position s1{1.25, 0.25, 0.0};
++    const Position s2{1.25, 1.25, 0.0};
++    const Position s3{0.25, 1.25, 0.0};
++    const std::array vertices{
++        v(o, red),    v(Position{1.0, 0.0, 0.0}, red),
++        v(o, green),  v(Position{0.0, 1.0, 0.0}, green),
++        v(o, blue),   v(Position{0.0, 0.0, 1.0}, blue),
++        v(s0, white), v(s1, white), v(s1, white), v(s2, white),
++        v(s2, white), v(s3, white), v(s3, white), v(s0, white),
++    };
++    const std::span<const std::byte> vertexBytes = std::as_bytes(std::span(vertices));
++    auto buffer = context.createBuffer({
++        .size = vertexBytes.size(),
++        .usage = VkBufferUsageFlags{VK_BUFFER_USAGE_VERTEX_BUFFER_BIT} |
++                 VkBufferUsageFlags{VK_BUFFER_USAGE_TRANSFER_DST_BIT},
++        .memory = Memory::DeviceLocal,
++    });
++    if (!buffer) return std::unexpected(buffer.error());
++    if (auto uploaded = context.uploadBuffer(*buffer, vertexBytes); !uploaded) {
++        return std::unexpected(uploaded.error());
++    }
++    const view::Aspect aspect{static_cast<f64>(view::kProbeImageSize.width) /
++                              static_cast<f64>(view::kProbeImageSize.height)};
++    const auto projection =
++        view::infiniteReverseZPerspective(camera.verticalFov(), aspect, camera.nearPlane());
++    ORBSIM_ENSURES(projection.has_value());
++    const view::LinePushConstants block{
++        .viewProjection = view::toShaderMatrix(*projection * view::viewMatrix(camera)),
++        .tint = {1.0F, 1.0F, 1.0F, 1.0F},
++    };
++
++    auto vertexShader = context.loadShaderModule(shaderDirectory / "line.vert.spv");
++    if (!vertexShader) return std::unexpected(vertexShader.error());
++    auto fragmentShader = context.loadShaderModule(shaderDirectory / "line.frag.spv");
++    if (!fragmentShader) return std::unexpected(fragmentShader.error());
++    const auto attributes = view::kLineVertexLayout.attributes();
++    const std::array pushConstants{view::kLinePushConstantRange};
++    auto pipeline = GraphicsPipeline::create(
++        context.device(),
++        {
++            .shaders = {.vertex = vertexShader->get(), .fragment = fragmentShader->get()},
++            .vertexInput = {.stride = view::kLineVertexLayout.stride(), .attributes = attributes},
++            .topology = Topology::LineList,
++            .polygonMode = PolygonMode::Fill,
++            .cullMode = CullMode::None,
++            .depth = {.test = DepthTest::Enabled, .write = DepthWrite::Disabled},
++            .attachments = {.colour = kHdrFormat, .depth = kDepthFormat},
++            .pushConstants = pushConstants,
++            .descriptorSetLayouts = {},
++        });
++    if (!pipeline) return std::unexpected(pipeline.error());
++    return ProbeScene{ProbeDraw{
++        .pipeline = *std::move(pipeline),
++        .vertices = *std::move(buffer),
++        .vertexCount = static_cast<std::uint32_t>(vertices.size()),
++        .pushConstants = bytesOf(block),
++        .pushStages = VK_SHADER_STAGE_VERTEX_BIT,
++    }};
++}
++
++ProbeConditions linesConditions() {
++    // Camera 5 m from (0.5, 0.5, 0.3), on the diagonal azimuth, 30 degrees up,
++    // world Z up on screen. Orientation is camera-to-world: columns are the
++    // camera's right, up and back in world coordinates.
++    const f64 elevation = kPi / 6.0;
++    const f64 c = std::cos(elevation) / std::sqrt(2.0);
++    const std::array<f64, 3> back{c, c, std::sin(elevation)};
++    const f64 r = 1.0 / std::sqrt(2.0);
++    const std::array<f64, 3> right{-r, r, 0.0};
++    const std::array<f64, 3> up{back.at(1) * right.at(2) - back.at(2) * right.at(1),
++                       back.at(2) * right.at(0) - back.at(0) * right.at(2),
++                       back.at(0) * right.at(1) - back.at(1) * right.at(0)};
++    RotationMatrix m{};
++    for (std::size_t i = 0; i < 3; ++i) {
++        m.rows.at(i) = {right.at(i), up.at(i), back.at(i)};
++    }
++    const Position target{0.5, 0.5, 0.3};
++    const f64 d = 5.0;
++    const auto camera = view::Camera::from(
++        Position{target.x.value() + d * back.at(0), target.y.value() + d * back.at(1),
++                 target.z.value() + d * back.at(2)},
++        quaternionFrom(m), Radians{kPi / 4.0}, Metres{1.0});
++    ORBSIM_ENSURES(camera.has_value());
++    ProbeConditions conditions = clearConditions();
++    conditions.camera = camera.value();
++    conditions.picture = LinesPicture{};
++    return conditions;
++}
++
+ std::expected<ProbeScene, RenderError> createScene(VulkanContext& context,
+                                                    const std::filesystem::path& shaderDirectory,
+                                                    const ProbeConditions& conditions) {
+@@ -272,6 +378,8 @@ std::expected<ProbeScene, RenderError> createScene(VulkanContext& context,
+             using Picture = std::decay_t<decltype(picture)>;
+             if constexpr (std::is_same_v<Picture, view::LambertScene>) {
+                 return createLambertScene(context, shaderDirectory, conditions, picture);
++            } else if constexpr (std::is_same_v<Picture, LinesPicture>) {
++                return createLinesScene(context, shaderDirectory, conditions);
+             } else if constexpr (std::is_same_v<Picture, PortPicture>) {
+                 return createPortScene(context, shaderDirectory, conditions);
+             } else {
+diff --git a/src/render/Probes.hpp b/src/render/Probes.hpp
+index 031510a..2c75ced 100644
+--- a/src/render/Probes.hpp
++++ b/src/render/Probes.hpp
+@@ -61,7 +61,8 @@ namespace orb::gfx {
+ // which is the first of non-negotiable 3's answers to a bad value.
+ struct GradientPicture {}; // clear's: view/ProbeGradient.hpp, from the exposure alone
+ struct PortPicture {};     // tonemap-port's: shaders/probe_port.frag, from nothing at all
+-using ProbePicture = std::variant<GradientPicture, view::LambertScene, PortPicture>;
++struct LinesPicture {};    // SPIKE (M1-19)
++using ProbePicture = std::variant<GradientPicture, view::LambertScene, PortPicture, LinesPicture>;
+ 
+ // What a probe holds fixed. Every field has a physical or named meaning, and
+ // each is written into the probe's sidecar.
+@@ -103,6 +104,10 @@ public:
+                        const ProbeConditions& conditions,
+                        const view::LambertScene& scene);
+     friend std::expected<ProbeScene, RenderError>
++    createLinesScene(VulkanContext& context,
++                     const std::filesystem::path& shaderDirectory,
++                     const ProbeConditions& conditions);
++    friend std::expected<ProbeScene, RenderError>
+     createPortScene(const VulkanContext& context,
+                     const std::filesystem::path& shaderDirectory,
+                     const ProbeConditions& conditions);
+@@ -165,6 +170,7 @@ createScene(VulkanContext& context,
+ [[nodiscard]] ProbeConditions lambertTilted60Conditions(); // the patch tilted 60 degrees
+ [[nodiscard]] ProbeConditions lambertExposureConditions(); // f/8 instead of f/16
+ [[nodiscard]] ProbeConditions lambertBacklitConditions();  // the Sun beyond the patch
++[[nodiscard]] ProbeConditions linesConditions(); // SPIKE (M1-19)
+ 
+ struct Probe {
+     std::string_view name;
+@@ -214,6 +220,11 @@ inline constexpr std::array kProbes{
+                        "back: no radiance at all, the patch drawn black",
+         .conditions = lambertBacklitConditions,
+     },
++    Probe{
++        .name = "lines",
++        .description = "SPIKE (M1-19): three axes and a square",
++        .conditions = linesConditions,
++    },
+     Probe{
+         .name = "tonemap-port",
+         .description = "six bands of light the tonemap's clamps act on, negative channels "
+diff --git a/src/render/VulkanContext.cpp b/src/render/VulkanContext.cpp
+index a2e26dc..e5ab254 100644
+--- a/src/render/VulkanContext.cpp
++++ b/src/render/VulkanContext.cpp
+@@ -8,6 +8,13 @@
+ #include <SDL3/SDL_error.h>
+ #include <SDL3/SDL_log.h>
+ #include <SDL3/SDL_video.h>
++#include <cstdlib> // SPIKE
++namespace {
++#pragma clang diagnostic push
++#pragma clang diagnostic ignored "-Wdeprecated-declarations"
++[[nodiscard]] bool spikeBresenham() { return std::getenv("ORBSIM_SPIKE_BRESENHAM") != nullptr; }
++#pragma clang diagnostic pop
++} // namespace
+ #include <SDL3/SDL_vulkan.h>
+ #include <VkBootstrap.h>
+ #include <vulkan/utility/vk_format_utils.h>
+@@ -309,6 +316,15 @@ struct DeviceBundle {
+     std::string selectionError;
+     const auto pick = [&](DeviceChoice choice) -> std::optional<vkb::PhysicalDevice> {
+         vkb::PhysicalDeviceSelector selector{instance};
++        // SPIKE (M1-19, not for commit): Bresenham lines when asked.
++        if (spikeBresenham()) {
++            VkPhysicalDeviceLineRasterizationFeaturesKHR line{
++                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_KHR,
++                .bresenhamLines = VK_TRUE,
++            };
++            selector.add_required_extension("VK_KHR_line_rasterization");
++            selector.add_required_extension_features(line);
++        }
+         auto result = selector.set_surface(surface)
+                           .set_minimum_version(1, 3)
+                           .set_required_features(features10)
