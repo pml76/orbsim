@@ -87,6 +87,16 @@
       "ctest mutants_due_self_test": "124b6917cc6e8bed"
     }
   },
+  "m1-107.json": {
+    "commit": "c58035418f16197c1445446dc3d08b2480398ce8",
+    "tree": "build/relwithdebinfo",
+    "date": "2026-10-03",
+    "judges": {
+      "program orbsim.exe": "87968d5c2b00ed84",
+      "ctest orbsim_smoke": "50442db549e7cc6b",
+      "ctest probe_clear": "7c29146035f43e7e"
+    }
+  },
   "m1-11.json": {
     "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/relwithdebinfo",
@@ -119,9 +129,9 @@
     }
   },
   "m1-13.json": {
-    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
+    "commit": "c58035418f16197c1445446dc3d08b2480398ce8",
     "tree": "build/debug",
-    "date": "2026-09-30",
+    "date": "2026-10-03",
     "judges": {
       "program test_pipeline_inputs.exe": "6b896672be3c345e",
       "program orbsim.exe": "3a826915bbc62e32",
@@ -135,9 +145,9 @@
     }
   },
   "m1-14.json": {
-    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
+    "commit": "c58035418f16197c1445446dc3d08b2480398ce8",
     "tree": "build/debug",
-    "date": "2026-09-30",
+    "date": "2026-10-03",
     "judges": {
       "program test_srgb.exe": "5366cf628cfb2bc4",
       "program orbsim.exe": "3a826915bbc62e32",
@@ -150,9 +160,9 @@
     }
   },
   "m1-15.json": {
-    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
+    "commit": "c58035418f16197c1445446dc3d08b2480398ce8",
     "tree": "build/debug",
-    "date": "2026-09-30",
+    "date": "2026-10-03",
     "judges": {
       "program test_exposure.exe": "ea02866b671ad6bf",
       "program test_tonemap.exe": "9b33d76be6950e09",
@@ -164,9 +174,9 @@
     }
   },
   "m1-16.json": {
-    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
+    "commit": "c58035418f16197c1445446dc3d08b2480398ce8",
     "tree": "build/debug",
-    "date": "2026-09-30",
+    "date": "2026-10-03",
     "judges": {
       "program test_half.exe": "4952e20d46ca5a97",
       "program test_hdr_dump.exe": "39a4e6d01e9630a9",
@@ -182,9 +192,9 @@
     }
   },
   "m1-17.json": {
-    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
+    "commit": "c58035418f16197c1445446dc3d08b2480398ce8",
     "tree": "build/debug",
-    "date": "2026-09-30",
+    "date": "2026-10-03",
     "judges": {
       "program test_image_compare.exe": "10b4cd29d0f70557",
       "program test_image_files.exe": "a4f548cf7b03d3e3",
