@@ -240,7 +240,7 @@
       "name": "the vertex buffer is never bound",
       "file": "src/render/Probes.cpp",
       "find": "        vkCmdBindVertexBuffers(cmd, 0, 1, &buffer, &kOffset);",
-      "replace": "        static_cast<void>(&buffer);",
+      "replace": "        static_cast<void>(&buffer);\n        static_cast<void>(&kOffset);",
       "suites": [],
       "targets": [
         "orbsim",
@@ -258,7 +258,8 @@
         "the patch tilted 60 degrees from the Sun reads back half the radiance",
         "exposure does not touch the HDR frame, and only the picture differs"
       ],
-      "expect": "caught"
+      "expect": "caught",
+      "why": "Rewritten 2026-10-03 to compile: replacing the call with one statement left kOffset unused, an -Werror error, so the first run was INVALID and proved nothing (VERIFICATION.md rule 19)."
     },
     {
       "name": "the irradiance is 1361 W/m^2 whatever the distance",
@@ -336,7 +337,7 @@
       "name": "lambert-exposure keeps the exposure it was to change",
       "file": "src/render/Probes.cpp",
       "find": "    conditions.exposure = exposureAt(kTwoStopsBrighter);",
-      "replace": "    conditions.exposure = exposureAt(kSunny16);",
+      "replace": "    conditions.exposure = exposureAt(kTwoStopsBrighter * 2.0);",
       "suites": [],
       "targets": [
         "orbsim",
@@ -354,7 +355,8 @@
         "the patch tilted 60 degrees from the Sun reads back half the radiance",
         "exposure does not touch the HDR frame, and only the picture differs"
       ],
-      "expect": "caught"
+      "expect": "caught",
+      "why": "f/8 times two is f/16, the exposure lambert already has. Rewritten 2026-10-03 to compile: naming kSunny16 left kTwoStopsBrighter unused, an -Werror error, so the first run was INVALID."
     },
     {
       "name": "the tonemap-port frame holds no negative light in its second band",
