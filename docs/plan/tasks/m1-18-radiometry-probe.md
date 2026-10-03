@@ -193,6 +193,15 @@ Run now rather than at the gate (decision 266).
 
 ## The mutation pass
 
+**Closed on 2026-10-03, on a second machine** (register decisions 274 and
+276). The survivor below was closed by a test, the probe `lambert-backlit`:
+its mutant is **caught**, by "the patch lit from behind reads back no light at
+all, and is drawn", and `m1-18.json` ran clean at `87af028`, **22 of 22
+caught**. `m1-12`, `m1-13`, `m1-14`, `m1-15`, `m1-16` and `m1-17` ran clean
+there too, every survivor a declared one. The other 21 files were stopped by
+the owner and are left to the phase A gate under decision 276, which moved the
+re-runs of older files there. What follows is the record as it stood before.
+
 **Unfinished, stopped by the owner on 2026-10-03.** After the commit
 `mutants-due.py` listed 26 of 28 files. Five ran clean on `ca25281` and are
 recorded:

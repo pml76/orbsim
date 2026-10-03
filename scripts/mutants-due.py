@@ -11,9 +11,9 @@ caught mutant into a survivor, and nothing said which older mutant files a
 task should run again: that was judgement, and judgement can forget. The rule
 since M1-92 (ADR 0024, register decision 212, the *strict* one): **a mutant
 file is due when anything its judges depend on has changed since it last
-passed.** Every file this lists is run before the next push (register
-decision 274; before the commit until 2026-10-03); the full pass runs at every
-gate.
+passed.** Every file this lists runs at each phase gate, and a task runs its
+own file after its commit and before its push (register decision 276, since
+2026-10-03).
 
 "Last passed" is the commit `scripts/mutate.py` recorded in
 `scripts/mutation-passes.json` after a clean run. "Anything its judges depend

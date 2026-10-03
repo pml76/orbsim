@@ -80,6 +80,9 @@ model errors is now the most limiting. That last one is the input to milestone
 
 ## Done when
 
+- [ ] Every mutant file `python scripts/mutants-due.py build/relwithdebinfo`
+      lists has run and matched its expectations, and its record is committed
+      ([`VERIFICATION.md`](../../VERIFICATION.md) rule 19; register decision 276).
 - [ ] Every toolchain and every sanitizer passes.
 - [ ] Six fuzzers, ten minutes each, clean.
 - [ ] The soak is clean with bounded memory.

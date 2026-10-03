@@ -60,6 +60,9 @@ committed with its approval date.
 
 ## Done when
 
+- [ ] Every mutant file `python scripts/mutants-due.py build/relwithdebinfo`
+      lists has run and matched its expectations, and its record is committed
+      ([`VERIFICATION.md`](../../VERIFICATION.md) rule 19; register decision 276).
 - [ ] Six toolchains pass — Windows RelWithDebInfo and Debug, ASan, MSVC, Linux
       clang+ASan+UBSan, Linux gcc-14 — plus TSan on the threaded code.
 - [ ] Four fuzzers clean.

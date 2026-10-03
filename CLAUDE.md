@@ -173,12 +173,13 @@ only live in Debug. Smaller targets for the loop: `lint`, `format-check`,
 Run the two trees one after the other, never at once. **Two more steps**,
 outside `check` because they take minutes:
 
-- **before every push**, run every mutant file
-  `python scripts/mutants-due.py build/<tree>` lists
-  ([`docs/VERIFICATION.md`](docs/VERIFICATION.md) rule 19). Since 2026-10-03
-  (register decision 274): `scripts/mutate.py` records a pass only for
-  committed code, so the rule follows the tool, and nothing leaves the machine
-  unchecked;
+- **after a task's commit and before its push**, run the task's own mutant
+  file, `python scripts/mutate.py scripts/mutants/<task>.json`, and commit
+  the record it writes ([`docs/VERIFICATION.md`](docs/VERIFICATION.md)
+  rule 19). **Every file `python scripts/mutants-due.py build/<tree>` lists
+  runs at each phase gate**, not per task: since 2026-10-03 (register
+  decision 276), because every recorded find came from a task's own mutants
+  and the re-runs of older files, two to three hours, had found none;
 - **before a task's commit**, if the change reaches a fuzz target
   (`src/core/`, `src/orbit/`, `src/astro/`, a `tests/fuzz_*.cpp`), run that
   fuzzer for its budget from its committed corpus (rule 13).
@@ -248,7 +249,7 @@ and the conventions and the finishing checklist are in
 ## Current work
 
 [Milestone 1](docs/plan/milestone-1-earth.md): Earth, orbit track, Orbit MFD,
-broken into 108 tasks. Phases run **A → B → D → C → E → F → G** — atmosphere
+broken into 109 tasks. Phases run **A → B → D → C → E → F → G** — atmosphere
 deliberately before the quadtree, because it is what makes the image read as
 Earth and it gives a correct reference while debugging tile seams. **Which task
 is next is in [`docs/STATUS.md`](docs/STATUS.md)**, not here. The plan was

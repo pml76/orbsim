@@ -61,6 +61,9 @@ stating plainly in the commit message.
 
 ## Done when
 
+- [ ] Every mutant file `python scripts/mutants-due.py build/relwithdebinfo`
+      lists has run and matched its expectations, and its record is committed
+      ([`VERIFICATION.md`](../../VERIFICATION.md) rule 19; register decision 276).
 - [ ] Every toolchain passes, counts matching, and the two compilers agree.
 - [ ] Six fuzzers clean.
 - [ ] The 30-day arc is clean, with drift curves recorded.

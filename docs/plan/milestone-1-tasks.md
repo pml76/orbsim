@@ -1,6 +1,6 @@
 # Milestone 1 — the task queue
 
-Status: **planned 2026-09-08.** 108 tasks, in one order. (84 until 2026-09-13,
+Status: **planned 2026-09-08.** 109 tasks, in one order. (84 until 2026-09-13,
 when an audit found phase F had no gate although the rule below says every
 phase ends with one. The new task is **M1-85**, sitting between 77 and 78:
 renumbering seven tasks to make it "78" would have broken the identifiers that
@@ -26,7 +26,9 @@ added: each mutant file judged in its own tree -- decision 255. 106 until
 2026-10-03, when **M1-107** was added: an upload made visible to what runs
 after it, found by M1-18 -- decision 272. 107 until later that day, when
 **M1-108** was added, to run after M1-18: four declared survivors made
-reachable -- decision 273.)
+reachable -- decision 273. 108 until later that day, when **M1-109** was
+added, to run after M1-108: the due list made to list only what a change can
+reach, measured first -- decision 276.)
 Which of them are done is in [`../STATUS.md`](../STATUS.md), not here.
 
 This is the working document for [milestone 1](milestone-1-earth.md): Earth, an
@@ -86,11 +88,12 @@ These are not repeated in the 96 documents. They apply to all of them.
    commit as the code that first depends on it.
 8. Commits end with the `Co-Authored-By` line and **no session URL**
    ([`../../CLAUDE.md`](../../CLAUDE.md), Attribution).
-9. **Every mutant file a change makes due is run before the next push**:
-   `python scripts/mutants-due.py build/<tree>` lists them, and the full pass
-   stays at the gates ([`../VERIFICATION.md`](../VERIFICATION.md) rule 19;
-   ADR 0024, M1-92). *(Added 2026-09-27; "before the commit" until
-   2026-10-03, register decision 274.)*
+9. **A task runs its own mutant file after its commit and before its push**,
+   and commits the record; **every file `python scripts/mutants-due.py
+   build/<tree>` lists runs at each phase gate**
+   ([`../VERIFICATION.md`](../VERIFICATION.md) rule 19; ADR 0024, M1-92).
+   *(Added 2026-09-27; every due file per task until 2026-10-03, register
+   decision 276.)*
 10. **A change that reaches a fuzz target runs that fuzzer before the commit**,
     for its budget, from its committed corpus
     ([`../VERIFICATION.md`](../VERIFICATION.md) rule 13; ADR 0024, M1-93).
@@ -108,7 +111,9 @@ wsl -d Ubuntu -- cmake --preset linux-gcc      && ...      # the second compiler
 ./build/windows-fuzz/fuzz_<target>.exe tests/corpus/<target> -max_total_time=<budget>   # VERIFICATION.md rule 13
 ```
 
-plus a coverage review and an update to `PROJECT_STATE.md`. **Nothing proceeds
+plus every mutant file `python scripts/mutants-due.py build/<tree>` lists
+(rule 9 below; register decision 276), a coverage review and an update to
+`PROJECT_STATE.md`. **Nothing proceeds
 past a red gate.** Two compilers disagreeing is the signal a second toolchain
 exists to produce.
 
@@ -232,6 +237,7 @@ compilers' included -- passing.
 | [107](tasks/m1-107-upload-visibility.md) | An upload made visible to what runs after it | -- | `uploadBuffer` as the specification asks, before its first caller |
 | [18](tasks/m1-18-radiometry-probe.md) | Numeric probes, and the radiometry budget | 15, 16 | 0.5 % of an analytic radiance |
 | [108](tasks/m1-108-reachable-rules.md) | Four declared survivors made reachable | 18 | Four rules a test can see, and four declarations fewer |
+| [109](tasks/m1-109-due-list-reach.md) | List only the mutant files a change can reach | 92, 103 | A gate's re-run is as short as the change allows |
 | [19](tasks/m1-19-line-renderer.md) | The line renderer | 11, 12, 13 | Lines, camera-relative |
 | [20](tasks/m1-20-planetary-grid.md) | The planetary grid, and the jitter budget | 17, 19 | Phase A's stated acceptance: no jitter |
 | [21](tasks/m1-21-camera-controls.md) | Camera controls and scripted paths | 11 | You can fly it, and a script can repeat it |

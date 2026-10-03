@@ -81,6 +81,9 @@ now reaches both the physics and the renderer.
 
 ## Done when
 
+- [ ] Every mutant file `python scripts/mutants-due.py build/relwithdebinfo`
+      lists has run and matched its expectations, and its record is committed
+      ([`VERIFICATION.md`](../../VERIFICATION.md) rule 19; register decision 276).
 - [ ] All six configurations pass, with matching assertion counts.
 - [ ] Both fuzzers — `fuzz_orbit` and `fuzz_time` — run clean for their budgets,
       from their committed corpora ([`VERIFICATION.md`](../../VERIFICATION.md) rule 13; amended 2026-09-27, M1-93).

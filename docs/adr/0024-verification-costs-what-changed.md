@@ -157,3 +157,22 @@ the build definition only.** Every task since M1-92 but one had changed
   minutes -- and a toolchain update now makes the affected files due, which
   the strict rule never noticed.
 
+## Update, 2026-10-03: older files re-run at the gates, not per task
+
+Register decision 276. **Point 5 above -- re-run an older mutant file whenever
+its judges' inputs change -- now applies at each phase gate rather than to
+every task.** A task runs its own mutant file, after its commit and before its
+push, and commits the record.
+
+- **Why**: every find in the records came from a task's own new mutants --
+  M1-09, M1-11, M1-12, M1-14, M1-87, M1-92, M1-94 and M1-18 -- and every
+  recorded re-run of older files, on 2026-09-28, 2026-09-30 and 2026-10-03,
+  ended with only declared survivors. A task's own file costs 10 to 30
+  minutes; the re-runs cost two to three hours, and on 2026-10-03, a second
+  machine's first run, all 28 files were due.
+- **What it gives up**: an older test that a later change weakens is found at
+  the next gate rather than at once.
+- **What follows**: [M1-109](../plan/tasks/m1-109-due-list-reach.md), to make
+  the list as short as a change allows, measured first; and a line in every
+  gate's checklist, which until now named no mutation pass at all although
+  this record and `VERIFICATION.md` said the full pass runs at every gate.

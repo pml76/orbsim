@@ -59,6 +59,9 @@ propagators.
 
 ## Done when
 
+- [ ] Every mutant file `python scripts/mutants-due.py build/relwithdebinfo`
+      lists has run and matched its expectations, and its record is committed
+      ([`VERIFICATION.md`](../../VERIFICATION.md) rule 19; register decision 276).
 - [ ] Every toolchain passes, counts matching — `windows-msvc` included.
 - [ ] Four fuzzers clean.
 - [ ] GPU-assisted and synchronization validation both run clean by hand.

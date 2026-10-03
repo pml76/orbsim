@@ -34,13 +34,17 @@ GPU behave, where only other hardware could see them (decision 273).
   respects decision 233.
 - **The two device rules** into small compile-time-checkable functions beside
   the code that calls them.
-- Re-point the four mutants at the new functions, run them, and remove each
-  declaration the pass shows dead.
+- Add a mutant per moved rule, aimed at the new function and expected
+  caught, and keep the four old ones declared, as below.
 
 **The limit, stated in advance**: this kills the mutants as written -- a
 broken rule -- but not a mutant that disconnects the call to the rule. That
 wiring stays unseen on this machine, so the blind spot shrinks rather than
-disappears.
+disappears. **So the four mutants as they stand stay in their files, each
+re-worded as removing the call and still declared a survivor, and new
+mutants aimed at the moved rules are added beside them, expected caught**
+(register decision 276): the remaining blind spot stays written down where a
+machine reads it.
 
 Every question the work raises goes to the owner before code, as for every
 task (CLAUDE.md working agreement 1).
@@ -48,4 +52,5 @@ task (CLAUDE.md working agreement 1).
 ## Done when
 
 - [ ] `check` green in both trees.
-- [ ] The four mutants caught, and their declarations removed.
+- [ ] The four new mutants caught, and the four old ones declared with their
+      reason re-worded as the call they remove.
