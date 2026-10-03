@@ -2,7 +2,8 @@
 
 Phase: A | Status: not started
 Prerequisites: M1-92, M1-103
-Decided by: register decision 276
+Decided by: register decisions 276 and 277 -- placed after M1-108, just before the phase A
+gate (277)
 
 ## Purpose
 

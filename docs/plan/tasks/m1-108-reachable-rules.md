@@ -2,7 +2,8 @@
 
 Phase: A | Status: not started
 Prerequisites: M1-18
-Decided by: register decision 273
+Decided by: register decisions 273, 276 and 277 -- placed just before the phase A gate,
+where the mutation pass next runs in full (277)
 
 ## Purpose
 

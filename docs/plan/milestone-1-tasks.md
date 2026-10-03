@@ -28,7 +28,9 @@ after it, found by M1-18 -- decision 272. 107 until later that day, when
 **M1-108** was added, to run after M1-18: four declared survivors made
 reachable -- decision 273. 108 until later that day, when **M1-109** was
 added, to run after M1-108: the due list made to list only what a change can
-reach, measured first -- decision 276.)
+reach, measured first -- decision 276. The same day both moved to just
+before the phase A gate, M1-23, where the mutation pass next runs in full --
+decision 277.)
 Which of them are done is in [`../STATUS.md`](../STATUS.md), not here.
 
 This is the working document for [milestone 1](milestone-1-earth.md): Earth, an
@@ -236,12 +238,12 @@ compilers' included -- passing.
 | [106](tasks/m1-106-own-tree.md) | Judge each mutant file in its own tree | 103 | Either tree gives the same answer |
 | [107](tasks/m1-107-upload-visibility.md) | An upload made visible to what runs after it | -- | `uploadBuffer` as the specification asks, before its first caller |
 | [18](tasks/m1-18-radiometry-probe.md) | Numeric probes, and the radiometry budget | 15, 16 | 0.5 % of an analytic radiance |
-| [108](tasks/m1-108-reachable-rules.md) | Four declared survivors made reachable | 18 | Four rules a test can see, and four declarations fewer |
-| [109](tasks/m1-109-due-list-reach.md) | List only the mutant files a change can reach | 92, 103 | A gate's re-run is as short as the change allows |
 | [19](tasks/m1-19-line-renderer.md) | The line renderer | 11, 12, 13 | Lines, camera-relative |
 | [20](tasks/m1-20-planetary-grid.md) | The planetary grid, and the jitter budget | 17, 19 | Phase A's stated acceptance: no jitter |
 | [21](tasks/m1-21-camera-controls.md) | Camera controls and scripted paths | 11 | You can fly it, and a script can repeat it |
 | [22](tasks/m1-22-benchmark-mode.md) | The benchmark mode | 21 | Frame time as a number |
+| [108](tasks/m1-108-reachable-rules.md) | Four declared survivors made reachable | 18 | Four rules a test can see, and four declarations fewer |
+| [109](tasks/m1-109-due-list-reach.md) | List only the mutant files a change can reach | 92, 103 | A gate's re-run is as short as the change allows |
 | [23](tasks/m1-23-phase-a-gate.md) | **Phase A gate** | 03–22, 86 | Sanitizers, second compiler, coverage, recorded |
 
 ## Phase B — the tile pipeline
