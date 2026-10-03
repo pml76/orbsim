@@ -1,0 +1,12 @@
+From the first machine's vulkaninfoSDK report, 2026-10-03 (line numbers of the full report).
+2440:	vendorID          = 0x10de
+2441:	deviceID          = 0x25ba
+2443:	deviceName        = NVIDIA RTX A2000 8GB Laptop GPU
+2601:	lineWidthGranularity                            = 0.0625
+2602:	strictLines                                     = true
+3133:	lineSubPixelPrecisionBits                           = 8
+3143:	nonStrictSinglePixelWideLinesUseParallelogram       = false
+3144:	nonStrictWideLinesUseParallelogram                  = false
+4202:	rectangularLines                       = true
+4203:	bresenhamLines                         = true
+4204:	smoothLines                            = true

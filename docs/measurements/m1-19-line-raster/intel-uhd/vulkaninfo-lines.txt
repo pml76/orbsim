@@ -1,0 +1,12 @@
+From the first machine's vulkaninfoSDK report, 2026-10-03 (line numbers of the full report).
+506:	vendorID          = 0x8086
+507:	deviceID          = 0x4626
+509:	deviceName        = Intel(R) UHD Graphics
+664:	lineWidthGranularity                            = 0.0078125
+665:	strictLines                                     = false
+963:	lineSubPixelPrecisionBits                           = 8
+973:	nonStrictSinglePixelWideLinesUseParallelogram       = true
+974:	nonStrictWideLinesUseParallelogram                  = true
+1623:	rectangularLines                       = false
+1624:	bresenhamLines                         = true
+1625:	smoothLines                            = false
