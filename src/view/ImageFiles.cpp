@@ -106,6 +106,9 @@ constexpr int kRgbChannelsAsInt = 3;             // stb_image's desired channel 
 struct StbFree {
     void operator()(stbi_uc* pixels) const noexcept { stbi_image_free(pixels); }
 };
+struct StbFree16 {
+    void operator()(stbi_us* pixels) const noexcept { stbi_image_free(pixels); }
+};
 
 // --- EXR ---------------------------------------------------------------------
 
@@ -525,6 +528,74 @@ std::expected<void, ImageFileError> writeExr(const std::filesystem::path& path,
     }
     exr_context_t finishing = context.release();
     return exrCheck(exr_finish(&finishing), "exr_finish", lastError);
+}
+
+std::expected<Rgb16Image, PngReadFailure> decodePng16(std::span<const std::byte> png) {
+    // The same order as decodePng8: the PNG's own layout first, so that what
+    // stb_image is handed is known to be 16-bit RGB and it converts nothing.
+    if (!hasPngHeader(png)) {
+        return refuse(PngReadError::NotPng,
+                      "it does not begin with the PNG signature and an IHDR chunk");
+    }
+    const auto bitDepth = std::to_integer<unsigned>(png.subspan(kIhdrBitDepthAt, 1).front());
+    const auto colourType = std::to_integer<unsigned>(png.subspan(kIhdrColourTypeAt, 1).front());
+    if (bitDepth != 16 || colourType != kPngColourTypeRgb) {
+        return refuse(PngReadError::NotSixteenBitRgb,
+                      std::format("its bit depth is {} and its colour type {}; a probe's 16-bit "
+                                  "image's are 16 and 2 (RGB)",
+                                  bitDepth,
+                                  colourType));
+    }
+    const std::uint32_t width = bigEndian32(png, kIhdrWidthAt);
+    const std::uint32_t height = bigEndian32(png, kIhdrHeightAt);
+    if (png.size() > static_cast<std::size_t>(std::numeric_limits<int>::max())) {
+        return refuse(PngReadError::Undecodable, "it is larger than stb_image reads");
+    }
+
+    std::vector<stbi_uc> input(png.size());
+    std::ranges::transform(
+        png, input.begin(), [](std::byte b) noexcept { return std::to_integer<stbi_uc>(b); });
+    int decodedWidth = 0;
+    int decodedHeight = 0;
+    int channelsInFile = 0;
+    // stb_image's 16-bit decoder, which hands each sample back in the
+    // machine's own byte order: the PNG's big-endian order is undone inside it.
+    const std::unique_ptr<stbi_us, StbFree16> pixels{
+        stbi_load_16_from_memory(input.data(),
+                                 static_cast<int>(input.size()),
+                                 &decodedWidth,
+                                 &decodedHeight,
+                                 &channelsInFile,
+                                 kRgbChannelsAsInt)};
+    if (pixels == nullptr) {
+        const char* reason = stbi_failure_reason();
+        return refuse(PngReadError::Undecodable,
+                      std::string("stb_image: ") +
+                          (reason != nullptr ? reason : "no reason given"));
+    }
+    if (std::cmp_not_equal(decodedWidth, width) || std::cmp_not_equal(decodedHeight, height)) {
+        return refuse(PngReadError::Undecodable,
+                      std::format("stb_image decoded {}x{} where the header says {}x{}",
+                                  decodedWidth,
+                                  decodedHeight,
+                                  width,
+                                  height));
+    }
+    const ImageSize size{.width = width, .height = height};
+    const std::size_t count = pixelCount(size) * kRgbChannels;
+    // A pointer and the size reported beside it, given bounds the one way
+    // there is -- the construction decodePng8 makes, for its reason.
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-container"
+#endif
+    const std::span<const stbi_us> decoded(pixels.get(), count);
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
+    auto image = Rgb16Image::from(size, std::vector<std::uint16_t>(decoded.begin(), decoded.end()));
+    if (!image) return refuse(PngReadError::Undecodable, std::string(describe(image.error())));
+    return *std::move(image);
 }
 
 } // namespace orb::view

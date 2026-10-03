@@ -165,6 +165,14 @@ using BodyVertex = Vec3f;
 inline constexpr VertexLayout<1> kBodyVertexLayout =
     VertexLayout<1>::packed({{AttributeFormat::Float32x3}});
 
+// What lambert.vert reads (M1-18): a position already in render space, from
+// `toRenderSpace`, and nothing else -- a flat patch has one normal, which the
+// fragment stage reads as a push constant.
+using LambertVertex = Vec3f;
+
+inline constexpr VertexLayout<1> kLambertVertexLayout =
+    VertexLayout<1>::packed({{AttributeFormat::Float32x3}});
+
 // The guaranteed minimum of maxVertexInputBindingStride, from the Required
 // Limits table of the Vulkan specification. Every attribute ends inside the
 // stride, so this also keeps every offset under maxVertexInputAttributeOffset's
@@ -188,8 +196,11 @@ static_assert(std::get<1>(kLineVertexLayout.attributes()).offset ==
               "and so is the colour");
 static_assert(kBodyVertexLayout.stride() == Bytes{sizeof(BodyVertex)},
               "a body vertex is one Vec3f, and the layout says so");
+static_assert(kLambertVertexLayout.stride() == Bytes{sizeof(LambertVertex)},
+              "a lambert vertex is one Vec3f, and the layout says so");
 static_assert(kLineVertexLayout.stride() <= kGuaranteedVertexStride &&
-                  kBodyVertexLayout.stride() <= kGuaranteedVertexStride,
+                  kBodyVertexLayout.stride() <= kGuaranteedVertexStride &&
+                  kLambertVertexLayout.stride() <= kGuaranteedVertexStride,
               "every device accepts these strides");
 
 } // namespace orb::view

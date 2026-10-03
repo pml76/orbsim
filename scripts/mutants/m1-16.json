@@ -188,8 +188,8 @@
     {
       "name": "the probe exposes at 1/60 s rather than 1/125 s",
       "file": "src/render/Probes.cpp",
-      "find": "                .shutterTime = view::ShutterTime::from(Seconds{1.0 / 125.0}).value(),",
-      "replace": "                .shutterTime = view::ShutterTime::from(Seconds{1.0 / 60.0}).value(),",
+      "find": "        .shutterTime = view::ShutterTime::from(Seconds{1.0 / 125.0}).value(),",
+      "replace": "        .shutterTime = view::ShutterTime::from(Seconds{1.0 / 60.0}).value(),",
       "suites": [],
       "targets": [
         "orbsim",

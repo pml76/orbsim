@@ -12,11 +12,13 @@
 // a world coordinate directly and it lands on a half-metre lattice; subtract
 // the camera position in 64 bits first and only the small difference is
 // narrowed, where the gap is centimetres. `toRenderSpace` below is the only
-// place in `src/` that narrows a position -- the two other narrowings are
+// place in `src/` that narrows a position. The four other narrowings are
+// `toShaderMatrix` below, the view-projection (M1-18, register decision 268);
 // view/Exposure.hpp's `toShaderExposure`, a scale factor (M1-15, register
-// decision 179), and view/ProbeGradient.hpp's `toShaderRamp`, the `clear`
-// probe's logarithm and counts (M1-16) -- and `grep static_cast<f32> src/` is
-// the audit.
+// decision 179); view/ProbeGradient.hpp's `toShaderRamp`, the `clear` probe's
+// logarithm and counts (M1-16); and view/Lambert.hpp's `toShaderLambert`, the
+// lambert probes' light (M1-18) -- and `grep static_cast<f32> src/` is the
+// audit.
 //
 // **What that buys, as a law rather than as one number.** The screen-space
 // error of the narrowing is
@@ -50,6 +52,7 @@
 #include "core/Units.hpp"
 #include "view/Mat4.hpp"
 #include "view/Projection.hpp"
+#include "view/PushConstants.hpp"
 
 #include <cstdint>
 #include <expected>
@@ -242,14 +245,32 @@ static_assert(!isNarrowable(1.0e39) && !isNarrowable(-1.0e39),
 // Three `static_cast<f32>` in one function, exactly as
 // `coding-guidelines-example/src/render/PathUpload.cpp` does it. Anything else
 // in `src/` that narrows is a defect, and `-Wconversion` is what finds it --
-// except view/Exposure.hpp's `toShaderExposure` and view/ProbeGradient.hpp's
-// `toShaderRamp`, the two other narrowing functions, which carry a scale
-// factor and a probe's ramp rather than a position.
+// except the four other narrowing functions the header comment names, which
+// carry a matrix, a scale factor, a probe's ramp and a light rather than a
+// position.
 //
 // **A span overload belongs here when M1-19 needs one**, beside this function
 // rather than anywhere else, so that the narrowing stays greppable in one
 // place: the worked example's `toCameraRelative` is the shape to copy.
 [[nodiscard]] Vec3f toRenderSpace(const Position& worldMetres, const Camera& camera) noexcept;
+
+// **The view-projection narrowed for a vertex shader** (M1-18, register
+// decision 268): sixteen `f32` in the order GLSL reads a mat4, column by
+// column -- which is the order `Mat4` stores, so nothing is rearranged and
+// the element at (row, column) is at column * 4 + row.
+//
+// **Nothing is subtracted first, and nothing needs to be.** The view matrix
+// carries no translation -- `toRenderSpace` has already moved every vertex
+// relative to the camera, in 64 bits -- so every entry here is a rotation
+// component, a focal length, a near plane or a one: numbers of order one to a
+// few, where a float's relative resolution is the same 6e-8 it is
+// everywhere. Composing the two matrices is done in `f64` by the caller, and
+// only the product is narrowed.
+//
+// Beside `toRenderSpace` so that the narrowings stay in a few named places
+// (`.claude/rules/cpp-style.md`), and general rather than the lambert
+// probes' own, because M1-19's line renderer reads the same matrix.
+[[nodiscard]] Mat4f toShaderMatrix(const ViewProjection& viewProjection) noexcept;
 
 // Compile-time tests. A `static_assert` is a unit test that costs nothing at
 // run time, runs on every build whether or not the suite is invoked, and

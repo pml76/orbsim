@@ -213,7 +213,12 @@ their declarations removed -- M1-14's 2.2 encode and resolve pass never
 drawn, and M1-15's shader that skips the exposure. **M1-15's two clamps still
 survive**: `clear` holds no negative light and nothing above AgX's white, so
 neither clamp changes a pixel of it. They stay M1-18's, and a note in its
-task document says what its check must contain to see them.
+task document says what its check must contain to see them. *(Corrected
+2026-10-03 by M1-18, register decision 263: the reason is right for the
+first clamp and wrong for the second. That one acts on 868,950 values of
+`clear` -- 815,850 below 0 and 53,100 above 1 -- and changes no pixel
+because the sRGB encode clamps again straight after it, measured on the RTX
+A2000 with the mutated shader loaded from a scratch directory.)*
 
 **A rerun was stopped once** by Claude Code for want of memory while the
 session was idle, before it recorded anything; the owner asked for it to be

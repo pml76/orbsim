@@ -2,9 +2,11 @@
 #include "core/Math.hpp"
 #include "core/Scalar.hpp"
 #include "core/Time.hpp"
+#include "core/Units.hpp"
 #include "view/Camera.hpp"
 #include "view/Exposure.hpp"
 #include "view/ImageCompare.hpp"
+#include "view/Lambert.hpp"
 
 #include <array>
 #include <cstdint>
@@ -13,6 +15,7 @@
 #include <span>
 #include <string>
 #include <string_view>
+#include <vector>
 
 namespace orb::view {
 namespace {
@@ -82,6 +85,40 @@ struct Entry {
     return std::format("{} {} {} {} (w x y z, camera to world)", q.w, q.x, q.y, q.z);
 }
 
+// A lambert probe's light and surface, or that there is none (M1-18, register
+// decision 264). The angle of incidence is measured here, between the
+// patch's own normal and the direction toward the Sun, rather than copied
+// from the tilt: it is what the shader's cosine is of.
+[[nodiscard]] std::vector<Entry> sceneEntries(const std::optional<LambertScene>& scene) {
+    if (!scene) return {Entry{.key = "scene.light", .value = "none: drawn directly in radiance"}};
+    const Direction& sun = scene->towardSun;
+    const Radians incidence = angleBetween(squarePatch(scene->patch).normal, sun);
+    return {
+        Entry{.key = "scene.light", .value = "the Sun, a Lambertian patch"},
+        Entry{.key = "scene.albedo", .value = std::format("{}", scene->albedo.value())},
+        Entry{
+            .key = "scene.sun.distance",
+            .value = std::format("{} m", scene->sunDistance.value()),
+        },
+        Entry{
+            .key = "scene.irradiance",
+            .value = std::format("{} W/m^2 at normal incidence", scene->irradiance.value()),
+        },
+        Entry{
+            .key = "scene.sun.direction",
+            .value = std::format(
+                "{} {} {} (world, toward the Sun)", sun.x.value(), sun.y.value(), sun.z.value()),
+        },
+        Entry{.key = "scene.incidence", .value = std::format("{} rad", incidence.value())},
+        Entry{.key = "scene.patch.centre", .value = formatPosition(scene->patch.centre)},
+        Entry{.key = "scene.patch.side", .value = std::format("{} m", scene->patch.side.value())},
+        Entry{
+            .key = "scene.patch.tilt",
+            .value = std::format("{} rad about the horizontal axis", scene->patch.tilt.value()),
+        },
+    };
+}
+
 } // namespace
 
 #if defined(__GNUC__) && !defined(__clang__)
@@ -90,7 +127,7 @@ struct Entry {
 #endif
 std::string formatSidecar(const SidecarFields& fields) {
     const ExposureValue100 ev = exposureValue100(fields.exposure);
-    const auto entries = std::to_array<Entry>({
+    std::vector<Entry> entries{
         Entry{.key = "probe", .value = std::string(fields.probe)},
         Entry{.key = "description", .value = std::string(fields.description)},
         Entry{.key = "outcome", .value = std::string(fields.outcome)},
@@ -128,6 +165,10 @@ std::string formatSidecar(const SidecarFields& fields) {
             .key = "exposure.factor",
             .value = std::format("{} per W/(m^2 sr)", radianceExposure(ev).value()),
         },
+    };
+    const std::vector<Entry> scene = sceneEntries(fields.scene);
+    entries.insert(entries.end(), scene.begin(), scene.end());
+    const auto rest = std::to_array<Entry>({
         Entry{.key = "gpu", .value = std::string(fields.device.name)},
         Entry{.key = "gpu.vendor", .value = std::format("0x{:04x}", fields.device.vendorId)},
         Entry{.key = "gpu.device", .value = std::format("0x{:04x}", fields.device.deviceId)},
@@ -143,6 +184,7 @@ std::string formatSidecar(const SidecarFields& fields) {
         Entry{.key = "run.date", .value = std::string(fields.runDateUtc)},
         Entry{.key = "files", .value = joined(fields.files)},
     });
+    entries.insert(entries.end(), rest.begin(), rest.end());
 
     std::string text = "# orbsim probe sidecar (M1-16): what produced the files beside it\n";
     for (const Entry& entry : entries) {

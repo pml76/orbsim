@@ -627,6 +627,7 @@ set(ORBSIM_VIEW_SOURCES
         src/view/Camera.cpp
         src/view/ImageCompare.cpp
         src/view/ImageFiles.cpp
+        src/view/Lambert.cpp
         src/view/ProbeImage.cpp
         src/view/ProbeSidecar.cpp
 )
@@ -735,6 +736,7 @@ set(ORBSIM_TESTS
         test_hdr_dump
         test_image_compare
         test_image_files
+        test_lambert
         test_math
         test_orbit
         test_orbit_elements
@@ -771,6 +773,7 @@ target_link_libraries(test_half PRIVATE orbsim_view)
 target_link_libraries(test_hdr_dump PRIVATE orbsim_view)
 target_link_libraries(test_probe_sidecar PRIVATE orbsim_view)
 target_link_libraries(test_image_compare PRIVATE orbsim_view)
+target_link_libraries(test_lambert PRIVATE orbsim_view)
 # And OpenEXR itself: the EXR is read back through the reference
 # implementation's own decoder, which is the check that the file is one.
 target_link_libraries(test_image_files PRIVATE orbsim_view OpenEXR::OpenEXRCore)
@@ -1018,6 +1021,9 @@ set(SHADER_SOURCES
         shaders/fullscreen.vert
         shaders/tonemap.frag
         shaders/probe_gradient.frag
+        shaders/lambert.vert
+        shaders/lambert.frag
+        shaders/probe_port.frag
 )
 
 set(SPIRV_OUTPUTS "")
@@ -1141,7 +1147,8 @@ add_test(NAME probe_clear_determinism
                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}/probes-rerun
                 -DCOMPARE_WITH=${ORBSIM_PROBE_DIR}
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/RunProbe.cmake)
-set_tests_properties(probe_clear PROPERTIES LABELS gpu RESOURCE_LOCK gpu FIXTURES_SETUP probe_clear_frame)
+set_tests_properties(probe_clear PROPERTIES
+        LABELS gpu RESOURCE_LOCK gpu FIXTURES_SETUP "probe_clear_frame;probe_data")
 set_tests_properties(probe_clear_determinism PROPERTIES
         LABELS gpu RESOURCE_LOCK gpu FIXTURES_REQUIRED probe_clear_frame)
 
@@ -1153,6 +1160,59 @@ target_link_libraries(test_probe_clear PRIVATE orbsim_abort_behaviour orbsim_tes
 target_compile_definitions(test_probe_clear PRIVATE ORBSIM_PROBE_DIR="${ORBSIM_PROBE_DIR}")
 catch_discover_tests(test_probe_clear
         PROPERTIES FIXTURES_REQUIRED probe_clear_frame LABELS gpu RESOURCE_LOCK gpu)
+
+# The numeric probes (M1-18; ADR 0008, ADR 0014; register decisions 256-271).
+#
+# **The pattern every later numeric probe copies.** Each probe is a CTest test
+# that renders it under the validation layers into the build tree's probes/
+# and requires exit code 0 and its five files -- probe_clear's shape, without
+# a golden, because a radiometry probe is checked by number and an image would
+# be the weaker check (ADR 0008). Each sets up the fixture probe_data; the
+# suites that read the frames require it, so CTest renders the probes first,
+# and again when only a suite is asked for. The GPU work stays in the
+# application; the arithmetic and the reference stay in suites that link no
+# Vulkan.
+#
+# test_radiometry holds the lambert frames to the analytic radiance, 0.5 %
+# (decision 259); test_tonemap_port holds every probe's pictures to the CPU
+# chain applied to its HDR frame (decisions 260 and 261), clear's included --
+# so probe_clear sets up probe_data as well as its own fixture.
+#
+# **One fixture name per suite, on purpose.** catch_discover_tests passes
+# PROPERTIES on as a flat list, so a value holding two names --
+# "probe_data;probe_clear_frame" -- is split, its second half read as a
+# property name, and every property after it lost: the suite ran without its
+# label, its GPU lock or the second fixture, before probe_clear, against
+# whatever frame was left in probes/. Found on 2026-10-03, when the port
+# check on clear failed in one tree and passed in the other.
+set(ORBSIM_NUMERIC_PROBES
+        lambert
+        lambert-half-au
+        lambert-two-au
+        lambert-tilted-60
+        lambert-exposure
+        tonemap-port
+)
+foreach(probe IN LISTS ORBSIM_NUMERIC_PROBES)
+    add_test(NAME probe_${probe}
+            COMMAND ${CMAKE_COMMAND}
+                    -DORBSIM=$<TARGET_FILE:orbsim>
+                    -DPROBE=${probe}
+                    -DOUT=${ORBSIM_PROBE_DIR}
+                    -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/RunProbe.cmake)
+    set_tests_properties(probe_${probe} PROPERTIES
+            LABELS gpu RESOURCE_LOCK gpu FIXTURES_SETUP probe_data)
+endforeach()
+
+foreach(suite IN ITEMS test_radiometry test_tonemap_port)
+    add_executable(${suite} tests/${suite}.cpp)
+    target_link_libraries(${suite} PRIVATE orbsim_abort_behaviour orbsim_test_support orbsim_view)
+    target_compile_definitions(${suite} PRIVATE ORBSIM_PROBE_DIR="${ORBSIM_PROBE_DIR}")
+endforeach()
+catch_discover_tests(test_radiometry
+        PROPERTIES FIXTURES_REQUIRED probe_data LABELS gpu RESOURCE_LOCK gpu)
+catch_discover_tests(test_tonemap_port
+        PROPERTIES FIXTURES_REQUIRED probe_data LABELS gpu RESOURCE_LOCK gpu)
 
 # A golden mismatch, caught end to end (M1-17, register decision 236).
 #
@@ -1277,6 +1337,7 @@ orbsim_add_header_selfcheck(orbsim_view_header_selfcheck orbsim_view
         view/Half.hpp
         view/ImageCompare.hpp
         view/ImageFiles.hpp
+        view/Lambert.hpp
         view/Mat4.hpp
         view/Projection.hpp
         view/ProbeGradient.hpp
@@ -1367,7 +1428,7 @@ foreach(operation IN LISTS ORBSIM_COUNT_WRAPAROUND_OPERATIONS)
 endforeach()
 if(ORBSIM_BUILD_APP)
     list(APPEND ORBSIM_LINT_SOURCES ${ORBSIM_APP_SOURCES} tests/test_probe_clear.cpp
-            tests/make_broken_goldens.cpp)
+            tests/test_radiometry.cpp tests/test_tonemap_port.cpp tests/make_broken_goldens.cpp)
 endif()
 
 # Formatting covers everything that is ours, whether or not it is built in
@@ -1506,9 +1567,10 @@ if(ORBSIM_BUILD_APP)
     # test_probe_clear with the application it checks: a suite `check` does
     # not build is one ctest reports as NOT_BUILT (M1-16, found the first time
     # a fresh tree ran it).
-    # make_broken_goldens for the golden tests' fixture (M1-17).
+    # make_broken_goldens for the golden tests' fixture (M1-17), and the two
+    # suites that read the numeric probes' frames (M1-18).
     add_dependencies(check orbsim orbsim_render_header_selfcheck test_probe_clear
-            make_broken_goldens)
+            test_radiometry test_tonemap_port make_broken_goldens)
 endif()
 
 # Every library and program this file defines compiles in the memory pool

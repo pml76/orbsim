@@ -63,13 +63,16 @@ cmake -S coding-guidelines-example -B coding-guidelines-example/build -G Ninja \
   `std::expected<Camera, CameraError>`, and is still trivially copyable. A type
   whose members have physical bounds gets the same treatment as a scalar whose
   value does.
-- **`f64` becomes `f32` in exactly three functions**: `toRenderSpace` in
-  `src/view/Camera.cpp`, for positions; `toShaderExposure` in
-  `src/view/Exposure.hpp`, for the one exposure factor the resolve pass reads
-  (M1-15, register decision 179); and `toShaderRamp` in
-  `src/view/ProbeGradient.hpp`, for the `clear` probe's ramp (M1-16).
-  `grep static_cast<f32> src/` is the audit and it should find eight casts in
-  those three places; a ninth anywhere else is a defect waiting to be filed. A position needs a camera-relative subtraction
+- **`f64` becomes `f32` in exactly five functions**: `toRenderSpace` in
+  `src/view/Camera.cpp`, for positions; `toShaderMatrix` beside it, for the
+  view-projection a vertex shader reads (M1-18, register decision 268);
+  `toShaderExposure` in `src/view/Exposure.hpp`, for the one exposure factor
+  the resolve pass reads (M1-15, register decision 179); `toShaderRamp` in
+  `src/view/ProbeGradient.hpp`, for the `clear` probe's ramp (M1-16); and
+  `toShaderLambert` in `src/view/Lambert.cpp`, for the lambert probes' light
+  (M1-18) -- three of its casts in `narrowedDirection`, a helper only it calls.
+  `grep static_cast<f32> src/` is the audit and it should find fourteen casts
+  in those places; a fifteenth anywhere else is a defect waiting to be filed. A position needs a camera-relative subtraction
   in `f64` before it narrows, which is the whole point of `toRenderSpace`; a
   scale factor does not, since a float's relative precision is the same at
   every magnitude.
@@ -87,7 +90,9 @@ cmake -S coding-guidelines-example -B coding-guidelines-example/build -G Ninja \
   `tests/test_exposure.cpp` and `tests/test_tonemap.cpp` (M1-15),
   `tests/test_half.cpp`, `tests/test_hdr_dump.cpp`,
   `tests/test_image_files.cpp` and `tests/test_probe_sidecar.cpp` (M1-16),
-  and `tests/test_image_compare.cpp` (M1-17) additionally link `orbsim_view`,
+  `tests/test_image_compare.cpp` (M1-17), and `tests/test_lambert.cpp`,
+  `tests/test_radiometry.cpp` and `tests/test_tonemap_port.cpp` (M1-18)
+  additionally link `orbsim_view`,
   which links `orbsim_core` and -- privately, since M1-16 -- the image
   libraries behind `src/view/ImageFiles.cpp`: lodepng and OpenEXR, and since
   M1-17 stb_image's decoder, none of them a graphics library.

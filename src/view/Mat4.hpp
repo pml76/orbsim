@@ -450,6 +450,12 @@ template <FrameTag kFrame, auto kXyz, auto kW>
 template <FrameTag kFrom, FrameTag kTo>
 using Transform = Mat4<kFrom, kTo, units::kMetre, mp_units::one, units::kMetre, mp_units::one>;
 using Projection = Mat4<kView, kClip, units::kMetre, mp_units::one, units::kMetre, units::kMetre>;
+// What a vertex shader is handed: a projection after a view matrix, from
+// render space -- world-oriented and camera-relative -- to clip space. Exactly
+// the type `Projection * WorldToView` composes to, so it is spelled once here
+// rather than deduced at each use (M1-18).
+using ViewProjection =
+    Mat4<kWorld, kClip, units::kMetre, mp_units::one, units::kMetre, units::kMetre>;
 
 using WorldTransform = Transform<kWorld, kWorld>;
 using WorldToView = Transform<kWorld, kView>;

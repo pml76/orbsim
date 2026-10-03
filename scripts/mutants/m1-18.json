@@ -1,0 +1,377 @@
+{
+  "task": "M1-18",
+  "tree": "build/debug",
+  "note": "Numeric probes and the radiometry budget (register decisions 256-271). Judged two ways: the orbsim_view half -- the albedo, the patch, the two narrowings, the 16-bit reader and the sidecar -- by test_lambert, test_camera, test_image_files and test_probe_sidecar; the GPU half -- the lambert shaders, the probe setup, tonemap-port's picture -- by the probes' CTest tests and the suites that read their frames, test_radiometry and test_tonemap_port. M1-15's negative-light clamp, a declared survivor until now, is re-pointed in m1-15.json at the port check, which must kill it.",
+  "mutants": [
+    {
+      "name": "an albedo above 1 is accepted",
+      "file": "src/view/Lambert.hpp",
+      "find": "        if (value < 0.0 || value > 1.0) return std::unexpected(AlbedoError::OutsideZeroToOne);",
+      "replace": "        if (value < 0.0 || value > 1.5) return std::unexpected(AlbedoError::OutsideZeroToOne);",
+      "suites": [
+        "test_lambert"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "a negative albedo is accepted",
+      "file": "src/view/Lambert.hpp",
+      "find": "        if (value < 0.0 || value > 1.0) return std::unexpected(AlbedoError::OutsideZeroToOne);",
+      "replace": "        if (value < -0.5 || value > 1.0) return std::unexpected(AlbedoError::OutsideZeroToOne);",
+      "suites": [
+        "test_lambert"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "an albedo that is not finite is not refused by its own name",
+      "file": "src/view/Lambert.hpp",
+      "find": "        if (!isFinite(value)) return std::unexpected(AlbedoError::NotFinite);\n",
+      "replace": "",
+      "suites": [
+        "test_lambert"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the patch tilts the other way, top toward the camera",
+      "file": "src/view/Lambert.cpp",
+      "find": "    const Direction axis{-1.0, 0.0, 0.0};",
+      "replace": "    const Direction axis{1.0, 0.0, 0.0};",
+      "suites": [
+        "test_lambert",
+        "test_probe_sidecar"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the patch is half the size it was asked for",
+      "file": "src/view/Lambert.cpp",
+      "find": "    const f64 half = placement.side.value() / 2.0;",
+      "replace": "    const f64 half = placement.side.value() / 4.0;",
+      "suites": [
+        "test_lambert"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the patch's triangles are wound the other way",
+      "file": "src/view/Lambert.cpp",
+      "find": "            std::to_array({lowerLeft, lowerRight, upperRight, lowerLeft, upperRight, upperLeft}),",
+      "replace": "            std::to_array({lowerLeft, upperRight, lowerRight, lowerLeft, upperLeft, upperRight}),",
+      "suites": [
+        "test_lambert"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the shader is handed the Sun's direction as the surface's",
+      "file": "src/view/Lambert.cpp",
+      "find": "        .surfaceNormal = narrowedDirection(lighting.surfaceNormal),",
+      "replace": "        .surfaceNormal = narrowedDirection(lighting.towardSun),",
+      "suites": [
+        "test_lambert"
+      ],
+      "expect": "caught",
+      "why": "Caught by test_lambert's comparison of the block, not on the GPU: a dot product is symmetric, so swapping the two directions draws the same frame -- a kill for what it is."
+    },
+    {
+      "name": "the albedo reaches the shader one per cent low",
+      "file": "src/view/Lambert.cpp",
+      "find": "        .albedo = static_cast<f32>(lighting.albedo.value()),",
+      "replace": "        .albedo = static_cast<f32>(lighting.albedo.value() * 0.99),",
+      "suites": [
+        "test_lambert"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the view-projection is narrowed in the wrong order",
+      "file": "src/view/Camera.cpp",
+      "find": "        elements, narrowed.begin(), [](f64 e) noexcept { return static_cast<f32>(e); });",
+      "replace": "        elements | std::views::reverse, narrowed.begin(), [](f64 e) noexcept { return static_cast<f32>(e); });",
+      "suites": [
+        "test_camera"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "an 8-bit PNG is read as a 16-bit one",
+      "file": "src/view/ImageFiles.cpp",
+      "find": "    if (bitDepth != 16 || colourType != kPngColourTypeRgb) {",
+      "replace": "    if (bitDepth > 16 || colourType != kPngColourTypeRgb) {",
+      "suites": [
+        "test_image_files"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the sidecar's angle of incidence is the Sun's own",
+      "file": "src/view/ProbeSidecar.cpp",
+      "find": "    const Radians incidence = angleBetween(squarePatch(scene->patch).normal, sun);",
+      "replace": "    const Radians incidence = angleBetween(sun, sun);",
+      "suites": [
+        "test_probe_sidecar"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the shader leaves out the pi",
+      "file": "shaders/lambert.frag",
+      "find": "    float radiance = lambert.albedo * lambert.irradiance * cosTheta / kPi;",
+      "replace": "    float radiance = lambert.albedo * lambert.irradiance * cosTheta;",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_radiometry"
+      ],
+      "ctest": [
+        "probe_lambert",
+        "probe_lambert-half-au",
+        "probe_lambert-two-au",
+        "probe_lambert-tilted-60",
+        "probe_lambert-exposure",
+        "the patch at 1 AU reads back 0.3 x 1361 / pi, within 0.5 %, at every pixel",
+        "the quantisation floor is the format's, five times inside the budget",
+        "the inverse-square law holds on the GPU path: 4x at 0.5 AU, 1/4 at 2 AU",
+        "the patch tilted 60 degrees from the Sun reads back half the radiance",
+        "exposure does not touch the HDR frame, and only the picture differs"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the shader leaves out the cosine",
+      "file": "shaders/lambert.frag",
+      "find": "    float radiance = lambert.albedo * lambert.irradiance * cosTheta / kPi;",
+      "replace": "    float radiance = lambert.albedo * lambert.irradiance / kPi;",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_radiometry"
+      ],
+      "ctest": [
+        "probe_lambert",
+        "probe_lambert-half-au",
+        "probe_lambert-two-au",
+        "probe_lambert-tilted-60",
+        "probe_lambert-exposure",
+        "the patch at 1 AU reads back 0.3 x 1361 / pi, within 0.5 %, at every pixel",
+        "the quantisation floor is the format's, five times inside the budget",
+        "the inverse-square law holds on the GPU path: 4x at 0.5 AU, 1/4 at 2 AU",
+        "the patch tilted 60 degrees from the Sun reads back half the radiance",
+        "exposure does not touch the HDR frame, and only the picture differs"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the shader lights a surface from behind",
+      "file": "shaders/lambert.frag",
+      "find": "    float cosTheta = max(dot(lambert.surfaceNormal.xyz, lambert.towardSun.xyz), 0.0);",
+      "replace": "    float cosTheta = dot(lambert.surfaceNormal.xyz, lambert.towardSun.xyz);",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_radiometry"
+      ],
+      "ctest": [
+        "probe_lambert",
+        "probe_lambert-half-au",
+        "probe_lambert-two-au",
+        "probe_lambert-tilted-60",
+        "probe_lambert-exposure",
+        "the patch at 1 AU reads back 0.3 x 1361 / pi, within 0.5 %, at every pixel",
+        "the quantisation floor is the format's, five times inside the budget",
+        "the inverse-square law holds on the GPU path: 4x at 0.5 AU, 1/4 at 2 AU",
+        "the patch tilted 60 degrees from the Sun reads back half the radiance",
+        "exposure does not touch the HDR frame, and only the picture differs"
+      ],
+      "expect": "survives",
+      "why": "Every lambert probe lights its patch from the front -- the cosine is 1 or 0.5 -- so the clamp at zero acts on no pixel of them. A surface lit from behind arrives with the first night side, M1-32's tile; declared rather than closed by a probe the task did not ask for."
+    },
+    {
+      "name": "the vertex shader treats a position as a direction",
+      "file": "shaders/lambert.vert",
+      "find": "    gl_Position = lambert.viewProjection * vec4(inPosition, 1.0);",
+      "replace": "    gl_Position = lambert.viewProjection * vec4(inPosition, 0.0);",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_radiometry"
+      ],
+      "ctest": [
+        "probe_lambert",
+        "probe_lambert-half-au",
+        "probe_lambert-two-au",
+        "probe_lambert-tilted-60",
+        "probe_lambert-exposure",
+        "the patch at 1 AU reads back 0.3 x 1361 / pi, within 0.5 %, at every pixel",
+        "the quantisation floor is the format's, five times inside the budget",
+        "the inverse-square law holds on the GPU path: 4x at 0.5 AU, 1/4 at 2 AU",
+        "the patch tilted 60 degrees from the Sun reads back half the radiance",
+        "exposure does not touch the HDR frame, and only the picture differs"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the patch is culled from the front",
+      "file": "src/render/Probes.cpp",
+      "find": "            .cullMode = CullMode::Back,",
+      "replace": "            .cullMode = CullMode::Front,",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_radiometry"
+      ],
+      "ctest": [
+        "probe_lambert",
+        "probe_lambert-half-au",
+        "probe_lambert-two-au",
+        "probe_lambert-tilted-60",
+        "probe_lambert-exposure",
+        "the patch at 1 AU reads back 0.3 x 1361 / pi, within 0.5 %, at every pixel",
+        "the quantisation floor is the format's, five times inside the budget",
+        "the inverse-square law holds on the GPU path: 4x at 0.5 AU, 1/4 at 2 AU",
+        "the patch tilted 60 degrees from the Sun reads back half the radiance",
+        "exposure does not touch the HDR frame, and only the picture differs"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the vertex buffer is never bound",
+      "file": "src/render/Probes.cpp",
+      "find": "        vkCmdBindVertexBuffers(cmd, 0, 1, &buffer, &kOffset);",
+      "replace": "        static_cast<void>(&buffer);",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_radiometry"
+      ],
+      "ctest": [
+        "probe_lambert",
+        "probe_lambert-half-au",
+        "probe_lambert-two-au",
+        "probe_lambert-tilted-60",
+        "probe_lambert-exposure",
+        "the patch at 1 AU reads back 0.3 x 1361 / pi, within 0.5 %, at every pixel",
+        "the quantisation floor is the format's, five times inside the budget",
+        "the inverse-square law holds on the GPU path: 4x at 0.5 AU, 1/4 at 2 AU",
+        "the patch tilted 60 degrees from the Sun reads back half the radiance",
+        "exposure does not touch the HDR frame, and only the picture differs"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the irradiance is 1361 W/m^2 whatever the distance",
+      "file": "src/render/Probes.cpp",
+      "find": "        .irradiance = solarIrradianceAt(sunDistance),",
+      "replace": "        .irradiance = Irradiance{1361.0},",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_radiometry"
+      ],
+      "ctest": [
+        "probe_lambert",
+        "probe_lambert-half-au",
+        "probe_lambert-two-au",
+        "probe_lambert-tilted-60",
+        "probe_lambert-exposure",
+        "the patch at 1 AU reads back 0.3 x 1361 / pi, within 0.5 %, at every pixel",
+        "the quantisation floor is the format's, five times inside the budget",
+        "the inverse-square law holds on the GPU path: 4x at 0.5 AU, 1/4 at 2 AU",
+        "the patch tilted 60 degrees from the Sun reads back half the radiance",
+        "exposure does not touch the HDR frame, and only the picture differs"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the near Sun is at 0.6 AU",
+      "file": "src/render/Probes.cpp",
+      "find": "    return withLambert(kAstronomicalUnit * 0.5, Radians{0.0});",
+      "replace": "    return withLambert(kAstronomicalUnit * 0.6, Radians{0.0});",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_radiometry"
+      ],
+      "ctest": [
+        "probe_lambert",
+        "probe_lambert-half-au",
+        "probe_lambert-two-au",
+        "probe_lambert-tilted-60",
+        "probe_lambert-exposure",
+        "the patch at 1 AU reads back 0.3 x 1361 / pi, within 0.5 %, at every pixel",
+        "the quantisation floor is the format's, five times inside the budget",
+        "the inverse-square law holds on the GPU path: 4x at 0.5 AU, 1/4 at 2 AU",
+        "the patch tilted 60 degrees from the Sun reads back half the radiance",
+        "exposure does not touch the HDR frame, and only the picture differs"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the tilted patch is tilted 50 degrees",
+      "file": "src/render/Probes.cpp",
+      "find": "    return withLambert(kAstronomicalUnit, Radians{std::numbers::pi / 3.0});",
+      "replace": "    return withLambert(kAstronomicalUnit, Radians{std::numbers::pi * 5.0 / 18.0});",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_radiometry"
+      ],
+      "ctest": [
+        "probe_lambert",
+        "probe_lambert-half-au",
+        "probe_lambert-two-au",
+        "probe_lambert-tilted-60",
+        "probe_lambert-exposure",
+        "the patch at 1 AU reads back 0.3 x 1361 / pi, within 0.5 %, at every pixel",
+        "the quantisation floor is the format's, five times inside the budget",
+        "the inverse-square law holds on the GPU path: 4x at 0.5 AU, 1/4 at 2 AU",
+        "the patch tilted 60 degrees from the Sun reads back half the radiance",
+        "exposure does not touch the HDR frame, and only the picture differs"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "lambert-exposure keeps the exposure it was to change",
+      "file": "src/render/Probes.cpp",
+      "find": "    conditions.exposure = exposureAt(kTwoStopsBrighter);",
+      "replace": "    conditions.exposure = exposureAt(kSunny16);",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_radiometry"
+      ],
+      "ctest": [
+        "probe_lambert",
+        "probe_lambert-half-au",
+        "probe_lambert-two-au",
+        "probe_lambert-tilted-60",
+        "probe_lambert-exposure",
+        "the patch at 1 AU reads back 0.3 x 1361 / pi, within 0.5 %, at every pixel",
+        "the quantisation floor is the format's, five times inside the budget",
+        "the inverse-square law holds on the GPU path: 4x at 0.5 AU, 1/4 at 2 AU",
+        "the patch tilted 60 degrees from the Sun reads back half the radiance",
+        "exposure does not touch the HDR frame, and only the picture differs"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the tonemap-port frame holds no negative light in its second band",
+      "file": "shaders/probe_port.frag",
+      "find": "    vec3(1.0, -0.25, 0.5),",
+      "replace": "    vec3(1.0, 0.25, 0.5),",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_tonemap_port"
+      ],
+      "ctest": [
+        "probe_tonemap-port",
+        "the tonemap-port frame holds the light the clamps act on",
+        "the port check holds on tonemap-port's picture, to 1/255 and to 2/65535"
+      ],
+      "expect": "caught"
+    }
+  ]
+}

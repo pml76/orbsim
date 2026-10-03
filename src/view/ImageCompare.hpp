@@ -100,6 +100,26 @@ private:
     std::vector<std::uint8_t> rgb_;
 };
 
+// A 16-bit RGB image, rows top to bottom, each pixel R, G, B: a probe's
+// 16-bit display image read back for the port check (M1-18, register decision
+// 260). Validated at construction, as Rgb8Image is.
+class Rgb16Image {
+public:
+    [[nodiscard]] static std::expected<Rgb16Image, ImageCompareError>
+    from(ImageSize size, std::vector<std::uint16_t> rgb);
+
+    [[nodiscard]] ImageSize size() const noexcept { return size_; }
+    // By value, for the reason Rgb8Image gives.
+    [[nodiscard]] std::size_t valueCount() const noexcept { return rgb_.size(); }
+    [[nodiscard]] std::uint16_t value(std::size_t index) const { return rgb_.at(index); }
+
+private:
+    Rgb16Image(ImageSize size, std::vector<std::uint16_t> rgb) noexcept;
+
+    ImageSize size_;
+    std::vector<std::uint16_t> rgb_;
+};
+
 // A golden image, as read from its file. **A type of its own** so that the
 // frame and the golden cannot be handed to a comparison the wrong way round
 // (non-negotiable 1): the diff image puts them in named places.

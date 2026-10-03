@@ -93,6 +93,20 @@ Rgb8Image Rgb8Image::fromRgba(ImageSize size, std::span<const std::uint8_t> rgba
     return Rgb8Image{size, std::move(rgb)};
 }
 
+Rgb16Image::Rgb16Image(ImageSize size, std::vector<std::uint16_t> rgb) noexcept
+    : size_(size), rgb_(std::move(rgb)) {}
+
+std::expected<Rgb16Image, ImageCompareError> Rgb16Image::from(ImageSize size,
+                                                              std::vector<std::uint16_t> rgb) {
+    if (size.width == 0 || size.height == 0) {
+        return std::unexpected(ImageCompareError::EmptyImage);
+    }
+    if (rgb.size() != pixelCount(size) * kRgbChannels) {
+        return std::unexpected(ImageCompareError::WrongValueCount);
+    }
+    return Rgb16Image{size, std::move(rgb)};
+}
+
 GoldenImage::GoldenImage(Rgb8Image image) noexcept : image_(std::move(image)) {}
 
 std::uint8_t averageInLinearLight(std::array<std::uint8_t, 4> block) {

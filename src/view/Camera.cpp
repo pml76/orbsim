@@ -6,7 +6,10 @@
 #include "view/Frame.hpp"
 #include "view/Mat4.hpp"
 #include "view/Projection.hpp"
+#include "view/PushConstants.hpp"
 
+#include <algorithm>
+#include <array>
 #include <expected>
 
 namespace orb::view {
@@ -71,6 +74,18 @@ Vec3f toRenderSpace(const Position& worldMetres, const Camera& camera) noexcept 
         .y = static_cast<f32>(relative.y.value()),
         .z = static_cast<f32>(relative.z.value()),
     };
+}
+
+Mat4f toShaderMatrix(const ViewProjection& viewProjection) noexcept {
+    const std::array<f64, 16> elements = viewProjection.columnMajor();
+    // A matrix from a validated camera and projection is finite and small; an
+    // entry past 32-bit range would be a defect upstream, and narrowing it
+    // undefined -- the reason detail::isNarrowable exists.
+    ORBSIM_EXPECTS(std::ranges::all_of(elements, detail::isNarrowable));
+    Mat4f narrowed{};
+    std::ranges::transform(
+        elements, narrowed.begin(), [](f64 e) noexcept { return static_cast<f32>(e); });
+    return narrowed;
 }
 
 } // namespace orb::view

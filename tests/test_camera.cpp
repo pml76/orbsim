@@ -43,6 +43,7 @@
 #include "view/Frame.hpp"
 #include "view/Mat4.hpp"
 #include "view/Projection.hpp"
+#include "view/PushConstants.hpp"
 
 #include <catch2/catch_message.hpp>
 #include <catch2/catch_test_macros.hpp>
@@ -53,6 +54,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <limits>
+#include <numbers>
 #include <random>
 
 using namespace orb;
@@ -786,4 +788,134 @@ TEST_CASE("the naive path fails the budget where it bites, and passes where it d
         // itself (VERIFICATION.md rule 23).
         REQUIRE(errors.naive > 5.0 * errors.render);
     }
+}
+
+// --- the view-projection at the GPU boundary (M1-18, register decision 268) ----
+//
+// The expected values are the infinite reverse-Z projection's own entries,
+// written out from ADR 0003's definition: f / aspect and -f on the diagonal,
+// with f = 1 / tan(fov / 2), the near plane at row 2 of column 3, and -1 at
+// row 3 of column 2. GLSL reads a mat4 column by column, so the element at
+// (row, column) is at column * 4 + row in what the shader is given.
+
+namespace {
+
+// A narrowed matrix applied to a point the way the vertex shader applies it,
+// in 32-bit arithmetic, then divided through: where the point lands, in
+// Vulkan's normalised device coordinates.
+// Where a 32-bit evaluation of these few products and sums lands: a few units
+// of f32's 6e-8, against coordinates of order one.
+constexpr Tolerance kDeviceTolerance{1e-6};
+
+struct DeviceCoordinates {
+    f64 x{};
+    f64 y{};
+    f64 depth{};
+};
+
+[[nodiscard]] DeviceCoordinates landing(const Mat4f& m, const Vec3f& p) {
+    std::array<f32, 4> clip{};
+    const auto in = std::to_array({p.x, p.y, p.z, 1.0F});
+    for (std::size_t row = 0; row < 4; ++row) {
+        f32 sum = 0.0F;
+        for (std::size_t column = 0; column < 4; ++column) {
+            sum += m.at((column * 4) + row) * in.at(column);
+        }
+        clip.at(row) = sum;
+    }
+    const auto w = static_cast<f64>(clip.at(3));
+    return {
+        .x = static_cast<f64>(clip.at(0)) / w,
+        .y = static_cast<f64>(clip.at(1)) / w,
+        .depth = static_cast<f64>(clip.at(2)) / w,
+    };
+}
+
+// One point, where it was meant to land and why.
+struct Landing {
+    const char* what{};
+    Vec3f point;
+    DeviceCoordinates want;
+};
+
+void requireLanding(const Mat4f& m, const Landing& c) {
+    const DeviceCoordinates got = landing(m, c.point);
+    INFO(c.what << ": got (" << got.x << ", " << got.y << ", " << got.depth << ")");
+    REQUIRE(nearlyEqual(got.x, c.want.x, kDeviceTolerance));
+    REQUIRE(nearlyEqual(got.y, c.want.y, kDeviceTolerance));
+    REQUIRE(nearlyEqual(got.depth, c.want.depth, kDeviceTolerance));
+}
+
+} // namespace
+
+TEST_CASE("the view-projection narrows into the column order GLSL reads") {
+    const Radians fov{std::numbers::pi / 4.0};
+    const Metres near{1.0};
+    const Aspect aspect{1280.0 / 720.0};
+    const auto camera = Camera::from(Position{0.0, 0.0, 0.0}, Quat{}, fov, near);
+    REQUIRE(camera.has_value());
+    const auto projection = infiniteReverseZPerspective(fov, aspect, near);
+    REQUIRE(projection.has_value());
+
+    const Mat4f m = toShaderMatrix(*projection * viewMatrix(*camera));
+
+    const f64 f = 1.0 / std::tan(std::numbers::pi / 8.0);
+    std::array<f32, 16> want{};
+    want.at(0) = static_cast<f32>(f / aspect.value()); // (0, 0)
+    want.at(5) = static_cast<f32>(-f);                 // (1, 1): Vulkan's y runs down
+    want.at(11) = -1.0F;                               // (3, 2): w is the distance ahead
+    want.at(14) = 1.0F;                                // (2, 3): the near plane, 1 m
+    for (std::size_t i = 0; i < want.size(); ++i) {
+        INFO("element " << i << ": got " << m.at(i) << ", want " << want.at(i));
+        // An unrotated camera's view matrix is the identity, so the product
+        // is the projection's own entries, narrowed once: exact. The two
+        // diagonal entries are within one rounding of the double product,
+        // which here is the identity's.
+        REQUIRE(bitsOf(m.at(i)) == bitsOf(want.at(i)));
+    }
+}
+
+TEST_CASE("a narrowed view-projection puts points where the field of view says") {
+    // A camera turned 90 degrees about +y looks down world -x, with world +y
+    // still up and world -z to its right. A transposed rotation would turn it
+    // the other way and put every point below on the wrong side.
+    const f64 halfFov = std::numbers::pi / 8.0;
+    const f64 aspect = 1280.0 / 720.0;
+    const auto camera =
+        Camera::from(Position{0.0, 0.0, 0.0},
+                     Quat::fromAxisAngle(Direction{0.0, 1.0, 0.0}, Radians{std::numbers::pi / 2.0}),
+                     Radians{2.0 * halfFov},
+                     Metres{1.0});
+    REQUIRE(camera.has_value());
+    const auto projection =
+        infiniteReverseZPerspective(Radians{2.0 * halfFov}, Aspect{aspect}, Metres{1.0});
+    REQUIRE(projection.has_value());
+    const Mat4f m = toShaderMatrix(*projection * viewMatrix(*camera));
+
+    const f64 up = 10.0 * std::tan(halfFov);
+    const f64 right = aspect * up;
+    requireLanding(m,
+                   {
+                       .what = "10 m straight ahead, at the centre with depth near / 10",
+                       .point = Vec3f{.x = -10.0F, .y = 0.0F, .z = 0.0F},
+                       .want = {.x = 0.0, .y = 0.0, .depth = 0.1},
+                   });
+    requireLanding(m,
+                   {
+                       .what = "on the top edge, where Vulkan's y is -1",
+                       .point = Vec3f{.x = -10.0F, .y = static_cast<f32>(up), .z = 0.0F},
+                       .want = {.x = 0.0, .y = -1.0, .depth = 0.1},
+                   });
+    requireLanding(m,
+                   {
+                       .what = "on the right edge, which is world -z for this camera",
+                       .point = Vec3f{.x = -10.0F, .y = 0.0F, .z = static_cast<f32>(-right)},
+                       .want = {.x = 1.0, .y = 0.0, .depth = 0.1},
+                   });
+    requireLanding(m,
+                   {
+                       .what = "20 m ahead, where depth halves",
+                       .point = Vec3f{.x = -20.0F, .y = 0.0F, .z = 0.0F},
+                       .want = {.x = 0.0, .y = 0.0, .depth = 0.05},
+                   });
 }

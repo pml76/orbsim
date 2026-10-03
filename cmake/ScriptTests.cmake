@@ -278,7 +278,8 @@ foreach(test_name IN LISTS ORBSIM_TESTS)
     list(APPEND orbsim_listener_programs $<TARGET_FILE:${test_name}>)
 endforeach()
 if(ORBSIM_BUILD_APP)
-    list(APPEND orbsim_listener_programs $<TARGET_FILE:test_probe_clear>)
+    list(APPEND orbsim_listener_programs $<TARGET_FILE:test_probe_clear>
+            $<TARGET_FILE:test_radiometry> $<TARGET_FILE:test_tonemap_port>)
 endif()
 if(ORBSIM_PYTHON)
     add_test(NAME abort_listener

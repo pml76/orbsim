@@ -19,6 +19,7 @@
 #include "view/Camera.hpp"
 #include "view/Exposure.hpp"
 #include "view/ImageCompare.hpp"
+#include "view/Lambert.hpp"
 
 #include <cstdint>
 #include <optional>
@@ -66,6 +67,9 @@ struct SidecarFields {
     Camera camera;
     std::string_view qualityPreset;
     CameraSettings exposure;
+    // The lambert probes' light and surface (M1-18, register decision 264);
+    // absent for a probe that draws its picture directly in radiance.
+    std::optional<LambertScene> scene;
     SidecarDevice device;
     SidecarBuild build;
     std::string_view runDateUtc; // ISO 8601, to the second, with a Z

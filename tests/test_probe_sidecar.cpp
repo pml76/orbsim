@@ -16,16 +16,19 @@
 #include "view/Camera.hpp"
 #include "view/Exposure.hpp"
 #include "view/ImageCompare.hpp"
+#include "view/Lambert.hpp"
 #include "view/ProbeSidecar.hpp"
 
 #include <catch2/catch_message.hpp>
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <array>
 #include <charconv>
 #include <cmath>
 #include <cstddef>
 #include <memory>
+#include <numbers>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -86,7 +89,8 @@ constexpr SidecarGolden kNoGolden{
     .difference = std::nullopt,
 };
 
-[[nodiscard]] std::string sidecarText(const SidecarGolden& golden = kNoGolden) {
+[[nodiscard]] std::string sidecarText(const SidecarGolden& golden = kNoGolden,
+                                      const std::optional<LambertScene>& scene = std::nullopt) {
     const auto camera = Camera::from(Position{1.5, -2.0, 3.25}, Quat{}, Radians{0.5}, Metres{0.25});
     REQUIRE(camera.has_value());
     const std::array<std::string_view, 2> files{{"a.png", "a.exr"}};
@@ -104,6 +108,7 @@ constexpr SidecarGolden kNoGolden{
                 .shutterTime = ShutterTime::from(Seconds{0.008}).value(),
                 .iso = Iso::from(100.0).value(),
             },
+        .scene = scene,
         .device =
             {
                 .name = "A GPU",
@@ -192,4 +197,50 @@ TEST_CASE("a run that named no golden says so, and that nothing was measured") {
     REQUIRE(valueOf(lines, "golden.verdict") == "not compared");
     REQUIRE(valueOf(lines, "golden.largest") == "not measured");
     REQUIRE(valueOf(lines, "golden.mean") == "not measured");
+}
+
+// --- a lambert probe's light and surface (M1-18, register decision 264) -------
+
+TEST_CASE("a lambert probe's sidecar records its light and its surface") {
+    // Values no other field has, so a value under the wrong key fails by name.
+    const f64 tilt = std::numbers::pi / 3.0;
+    const LambertScene scene{
+        .albedo = Albedo::from(0.3).value(),
+        .sunDistance = Metres{74'798'935'350.0},
+        .irradiance = Irradiance{5444.0},
+        .patch =
+            {
+                .centre = Position{0.0, 0.0, -10.0},
+                .side = Metres{100.0},
+                .tilt = Radians{tilt},
+            },
+        .towardSun = Direction{0.0, 0.0, 1.0},
+    };
+    const std::vector<std::string> lines = linesOf(sidecarText(kNoGolden, scene));
+    REQUIRE(valueOf(lines, "scene.light") == "the Sun, a Lambertian patch");
+    REQUIRE(valueOf(lines, "scene.albedo") == "0.3");
+    REQUIRE(valueOf(lines, "scene.sun.distance") == "74798935350 m");
+    REQUIRE(valueOf(lines, "scene.irradiance") == "5444 W/m^2 at normal incidence");
+    REQUIRE(valueOf(lines, "scene.sun.direction") == "0 0 1 (world, toward the Sun)");
+    REQUIRE(valueOf(lines, "scene.patch.centre") == "0 0 -10 m");
+    REQUIRE(valueOf(lines, "scene.patch.side") == "100 m");
+    const std::string tiltText = valueOf(lines, "scene.patch.tilt");
+    REQUIRE(tiltText.ends_with(" rad about the horizontal axis"));
+    REQUIRE(std::abs(leadingNumber(tiltText) - tilt) <= 1e-15);
+    // The angle of incidence is measured between the patch's normal and the
+    // Sun, not copied from the tilt; with the Sun straight behind the camera
+    // they are the same angle, to the rounding of one atan2.
+    const std::string incidenceText = valueOf(lines, "scene.incidence");
+    INFO("incidence " << incidenceText);
+    REQUIRE(incidenceText.ends_with(" rad"));
+    REQUIRE(std::abs(leadingNumber(incidenceText) - tilt) <= 1e-14);
+}
+
+TEST_CASE("a probe without a light says so, and writes no scene's numbers") {
+    const std::vector<std::string> lines = linesOf(sidecarText());
+    REQUIRE(valueOf(lines, "scene.light") == "none: drawn directly in radiance");
+    const bool anyNumber = std::ranges::any_of(lines, [](const std::string& line) noexcept {
+        return line.starts_with("scene.") && !line.starts_with("scene.light");
+    });
+    REQUIRE(!anyNumber);
 }

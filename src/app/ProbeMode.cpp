@@ -7,6 +7,7 @@
 #include "view/Exposure.hpp"
 #include "view/ImageCompare.hpp"
 #include "view/ImageFiles.hpp"
+#include "view/Lambert.hpp"
 #include "view/ProbeImage.hpp"
 #include "view/ProbeSidecar.hpp"
 
@@ -31,6 +32,7 @@
 #include <string_view>
 #include <system_error>
 #include <utility>
+#include <variant>
 #include <vector>
 
 namespace orb::app {
@@ -136,6 +138,13 @@ struct RunRecord {
     std::optional<view::ImageDifference> goldenDifference;
 };
 
+// A lambert probe's light and surface for its sidecar, or none (M1-18).
+[[nodiscard]] std::optional<view::LambertScene>
+lambertSceneOf(const gfx::ProbeConditions& conditions) {
+    if (const auto* scene = std::get_if<view::LambertScene>(&conditions.picture)) return *scene;
+    return std::nullopt;
+}
+
 // The sidecar, written last and in every case (register decision 193).
 [[nodiscard]] std::expected<void, std::string> writeSidecar(const RunRecord& run,
                                                             std::string_view outcome) {
@@ -157,6 +166,7 @@ struct RunRecord {
         .camera = run.conditions.camera,
         .qualityPreset = run.conditions.qualityName,
         .exposure = run.conditions.exposure,
+        .scene = lambertSceneOf(run.conditions),
         .device =
             {
                 .name = device.name,
@@ -374,7 +384,7 @@ ProbeOutcome runProbe(SDL_Window* window,
     run.device = gfx.deviceDescription();
     std::print("GPU: {}\n", gfx.deviceName());
 
-    auto scene = probe->createScene(gfx, request.shaderDirectory, run.conditions);
+    auto scene = gfx::createScene(gfx, request.shaderDirectory, run.conditions);
     if (!scene) return stopBeforeFrame(run, scene.error().message);
     const view::PerRadiance exposure =
         view::radianceExposure(view::exposureValue100(run.conditions.exposure));

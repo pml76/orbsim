@@ -353,6 +353,78 @@ TEST_CASE("a 16-bit PNG holds the RGB it was given, most significant byte first"
     REQUIRE(decoded.samples == withoutAlpha(rgba));
 }
 
+// --- reading a 16-bit PNG (M1-18, register decision 260) ----------------------
+//
+// The port check reads the 16-bit display image back, as it reads the 8-bit
+// one, so decodePng16 is held to the same claims decodePng8 is: what lodepng
+// wrote comes back value for value, and anything that is not 16-bit RGB is
+// refused by name rather than converted.
+
+namespace {
+
+[[nodiscard]] std::vector<std::uint16_t> valuesOf(const Rgb16Image& image) {
+    std::vector<std::uint16_t> values(image.valueCount());
+    for (std::size_t i = 0; i < values.size(); ++i) {
+        values.at(i) = image.value(i);
+    }
+    return values;
+}
+
+void requireRefused(const std::expected<Rgb16Image, PngReadFailure>& read, PngReadError expected) {
+    REQUIRE(!read.has_value());
+    INFO(describe(read.error().error) << ": " << read.error().detail);
+    REQUIRE(read.error().error == expected);
+}
+
+} // namespace
+
+TEST_CASE("a 16-bit RGB image survives a PNG written by lodepng and read back") {
+    const std::vector<std::uint16_t> rgba = rgba16Pattern();
+    const auto png = encodePng16(kSize, rgba);
+    REQUIRE(png.has_value());
+    auto read = decodePng16(*png);
+    INFO((read.has_value() ? std::string("read") : read.error().detail));
+    REQUIRE(read.has_value());
+    REQUIRE(read->size().width == kSize.width);
+    REQUIRE(read->size().height == kSize.height);
+    // The pattern's first value is 0x0102, so a byte-order mistake shows.
+    REQUIRE(valuesOf(*read) == withoutAlpha(rgba));
+}
+
+TEST_CASE("an 8-bit PNG is refused as a 16-bit one rather than converted") {
+    const auto png = encodePng8(rgb8Image());
+    REQUIRE(png.has_value());
+    requireRefused(decodePng16(*png), PngReadError::NotSixteenBitRgb);
+}
+
+TEST_CASE("a 16-bit PNG of another colour type is refused rather than converted") {
+    auto png = encodePng16(kSize, rgba16Pattern());
+    REQUIRE(png.has_value());
+    // Byte 25 is IHDR's colour type; 6 is RGB with alpha.
+    png->at(25) = std::byte{6};
+    requireRefused(decodePng16(*png), PngReadError::NotSixteenBitRgb);
+}
+
+TEST_CASE("bytes that are not a PNG, or a 16-bit PNG cut short, are refused by name") {
+    requireRefused(decodePng16({}), PngReadError::NotPng);
+    const std::vector<std::byte> text(64, std::byte{'x'});
+    requireRefused(decodePng16(text), PngReadError::NotPng);
+    const auto png = encodePng16(kSize, rgba16Pattern());
+    REQUIRE(png.has_value());
+    requireRefused(decodePng16(std::span(*png).first(40)), PngReadError::Undecodable);
+}
+
+TEST_CASE("a 16-bit image must fill its size, and have one") {
+    const std::vector<std::uint16_t> values(pixelCount(kSize) * 3, 1);
+    REQUIRE(Rgb16Image::from(kSize, values).has_value());
+    const auto short1 = Rgb16Image::from(kSize, std::vector<std::uint16_t>(values.size() - 1));
+    REQUIRE(!short1.has_value());
+    REQUIRE(short1.error() == ImageCompareError::WrongValueCount);
+    const auto empty = Rgb16Image::from({.width = 0, .height = 3}, {});
+    REQUIRE(!empty.has_value());
+    REQUIRE(empty.error() == ImageCompareError::EmptyImage);
+}
+
 // --- reading an EXR -----------------------------------------------------------
 
 namespace {

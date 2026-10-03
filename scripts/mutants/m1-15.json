@@ -265,16 +265,21 @@
       "file": "shaders/tonemap.frag",
       "find": "    vec3 v = kAgxInset * max(exposed, vec3(0.0));",
       "replace": "    vec3 v = kAgxInset * exposed;",
-      "expect": "survives",
-      "why": "A resolve pass that computes the wrong display value is a valid Vulkan program. M1-16's numeric check (tests/test_probe_clear.cpp) reads the HDR target, which is before the resolve pass, so it cannot see this either -- measured 2026-09-26, when this mutant survived the probe's judges too. M1-18's port check compares the shader with view/Tonemap.hpp to 1/255 and is what must kill it. Accepted in advance by the owner on 2026-09-25 (M1-15 question 11, register decision 182). Re-run 2026-09-29 with M1-17's golden as a judge (probe_clear): it still survives, because nothing in `clear` is negative light or brighter than AgX's white, so the clamp changes no pixel of it. M1-18's port check remains what must kill it.",
+      "expect": "caught",
+      "why": "Killed by M1-18's port check on the tonemap-port probe (register decision 261), which holds negative light because nothing physical does. Measured before the ruling, 2026-10-03: without the clamp a frame with a negative channel misses the CPU chain by up to 195.7/255. A declared survivor from M1-15 until then -- a resolve pass that computes the wrong display value is a valid Vulkan program, and neither M1-16's numeric check nor M1-17's golden could see it.",
       "suites": [],
       "targets": [
-        "orbsim"
+        "orbsim",
+        "test_tonemap_port"
       ],
       "ctest": [
         "tonemap_constants",
         "orbsim_smoke",
-        "probe_clear"
+        "probe_clear",
+        "probe_tonemap-port",
+        "the tonemap-port frame holds the light the clamps act on",
+        "the port check holds on tonemap-port's picture, to 1/255 and to 2/65535",
+        "the port check holds on clear's picture, to 1/255 and to 2/65535"
       ]
     },
     {
@@ -283,15 +288,20 @@
       "find": "    return pow(clamp(v, 0.0, 1.0), vec3(kAgxDisplayExponent));",
       "replace": "    return pow(v, vec3(kAgxDisplayExponent));",
       "expect": "survives",
-      "why": "A resolve pass that computes the wrong display value is a valid Vulkan program. M1-16's numeric check (tests/test_probe_clear.cpp) reads the HDR target, which is before the resolve pass, so it cannot see this either -- measured 2026-09-26, when this mutant survived the probe's judges too. M1-18's port check compares the shader with view/Tonemap.hpp to 1/255 and is what must kill it. Accepted in advance by the owner on 2026-09-25 (M1-15 question 11, register decision 182). Re-run 2026-09-29 with M1-17's golden as a judge (probe_clear): it still survives, because nothing in `clear` is negative light or brighter than AgX's white, so the clamp changes no pixel of it. M1-18's port check remains what must kill it.",
+      "why": "Absorbed on this machine's RTX A2000 by the sRGB encode's own clamp: measured 2026-10-03, removing it leaves both PNGs and the HDR dump of clear bit-identical, although the clamp acts on 868,950 of its values (815,850 below 0, 53,100 above 1) -- so the earlier reason, that nothing in clear is negative or above white, was wrong (register decision 263). On the Intel UHD the 16-bit image moves by at most 7 of 65,535 steps, which M1-18's 16-bit port check would catch; the probes are not run there (decision 262). Kept, because GLSL leaves the power of a negative number undefined. Re-run with M1-18's port check as a judge.",
       "suites": [],
       "targets": [
-        "orbsim"
+        "orbsim",
+        "test_tonemap_port"
       ],
       "ctest": [
         "tonemap_constants",
         "orbsim_smoke",
-        "probe_clear"
+        "probe_clear",
+        "probe_tonemap-port",
+        "the tonemap-port frame holds the light the clamps act on",
+        "the port check holds on tonemap-port's picture, to 1/255 and to 2/65535",
+        "the port check holds on clear's picture, to 1/255 and to 2/65535"
       ]
     },
     {

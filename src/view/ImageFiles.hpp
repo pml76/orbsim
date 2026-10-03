@@ -99,9 +99,10 @@ encodePng16(ImageSize size, std::span<const std::uint16_t> rgba);
 // Why a PNG was not read as a golden. Reported rather than asserted: a golden
 // is a file, and a file can hold anything (ADR 0002).
 enum class PngReadError : std::uint8_t {
-    NotPng,         // the bytes do not begin with a PNG signature and header
-    NotEightBitRgb, // a PNG, but not 8 bits per channel of R, G and B
-    Undecodable,    // the header is right and the image data is not
+    NotPng,           // the bytes do not begin with a PNG signature and header
+    NotEightBitRgb,   // a PNG, but not 8 bits per channel of R, G and B
+    NotSixteenBitRgb, // a PNG, but not 16 bits per channel of R, G and B (M1-18)
+    Undecodable,      // the header is right and the image data is not
 };
 
 [[nodiscard]] constexpr std::string_view describe(PngReadError error) noexcept {
@@ -110,6 +111,8 @@ enum class PngReadError : std::uint8_t {
         return "the file is not a PNG";
     case PngReadError::NotEightBitRgb:
         return "the PNG is not 8 bits per channel of R, G and B, which a golden is";
+    case PngReadError::NotSixteenBitRgb:
+        return "the PNG is not 16 bits per channel of R, G and B, which a probe's 16-bit image is";
     case PngReadError::Undecodable:
         return "the PNG's image data could not be decoded";
     }
@@ -141,6 +144,11 @@ struct PngReadFailure {
 // palette or alpha PNG is refused by name rather than turned into something
 // that is not what was committed.
 [[nodiscard]] std::expected<Rgb8Image, PngReadFailure> decodePng8(std::span<const std::byte> png);
+
+// A 16-bit RGB PNG, decoded (M1-18, register decision 260): a probe's 16-bit
+// display image, read back for the port check. The same rule as decodePng8's:
+// the header is checked first, and anything but 16-bit RGB is refused by name.
+[[nodiscard]] std::expected<Rgb16Image, PngReadFailure> decodePng16(std::span<const std::byte> png);
 
 } // namespace orb::view
 

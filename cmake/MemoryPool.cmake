@@ -113,7 +113,8 @@ if(ORBSIM_CLANG_TIDY)
         list(APPEND orbsim_lint_targets count_wraparound_${operation})
     endforeach()
     if(ORBSIM_BUILD_APP)
-        list(APPEND orbsim_lint_targets orbsim test_probe_clear make_broken_goldens)
+        list(APPEND orbsim_lint_targets orbsim test_probe_clear test_radiometry
+                test_tonemap_port make_broken_goldens)
     endif()
 
     set(orbsim_lint_stamps "")

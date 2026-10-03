@@ -140,3 +140,30 @@ scene clears to zero radiance (decision 181), and the default exposure is the
 published "sunny 16" rule (decision 176), which this record had left open.
 The 0.5 % budget for M1-18 is unchanged, and so is its analytic 129.97
 W/(m^2 sr).
+
+## Update, 2026-10-03: the chain is measured
+
+[M1-18](../plan/tasks/m1-18-radiometry-probe.md) built the measurement this
+record asks for, under the owner's rulings of the same day (register decisions
+256-271).
+
+**The 0.5 % budget holds at every pixel**, not at the five points the plan
+named: the `lambert` probe's patch, drawn through the camera and filling the
+frame, reads back 129.875 W/(m^2 sr) everywhere against the analytic
+129.966, 0.07 % low. Its variants hold the inverse-square law (0.5 and 2 AU)
+and the cosine (tilted 60 degrees) on the GPU path, to the same budget, and
+`lambert-exposure` asserts the clause above in one test: two exposures, a
+byte-identical HDR dump, and a picture brighter at every value.
+
+**The quantisation floor is up to 0.1 %, not 0.05 %.** The Vulkan
+specification leaves the rounding of a write to RGBA16F undefined, and this
+machine's GPU was measured rounding toward zero (M1-16), so a value may land a
+whole binary16 step below the exact one. The budget still tests the chain and
+not the format, five times over; each value is also required to be one of the
+two binary16 values either side of the exact radiance.
+
+**The port check is in `check`**: every pixel of every probe's 8-bit picture
+within 1/255 of this record's CPU chain applied to its HDR frame, and of the
+16-bit picture within 2 of 65,535 steps -- measured 0.56/255 and 0.57 steps
+before the budgets were set. A synthetic probe, `tonemap-port`, holds negative
+light and radiance above AgX's white so the shader's clamps are tested at all.
