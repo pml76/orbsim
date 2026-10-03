@@ -2,6 +2,7 @@
 """Print the downsample references tests/test_image_compare.cpp asserts (M1-17).
 
     downsample-reference.py
+    downsample-reference.py --self-test
 
 Why this exists: view/ImageCompare.cpp averages each 2x2 block of an 8-bit
 image in the display's linear light (register decision 228) -- decode each
@@ -20,6 +21,14 @@ occur only where all four values lie on the straight segment of the curve
 For every result the script also prints how far the exact value lay from a
 rounding boundary, in 8-bit steps, so that a case chosen for the test is seen
 not to sit on a knife edge the C++ double arithmetic could fall either side of.
+
+**The straight segment is taken in whole numbers** (register decision 301):
+until 2026-10-03 it went through the 50-digit decode and encode like the rest,
+landed a hair under an exact tie, and rounded (3, 3, 4, 4) to 3 rather than 4.
+None of the cases below is such a tie, so the references pasted into the test
+were right; the independent check of a golden found it (decision 300).
+--self-test holds average() to hand-worked values, the ties first, and runs in
+`check` as the CTest test downsample_reference_self_test.
 
 Deterministic, and needs nothing beyond the standard library.
 """
@@ -56,14 +65,58 @@ BLOCKS = {
 }
 
 
+# The largest 8-bit value on the sRGB curve's straight segment: 10/255 is below
+# the decode's knee at 0.04045 and 11/255 above it -- kLastStraightValue in
+# src/view/ImageCompare.hpp, by the same reasoning.
+LAST_STRAIGHT = 10
+
+
 def average(values: list[int]) -> tuple[int, Decimal]:
     """The 8-bit result, and the exact value before rounding, in 8-bit steps."""
-    linear = sum(srgb.decode(Decimal(v) / STEPS) for v in values) / 4
-    exact = srgb.encode(linear) * STEPS
+    if max(values) <= LAST_STRAIGHT:
+        # On the straight segment the decode divides by 12.92 and the encode
+        # multiplies by it, so the encoded average is exactly the mean of the
+        # four -- taken here in whole numbers. Through the decode and encode
+        # in 50 digits it lands a hair off, and an exact tie -- (3, 3, 4, 4)
+        # is 3.5 -- rounded down until 2026-10-03 (decisions 300 and 301).
+        exact = Decimal(sum(values)) / 4
+    else:
+        linear = sum(srgb.decode(Decimal(v) / STEPS) for v in values) / 4
+        exact = srgb.encode(linear) * STEPS
     return int(exact.quantize(Decimal(1), rounding=ROUND_HALF_UP)), exact
 
 
+def self_test() -> int:
+    """Hold average() to values worked out by hand, ties first (decision 301).
+
+    Each case is (four values, the 8-bit result, the exact value or None). The
+    straight-segment cases are means of four whole numbers, so their exact
+    values are quarters and are written here exactly; an exact tie rounds up
+    (decision 228). The one curved case, black beside white, is the value
+    tests/test_image_compare.cpp already holds, to show the fix left the
+    curved segment alone.
+    """
+    cases = [
+        ((3, 3, 4, 4), 4, Decimal("3.5")),     # the tie found on 2026-10-03
+        ((7, 7, 8, 8), 8, Decimal("7.5")),
+        ((9, 9, 10, 10), 10, Decimal("9.5")),  # the segment's last value
+        ((0, 0, 0, 1), 0, Decimal("0.25")),
+        ((3, 7, 9, 10), 7, Decimal("7.25")),
+        ((10, 10, 10, 10), 10, Decimal("10")),
+        ((0, 0, 255, 255), 188, None),         # curved: 187.516 steps
+    ]
+    failures = 0
+    for values, want, want_exact in cases:
+        got, exact = average(list(values))
+        good = got == want and (want_exact is None or exact == want_exact)
+        failures += not good
+        print(f"self-test: {values} -> {got}, exact {exact:.12f} ({'ok' if good else 'WRONG'})")
+    return 1 if failures else 0
+
+
 def main() -> None:
+    if sys.argv[1:] == ["--self-test"]:
+        sys.exit(self_test())
     for name, pixels in BLOCKS.items():
         results = []
         for channel in range(3):

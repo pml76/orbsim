@@ -269,6 +269,21 @@ if(ORBSIM_BUILD_APP)
 endif()
 set_tests_properties(accept_golden_self_test PROPERTIES LABELS fixtures)
 
+# The downsample reference's own check (register decision 301): its average of
+# four values is held to hand-worked results, exact ties on the sRGB curve's
+# straight segment first, which it rounded the wrong way until 2026-10-03.
+# Nothing else runs the script -- its output was pasted into
+# tests/test_image_compare.cpp -- so without this its fix would be an intention.
+if(ORBSIM_PYTHON)
+    add_test(NAME downsample_reference_self_test
+            COMMAND ${ORBSIM_PYTHON}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/downsample-reference.py --self-test
+    )
+else()
+    add_test(NAME downsample_reference_self_test COMMAND ${CMAKE_COMMAND} -E false)
+endif()
+set_tests_properties(downsample_reference_self_test PROPERTIES LABELS fixtures)
+
 # The abort listener in every suite (M1-90, ADR 0024): each Catch2 program is
 # asked through --list-listeners, and each must name AbortWithoutADialog. A
 # suite that stopped linking orbsim_abort_behaviour would otherwise build and
