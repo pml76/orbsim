@@ -5,6 +5,7 @@
 #include "render/VulkanContext.hpp"
 #include "render/VulkanHandle.hpp"
 #include "view/Exposure.hpp"
+#include "view/GoldenPath.hpp"
 #include "view/ImageCompare.hpp"
 #include "view/ImageFiles.hpp"
 #include "view/Lambert.hpp"
@@ -133,7 +134,10 @@ struct RunRecord {
     std::optional<gfx::DeviceDescription> device; // absent if no device was made
     std::vector<std::string_view> written;        // names of the files written
     // What happened with the golden, for the sidecar (register decision 237).
-    std::string goldenPath; // empty when no golden was named
+    // Under --golden-dir both name the directory until the device is open,
+    // and then the card's own file (decision 289).
+    std::string goldenPath;           // empty when no golden was named
+    std::filesystem::path goldenFile; // the same, as a path to open
     std::string goldenVerdict;
     std::optional<view::ImageDifference> goldenDifference;
 };
@@ -255,7 +259,7 @@ loadGolden(const std::filesystem::path& path) {
 // What the golden step leaves: an exit code, and the frame to accept.
 struct GoldenStep {
     int exitCode{};
-    std::optional<view::Rgb8Image> toAccept;
+    std::optional<GoldenToAccept> toAccept;
 };
 
 // With --accept-golden, anything short of a comparison is a note rather than
@@ -266,7 +270,10 @@ acceptWithoutComparing(RunRecord& run, view::Rgb8Image halved, std::string_view 
     std::print(
         "golden {}: nothing to compare with ({}); accepting replaces it\n", run.goldenPath, why);
     run.goldenVerdict = "accept requested; nothing to compare with: " + std::string(why);
-    return {.exitCode = 0, .toAccept = std::move(halved)};
+    return {
+        .exitCode = 0,
+        .toAccept = GoldenToAccept{.frame = std::move(halved), .file = run.goldenFile},
+    };
 }
 
 // A comparison that could not be made, which a run asked to compare fails on
@@ -275,6 +282,29 @@ acceptWithoutComparing(RunRecord& run, view::Rgb8Image halved, std::string_view 
     std::print(
         stderr, "orbsim: probe {}: cannot compare with the golden: {}\n", run.probe.name, why);
     run.goldenVerdict = "failed: " + std::string(why);
+    return {.exitCode = kExitFailure, .toAccept = std::nullopt};
+}
+
+// A card with no golden of this probe, under --golden-dir (decisions 287 and
+// 289): exit 1, never a comparison skipped (VERIFICATION.md rule 23), with
+// the card named by its numbers and the command that approves one. The five
+// files are written already, so the frame can be looked at first.
+[[nodiscard]] GoldenStep noGoldenForCard(RunRecord& run, const ProbeRequest& request) {
+    const gfx::DeviceDescription none{};
+    const gfx::DeviceDescription& device = run.device ? *run.device : none;
+    std::print(stderr,
+               "orbsim: probe {}: no golden for this graphics card, {} (Vulkan {}): {} does not "
+               "exist\n"
+               "orbsim: look at {}; if it is right, the owner approves it with\n"
+               "    orbsim --probe {} --golden-dir {} --accept-golden\n",
+               run.probe.name,
+               device.name,
+               view::goldenFolderName({.vendorId = device.vendorId, .deviceId = device.deviceId}),
+               run.goldenPath,
+               (run.outDirectory / run.files.png8).string(),
+               run.probe.name,
+               request.goldenPath.string());
+    run.goldenVerdict = "failed: no golden for this graphics card";
     return {.exitCode = kExitFailure, .toAccept = std::nullopt};
 }
 
@@ -307,7 +337,14 @@ compareWithGolden(RunRecord& run, const ProbeRequest& request, const gfx::Offscr
         view::halveInLinearLight(view::Rgb8Image::fromRgba(view::kProbeImageSize, frame.display8));
     if (!halved) return cannotCompare(run, view::describe(halved.error()));
 
-    const auto golden = loadGolden(request.goldenPath);
+    if (request.goldenLocation == GoldenLocation::CardFolders && !accepting) {
+        // An error asking leaves the answer to loadGolden, which names it.
+        std::error_code error;
+        if (!std::filesystem::exists(run.goldenFile, error) && !error) {
+            return noGoldenForCard(run, request);
+        }
+    }
+    const auto golden = loadGolden(run.goldenFile);
     if (!golden) {
         return accepting ? acceptWithoutComparing(run, *std::move(halved), golden.error())
                          : cannotCompare(run, golden.error());
@@ -330,7 +367,10 @@ compareWithGolden(RunRecord& run, const ProbeRequest& request, const gfx::Offscr
                    run.goldenPath,
                    view::describeDifference(*difference));
         run.goldenVerdict = "accept requested";
-        return {.exitCode = 0, .toAccept = *std::move(halved)};
+        return {
+            .exitCode = 0,
+            .toAccept = GoldenToAccept{.frame = *std::move(halved), .file = run.goldenFile},
+        };
     }
     if (view::matchesGolden(*difference)) {
         std::print("golden {}: matches\n{}", run.goldenPath, view::describeDifference(*difference));
@@ -338,6 +378,19 @@ compareWithGolden(RunRecord& run, const ProbeRequest& request, const gfx::Offscr
         return {};
     }
     return reportMismatch(run, *halved, *golden, *difference);
+}
+
+// Under --golden-dir, the golden is this card's own, which only the device
+// just opened can say (decision 289): from here on the run compares with, and
+// accepts into, `<dir>/<vendor>-<device>/<probe>.png`.
+void resolveCardGolden(RunRecord& run, const ProbeRequest& request) {
+    if (request.golden == GoldenAction::None) return;
+    if (request.goldenLocation != GoldenLocation::CardFolders || !run.device) return;
+    run.goldenFile =
+        view::goldenPathFor(request.goldenPath,
+                            {.vendorId = run.device->vendorId, .deviceId = run.device->deviceId},
+                            run.probe.name);
+    run.goldenPath = run.goldenFile.string();
 }
 
 } // namespace
@@ -359,6 +412,7 @@ ProbeOutcome runProbe(SDL_Window* window,
         .device = std::nullopt,
         .written = {},
         .goldenPath = withGolden ? request.goldenPath.string() : std::string{},
+        .goldenFile = withGolden ? request.goldenPath : std::filesystem::path{},
         .goldenVerdict =
             withGolden ? "not compared: the run stopped before a frame existed" : "not compared",
         .goldenDifference = std::nullopt,
@@ -383,6 +437,7 @@ ProbeOutcome runProbe(SDL_Window* window,
     gfx::VulkanContext gfx = std::move(*created);
     run.device = gfx.deviceDescription();
     std::print("GPU: {}\n", gfx.deviceName());
+    resolveCardGolden(run, request);
 
     auto scene = gfx::createScene(gfx, request.shaderDirectory, run.conditions);
     if (!scene) return stopBeforeFrame(run, scene.error().message);
@@ -416,8 +471,9 @@ ProbeOutcome runProbe(SDL_Window* window,
     return {.exitCode = golden.exitCode, .toAccept = std::move(golden.toAccept)};
 }
 
-int acceptGolden(const std::filesystem::path& golden, const view::Rgb8Image& frame) {
-    const auto png = view::encodePng8(frame);
+int acceptGolden(const GoldenToAccept& accepted) {
+    const std::filesystem::path& golden = accepted.file;
+    const auto png = view::encodePng8(accepted.frame);
     if (!png) {
         std::print(stderr, "orbsim: --accept-golden: {}\n", png.error().message);
         return kExitFailure;

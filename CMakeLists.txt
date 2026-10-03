@@ -625,6 +625,7 @@ unset(BUILD_SHARED_LIBS)
 # ---------------------------------------------------------------------------
 set(ORBSIM_VIEW_SOURCES
         src/view/Camera.cpp
+        src/view/GoldenPath.cpp
         src/view/ImageCompare.cpp
         src/view/ImageFiles.cpp
         src/view/Lambert.cpp
@@ -732,6 +733,7 @@ set(ORBSIM_TESTS
         test_earth_orientation
         test_exposure
         test_fixture_file
+        test_golden_path
         test_half
         test_hdr_dump
         test_image_compare
@@ -773,6 +775,7 @@ target_link_libraries(test_half PRIVATE orbsim_view)
 target_link_libraries(test_hdr_dump PRIVATE orbsim_view)
 target_link_libraries(test_probe_sidecar PRIVATE orbsim_view)
 target_link_libraries(test_image_compare PRIVATE orbsim_view)
+target_link_libraries(test_golden_path PRIVATE orbsim_view)
 target_link_libraries(test_lambert PRIVATE orbsim_view)
 # And OpenEXR itself: the EXR is read back through the reference
 # implementation's own decoder, which is the check that the file is one.
@@ -1126,20 +1129,34 @@ set_tests_properties(orbsim_smoke PROPERTIES LABELS gpu RESOURCE_LOCK gpu)
 # two HDR dumps byte-identical (VERIFICATION.md rule 16). Both are the fixture
 # test_probe_clear reads the frame from.
 #
-# Since M1-17 probe_clear also compares the frame with its golden image,
-# tests/golden/clear.png, and requires it to match (ADR 0008; register
+# **The golden is a separate test since M1-110** (register decision 293).
+# probe_clear_golden renders `clear` again, into probes-golden/, and compares
+# it with this graphics card's own golden, tests/golden/<vendor>-<device>/
+# clear.png (decisions 287 and 289), requiring it to match (ADR 0008;
 # decisions 228-231) -- with a diff image from an "earlier run" planted first,
-# which the application must remove (decision 231).
+# which the application must remove (decision 231). Until M1-110 probe_clear
+# did both; but a test that sets up a fixture and fails keeps every test that
+# needs the fixture from running -- CTest reports them "Not Run" -- so on a
+# card with no golden yet the frame checks and the altered-golden tests below
+# would not have run at all. Measured with a throwaway CTest project on
+# 2026-10-03, CMake 4.3.1. The cost is one more render, about a second.
 set(ORBSIM_GOLDEN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/tests/golden")
 add_test(NAME probe_clear
         COMMAND ${CMAKE_COMMAND}
                 -DORBSIM=$<TARGET_FILE:orbsim>
                 -DPROBE=clear
                 -DOUT=${ORBSIM_PROBE_DIR}
-                -DGOLDEN=${ORBSIM_GOLDEN_DIR}/clear.png
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/RunProbe.cmake)
+add_test(NAME probe_clear_golden
+        COMMAND ${CMAKE_COMMAND}
+                -DORBSIM=$<TARGET_FILE:orbsim>
+                -DPROBE=clear
+                -DOUT=${CMAKE_CURRENT_BINARY_DIR}/probes-golden
+                -DGOLDEN_DIR=${ORBSIM_GOLDEN_DIR}
                 -DPLANT_DIFF=ON
                 "-DEXPECT_STDOUT=: matches"
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/RunProbe.cmake)
+set_tests_properties(probe_clear_golden PROPERTIES LABELS gpu RESOURCE_LOCK gpu)
 add_test(NAME probe_clear_determinism
         COMMAND ${CMAKE_COMMAND}
                 -DORBSIM=$<TARGET_FILE:orbsim>
@@ -1217,8 +1234,9 @@ catch_discover_tests(test_tonemap_port
 
 # A golden mismatch, caught end to end (M1-17, register decision 236).
 #
-# make_broken_goldens writes three altered copies of the committed golden into
-# the build tree -- a 16x16 block moved by 8 steps, which only the cap
+# make_broken_goldens writes three altered copies of the run's own `clear`
+# frame, halved, into the build tree (since M1-110, register decision 290;
+# the committed golden until then) -- a 16x16 block moved by 8 steps, which only the cap
 # catches; every value moved by 1 step, which only the mean catches; and a
 # 320x180 crop, which cannot be compared at all. It links orbsim_view and no
 # Vulkan. The probe is then run against each, and against a golden that does
@@ -1230,8 +1248,9 @@ add_executable(make_broken_goldens tests/make_broken_goldens.cpp)
 target_link_libraries(make_broken_goldens PRIVATE orbsim_view orbsim_warnings orbsim_sanitizers)
 set(ORBSIM_BROKEN_GOLDEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/golden-broken")
 add_test(NAME broken_goldens
-        COMMAND make_broken_goldens ${ORBSIM_GOLDEN_DIR}/clear.png ${ORBSIM_BROKEN_GOLDEN_DIR})
-set_tests_properties(broken_goldens PROPERTIES FIXTURES_SETUP broken_goldens)
+        COMMAND make_broken_goldens ${ORBSIM_PROBE_DIR}/clear.png ${ORBSIM_BROKEN_GOLDEN_DIR})
+set_tests_properties(broken_goldens PROPERTIES
+        FIXTURES_SETUP broken_goldens FIXTURES_REQUIRED probe_clear_frame)
 
 function(orbsim_add_golden_test name golden expect_exit)
     add_test(NAME probe_golden_${name}
@@ -1251,24 +1270,44 @@ function(orbsim_add_golden_test name golden expect_exit)
     endif()
 endfunction()
 #
-# **Which limit each breaks, not the two numbers themselves** (register
-# decision 275). The numbers are the alteration plus the GPU's own distance
-# from the golden, which is zero only on the GPU the golden was made on: on an
-# AMD Radeon RX 7900 XTX, on 2026-10-03, `clear` is up to 1/255 from it, mean
-# 0.01780/255 -- the size decision 238 measured between Intel and NVIDIA --
-# so the block's mean read 0.02668 rather than 0.00889, and the shift's
-# largest 2 rather than 1. The arithmetic of the two numbers is pinned
-# exactly, without a GPU, by test_image_compare.
+# **Which limit each breaks, and the two numbers exactly** (register decision
+# 296, amending 275). The altered goldens are made from the run's own frame,
+# which the probe renders again and halves the same way, so the alteration is
+# the whole difference on every graphics card: the block 8/255 at most and
+# 6,144 over 691,200 values on average, the shift 1/255 everywhere. From
+# 2026-10-03 until M1-110 they were made from the committed golden, and the
+# numbers held the card's own distance from it as well -- on the RX 7900 XTX
+# up to 1/255, mean 0.01780/255 -- so only the verdicts were checked.
 orbsim_add_golden_test(block ${ORBSIM_BROKEN_GOLDEN_DIR}/clear-block.png 4
         -DEXPECT_DIFF=ON
-        "-DEXPECT_STDERR=largest difference|, over the limit of 4/255|mean difference|, within the limit of under 0.5/255")
+        "-DEXPECT_STDERR=largest difference 8/255, over the limit of 4/255|mean difference 0.00889/255, within the limit of under 0.5/255")
 orbsim_add_golden_test(shift ${ORBSIM_BROKEN_GOLDEN_DIR}/clear-shift.png 4
         -DEXPECT_DIFF=ON
-        "-DEXPECT_STDERR=largest difference|, within the limit of 4/255|mean difference|, over the limit of under 0.5/255")
+        "-DEXPECT_STDERR=largest difference 1/255, within the limit of 4/255|mean difference 1.00000/255, over the limit of under 0.5/255")
 orbsim_add_golden_test(missing ${CMAKE_CURRENT_BINARY_DIR}/no-such-golden.png 1
         "-DEXPECT_STDERR=cannot compare with the golden|no-such-golden.png")
 orbsim_add_golden_test(wrong_size ${ORBSIM_BROKEN_GOLDEN_DIR}/clear-wrong-size.png 1
         "-DEXPECT_STDERR=the golden is 320x180 and the frame halves to 640x360")
+
+# A card with no golden (M1-110, register decision 287): --golden-dir pointed
+# at a directory holding no card's folder, which must end in exit 1 -- never a
+# comparison skipped (VERIFICATION.md rule 23) -- with the five files written,
+# no diff image, and on stderr the card named by the numbers in its own
+# sidecar (EXPECT_CARD) and the command that approves one. Nothing writes the
+# directory; a golden accepted into it by hand would end the run with 0, and
+# fail this test, rather than pass it.
+set(ORBSIM_NO_CARD_GOLDEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/golden-no-card")
+add_test(NAME probe_golden_no_card
+        COMMAND ${CMAKE_COMMAND}
+                -DORBSIM=$<TARGET_FILE:orbsim>
+                -DPROBE=clear
+                -DOUT=${CMAKE_CURRENT_BINARY_DIR}/probes-golden-no-card
+                -DGOLDEN_DIR=${ORBSIM_NO_CARD_GOLDEN_DIR}
+                -DEXPECT_EXIT=1
+                -DEXPECT_CARD=ON
+                "-DEXPECT_STDERR=no golden for this graphics card|golden-no-card|does not exist|--accept-golden"
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/RunProbe.cmake)
+set_tests_properties(probe_golden_no_card PROPERTIES LABELS gpu RESOURCE_LOCK gpu)
 
 # What --golden, --accept-golden and their neighbours refuse, each a usage
 # error with its reason (M1-17, register decisions 232 and 233). No device is
@@ -1290,6 +1329,11 @@ orbsim_add_usage_test(accept_without_validation "--probe|clear|--accept-golden|-
         "--no-validate cannot go with it")
 orbsim_add_usage_test(golden_without_probe "--golden|x.png"
         "need --probe <name>")
+# --golden-dir as --golden, and never beside it (M1-110, register decision 295).
+orbsim_add_usage_test(golden_dir_without_probe "--golden-dir|x"
+        "need --probe <name>")
+orbsim_add_usage_test(golden_and_golden_dir "--probe|clear|--golden|x.png|--golden-dir|x"
+        "give one")
 
 # A build tree whose shaders are missing is reported, by path, and the
 # application exits 1 rather than starting (M1-13, register decision 148). It
@@ -1344,6 +1388,7 @@ orbsim_add_header_selfcheck(orbsim_view_header_selfcheck orbsim_view
         view/Camera.hpp
         view/Exposure.hpp
         view/Frame.hpp
+        view/GoldenPath.hpp
         view/Half.hpp
         view/ImageCompare.hpp
         view/ImageFiles.hpp
@@ -1382,6 +1427,7 @@ add_dependencies(test_hdr_dump orbsim_view_header_selfcheck)
 add_dependencies(test_image_files orbsim_view_header_selfcheck)
 add_dependencies(test_probe_sidecar orbsim_view_header_selfcheck)
 add_dependencies(test_image_compare orbsim_view_header_selfcheck)
+add_dependencies(test_golden_path orbsim_view_header_selfcheck)
 
 if(ORBSIM_BUILD_APP)
     orbsim_add_header_selfcheck(orbsim_render_header_selfcheck orbsim_render_deps

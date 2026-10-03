@@ -1,12 +1,24 @@
 //
-// Writes altered copies of a golden image, for the tests that show a mismatch
-// is caught end to end (M1-17; ADR 0008; register decision 236).
+// Writes altered copies of a probe's own frame, halved as a golden is, for the
+// tests that show a mismatch is caught end to end (M1-17; ADR 0008; register
+// decision 236).
 //
-//     make_broken_goldens <golden.png> <output directory>
+//     make_broken_goldens <frame.png> <output directory>
 //
 // A golden cannot be broken by a switch in the application -- that would put
 // test code in the product (register decision 193) -- so the tests hand the
-// probe a golden that is wrong instead. Three copies, each wrong in one way:
+// probe a golden that is wrong instead.
+//
+// **Made from the run's own frame since M1-110** (register decisions 290 and
+// 296): the 1280x720 PNG probe_clear has just written, halved to 640x360 by
+// the comparison's own halveInLinearLight. The probe renders the same frame
+// again and halves it the same way, so the alteration is the whole of the
+// difference on every graphics card, no approved golden is needed, and the
+// tests can pin the exact numbers. Until M1-110 the copies were made from
+// the committed golden, which on any card but the one it was approved on
+// added that card's own distance from it (decision 275).
+//
+// Three copies, each wrong in one way:
 //
 //   * <name>-block.png: a 16x16 block in the middle moved by 8 steps in every
 //     channel. Only the cap catches it -- 8 is over 4, and the mean is 6,144
@@ -131,9 +143,9 @@ template <std::uint8_t Steps> [[nodiscard]] std::uint8_t moved(std::uint8_t valu
     return Rgb8Image::from(kWrongSize, std::move(values));
 }
 
-// Where the golden is and where the copies go, by name (non-negotiable 1).
+// Where the frame is and where the copies go, by name (non-negotiable 1).
 struct Paths {
-    std::filesystem::path golden;
+    std::filesystem::path frame;
     std::filesystem::path outDirectory;
 };
 
@@ -144,18 +156,27 @@ struct Copy {
 };
 
 [[nodiscard]] int make(const Paths& paths) {
-    const auto bytes = readFile(paths.golden);
+    const auto bytes = readFile(paths.frame);
     if (!bytes) {
         std::print(stderr, "make_broken_goldens: {}\n", bytes.error());
         return 1;
     }
-    const auto golden = decodePng8(*bytes);
-    if (!golden) {
+    const auto frame = decodePng8(*bytes);
+    if (!frame) {
         std::print(stderr,
                    "make_broken_goldens: {}: {} ({})\n",
-                   paths.golden.string(),
-                   describe(golden.error().error),
-                   golden.error().detail);
+                   paths.frame.string(),
+                   describe(frame.error().error),
+                   frame.error().detail);
+        return 1;
+    }
+    // Halved exactly as the probe halves the frame it compares (decision 290).
+    const auto golden = halveInLinearLight(*frame);
+    if (!golden) {
+        std::print(stderr,
+                   "make_broken_goldens: {}: {}\n",
+                   paths.frame.string(),
+                   describe(golden.error()));
         return 1;
     }
     std::error_code error;
@@ -167,7 +188,7 @@ struct Copy {
                    error.message());
         return 1;
     }
-    const std::string stem = paths.golden.stem().string();
+    const std::string stem = paths.frame.stem().string();
     const std::vector<Copy> copies{
         {.name = stem + "-block.png", .image = withBlock(*golden)},
         {.name = stem + "-shift.png", .image = shifted(*golden)},
@@ -208,10 +229,10 @@ int main(int argc, char** argv) {
         const std::span<char* const> args(argv, static_cast<std::size_t>(argc));
         const std::vector<std::string_view> tokens(args.begin(), args.end());
         if (tokens.size() != 3) {
-            std::print(stderr, "usage: make_broken_goldens <golden.png> <output directory>\n");
+            std::print(stderr, "usage: make_broken_goldens <frame.png> <output directory>\n");
             return 2;
         }
-        return make({.golden = tokens.at(1), .outDirectory = tokens.at(2)});
+        return make({.frame = tokens.at(1), .outDirectory = tokens.at(2)});
     } catch (const std::exception& error) {
         static_cast<void>(std::fputs("make_broken_goldens: ", stderr));
         static_cast<void>(std::fputs(error.what(), stderr));

@@ -257,7 +257,8 @@
       "ctest": [
         "tonemap_constants",
         "orbsim_smoke",
-        "probe_clear"
+        "probe_clear",
+        "probe_clear_golden"
       ]
     },
     {
@@ -276,6 +277,7 @@
         "tonemap_constants",
         "orbsim_smoke",
         "probe_clear",
+        "probe_clear_golden",
         "probe_tonemap-port",
         "the tonemap-port frame holds the light the clamps act on",
         "the port check holds on tonemap-port's picture, to 1/255 and to 2/65535",

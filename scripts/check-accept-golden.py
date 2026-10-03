@@ -12,8 +12,11 @@ help text says so; this makes a machine say so too. Read from CTest's own
 description of the tests, `ctest --show-only=json-v1`:
 
   * no test's command line may name both `--accept-golden` and `--golden`,
-    the only combination that can write a golden. `--accept-golden` alone is
-    allowed: it is refused as a usage error, and the usage tests check that;
+    the only combination that can write a golden. `--golden` is matched
+    anywhere in an argument, so `--golden-dir` (M1-110, register decision
+    289) counts as it, and the self-test proves that it does.
+    `--accept-golden` alone is allowed: it is refused as a usage error, and
+    the usage tests check that;
   * no script a test runs -- a `.cmake` or `.py` file named on its command
     line -- may contain `--accept-golden` at all, since a script's own
     arguments cannot be seen from the command line. This script is the one
@@ -97,6 +100,8 @@ def self_test() -> int:
             "a clean set": ([probe, usage], False),
             "a command with both flags": ([probe, test("bad", "orbsim", GOLDEN, "g.png", ACCEPT)],
                                           True),
+            "a command with --golden-dir and the flag": (
+                [probe, test("bad", "orbsim", f"{GOLDEN}-dir", "tests/golden", ACCEPT)], True),
             "a script with the flag": ([probe, test("bad", "cmake", "-P", str(accepting))], True),
             "no golden anywhere": ([usage], True),
         }

@@ -58,7 +58,7 @@ constexpr std::string_view kUsage =
     "usage: orbsim [--validate | --no-validate] [--seconds <n>] [--shader-dir <path>]\n"
     "       orbsim [--validate | --no-validate] --probe <name> [--probe-out <dir>] "
     "[--shader-dir <path>]\n"
-    "              [--golden <path> [--accept-golden]]\n"
+    "              [--golden <path> | --golden-dir <dir>] [--accept-golden]\n"
     "       orbsim --probe-list\n"
     "       orbsim --help\n";
 
@@ -76,9 +76,12 @@ constexpr std::string_view kHelp =
     "  --probe-list               list the probes\n"
     "  --golden <path>            compare the probe's frame, halved to 640x360, with this\n"
     "                             golden PNG; on a mismatch write <name>.diff.png and exit 4\n"
-    "  --accept-golden            write the probe's halved frame to the --golden path as the\n"
-    "                             new approved frame. Run by the owner, after looking at the\n"
-    "                             frame -- never by a script and never from `check` (ADR 0008)\n"
+    "  --golden-dir <dir>         the same, with this graphics card's own golden,\n"
+    "                             <dir>/<vendor>-<device>/<name>.png; a card with none exits 1\n"
+    "  --accept-golden            write the probe's halved frame to the --golden path, or to\n"
+    "                             the card's file under --golden-dir, as the new approved\n"
+    "                             frame. Run by the owner, after looking at the frame --\n"
+    "                             never by a script and never from `check` (ADR 0008)\n"
     "  --help                     this text\n"
     "\n"
     "exit codes: 0 success, 1 failure, 2 usage, 3 validation errors, 4 golden mismatch\n";
@@ -165,6 +168,10 @@ struct Options {
     // --golden's path and what to do with it (M1-17, register decisions
     // 230-232). Absent unless --golden was given.
     std::optional<std::filesystem::path> goldenPath;
+    // --golden-dir's directory, holding one folder per graphics card (M1-110,
+    // register decision 289). Absent unless --golden-dir was given; never
+    // given beside --golden (decision 295).
+    std::optional<std::filesystem::path> goldenDirectory;
     GoldenAction golden{GoldenAction::None};
 };
 
@@ -203,9 +210,11 @@ struct Options {
                        "cannot go with it",
         });
     }
-    if (!options.goldenPath) {
-        return std::unexpected(
-            SdlError{.message = "--accept-golden needs --golden <path>, the golden to write"});
+    if (!options.goldenPath && !options.goldenDirectory) {
+        return std::unexpected(SdlError{
+            .message = "--accept-golden needs --golden <path> or --golden-dir <dir>, the golden "
+                       "to write",
+        });
     }
     options.validation = orb::gfx::Validation::Enabled;
     return options;
@@ -219,14 +228,21 @@ struct Options {
     if (options.mode == Mode::Help) return options;
     if (options.mode != Mode::Probe) {
         if (options.golden != GoldenAction::None) {
-            return std::unexpected(
-                SdlError{.message = "--golden and --accept-golden need --probe <name>"});
+            return std::unexpected(SdlError{
+                .message = "--golden, --golden-dir and --accept-golden need --probe <name>",
+            });
         }
         return options;
     }
     if (options.runFor.value() > 0.0) {
         return std::unexpected(
             SdlError{.message = "--probe renders one frame; --seconds does not apply"});
+    }
+    // One golden, named one way (decision 295).
+    if (options.goldenPath && options.goldenDirectory) {
+        return std::unexpected(SdlError{
+            .message = "--golden names one file and --golden-dir a folder per card; give one",
+        });
     }
     if (!orb::gfx::findProbe(options.probe)) {
         std::string names;
@@ -270,6 +286,7 @@ struct Options {
     if (arg == "--probe") return "a probe's name";
     if (arg == "--probe-out") return "a directory";
     if (arg == "--golden") return "a path";
+    if (arg == "--golden-dir") return "a directory";
     return std::nullopt;
 }
 
@@ -294,6 +311,9 @@ struct OptionValue {
         options.probeOut = pathFromUtf8(given.value);
     } else if (given.option == "--golden") {
         options.goldenPath = pathFromUtf8(given.value);
+        if (options.golden == GoldenAction::None) options.golden = GoldenAction::Compare;
+    } else if (given.option == "--golden-dir") {
+        options.goldenDirectory = pathFromUtf8(given.value);
         if (options.golden == GoldenAction::None) options.golden = GoldenAction::Compare;
     }
     return {};
@@ -480,8 +500,7 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
 // A probe run's exit code, in register decision 230's order -- a failure,
 // then validation errors, then a golden mismatch -- and the golden accepted
 // only once all three are clear (decision 232).
-[[nodiscard]] int
-finishProbe(const orb::app::ProbeOutcome& outcome, uint32_t errors, const Options& options) {
+[[nodiscard]] int finishProbe(const orb::app::ProbeOutcome& outcome, uint32_t errors) {
     if (outcome.exitCode != 0 && outcome.exitCode != kExitGoldenMismatch) return outcome.exitCode;
     if (const int verdict = validationVerdict(errors); verdict != 0) {
         if (outcome.toAccept) {
@@ -492,9 +511,7 @@ finishProbe(const orb::app::ProbeOutcome& outcome, uint32_t errors, const Option
         return verdict;
     }
     if (outcome.exitCode == kExitGoldenMismatch) return kExitGoldenMismatch;
-    if (outcome.toAccept && options.goldenPath) {
-        return orb::app::acceptGolden(*options.goldenPath, *outcome.toAccept);
-    }
+    if (outcome.toAccept) return orb::app::acceptGolden(*outcome.toAccept);
     return 0;
 }
 
@@ -546,18 +563,21 @@ finishProbe(const orb::app::ProbeOutcome& outcome, uint32_t errors, const Option
         if (status != 0) return status;
         return validationVerdict(validationErrors.load());
     }
-    const orb::app::ProbeOutcome outcome =
-        orb::app::runProbe(window->get(),
-                           {
-                               .probe = options->probe,
-                               .outDirectory = options->probeOut,
-                               .shaderDirectory = options->shaderDirectory,
-                               .validation = options->validation,
-                               .golden = options->golden,
-                               .goldenPath = options->goldenPath.value_or(std::filesystem::path{}),
-                           },
-                           validationErrors);
-    return finishProbe(outcome, validationErrors.load(), *options);
+    const orb::app::ProbeOutcome outcome = orb::app::runProbe(
+        window->get(),
+        {
+            .probe = options->probe,
+            .outDirectory = options->probeOut,
+            .shaderDirectory = options->shaderDirectory,
+            .validation = options->validation,
+            .golden = options->golden,
+            .goldenPath = options->goldenDirectory.value_or(
+                options->goldenPath.value_or(std::filesystem::path{})),
+            .goldenLocation = options->goldenDirectory ? orb::app::GoldenLocation::CardFolders
+                                                       : orb::app::GoldenLocation::File,
+        },
+        validationErrors);
+    return finishProbe(outcome, validationErrors.load());
 }
 
 } // namespace

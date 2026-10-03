@@ -1,0 +1,99 @@
+{
+  "task": "M1-110",
+  "tree": "build/debug",
+  "note": "One golden per graphics card (ADR 0008's update of 2026-10-03; register decisions 287-299; the mutants are decision 298's). Judged three ways: the folder name by test_golden_path, against hand-written strings; the application's --golden-dir path by the probe tests, which render `clear` with the mutant -- probe_clear_golden against this card's golden, probe_golden_no_card against a directory with no card's folder, whose expected card name RunProbe.cmake builds from the sidecar rather than from the application's message; and the guard on --accept-golden by its self-test. No survivor is declared.",
+  "mutants": [
+    {
+      "name": "the folder name has device and vendor the other way round",
+      "file": "src/view/GoldenPath.cpp",
+      "find": "    return std::format(\"{:04x}-{:04x}\", card.vendorId, card.deviceId);",
+      "replace": "    return std::format(\"{:04x}-{:04x}\", card.deviceId, card.vendorId);",
+      "suites": ["test_golden_path"],
+      "expect": "caught"
+    },
+    {
+      "name": "the folder name is in uppercase hexadecimal",
+      "file": "src/view/GoldenPath.cpp",
+      "find": "    return std::format(\"{:04x}-{:04x}\", card.vendorId, card.deviceId);",
+      "replace": "    return std::format(\"{:04X}-{:04X}\", card.vendorId, card.deviceId);",
+      "suites": ["test_golden_path"],
+      "expect": "caught"
+    },
+    {
+      "name": "the folder name drops a short number's leading zeros",
+      "file": "src/view/GoldenPath.cpp",
+      "find": "    return std::format(\"{:04x}-{:04x}\", card.vendorId, card.deviceId);",
+      "replace": "    return std::format(\"{:x}-{:x}\", card.vendorId, card.deviceId);",
+      "suites": ["test_golden_path"],
+      "expect": "caught"
+    },
+    {
+      "name": "--golden-dir is taken for a golden file",
+      "file": "src/app/main.cpp",
+      "find": "            .goldenLocation = options->goldenDirectory ? orb::app::GoldenLocation::CardFolders",
+      "replace": "            .goldenLocation = options->goldenDirectory ? orb::app::GoldenLocation::File",
+      "suites": [],
+      "targets": ["orbsim"],
+      "ctest": ["probe_clear_golden", "probe_golden_no_card"],
+      "expect": "caught"
+    },
+    {
+      "name": "a card with no golden exits 0",
+      "file": "src/app/ProbeMode.cpp",
+      "find": "    run.goldenVerdict = \"failed: no golden for this graphics card\";\n    return {.exitCode = kExitFailure, .toAccept = std::nullopt};",
+      "replace": "    run.goldenVerdict = \"failed: no golden for this graphics card\";\n    return {.exitCode = 0, .toAccept = std::nullopt};",
+      "suites": [],
+      "targets": ["orbsim"],
+      "ctest": ["probe_golden_no_card"],
+      "expect": "caught"
+    },
+    {
+      "name": "a card with no golden is reported as an unreadable file",
+      "file": "src/app/ProbeMode.cpp",
+      "find": "    if (request.goldenLocation == GoldenLocation::CardFolders && !accepting) {",
+      "replace": "    if (request.goldenLocation == GoldenLocation::File && !accepting) {",
+      "suites": [],
+      "targets": ["orbsim"],
+      "ctest": ["probe_golden_no_card"],
+      "expect": "caught"
+    },
+    {
+      "name": "--golden beside --golden-dir is let through",
+      "file": "src/app/main.cpp",
+      "find": "    if (options.goldenPath && options.goldenDirectory) {",
+      "replace": "    if (options.goldenPath && options.goldenDirectory && options.runFor.value() > 0.0) {",
+      "suites": [],
+      "targets": ["orbsim"],
+      "ctest": ["usage_golden_and_golden_dir"],
+      "expect": "caught"
+    },
+    {
+      "name": "the altered goldens are made from the frame unhalved",
+      "file": "tests/make_broken_goldens.cpp",
+      "find": "    const auto golden = halveInLinearLight(*frame);",
+      "replace": "    const auto golden = std::expected<Rgb8Image, ImageCompareError>(*frame);",
+      "suites": [],
+      "targets": ["orbsim", "make_broken_goldens"],
+      "ctest": ["probe_golden_block", "probe_golden_shift", "probe_golden_wrong_size"],
+      "expect": "caught"
+    },
+    {
+      "name": "RunProbe.cmake expects the card with its numbers the other way round",
+      "file": "cmake/RunProbe.cmake",
+      "find": "    set(card \"${vendor_hex}-${device_hex}\")",
+      "replace": "    set(card \"${device_hex}-${vendor_hex}\")",
+      "suites": [],
+      "ctest": ["probe_golden_no_card"],
+      "expect": "caught"
+    },
+    {
+      "name": "the guard sees --golden only as a whole argument, and not in --golden-dir",
+      "file": "scripts/check-accept-golden.py",
+      "find": "        if any(ACCEPT in a for a in command) and any(GOLDEN in a for a in command):",
+      "replace": "        if any(ACCEPT in a for a in command) and any(a == GOLDEN for a in command):",
+      "suites": [],
+      "ctest": ["accept_golden_self_test"],
+      "expect": "caught"
+    }
+  ]
+}

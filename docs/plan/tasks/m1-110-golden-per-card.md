@@ -1,8 +1,8 @@
 # M1-110 — One golden per graphics card
 
-Phase: A | Status: not started -- its questions ruled 2026-10-03
+Phase: A | Status: **done, 2026-10-03** -- code, tests, both goldens and the documents; `check` on the first machine waits for the owner (decision 299)
 Prerequisites: M1-17
-Decided by: register decisions 287-292; [ADR 0008](../../adr/0008-renderer-verification.md), which this task amends
+Decided by: register decisions 287-300; [ADR 0008](../../adr/0008-renderer-verification.md), which this task amends
 
 ## Purpose
 
@@ -62,6 +62,15 @@ the same day as recommended** (decisions 289-292):
    comes from the sidecar of the owner's run of decision 278's bundle; and a
    new approval of `clear` on the RX 7900 XTX, which the owner looks at here.
 
+**Six more, found or left open by the task itself, ruled 2026-10-03 as
+recommended** (decisions 293-298): `probe_clear` split from a new
+`probe_clear_golden`, because CTest does not run the tests that need a
+fixture whose setup failed, measured in a throwaway project; the card's two
+numbers as one struct; `--golden` beside `--golden-dir` a usage error; the
+altered-golden tests' exact numbers pinned again; the approval by the owner's
+own command; and the mutants. **And one more** (decision 299): `check` runs on
+this machine, then commit and push; the first machine runs it later.
+
 ## Tests
 
 - The folder name from the vendor and device numbers, in `orbsim_view`,
@@ -74,11 +83,47 @@ the same day as recommended** (decisions 289-292):
 
 ## Done when
 
-- [ ] `check` green in both trees, on this machine, with `clear` approved here.
+- [x] `check` green in both trees, on this machine, with `clear` approved here
+      (decision 300). The counts are in `STATUS.md`.
 - [x] **Waits on** decision 278's run on the first machine, for the A2000's
       device number (decision 292): `10de-25ba`, run 2026-10-03.
-- [ ] The A2000's `clear.png` in its folder, and `check` green on the first
-      machine.
-- [ ] ADR 0008's update section, and decision 238's row pointing at 287.
+- [x] The A2000's `clear.png` in its folder, moved unchanged.
+- [ ] `check` green on the first machine -- **later, by the owner's ruling**
+      (decision 299), and recorded in `STATUS.md` until then.
+- [x] ADR 0008's update section, and decision 238's row pointing at 287.
 - [ ] `scripts/mutants/m1-110.json` run after the commit and its record
       committed; anchors in older mutant files that this moves, re-pointed.
+
+## What was built
+
+- **`view/GoldenPath.hpp`**: `CardId {vendorId, deviceId}`,
+  `goldenFolderName` -- `std::format("{:04x}-{:04x}")` -- and
+  `goldenPathFor`. `tests/test_golden_path.cpp` holds the name to
+  hand-written strings: the three real cards, the order, lowercase, leading
+  zeros, and numbers wider than four digits. Seen failing against an empty
+  stub first.
+- **`--golden-dir <dir>`** in `src/app/main.cpp` and `ProbeMode.cpp`. The
+  card's file is resolved once the device is open and used both to compare
+  and to accept; the frame to accept travels with its file as
+  `GoldenToAccept`. A missing file under `--golden-dir` is
+  `noGoldenForCard`: exit 1, the card's name and numbers, the frame to look
+  at and the approval command on stderr, `failed: no golden for this graphics
+  card` in the sidecar.
+- **The tests**: `probe_clear` now renders without a golden and sets up the
+  frame; `probe_clear_golden` compares with the card's golden; the three
+  altered goldens are made from `probe_clear`'s own frame, halved, and
+  `probe_golden_block` and `_shift` pin the exact numbers again;
+  `probe_golden_no_card` checks the missing-card failure, with the card's
+  name built by `cmake/RunProbe.cmake` from the sidecar (`EXPECT_CARD`);
+  `usage_golden_dir_without_probe` and `usage_golden_and_golden_dir`; and a
+  self-test case showing `check-accept-golden.py` refuses `--accept-golden`
+  beside `--golden-dir`.
+- **The goldens**: `tests/golden/10de-25ba/clear.png`, the A2000's, moved
+  unchanged; `tests/golden/1002-744c/clear.png`, approved by the owner on
+  this machine and checked independently (decision 300).
+- **Older mutant files**: every mutant expected to be caught that named
+  `probe_clear` as a judge now names `probe_clear_golden` beside it -- in
+  `m1-13`, `m1-14`, `m1-15`, `m1-16` and `m1-17` -- because the golden
+  comparison some of them were caught by has moved there; M1-17's planted
+  diff image moved with it, so that mutant names `probe_clear_golden` alone.
+  Their anchors were checked to match once each, unchanged.

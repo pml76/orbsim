@@ -174,7 +174,7 @@
       "replace": "    if (request.golden != GoldenAction::Accept) return {};",
       "suites": [],
       "targets": ["orbsim", "make_broken_goldens"],
-      "ctest": ["probe_clear", "probe_golden_block", "probe_golden_shift", "probe_golden_missing"],
+      "ctest": ["probe_clear_golden", "probe_golden_block", "probe_golden_shift", "probe_golden_missing"],
       "expect": "caught"
     },
     {
@@ -184,7 +184,7 @@
       "replace": "    error.clear();",
       "suites": [],
       "targets": ["orbsim"],
-      "ctest": ["probe_clear"],
+      "ctest": ["probe_clear_golden"],
       "expect": "caught"
     },
     {
@@ -215,7 +215,7 @@
       "replace": "    if (outcome.exitCode != 0) return outcome.exitCode;",
       "suites": [],
       "targets": ["orbsim", "make_broken_goldens"],
-      "ctest": ["probe_clear", "probe_golden_block", "probe_golden_shift"],
+      "ctest": ["probe_clear_golden", "probe_golden_block", "probe_golden_shift"],
       "expect": "survives",
       "why": "Telling decision 230's order apart needs a run with a validation error and a mismatch at once, and a validation error can be planted only by a fault in the product -- the hidden switch decision 193 refuses. The order is written in finishProbe in main.cpp and stated beside it. Declared for the owner's acceptance."
     },

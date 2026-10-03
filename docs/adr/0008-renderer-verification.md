@@ -109,3 +109,44 @@ rerunning anything.
 - **Whether a perceptual metric ever replaces the two tolerances.**
 - **How goldens are stored if they ever become numerous.** Eight to twelve
   small PNGs is not a problem worth solving in advance.
+
+## Update, 2026-10-03: a golden is an approved frame of one graphics card
+
+**Each graphics card is held to goldens approved on that card**, under
+`tests/golden/<vendor>-<device>/<probe>.png` -- the Vulkan vendor and device
+numbers in lowercase hexadecimal, at least four digits each: `10de-25ba` is
+the first machine's RTX A2000, `1002-744c` the second machine's RX 7900 XTX.
+Not the driver version, on purpose: a driver update that moves a picture
+fails and is looked at, rather than finding no golden and being approved
+again without a look. `--golden-dir <dir>` finds the card's file from the
+device the probe opened; `--golden <file>` stays for tests that name an
+exact file. A card with no golden for a probe **fails, exit 1**, naming the
+card and the command that approves one, after writing the five files so that
+the frame can be looked at first. It is never a comparison skipped
+([`../VERIFICATION.md`](../VERIFICATION.md) rule 23). The two tolerances,
+4/255 and 0.5/255, are unchanged. Register decisions 287-299 of
+[the milestone 1 register](../plan/milestone-1-decisions.md), carried out as
+[M1-110](../plan/tasks/m1-110-golden-per-card.md).
+
+**Why.** "One golden for every machine" (decision 238) was measured on
+`clear`, whose smooth gradients differ between cards by at most 1/255 after
+the halving. It does not hold for what M1-19 draws next: a line one pixel
+wide lands on other pixels on the RTX A2000 than on the AMD and Intel cards
+unless the pipeline asks for Bresenham's rule (decision 278), and a line one
+pixel aside moves a halved block far past the 4/255 cap. The owner asked for
+goldens per card "just to be on the safe side" (decision 287), for every
+probe, `clear` included, so that one rule holds everywhere.
+
+**What it costs, and what guards against it.** A fault that shows on one
+card alone can now be approved into that card's golden, where one golden for
+every card would have caught it on the others. Approval stays a person
+looking at the frame, as above; and a probe whose picture can be computed is
+checked by number as well, independently of any card -- M1-19's `lines`
+probe has its axis tips and square corners computed with the pinhole-camera
+formula and read back from the HDR frame (decision 281). Where that check
+exists it, and not the golden, is what proves a frame right; the golden then
+proves it unchanged.
+
+**Considered**: one golden for every card, as decision 238 ruled, which the
+line measurement rules out for lines; goldens per card for line probes only,
+which would leave two rules where one does.

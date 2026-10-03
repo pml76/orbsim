@@ -19,6 +19,13 @@
 // halved frame back to main, which writes it only once the renderer is torn
 // down and the validation count is known to be zero (decision 232).
 //
+// **`--golden-dir <dir>`** (M1-110; register decisions 287-299): the same,
+// with the golden found from the card the device was opened on --
+// `<dir>/<vendor>-<device>/<probe>.png`, view/GoldenPath.hpp. A card with no
+// golden there fails with exit 1, naming the card and the command that
+// approves one; it is never a comparison skipped (VERIFICATION.md rule 23).
+// `--accept-golden` with it writes there, creating the card's folder.
+//
 #include "render/VulkanContext.hpp"
 #include "view/ImageCompare.hpp"
 
@@ -40,6 +47,13 @@ enum class GoldenAction : std::uint8_t {
     Accept,  // --golden <path> --accept-golden
 };
 
+// How the golden was named: as one file, or as a directory holding one folder
+// per graphics card (decision 289). An enum, for the reason GoldenAction is.
+enum class GoldenLocation : std::uint8_t {
+    File,        // --golden <path>: goldenPath is the golden
+    CardFolders, // --golden-dir <dir>: goldenPath is the directory of card folders
+};
+
 // What a probe run is asked for.
 struct ProbeRequest {
     std::string_view probe;             // a name findProbe knows
@@ -48,6 +62,14 @@ struct ProbeRequest {
     gfx::Validation validation{gfx::Validation::Disabled};
     GoldenAction golden{GoldenAction::None};
     std::filesystem::path goldenPath; // empty unless golden is Compare or Accept
+    GoldenLocation goldenLocation{GoldenLocation::File};
+};
+
+// A frame to be written as a golden, and the file it goes to -- together,
+// because under --golden-dir only the device could say which file that is.
+struct GoldenToAccept {
+    view::Rgb8Image frame;
+    std::filesystem::path file;
 };
 
 // What a probe run leaves for main: an exit code before the validation
@@ -55,7 +77,7 @@ struct ProbeRequest {
 // to be accepted and every file was written, the halved frame to write.
 struct ProbeOutcome {
     int exitCode{};
-    std::optional<view::Rgb8Image> toAccept;
+    std::optional<GoldenToAccept> toAccept;
 };
 
 // Renders the probe, writes its files and compares its frame with the golden,
@@ -64,10 +86,11 @@ struct ProbeOutcome {
                                     const ProbeRequest& request,
                                     std::atomic<std::uint32_t>& validationErrors);
 
-// Writes `frame` to `golden` as the new approved frame: to a temporary file
-// beside it, then renamed over it, so a failed write never leaves half a
-// golden (decision 232). Returns 0, or kExitFailure with the reason printed.
-[[nodiscard]] int acceptGolden(const std::filesystem::path& golden, const view::Rgb8Image& frame);
+// Writes the frame to its file as the new approved frame, creating the
+// folder it goes in: to a temporary file beside it, then renamed over it, so
+// a failed write never leaves half a golden (decision 232). Returns 0, or
+// kExitFailure with the reason printed.
+[[nodiscard]] int acceptGolden(const GoldenToAccept& accepted);
 
 // `--probe-list`: every probe's name and description, one to a line. Needs
 // neither a window nor a device.

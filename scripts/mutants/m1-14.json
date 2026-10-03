@@ -178,7 +178,8 @@
       ],
       "ctest": [
         "orbsim_smoke",
-        "probe_clear"
+        "probe_clear",
+        "probe_clear_golden"
       ],
       "expect": "caught"
     },
@@ -208,7 +209,8 @@
       ],
       "ctest": [
         "orbsim_smoke",
-        "probe_clear"
+        "probe_clear",
+        "probe_clear_golden"
       ],
       "expect": "caught"
     },
@@ -225,6 +227,7 @@
       "ctest": [
         "orbsim_smoke",
         "probe_clear",
+        "probe_clear_golden",
         "every band carries the ramp's radiance, to within one binary16 step",
         "the grey band's three channels are the same number",
         "below the bands nothing is drawn, and every pixel is opaque"

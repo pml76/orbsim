@@ -1,15 +1,18 @@
 # Run one probe under the validation layers and check what it wrote (M1-16;
 # ADR 0008; register decisions 192-194), and since M1-17 what it made of its
-# golden image (register decisions 230, 231 and 236).
+# golden image (register decisions 230, 231 and 236), and since M1-110 the
+# golden of the graphics card it ran on (decisions 287-299).
 #
 #     cmake -DORBSIM=<path to orbsim> -DPROBE=<name> -DOUT=<directory>
 #           [-DCOMPARE_WITH=<an earlier run's directory>]
-#           [-DGOLDEN=<golden PNG>] [-DEXPECT_EXIT=<code>] [-DEXPECT_DIFF=ON] [-DPLANT_DIFF=ON]
+#           [-DGOLDEN=<golden PNG> | -DGOLDEN_DIR=<directory of card folders>]
+#           [-DEXPECT_EXIT=<code>] [-DEXPECT_DIFF=ON] [-DPLANT_DIFF=ON] [-DEXPECT_CARD=ON]
 #           [-DEXPECT_STDOUT=<text>|<text>...] [-DEXPECT_STDERR=<text>|<text>...]
 #           -P cmake/RunProbe.cmake
 #
 # Run by CTest as `probe_clear`, with COMPARE_WITH as `probe_clear_determinism`,
-# and with a broken or missing golden as the `probe_golden_*` tests.
+# with GOLDEN_DIR as `probe_clear_golden`, and with a broken or missing golden
+# as the `probe_golden_*` tests.
 #
 # **The files are checked whatever the exit code, and before it** (decision
 # 193): a probe writes its five files on every run, pass or fail, so a run
@@ -25,7 +28,10 @@
 # application must remove it (decision 231), and a run that matches must end
 # without one. EXPECT_STDOUT and EXPECT_STDERR are texts, separated by `|`,
 # that the run must have printed -- on stderr for a mismatch, where decision
-# 230 puts the two measured numbers.
+# 230 puts the two measured numbers. With EXPECT_CARD, stderr must name the
+# card's folder, `<vendor>-<device>`, built here from the sidecar's own
+# gpu.vendor and gpu.device lines rather than taken from the application's
+# message -- so a card named by the wrong numbers is caught, on any card.
 #
 # A script rather than CTest's own properties because the claim has several
 # halves -- the files, the exit code, the output, the comparison -- and each
@@ -55,8 +61,12 @@ if(PLANT_DIFF)
 endif()
 
 set(golden_arguments "")
-if(DEFINED GOLDEN)
+if(DEFINED GOLDEN AND DEFINED GOLDEN_DIR)
+    message(FATAL_ERROR "pass GOLDEN or GOLDEN_DIR, not both")
+elseif(DEFINED GOLDEN)
     set(golden_arguments --golden "${GOLDEN}")
+elseif(DEFINED GOLDEN_DIR)
+    set(golden_arguments --golden-dir "${GOLDEN_DIR}")
 endif()
 execute_process(
         COMMAND "${ORBSIM}" --validate --probe "${PROBE}" --probe-out "${OUT}" ${golden_arguments}
@@ -125,6 +135,26 @@ foreach(stream IN ITEMS STDOUT STDERR)
         endif()
     endforeach()
 endforeach()
+
+if(EXPECT_CARD)
+    file(STRINGS "${OUT}/${PROBE}.txt" vendor_line REGEX "^gpu\\.vendor +=")
+    file(STRINGS "${OUT}/${PROBE}.txt" device_line REGEX "^gpu\\.device +=")
+    string(REGEX MATCH "0x([0-9a-f]+)$" vendor_hex "${vendor_line}")
+    set(vendor_hex "${CMAKE_MATCH_1}")
+    string(REGEX MATCH "0x([0-9a-f]+)$" device_hex "${device_line}")
+    set(device_hex "${CMAKE_MATCH_1}")
+    if(vendor_hex STREQUAL "" OR device_hex STREQUAL "")
+        message(FATAL_ERROR "probe ${PROBE}'s sidecar has no gpu.vendor and gpu.device to "
+                            "check the card's name against: '${vendor_line}' '${device_line}'")
+    endif()
+    set(card "${vendor_hex}-${device_hex}")
+    string(FIND "${stderr_text}" "(Vulkan ${card})" at)
+    if(at EQUAL -1)
+        message(FATAL_ERROR "probe ${PROBE} did not name the card as ${card}, from its "
+                            "sidecar, on stderr, which was:\n${stderr_text}")
+    endif()
+    message(STATUS "probe ${PROBE}: named the card ${card}")
+endif()
 
 if(DEFINED COMPARE_WITH)
     set(this_dump "${OUT}/${PROBE}.hdr.f32")
