@@ -170,14 +170,18 @@ only live in Debug. Smaller targets for the loop: `lint`, `format-check`,
 - it runs clang-tidy in a pool sized from the machine's memory;
 - it runs the tests in parallel, with the GPU tests under one lock.
 
-Run the two trees one after the other, never at once. **Two more steps before
-a task's commit**, outside `check` because they take minutes:
+Run the two trees one after the other, never at once. **Two more steps**,
+outside `check` because they take minutes:
 
-- run every mutant file `python scripts/mutants-due.py build/<tree>` lists
-  ([`docs/VERIFICATION.md`](docs/VERIFICATION.md) rule 19);
-- if the change reaches a fuzz target (`src/core/`, `src/orbit/`,
-  `src/astro/`, a `tests/fuzz_*.cpp`), run that fuzzer for its budget from its
-  committed corpus (rule 13).
+- **before every push**, run every mutant file
+  `python scripts/mutants-due.py build/<tree>` lists
+  ([`docs/VERIFICATION.md`](docs/VERIFICATION.md) rule 19). Since 2026-10-03
+  (register decision 274): `scripts/mutate.py` records a pass only for
+  committed code, so the rule follows the tool, and nothing leaves the machine
+  unchecked;
+- **before a task's commit**, if the change reaches a fuzz target
+  (`src/core/`, `src/orbit/`, `src/astro/`, a `tests/fuzz_*.cpp`), run that
+  fuzzer for its budget from its committed corpus (rule 13).
 
 A tree set up from text no longer on disk -- CLion reloading while
 `CMakeLists.txt` is edited -- is refused, by the configure and by `check`'s

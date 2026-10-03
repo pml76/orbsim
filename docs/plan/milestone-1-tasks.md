@@ -86,10 +86,11 @@ These are not repeated in the 96 documents. They apply to all of them.
    commit as the code that first depends on it.
 8. Commits end with the `Co-Authored-By` line and **no session URL**
    ([`../../CLAUDE.md`](../../CLAUDE.md), Attribution).
-9. **Every mutant file a change makes due is run before the commit**:
+9. **Every mutant file a change makes due is run before the next push**:
    `python scripts/mutants-due.py build/<tree>` lists them, and the full pass
    stays at the gates ([`../VERIFICATION.md`](../VERIFICATION.md) rule 19;
-   ADR 0024, M1-92). *(Added 2026-09-27.)*
+   ADR 0024, M1-92). *(Added 2026-09-27; "before the commit" until
+   2026-10-03, register decision 274.)*
 10. **A change that reaches a fuzz target runs that fuzzer before the commit**,
     for its budget, from its committed corpus
     ([`../VERIFICATION.md`](../VERIFICATION.md) rule 13; ADR 0024, M1-93).

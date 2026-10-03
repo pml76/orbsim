@@ -575,8 +575,11 @@ onwards leaves its file. *(Noted 2026-09-21.)*
 ([ADR 0024](adr/0024-verification-costs-what-changed.md), M1-92). A mutant's
 verdict depends on three things: the mutated file, the test, and all the code
 between them, test helpers and the production code the test runs through. So
-**a task runs every mutant file that `scripts/mutants-due.py <tree>` lists,
-before its commit.** A file is listed when anything its judges depend on has
+**every mutant file that `scripts/mutants-due.py <tree>` lists is run before
+the next push** -- before the commit until 2026-10-03, when register decision
+274 moved it: `mutate.py` records a pass only for committed code, so "before
+the commit" could not be followed, and five tasks in a row committed first and
+recorded after. A file is listed when anything its judges depend on has
 changed since `scripts/mutation-passes.json` says it last passed. That covers:
 
 - the mutated files;
