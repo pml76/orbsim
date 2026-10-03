@@ -75,8 +75,8 @@ the same day as recommended** (decisions 289-292):
 ## Done when
 
 - [ ] `check` green in both trees, on this machine, with `clear` approved here.
-- [ ] **Waits on** decision 278's run on the first machine, for the A2000's
-      device number (decision 292).
+- [x] **Waits on** decision 278's run on the first machine, for the A2000's
+      device number (decision 292): `10de-25ba`, run 2026-10-03.
 - [ ] The A2000's `clear.png` in its folder, and `check` green on the first
       machine.
 - [ ] ADR 0008's update section, and decision 238's row pointing at 287.

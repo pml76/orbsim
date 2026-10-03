@@ -1073,8 +1073,8 @@ catch this class of thing. Run all six before pushing a change to `core/`.
   *is* bit-identical between the two, which is what M1-63 and M1-08 rely on.
 - **The Epic Games overlay layer** logs a duplicate-layer warning at every
   Vulkan startup. It is noise, not a problem.
-- **There is one clang here now, and it is meant to stay that way.** 23.1.0 on
-  Windows, 23.1.1 in WSL -- the same release branch; apt.llvm.org publishes
+- **There is one clang here now, and it is meant to stay that way.** 23.1.2 on
+  Windows (23.1.0 until 2026-10-03), 23.1.1 in WSL -- the same release branch; apt.llvm.org publishes
   branch builds rather than the exact tag. Everything resolves to it on both
   sides, `clangd` and `llvm-cov` included. A standalone `clangd_22.1.0` used to
   sit ahead of the LLVM directory on `PATH`, so the editor parsed this code with
