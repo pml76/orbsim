@@ -1,5 +1,6 @@
 #include "app/ProbeMode.hpp" // SF.5: own header, first
 #include "app/ExitCodes.hpp"
+#include "core/Time.hpp"
 #include "render/Probes.hpp"
 #include "render/ResolvePass.hpp"
 #include "render/VulkanContext.hpp"
@@ -149,6 +150,13 @@ lambertSceneOf(const gfx::ProbeConditions& conditions) {
     return std::nullopt;
 }
 
+// The UT1 a probe turned the Earth to, for its sidecar, or none (M1-20,
+// register decision 323).
+[[nodiscard]] std::optional<Ut1Time> ut1Of(const gfx::ProbeConditions& conditions) {
+    if (const auto* grid = std::get_if<gfx::GridPicture>(&conditions.picture)) return grid->ut1;
+    return std::nullopt;
+}
+
 // The sidecar, written last and in every case (register decision 193).
 [[nodiscard]] std::expected<void, std::string> writeSidecar(const RunRecord& run,
                                                             std::string_view outcome) {
@@ -167,6 +175,7 @@ lambertSceneOf(const gfx::ProbeConditions& conditions) {
                 .difference = run.goldenDifference,
             },
         .epoch = run.conditions.epoch,
+        .ut1 = ut1Of(run.conditions),
         .camera = run.conditions.camera,
         .qualityPreset = run.conditions.qualityName,
         .exposure = run.conditions.exposure,

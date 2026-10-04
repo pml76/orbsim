@@ -27,14 +27,17 @@ struct Entry {
     std::string value;
 };
 
-// TT, as a calendar date and time and as the two numbers the instant is
-// stored as, so that the line can be read by a person and checked exactly.
-[[nodiscard]] std::string formatEpoch(const TtTime& epoch) {
+// An instant, as a calendar date and time on its scale and as the two numbers
+// it is stored as, so that the line can be read by a person and checked
+// exactly. TT for the epoch; UT1 too since M1-20.
+template <TimeScale Scale>
+[[nodiscard]] std::string formatInstant(const TimePoint<Scale>& epoch, std::string_view scale) {
     const std::string stored =
         std::format("MJD {} + {} ps", epoch.modifiedJulianDay(), epoch.picosecondOfDay());
     const auto date = epoch.toCalendar();
-    if (!date) return std::format("TT, outside the calendar ({})", stored);
-    return std::format("TT {:04}-{:02}-{:02}T{:02}:{:02}:{:06.3f} ({})",
+    if (!date) return std::format("{}, outside the calendar ({})", scale, stored);
+    return std::format("{} {:04}-{:02}-{:02}T{:02}:{:02}:{:06.3f} ({})",
+                       scale,
                        date->year,
                        date->month,
                        date->day,
@@ -139,7 +142,12 @@ std::string formatSidecar(const SidecarFields& fields) {
         Entry{.key = "golden.verdict", .value = std::string(fields.golden.verdict)},
         Entry{.key = "golden.largest", .value = formatLargestLine(fields.golden)},
         Entry{.key = "golden.mean", .value = formatMeanLine(fields.golden)},
-        Entry{.key = "epoch", .value = formatEpoch(fields.epoch)},
+        Entry{.key = "epoch", .value = formatInstant(fields.epoch, "TT")},
+        Entry{
+            .key = "earth.ut1",
+            .value = fields.ut1 ? formatInstant(*fields.ut1, "UT1")
+                                : std::string("none: no rotating body is drawn"),
+        },
         Entry{.key = "camera.position", .value = formatPosition(fields.camera.position())},
         Entry{.key = "camera.orientation", .value = formatOrientation(fields.camera.orientation())},
         Entry{

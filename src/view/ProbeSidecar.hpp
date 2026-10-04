@@ -64,6 +64,9 @@ struct SidecarFields {
     std::string_view outcome;
     SidecarGolden golden;
     TtTime epoch;
+    // The UT1 the Earth was turned to (M1-20, register decision 323); absent
+    // for a probe that draws no rotating body.
+    std::optional<Ut1Time> ut1;
     Camera camera;
     std::string_view qualityPreset;
     CameraSettings exposure;

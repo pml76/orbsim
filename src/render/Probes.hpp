@@ -13,8 +13,8 @@
 // lambert probes, the light and the surface. The scene is the pipeline and the
 // draws that put the picture into the HDR target.
 //
-// **Nine probes** (M1-16, M1-18 and M1-19; register decisions 189, 256, 261
-// and 280):
+// **Twenty probes** (M1-16, M1-18, M1-19 and M1-20; register decisions 189,
+// 256, 261, 280 and 319-336):
 //
 //   * `clear` (view/ProbeGradient.hpp): the scene's clear radiance and a
 //     gradient, through the real pipeline, the real HDR target and the real
@@ -29,7 +29,14 @@
 //     on, negative channels included, for the port check;
 //   * `lines` (view/LineBatch.hpp, render/LineRenderer.hpp): three axes and a
 //     unit square through the camera, the line renderer's first frame, with a
-//     golden image and a number check (tests/test_probe_lines.cpp).
+//     golden image and a number check (tests/test_probe_lines.cpp);
+//   * `grid-400km` (view/PlanetaryGrid.hpp): the Earth's latitude and
+//     longitude grid, turned to the epoch, from 400 km looking at the limb,
+//     with a golden image and a number check (tests/test_probe_grid.cpp);
+//   * `grid-jitter-0` to `-4` and `grid-jitter-1km-0` to `-4`: five frames
+//     each, the camera stepping 0.25 m to its right between them, at 400 km
+//     and at 1 km from latitude 0, longitude 0 -- the frames
+//     tests/test_probe_grid.cpp measures the movement in.
 //
 // **No wall clock anywhere in a probe's path.** Nothing here or in
 // VulkanContext::renderOffscreen reads the time: the one clock a probe run
@@ -68,7 +75,13 @@ namespace orb::gfx {
 struct GradientPicture {}; // clear's: view/ProbeGradient.hpp, from the exposure alone
 struct PortPicture {};     // tonemap-port's: shaders/probe_port.frag, from nothing at all
 struct LinesPicture {};    // lines': the axes and the square of register decision 280
-using ProbePicture = std::variant<GradientPicture, view::LambertScene, PortPicture, LinesPicture>;
+// The grid probes' (M1-20): the UT1 the Earth is turned to, beside the epoch's
+// TT, since the rotation is a function of both (register decision 323).
+struct GridPicture {
+    Ut1Time ut1;
+};
+using ProbePicture =
+    std::variant<GradientPicture, view::LambertScene, PortPicture, LinesPicture, GridPicture>;
 
 // What a probe holds fixed. Every field has a physical or named meaning, and
 // each is written into the probe's sidecar.
@@ -129,6 +142,11 @@ public:
     createLinesScene(VulkanContext& context,
                      const std::filesystem::path& shaderDirectory,
                      const ProbeConditions& conditions);
+    friend std::expected<ProbeScene, RenderError>
+    createGridScene(VulkanContext& context,
+                    const std::filesystem::path& shaderDirectory,
+                    const ProbeConditions& conditions,
+                    const GridPicture& picture);
 
 private:
     explicit ProbeScene(ProbeDraw draw) noexcept;
@@ -170,6 +188,17 @@ createLinesScene(VulkanContext& context,
                  const std::filesystem::path& shaderDirectory,
                  const ProbeConditions& conditions);
 
+// The grid probes' scene (M1-20; register decisions 323-327): the Earth's
+// grid on the WGS-84 sphere, turned by astro/EarthOrientation.hpp's rotation
+// at the epoch's TT and the picture's UT1, cut to what the camera can see,
+// with the horizon drawn over it in blue (register decision 338), gathered in
+// a LineBatch and drawn as the `lines` probe is.
+[[nodiscard]] std::expected<ProbeScene, RenderError>
+createGridScene(VulkanContext& context,
+                const std::filesystem::path& shaderDirectory,
+                const ProbeConditions& conditions,
+                const GridPicture& picture);
+
 // The scene `conditions.picture` names (M1-18). One dispatch, so that the
 // lambert scene, which makes a buffer, is the one handed a context it may
 // change, and the two that only read it are handed it read-only; a picture
@@ -203,6 +232,32 @@ createScene(VulkanContext& context,
 // the camera 3 m from (0.5, 0.5, 0.3) on the azimuth between +X and +Y, 30
 // degrees up, world Z up on screen.
 [[nodiscard]] ProbeConditions linesConditions();
+
+// The grid probes' pinned state (register decisions 323, 324 and 332): the
+// Skyfield fixture's row at 2025-07-30 near 06:29 TT, with its own UT1; the
+// camera fixed by numbers in the celestial frame, so that a wrong Earth
+// rotation moves the grid and not the camera. `grid-400km`: 400 km above
+// where that row puts 6 degrees south on the prime meridian, heading 35
+// degrees east of north and looking 27.5 degrees down, so the limb crosses the
+// upper third. The jitter frames: that camera, and one 1 km above latitude 0,
+// longitude 0 looking straight down, each moved `frame` x 0.25 m to its own
+// right.
+[[nodiscard]] ProbeConditions grid400kmConditions();
+
+// Which of the two jitter sequences (register decisions 321 and 332).
+enum class JitterSequence : std::uint8_t {
+    From400km, // grid-400km's camera
+    From1km,   // 1 km above latitude 0, longitude 0, looking straight down
+};
+
+// Frame `frame` of `sequence`: its camera moved frame x 0.25 m to its right.
+[[nodiscard]] ProbeConditions gridJitterConditions(JitterSequence sequence, std::uint32_t frame);
+
+// The same, as a function of no arguments, which is what a Probe holds.
+template <JitterSequence Sequence, std::uint32_t Frame>
+[[nodiscard]] ProbeConditions gridJitterFrame() {
+    return gridJitterConditions(Sequence, Frame);
+}
 
 struct Probe {
     std::string_view name;
@@ -259,6 +314,66 @@ inline constexpr std::array kProbes{
                        "and 30 degrees up: X points down-left, Y down-right, the square a "
                        "diamond symmetric left to right",
         .conditions = linesConditions,
+    },
+    Probe{
+        .name = "grid-400km",
+        .description = "the Earth's grid, parallels every 10 degrees and meridians every 15, the "
+                       "equator red, the prime meridian green and the horizon blue, turned to "
+                       "2025-07-30 TT, from 400 km above 6 degrees south looking at the limb",
+        .conditions = grid400kmConditions,
+    },
+    Probe{
+        .name = "grid-jitter-0",
+        .description = "grid-400km's frame, the first of five with the camera 0.25 m further "
+                       "to its right each time",
+        .conditions = gridJitterFrame<JitterSequence::From400km, 0>,
+    },
+    Probe{
+        .name = "grid-jitter-1",
+        .description = "grid-400km's frame with the camera 0.25 m to its right",
+        .conditions = gridJitterFrame<JitterSequence::From400km, 1>,
+    },
+    Probe{
+        .name = "grid-jitter-2",
+        .description = "grid-400km's frame with the camera 0.5 m to its right",
+        .conditions = gridJitterFrame<JitterSequence::From400km, 2>,
+    },
+    Probe{
+        .name = "grid-jitter-3",
+        .description = "grid-400km's frame with the camera 0.75 m to its right",
+        .conditions = gridJitterFrame<JitterSequence::From400km, 3>,
+    },
+    Probe{
+        .name = "grid-jitter-4",
+        .description = "grid-400km's frame with the camera 1 m to its right",
+        .conditions = gridJitterFrame<JitterSequence::From400km, 4>,
+    },
+    Probe{
+        .name = "grid-jitter-1km-0",
+        .description = "the equator and the prime meridian crossing, from 1 km straight above "
+                       "latitude 0, longitude 0; the first of five with the camera 0.25 m "
+                       "further to its right each time",
+        .conditions = gridJitterFrame<JitterSequence::From1km, 0>,
+    },
+    Probe{
+        .name = "grid-jitter-1km-1",
+        .description = "grid-jitter-1km-0's frame with the camera 0.25 m to its right",
+        .conditions = gridJitterFrame<JitterSequence::From1km, 1>,
+    },
+    Probe{
+        .name = "grid-jitter-1km-2",
+        .description = "grid-jitter-1km-0's frame with the camera 0.5 m to its right",
+        .conditions = gridJitterFrame<JitterSequence::From1km, 2>,
+    },
+    Probe{
+        .name = "grid-jitter-1km-3",
+        .description = "grid-jitter-1km-0's frame with the camera 0.75 m to its right",
+        .conditions = gridJitterFrame<JitterSequence::From1km, 3>,
+    },
+    Probe{
+        .name = "grid-jitter-1km-4",
+        .description = "grid-jitter-1km-0's frame with the camera 1 m to its right",
+        .conditions = gridJitterFrame<JitterSequence::From1km, 4>,
     },
     Probe{
         .name = "tonemap-port",

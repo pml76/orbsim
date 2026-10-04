@@ -90,7 +90,8 @@ constexpr SidecarGolden kNoGolden{
 };
 
 [[nodiscard]] std::string sidecarText(const SidecarGolden& golden = kNoGolden,
-                                      const std::optional<LambertScene>& scene = std::nullopt) {
+                                      const std::optional<LambertScene>& scene = std::nullopt,
+                                      const std::optional<Ut1Time>& ut1 = std::nullopt) {
     const auto camera = Camera::from(Position{1.5, -2.0, 3.25}, Quat{}, Radians{0.5}, Metres{0.25});
     REQUIRE(camera.has_value());
     const std::array<std::string_view, 2> files{{"a.png", "a.exr"}};
@@ -100,6 +101,7 @@ constexpr SidecarGolden kNoGolden{
         .outcome = "rendered",
         .golden = golden,
         .epoch = kJ2000,
+        .ut1 = ut1,
         .camera = *camera,
         .qualityPreset = "high",
         .exposure =
@@ -243,4 +245,19 @@ TEST_CASE("a probe without a light says so, and writes no scene's numbers") {
         return line.starts_with("scene.") && !line.starts_with("scene.light");
     });
     REQUIRE(!anyNumber);
+}
+
+// --- a probe that turns the Earth (M1-20, register decision 323) ---------------
+
+TEST_CASE("a probe that turns the Earth records its UT1, and one that does not says so") {
+    // The grid probes' UT1, the Skyfield row's: JD 2460886.5 + 35273/131072,
+    // so MJD 60886 and 35273/131072 of a day -- 23 251 245 117 187 500 ps,
+    // 06:27:31.2451171875 -- worked out by hand.
+    const auto ut1 = Ut1Time::fromJulianDate({.day = 2'460'886.5, .fraction = 0.26911163330078125});
+    REQUIRE(ut1.has_value());
+    const std::vector<std::string> turned = linesOf(sidecarText(kNoGolden, std::nullopt, *ut1));
+    REQUIRE(valueOf(turned, "earth.ut1") ==
+            "UT1 2025-07-30T06:27:31.245 (MJD 60886 + 23251245117187500 ps)");
+    const std::vector<std::string> plain = linesOf(sidecarText());
+    REQUIRE(valueOf(plain, "earth.ut1") == "none: no rotating body is drawn");
 }

@@ -1,0 +1,194 @@
+{
+  "task": "M1-20",
+  "tree": "build/debug",
+  "note": "The planetary grid and the jitter budget (register decisions 319-336 and 338). Judged two ways: view/PlanetaryGrid by test_planetary_grid, headless; the probes by the grid probes' CTest tests, the number checks in test_probe_grid and the port check. The last mutant is the defect camera-relative rendering exists to prevent: test_camera catches it on the processor, and the 1 km jitter sequence through the graphics card -- seen by hand on 2026-10-04 at 0.428 px, 12.8 times the budget -- which it can only because decision 336 chose an epoch at which the prime meridian points 44.7 degrees from the celestial x axis.",
+  "mutants": [
+    {
+      "name": "latitude and longitude swapped",
+      "file": "src/view/PlanetaryGrid.cpp",
+      "find": "    const f64 c = std::cos(where.latitude.value());\n    const Position bodyFixed{r * c * std::cos(where.longitude.value()),\n                             r * c * std::sin(where.longitude.value()),\n                             r * std::sin(where.latitude.value())};",
+      "replace": "    const f64 c = std::cos(where.longitude.value());\n    const Position bodyFixed{r * c * std::cos(where.latitude.value()),\n                             r * c * std::sin(where.latitude.value()),\n                             r * std::sin(where.longitude.value())};",
+      "suites": [
+        "test_planetary_grid"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the parallels are spaced by the hemisphere's count, not one more",
+      "file": "src/view/PlanetaryGrid.cpp",
+      "find": "    const std::int64_t bands = std::int64_t{perHemisphere} + 1;",
+      "replace": "    const std::int64_t bands = std::int64_t{perHemisphere};",
+      "suites": [
+        "test_planetary_grid"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the equator and the prime meridian swap colours",
+      "file": "src/view/PlanetaryGrid.cpp",
+      "find": "    case GridLine::Equator:\n        return colours.equator;\n    case GridLine::PrimeMeridian:\n        return colours.primeMeridian;",
+      "replace": "    case GridLine::Equator:\n        return colours.primeMeridian;\n    case GridLine::PrimeMeridian:\n        return colours.equator;",
+      "suites": [
+        "test_planetary_grid"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the far side of the horizon is kept instead of the near",
+      "file": "src/view/PlanetaryGrid.cpp",
+      "find": "    const bool fromSeen = above > 0.0;\n    const bool toSeen = aboveTo > 0.0;",
+      "replace": "    const bool fromSeen = above < 0.0;\n    const bool toSeen = aboveTo < 0.0;",
+      "suites": [
+        "test_planetary_grid"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "a segment is cut at the wrong fraction",
+      "file": "src/view/PlanetaryGrid.cpp",
+      "find": "    const f64 t = above / (above - aboveTo);",
+      "replace": "    const f64 t = above / (above + aboveTo);",
+      "suites": [
+        "test_planetary_grid"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the horizon is centred at (R/|E|) E, not (R/|E|)^2 E",
+      "file": "src/view/PlanetaryGrid.cpp",
+      "find": "        .centre = eye * (scale * scale),",
+      "replace": "        .centre = eye * scale,",
+      "suites": [
+        "test_planetary_grid"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the WGS-84 radius is 1 km too large",
+      "file": "src/view/PlanetaryGrid.hpp",
+      "find": "inline constexpr Metres kWgs84SemiMajorAxis{6'378'137.0};",
+      "replace": "inline constexpr Metres kWgs84SemiMajorAxis{6'379'137.0};",
+      "suites": [
+        "test_planetary_grid"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the grid is not turned to the epoch",
+      "file": "src/render/Probes.cpp",
+      "find": "    const Quat worldFromEarthFixed =\n        earthFixedFromInertial(conditions.epoch, picture.ut1).conjugate();",
+      "replace": "    const Quat worldFromEarthFixed = Quat{};\n    static_cast<void>(picture);",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_probe_grid",
+        "test_tonemap_port"
+      ],
+      "ctest": [
+        "probe_grid-400km_golden",
+        "grid-400km: the equator, the prime meridian and the grid land where Skyfield puts them",
+        "grid-400km: the horizon lands where the sphere's limb is, in blue",
+        "grid-400km: the search finds nothing where the colours would be swapped",
+        "from 400 km the crossing moves between frames as the pinhole camera predicts",
+        "from 1 km the crossing moves between frames as the pinhole camera predicts",
+        "the port check holds on grid-400km's picture, to 1/255 and to 2/65535",
+        "the port check holds on grid-jitter-1km-0's picture, to 1/255 and to 2/65535"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the grid is turned the wrong way",
+      "file": "src/render/Probes.cpp",
+      "find": "        earthFixedFromInertial(conditions.epoch, picture.ut1).conjugate();",
+      "replace": "        earthFixedFromInertial(conditions.epoch, picture.ut1);",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_probe_grid",
+        "test_tonemap_port"
+      ],
+      "ctest": [
+        "probe_grid-400km_golden",
+        "grid-400km: the equator, the prime meridian and the grid land where Skyfield puts them",
+        "grid-400km: the horizon lands where the sphere's limb is, in blue",
+        "grid-400km: the search finds nothing where the colours would be swapped",
+        "from 400 km the crossing moves between frames as the pinhole camera predicts",
+        "from 1 km the crossing moves between frames as the pinhole camera predicts",
+        "the port check holds on grid-400km's picture, to 1/255 and to 2/65535",
+        "the port check holds on grid-jitter-1km-0's picture, to 1/255 and to 2/65535"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the jitter frames step 2.5 m, not 0.25 m",
+      "file": "src/render/Probes.cpp",
+      "find": "constexpr f64 kJitterStepMetres = 0.25;",
+      "replace": "constexpr f64 kJitterStepMetres = 2.5;",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_probe_grid",
+        "test_tonemap_port"
+      ],
+      "ctest": [
+        "probe_grid-400km_golden",
+        "grid-400km: the equator, the prime meridian and the grid land where Skyfield puts them",
+        "grid-400km: the horizon lands where the sphere's limb is, in blue",
+        "grid-400km: the search finds nothing where the colours would be swapped",
+        "from 400 km the crossing moves between frames as the pinhole camera predicts",
+        "from 1 km the crossing moves between frames as the pinhole camera predicts",
+        "the port check holds on grid-400km's picture, to 1/255 and to 2/65535",
+        "the port check holds on grid-jitter-1km-0's picture, to 1/255 and to 2/65535"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the horizon is drawn in the grid's grey",
+      "file": "src/render/Probes.cpp",
+      "find": "        batch, view::kWgs84SemiMajorAxis, view::kGridColours.horizon, conditions.camera);",
+      "replace": "        batch, view::kWgs84SemiMajorAxis, view::kGridColours.grid, conditions.camera);",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_probe_grid",
+        "test_tonemap_port"
+      ],
+      "ctest": [
+        "probe_grid-400km_golden",
+        "grid-400km: the equator, the prime meridian and the grid land where Skyfield puts them",
+        "grid-400km: the horizon lands where the sphere's limb is, in blue",
+        "grid-400km: the search finds nothing where the colours would be swapped",
+        "from 400 km the crossing moves between frames as the pinhole camera predicts",
+        "from 1 km the crossing moves between frames as the pinhole camera predicts",
+        "the port check holds on grid-400km's picture, to 1/255 and to 2/65535",
+        "the port check holds on grid-jitter-1km-0's picture, to 1/255 and to 2/65535"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "toRenderSpace narrows each operand before subtracting",
+      "file": "src/view/Camera.cpp",
+      "find": "    const Position relative = worldMetres - camera.position();",
+      "replace": "    const auto narrowFirst = [](const Position& p) {\n        return Position{static_cast<f64>(static_cast<f32>(p.x.value())),\n                        static_cast<f64>(static_cast<f32>(p.y.value())),\n                        static_cast<f64>(static_cast<f32>(p.z.value()))};\n    };\n    const Position relative = narrowFirst(worldMetres) - narrowFirst(camera.position());",
+      "suites": [
+        "test_camera"
+      ],
+      "targets": [
+        "orbsim",
+        "test_probe_grid",
+        "test_tonemap_port"
+      ],
+      "ctest": [
+        "probe_grid-400km_golden",
+        "grid-400km: the equator, the prime meridian and the grid land where Skyfield puts them",
+        "grid-400km: the horizon lands where the sphere's limb is, in blue",
+        "grid-400km: the search finds nothing where the colours would be swapped",
+        "from 400 km the crossing moves between frames as the pinhole camera predicts",
+        "from 1 km the crossing moves between frames as the pinhole camera predicts",
+        "the port check holds on grid-400km's picture, to 1/255 and to 2/65535",
+        "the port check holds on grid-jitter-1km-0's picture, to 1/255 and to 2/65535"
+      ],
+      "expect": "caught"
+    }
+  ]
+}

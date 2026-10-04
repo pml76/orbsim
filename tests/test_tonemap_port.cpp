@@ -293,3 +293,13 @@ TEST_CASE("the port check holds on lambert-backlit's picture, to 1/255 and to 2/
 TEST_CASE("the port check holds on lines' picture, to 1/255 and to 2/65535") {
     requirePort({.name = "lines", .fNumber = 16.0});
 }
+
+// M1-20's two scenes; the other nine grid frames are these with the camera
+// moved a fraction of a metre.
+TEST_CASE("the port check holds on grid-400km's picture, to 1/255 and to 2/65535") {
+    requirePort({.name = "grid-400km", .fNumber = 16.0});
+}
+
+TEST_CASE("the port check holds on grid-jitter-1km-0's picture, to 1/255 and to 2/65535") {
+    requirePort({.name = "grid-jitter-1km-0", .fNumber = 16.0});
+}

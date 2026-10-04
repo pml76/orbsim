@@ -630,6 +630,7 @@ set(ORBSIM_VIEW_SOURCES
         src/view/ImageFiles.cpp
         src/view/Lambert.cpp
         src/view/LineBatch.cpp
+        src/view/PlanetaryGrid.cpp
         src/view/ProbeImage.cpp
         src/view/ProbeSidecar.cpp
 )
@@ -746,6 +747,7 @@ set(ORBSIM_TESTS
         test_orbit_elements
         test_orbit_scales
         test_pipeline_inputs
+        test_planetary_grid
         test_probe_sidecar
         test_projection
         test_render_quality
@@ -780,6 +782,7 @@ target_link_libraries(test_image_compare PRIVATE orbsim_view)
 target_link_libraries(test_golden_path PRIVATE orbsim_view)
 target_link_libraries(test_lambert PRIVATE orbsim_view)
 target_link_libraries(test_line_batch PRIVATE orbsim_view)
+target_link_libraries(test_planetary_grid PRIVATE orbsim_view)
 # And OpenEXR itself: the EXR is read back through the reference
 # implementation's own decoder, which is the check that the file is one.
 target_link_libraries(test_image_files PRIVATE orbsim_view OpenEXR::OpenEXRCore)
@@ -1215,6 +1218,17 @@ set(ORBSIM_NUMERIC_PROBES
         lambert-backlit
         tonemap-port
         lines
+        grid-400km
+        grid-jitter-0
+        grid-jitter-1
+        grid-jitter-2
+        grid-jitter-3
+        grid-jitter-4
+        grid-jitter-1km-0
+        grid-jitter-1km-1
+        grid-jitter-1km-2
+        grid-jitter-1km-3
+        grid-jitter-1km-4
 )
 foreach(probe IN LISTS ORBSIM_NUMERIC_PROBES)
     add_test(NAME probe_${probe}
@@ -1261,6 +1275,31 @@ add_test(NAME probe_lines_golden
                 "-DEXPECT_STDOUT=: matches"
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/RunProbe.cmake)
 set_tests_properties(probe_lines_golden PROPERTIES LABELS gpu RESOURCE_LOCK gpu)
+
+# The grid probes (M1-20; register decisions 319-336). All eleven are in the
+# list above, so each is rendered without a golden and sets up probe_data;
+# test_probe_grid then holds grid-400km's equator, prime meridian and grid to
+# the pixels the pinhole camera and the Skyfield fixture put them on, and the
+# jitter frames' crossing to its predicted movement, 0.0333 px a step
+# (decision 319). grid-400km has a golden as well, compared on a render of its
+# own as `lines`' is: one per card, so a card with none fails this test by
+# name and leaves the number checks running (decision 331). The jitter frames
+# have none: they are judged by number, and by the owner flipping through them.
+add_executable(test_probe_grid tests/test_probe_grid.cpp)
+target_link_libraries(test_probe_grid PRIVATE orbsim_abort_behaviour orbsim_test_support)
+target_compile_definitions(test_probe_grid PRIVATE ORBSIM_PROBE_DIR="${ORBSIM_PROBE_DIR}")
+catch_discover_tests(test_probe_grid
+        PROPERTIES FIXTURES_REQUIRED probe_data LABELS gpu RESOURCE_LOCK gpu)
+add_test(NAME probe_grid-400km_golden
+        COMMAND ${CMAKE_COMMAND}
+                -DORBSIM=$<TARGET_FILE:orbsim>
+                -DPROBE=grid-400km
+                -DOUT=${CMAKE_CURRENT_BINARY_DIR}/probes-golden
+                -DGOLDEN_DIR=${ORBSIM_GOLDEN_DIR}
+                -DPLANT_DIFF=ON
+                "-DEXPECT_STDOUT=: matches"
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/RunProbe.cmake)
+set_tests_properties(probe_grid-400km_golden PROPERTIES LABELS gpu RESOURCE_LOCK gpu)
 
 # A golden mismatch, caught end to end (M1-17, register decision 236).
 #
@@ -1426,6 +1465,7 @@ orbsim_add_header_selfcheck(orbsim_view_header_selfcheck orbsim_view
         view/Lambert.hpp
         view/LineBatch.hpp
         view/Mat4.hpp
+        view/PlanetaryGrid.hpp
         view/Projection.hpp
         view/ProbeGradient.hpp
         view/ProbeImage.hpp
@@ -1461,6 +1501,7 @@ add_dependencies(test_probe_sidecar orbsim_view_header_selfcheck)
 add_dependencies(test_image_compare orbsim_view_header_selfcheck)
 add_dependencies(test_golden_path orbsim_view_header_selfcheck)
 add_dependencies(test_line_batch orbsim_view_header_selfcheck)
+add_dependencies(test_planetary_grid orbsim_view_header_selfcheck)
 
 if(ORBSIM_BUILD_APP)
     orbsim_add_header_selfcheck(orbsim_render_header_selfcheck orbsim_render_deps
@@ -1519,7 +1560,7 @@ endforeach()
 if(ORBSIM_BUILD_APP)
     list(APPEND ORBSIM_LINT_SOURCES ${ORBSIM_APP_SOURCES} tests/test_probe_clear.cpp
             tests/test_radiometry.cpp tests/test_tonemap_port.cpp tests/make_broken_goldens.cpp
-            tests/test_probe_lines.cpp)
+            tests/test_probe_lines.cpp tests/test_probe_grid.cpp)
 endif()
 
 # Formatting covers everything that is ours, whether or not it is built in
@@ -1662,7 +1703,8 @@ if(ORBSIM_BUILD_APP)
     # suites that read the numeric probes' frames (M1-18), and the `lines`
     # probe's number check (M1-19).
     add_dependencies(check orbsim orbsim_render_header_selfcheck test_probe_clear
-            test_radiometry test_tonemap_port make_broken_goldens test_probe_lines)
+            test_radiometry test_tonemap_port make_broken_goldens test_probe_lines
+            test_probe_grid)
 endif()
 
 # Every library and program this file defines compiles in the memory pool
