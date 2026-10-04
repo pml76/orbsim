@@ -266,6 +266,24 @@
       "ctest the port check holds on tonemap-port's picture, to 1/255 and to 2/65535": "13a19bb8f96102e2"
     }
   },
+  "m1-19.json": {
+    "commit": "2cbecedbd5c79fa6f4440abecd19d5ef5a0f4e85",
+    "tree": "build/debug",
+    "date": "2026-10-04",
+    "judges": {
+      "program test_line_batch.exe": "9b53792c50c055d4",
+      "program orbsim.exe": "8e0ec059125575c4",
+      "program test_probe_lines.exe": "b3ef3a9d9ac6f0c8",
+      "program test_tonemap_port.exe": "e71207364d73e3cc",
+      "ctest orbsim_smoke": "50442db549e7cc6b",
+      "ctest probe_lines": "4a81e119c2d07d94",
+      "ctest probe_lines_golden": "a4ee220e44bb6a59",
+      "ctest each axis lands where the pinhole camera puts it, in its own colour": "c3ebebe33de77879",
+      "ctest the square's corners and sides land where the pinhole camera puts them, in white": "1e235af7abfdac26",
+      "ctest the search finds nothing where nothing is drawn, so it can fail": "738ffc28814b080f",
+      "ctest the port check holds on lines' picture, to 1/255 and to 2/65535": "412eb1f9d505efb3"
+    }
+  },
   "m1-87.json": {
     "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/relwithdebinfo",
