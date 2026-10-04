@@ -23,6 +23,19 @@
 // none of them worked; the probe's comment lists them so nobody repeats the
 // afternoon.
 //
+// **And the debug library's own checks, since 2026-10-04** (M1-21, register
+// decision 363). Microsoft's debug standard library checks its iterators --
+// stepping before a vector's first element, say -- and reports a failure
+// through the C runtime's debug report, not through `abort`, so the setting
+// above does not reach it: the report opens its own dialog and the process
+// waits. M1-21's mutation pass found it, a mutant that stepped before the
+// first keyframe hanging its suite for the harness's full 300 s. Sending the
+// two kinds of report that stop a program -- an assertion and an error -- to
+// stderr instead makes the program print the message and stop, measured the
+// same day on a program that steps before `begin()`: a hang without this, the
+// message "cannot seek vector iterator before begin" and an exit with it. A
+// no-op in a release build, where the debug report does not exist.
+//
 // A no-op everywhere else. On Linux and macOS abort already just aborts.
 //
 #include <catch2/catch_test_run_info.hpp>
@@ -37,6 +50,8 @@
 #ifdef _WIN32
 // NOLINTNEXTLINE(modernize-deprecated-headers)
 #include <stdlib.h>
+
+#include <crtdbg.h>
 #endif
 
 namespace {
@@ -51,6 +66,10 @@ public:
     void testRunStarting(const Catch::TestRunInfo& /*info*/) override {
 #ifdef _WIN32
         static_cast<void>(_set_abort_behavior(0, _CALL_REPORTFAULT | _WRITE_ABORT_MSG));
+        static_cast<void>(_CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE));
+        static_cast<void>(_CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR));
+        static_cast<void>(_CrtSetReportMode(_CRT_ERROR, _CRTDBG_MODE_FILE));
+        static_cast<void>(_CrtSetReportFile(_CRT_ERROR, _CRTDBG_FILE_STDERR));
 #endif
     }
 };
