@@ -371,3 +371,237 @@ TEST_CASE("isUnitQuaternion accepts everything this project builds", "[math][qua
                                  kUnitQuaternionTolerance));
     }
 }
+
+// --- slerp (M1-21, register decisions 347-349 and 356) ----------------------
+//
+// Nothing below is checked against slerp's own formula. The references are a
+// turn about one fixed axis, whose result at a fraction s is the turn by s of
+// the angle -- `fromAxisAngle`, a different route -- and the property that
+// defines the interpolation: the orientation at s is s of the whole angle from
+// the start and 1 - s of it from the end, so the two add up and the path lies
+// on the shortest arc, turning at a steady rate.
+
+namespace {
+
+// **The task's unit-length budget**, 1e-15 (register decision 348). Measured
+// before it was proposed at 2.5 ulp, 5.6e-16, over 100,000 random pairs in
+// double precision, and the same here, 5.55e-16 -- for inputs within 1.5 ulp
+// of unit length, which is what `normalize` leaves and what
+// view/CameraPath.hpp stores. Not twice the measurement, which the task's
+// number predates; ruled knowing that.
+constexpr Tolerance kSlerpUnitLength{1e-15};
+
+// How closely slerp agrees with the turn about one axis, component by
+// component, and how closely its angles add up, in radians. Each set at about
+// twice what was measured on 2026-10-04 over the sweeps below
+// (VERIFICATION.md rule 4): 7.8e-16 against the turn about one axis, and
+// 8.9e-16 rad for the angles.
+constexpr Tolerance kSlerpMatchesAxisAngle{2e-15};
+constexpr Tolerance kSlerpSteadyRate{2e-15};
+
+constexpr std::size_t kSlerpSweepCases = 100'000;
+
+// The angle one orientation is turned from another, robust at both ends: the
+// half-angle from the vector and scalar parts of the relative rotation, by
+// atan2, rather than an arccosine that loses everything near zero. The
+// scalar part's sign is dropped because q and -q are the same orientation.
+[[nodiscard]] f64 angleAcross(const QuatArc& arc) {
+    const Quat relative = arc.from.conjugate() * arc.to;
+    const f64 vector = std::sqrt((relative.x * relative.x) + (relative.y * relative.y) +
+                                 (relative.z * relative.z));
+    return 2.0 * std::atan2(vector, std::abs(relative.w));
+}
+
+[[nodiscard]] Fraction fractionFrom(f64 value) {
+    const auto made = Fraction::from(value);
+    REQUIRE(made.has_value());
+    return *made;
+}
+
+[[nodiscard]] bool isFiniteQuat(const Quat& q) {
+    return std::isfinite(q.w) && std::isfinite(q.x) && std::isfinite(q.y) && std::isfinite(q.z);
+}
+
+// The largest difference between two quaternions' components, comparing the
+// first against whichever of the second and its negative it lies nearer,
+// since both are the same orientation. An arc rather than two parameters, so
+// the two cannot be transposed; the comparison is symmetric anyway.
+[[nodiscard]] f64 worstComponent(const QuatArc& pair) {
+    const Quat& got = pair.from;
+    const Quat& want = pair.to;
+    const f64 dot = (got.w * want.w) + (got.x * want.x) + (got.y * want.y) + (got.z * want.z);
+    const f64 sign = dot < 0.0 ? -1.0 : 1.0;
+    return std::max({
+        std::abs(got.w - (sign * want.w)),
+        std::abs(got.x - (sign * want.x)),
+        std::abs(got.y - (sign * want.y)),
+        std::abs(got.z - (sign * want.z)),
+    });
+}
+
+[[nodiscard]] Direction randomAxis(Sampler& sampler) {
+    const f64 z = (2.0 * sampler.unit()) - 1.0;
+    const f64 azimuth = 2.0 * std::numbers::pi_v<f64> * sampler.unit();
+    const f64 r = std::sqrt(std::max(0.0, 1.0 - (z * z)));
+    return Direction{r * std::cos(azimuth), r * std::sin(azimuth), z};
+}
+
+} // namespace
+
+TEST_CASE("slerp stays unit length to 1e-15", "[math][slerp]") {
+    Sampler sampler;
+    f64 worst = 0.0;
+    for (std::size_t i = 0; i < kSlerpSweepCases; ++i) {
+        const QuatArc arc{.from = sampler.rotation(), .to = sampler.rotation()};
+        const Quat turned = slerp(arc, fractionFrom(sampler.unit()));
+        worst = std::max(worst, std::abs(normOf(turned) - 1.0));
+        CAPTURE(kSweepSeed, i);
+        REQUIRE(nearlyEqual(normOf(turned), 1.0, kSlerpUnitLength));
+    }
+    WARN("worst departure from unit length " << worst);
+}
+
+TEST_CASE("slerp is exact at both ends", "[math][slerp]") {
+    // The start bit for bit, and the end bit for bit -- or its negative, which
+    // is the same orientation, when the shortest arc runs through it.
+    Sampler sampler;
+    for (std::size_t i = 0; i < 2000; ++i) {
+        const QuatArc arc{.from = sampler.rotation(), .to = sampler.rotation()};
+        const f64 dot = (arc.from.w * arc.to.w) + (arc.from.x * arc.to.x) +
+                        (arc.from.y * arc.to.y) + (arc.from.z * arc.to.z);
+        const Quat end = dot < 0.0 ? Quat{-arc.to.w, -arc.to.x, -arc.to.y, -arc.to.z} : arc.to;
+        CAPTURE(kSweepSeed, i);
+        REQUIRE(slerp(arc, fraction(0.0)).bitIdentical(arc.from));
+        REQUIRE(slerp(arc, fraction(1.0)).bitIdentical(end));
+    }
+}
+
+TEST_CASE("a turn about one axis is the same fraction of its angle", "[math][slerp]") {
+    // From a to b about a fixed axis, with |b - a| below a half turn so that
+    // the shortest arc is this one: the fraction s lands on a + s(b - a),
+    // which fromAxisAngle builds by a route that shares nothing with slerp.
+    Sampler sampler;
+    f64 worst = 0.0;
+    for (std::size_t i = 0; i < 20'000; ++i) {
+        const Direction axis = randomAxis(sampler);
+        const f64 start = 4.0 * std::numbers::pi_v<f64> * (sampler.unit() - 0.5);
+        const f64 turn = 0.999 * std::numbers::pi_v<f64> * ((2.0 * sampler.unit()) - 1.0);
+        const f64 s = sampler.unit();
+        const QuatArc arc{
+            .from = Quat::fromAxisAngle(axis, Radians{start}),
+            .to = Quat::fromAxisAngle(axis, Radians{start + turn}),
+        };
+        const Quat want = Quat::fromAxisAngle(axis, Radians{start + (s * turn)});
+        const f64 error = worstComponent({.from = slerp(arc, fractionFrom(s)), .to = want});
+        worst = std::max(worst, error);
+        CAPTURE(kSweepSeed, i, start, turn, s);
+        REQUIRE(error <= kSlerpMatchesAxisAngle.value());
+    }
+    WARN("worst component against the turn about one axis " << worst);
+}
+
+TEST_CASE("slerp turns at a steady rate along the shortest arc", "[math][slerp]") {
+    // The defining property, between any two orientations: the angle from the
+    // start is s of the whole, the angle to the end is 1 - s of it, and the
+    // whole is at most a half turn. Two angles that add up to the whole put
+    // the orientation on the arc; each being its share puts it there at the
+    // steady rate.
+    Sampler sampler;
+    f64 worst = 0.0;
+    for (std::size_t i = 0; i < 20'000; ++i) {
+        const QuatArc arc{.from = sampler.rotation(), .to = sampler.rotation()};
+        const f64 s = sampler.unit();
+        const Quat turned = slerp(arc, fractionFrom(s));
+        const f64 whole = angleAcross(arc);
+        const f64 fromStart = std::abs(angleAcross({.from = arc.from, .to = turned}) - (s * whole));
+        const f64 toEnd =
+            std::abs(angleAcross({.from = turned, .to = arc.to}) - ((1.0 - s) * whole));
+        worst = std::max({worst, fromStart, toEnd});
+        CAPTURE(kSweepSeed, i, s, whole);
+        REQUIRE(whole <= std::numbers::pi_v<f64>);
+        REQUIRE(fromStart <= kSlerpSteadyRate.value());
+        REQUIRE(toEnd <= kSlerpSteadyRate.value());
+    }
+    WARN("worst angle error " << worst << " rad");
+}
+
+TEST_CASE("identical orientations do not produce NaN", "[math][slerp]") {
+    // The zero-length arc, where the textbook weights are 0/0. Every fraction
+    // must give a finite orientation, and the one it started at.
+    Sampler sampler;
+    for (std::size_t i = 0; i < 200; ++i) {
+        const Quat q = sampler.rotation();
+        for (const f64 s : std::to_array<f64>({0.0, 1e-300, 0.25, 0.5, 1.0 - 0x1p-53, 1.0})) {
+            const Quat turned = slerp({.from = q, .to = q}, fractionFrom(s));
+            CAPTURE(kSweepSeed, i, s);
+            REQUIRE(isFiniteQuat(turned));
+            REQUIRE(worstComponent({.from = turned, .to = q}) <= kSlerpMatchesAxisAngle.value());
+        }
+    }
+}
+
+TEST_CASE("q and -q are one orientation, and slerp does not spin between them", "[math][slerp]") {
+    // Register decision 349's first reading: the same rotation written with
+    // opposite signs. Without the shortest-arc flip the arc between them is a
+    // whole turn, and the midpoint faces the other way.
+    Sampler sampler;
+    for (std::size_t i = 0; i < 200; ++i) {
+        const Quat q = sampler.rotation();
+        const QuatArc arc{.from = q, .to = Quat{-q.w, -q.x, -q.y, -q.z}};
+        for (const f64 s : std::to_array<f64>({0.25, 0.5, 0.75})) {
+            const Quat turned = slerp(arc, fractionFrom(s));
+            CAPTURE(kSweepSeed, i, s);
+            REQUIRE(isFiniteQuat(turned));
+            REQUIRE(worstComponent({.from = turned, .to = q}) <= kSlerpMatchesAxisAngle.value());
+        }
+    }
+}
+
+TEST_CASE("half a turn apart, the tie keeps the sign it was given", "[math][slerp]") {
+    // Register decision 349's second reading. From the identity to half a turn
+    // about z the two quaternions are perpendicular -- their dot product is
+    // exactly zero -- and both ways round are a half turn. The rule is "keep
+    // the sign while the dot product is at least zero", so the path turns
+    // about +z, and the midpoint is a quarter turn about +z.
+    const QuatArc arc{.from = Quat{}, .to = Quat{0.0, 0.0, 0.0, 1.0}};
+    const Quat midpoint = slerp(arc, fraction(0.5));
+    const Quat quarterTurn = Quat::fromAxisAngle(Direction{0, 0, 1}, Radians{kPi / 2.0});
+    REQUIRE(worstComponent({.from = midpoint, .to = quarterTurn}) <=
+            kSlerpMatchesAxisAngle.value());
+    REQUIRE(midpoint.z > 0.0);
+}
+
+TEST_CASE("just either side of half a turn, slerp takes the shorter way", "[math][slerp]") {
+    // A billionth of a radian short of a half turn about +z, and the same
+    // beyond it -- which is a little short of a half turn about -z. Each must
+    // go round its own shorter way: the midpoint a quarter turn about +z in
+    // the first case and about -z in the second.
+    constexpr f64 kAside = 1e-9;
+    for (const f64 aside : std::to_array<f64>({-kAside, kAside})) {
+        const Quat to = Quat::fromAxisAngle(Direction{0, 0, 1}, Radians{kPi + aside});
+        const Quat midpoint = slerp({.from = Quat{}, .to = to}, fraction(0.5));
+        const f64 halfWay = (kPi - std::abs(aside)) / 2.0;
+        const f64 sense = aside < 0.0 ? 1.0 : -1.0;
+        const Quat want = Quat::fromAxisAngle(Direction{0, 0, sense}, Radians{halfWay});
+        CAPTURE(aside);
+        REQUIRE(angleAcross({.from = Quat{}, .to = to}) <= kPi);
+        REQUIRE(worstComponent({.from = midpoint, .to = want}) <= kSlerpMatchesAxisAngle.value());
+    }
+}
+
+TEST_CASE("a tiny arc is interpolated, not rounded away", "[math][slerp]") {
+    // Arcs from a microradian down to near the smallest a double can hold: the
+    // midpoint is half the turn, as fromAxisAngle builds it, and finite.
+    for (const f64 angle : std::to_array<f64>({1e-6, 1e-10, 1e-15, 1e-100, 1e-300})) {
+        const Direction axis{0.48, 0.6, 0.64};
+        const QuatArc arc{.from = Quat{}, .to = Quat::fromAxisAngle(axis, Radians{angle})};
+        const Quat midpoint = slerp(arc, fraction(0.5));
+        const Quat want = Quat::fromAxisAngle(axis, Radians{angle / 2.0});
+        CAPTURE(angle);
+        REQUIRE(isFiniteQuat(midpoint));
+        REQUIRE(worstComponent({.from = midpoint, .to = want}) <= kSlerpMatchesAxisAngle.value());
+        // Relative to the turn, so that the arc rounded away to the identity
+        // fails even where the absolute tolerance above cannot see it.
+        REQUIRE(std::abs((midpoint.x / want.x) - 1.0) <= 1e-12);
+    }
+}

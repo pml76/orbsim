@@ -1,0 +1,130 @@
+{
+  "task": "M1-21",
+  "tree": "build/debug",
+  "note": "Camera controls and scripted paths (register decisions 340-361), the twelve mutants of decision 352. Judged headlessly: the controller and the mouse's mapping by test_camera_controller, the path by test_camera_path, and slerp by test_math and test_camera_path, which flies it. The wheel's sign is held at compile time by a static_assert in view/CameraInput.hpp, so that mutant is expected to die before a test runs. 'Equal keyframe times accepted' keeps refusing a time that goes back, and is killed by the case that sets two times equal.",
+  "mutants": [
+    {
+      "name": "the tilt limit removed",
+      "file": "src/view/CameraController.cpp",
+      "find": "    tilt_ = std::clamp(tilt_ + command.tilt, -kTiltLimit, kTiltLimit);",
+      "replace": "    tilt_ = tilt_ + command.tilt;",
+      "suites": [
+        "test_camera_controller"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the tilt limit's lower bound loses its sign",
+      "file": "src/view/CameraController.cpp",
+      "find": "    tilt_ = std::clamp(tilt_ + command.tilt, -kTiltLimit, kTiltLimit);",
+      "replace": "    tilt_ = std::clamp(tilt_ + command.tilt, kTiltLimit, kTiltLimit);",
+      "suites": [
+        "test_camera_controller"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "a pan scaled by the distance squared",
+      "file": "src/view/CameraController.cpp",
+      "find": "    const f64 screen = distance_.value() * 2.0 * std::tan(settings_.verticalFov.value() / 2.0);",
+      "replace": "    const f64 screen = distance_.value() * distance_.value() * 2.0 * std::tan(settings_.verticalFov.value() / 2.0);",
+      "suites": [
+        "test_camera_controller"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "a pan not scaled by the distance at all",
+      "file": "src/view/CameraController.cpp",
+      "find": "    const f64 screen = distance_.value() * 2.0 * std::tan(settings_.verticalFov.value() / 2.0);",
+      "replace": "    const f64 screen = 2.0 * std::tan(settings_.verticalFov.value() / 2.0);",
+      "suites": [
+        "test_camera_controller"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the heading ignored when panning",
+      "file": "src/view/CameraController.cpp",
+      "find": "    const f64 h = heading_.value();",
+      "replace": "    const f64 h = 0.0;",
+      "suites": [
+        "test_camera_controller"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "slerp's shortest-arc flip dropped",
+      "file": "src/core/Math.hpp",
+      "find": "    const Quat b = dot < 0.0 ? Quat{-arc.to.w, -arc.to.x, -arc.to.y, -arc.to.z} : arc.to;",
+      "replace": "    const Quat b = dot < -2.0 ? Quat{-arc.to.w, -arc.to.x, -arc.to.y, -arc.to.z} : arc.to;",
+      "suites": [
+        "test_math",
+        "test_camera_path"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "slerp's two weights swapped",
+      "file": "src/core/Math.hpp",
+      "find": "    const f64 fromWeight = rest * detail::sinc(rest * theta) / base;\n    const f64 toWeight = s * detail::sinc(s * theta) / base;",
+      "replace": "    const f64 fromWeight = s * detail::sinc(s * theta) / base;\n    const f64 toWeight = rest * detail::sinc(rest * theta) / base;",
+      "suites": [
+        "test_math",
+        "test_camera_path"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "sin(x)/x at zero is zero, not one",
+      "file": "src/core/Math.hpp",
+      "find": "    if (!(x > 0.0)) return 1.0;",
+      "replace": "    if (!(x > 0.0)) return 0.0;",
+      "suites": [
+        "test_math",
+        "test_camera_path"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the wrong segment: the first keyframe at or after the time, not after it",
+      "file": "src/view/CameraPath.cpp",
+      "find": "    const auto after = std::ranges::upper_bound(",
+      "replace": "    const auto after = std::ranges::lower_bound(",
+      "suites": [
+        "test_camera_path"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "equal keyframe times accepted",
+      "file": "src/view/CameraPath.cpp",
+      "find": "            return !(earlier.time < later.time);",
+      "replace": "            return earlier.time > later.time;",
+      "suites": [
+        "test_camera_path"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the keyframes not normalised",
+      "file": "src/view/CameraPath.cpp",
+      "find": "        keyframe.pose.orientation = normalize(keyframe.pose.orientation);",
+      "replace": "        static_cast<void>(keyframe);",
+      "suites": [
+        "test_camera_path"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the wheel reversed",
+      "file": "src/view/CameraInput.hpp",
+      "find": "    return {.steps = Dimensionless{static_cast<f64>(wheel.away)}};",
+      "replace": "    return {.steps = Dimensionless{-static_cast<f64>(wheel.away)}};",
+      "suites": [
+        "test_camera_controller"
+      ],
+      "expect": "caught"
+    }
+  ]
+}

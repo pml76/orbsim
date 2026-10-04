@@ -303,7 +303,9 @@ template <auto R1, auto R2>
 // bound cannot be constructed, so no function downstream has to decide whether
 // to report it, assert it, or -- as three anomaly converters did -- return a
 // plausible wrong answer. That is VERIFICATION.md rule 24, prefer the bug you
-// cannot write, chosen over rule 7's report-or-assert.
+// cannot write, chosen over rule 7's report-or-assert. Since M1-21 a third
+// type holds a bound the same way: `Fraction`, after the nine (register
+// decision 356).
 //
 // It lives here, beside the types, rather than in a layer-wide error header:
 // the precedent is decision 90, which put EphemerisError in astro/Sun.hpp for
@@ -317,6 +319,7 @@ enum class UnitError : std::uint8_t {
     NotFinite,            // a NaN or an infinity
     NegativeEccentricity, // e < 0 is not a conic
     NonPositiveGravity,   // mu <= 0 is not a central body
+    OutsideZeroToOne,     // a fraction of the way is between 0 and 1 (M1-21)
 };
 
 // No `default:`, as every describe() in this project is written, so that
@@ -330,6 +333,8 @@ enum class UnitError : std::uint8_t {
         return "an eccentricity must not be negative";
     case UnitError::NonPositiveGravity:
         return "a gravitational parameter must be greater than zero";
+    case UnitError::OutsideZeroToOne:
+        return "a fraction of the way must be between zero and one";
     }
     return "unknown unit error";
 }
@@ -338,6 +343,7 @@ enum class UnitError : std::uint8_t {
 // Scalar<> above and in mp-units beneath it; adding such a unit is adding a
 // line. The other two, Eccentricity and GravParam, are classes, because they
 // are the two with a bound to hold.
+// `Fraction`, a tenth, is a class for the same reason and follows them (M1-21).
 //
 // The seven are aliases rather than distinct types, so two of them over the
 // same reference would be the same type. That is fine here -- no two of them
@@ -533,6 +539,49 @@ private:
 [[nodiscard]] consteval Eccentricity eccentricity(f64 v) { return Eccentricity::from(v).value(); }
 [[nodiscard]] consteval GravParam gravParam(f64 v) { return GravParam::from(v).value(); }
 
+// How far along the way from one thing to another: 0 is the start, 1 the end,
+// and nothing outside (M1-21, register decision 356). What `slerp` in
+// core/Math.hpp and view/CameraPath.hpp's interpolation take.
+//
+// **Validated at construction**, for ADR 0022's reason. An interpolation
+// handed 3 does not fail: it extrapolates, and returns a finite, plausible
+// orientation three times as far round as either end -- the failure shape that
+// record exists to remove. A plain dimensionless scalar would accept it.
+//
+// **No default constructor**, as GravParam has none: 0 and 1 are both valid
+// and neither is a neutral choice, so the call site says which.
+class Fraction {
+public:
+    Fraction() = delete;
+
+    [[nodiscard]] static constexpr std::expected<Fraction, UnitError> from(f64 v) noexcept {
+        if (!isFinite(v)) return std::unexpected(UnitError::NotFinite);
+        // Negative zero passes, as it does for an eccentricity: -0.0 < 0.0 is
+        // false, and what it holds is zero.
+        if (v < 0.0 || v > 1.0) return std::unexpected(UnitError::OutsideZeroToOne);
+        return Fraction{v};
+    }
+
+    [[nodiscard]] constexpr f64 value() const noexcept { return value_; }
+
+    [[nodiscard]] friend constexpr auto operator<=>(Fraction l, Fraction r) noexcept {
+        return l.value_ <=> r.value_;
+    }
+    friend bool operator==(Fraction, Fraction) = delete;
+
+    [[nodiscard]] constexpr bool bitIdentical(Fraction other) const noexcept {
+        return bitsOf(value_) == bitsOf(other.value_);
+    }
+
+private:
+    explicit constexpr Fraction(f64 v) noexcept : value_{v} {}
+
+    f64 value_;
+};
+
+// A literal, checked at compile time, as `eccentricity()` and `gravParam()`.
+[[nodiscard]] consteval Fraction fraction(f64 v) { return Fraction::from(v).value(); }
+
 // Named, not implicit -- see the note on Scalar above. The factor is mp-units',
 // not ours: `.in()` applies the library's own degree-to-radian magnitude, which
 // is the sort of thing this project stopped hand-writing on 2026-09-17.
@@ -704,6 +753,22 @@ static_assert(GravParam::from(-1.0).error() == UnitError::NonPositiveGravity);
 // assertion it cannot leave in the source.
 static_assert(eccentricity(0.7306).value() == 0.7306);
 static_assert(gravParam(3.986004418e14).value() == 3.986004418e14);
+
+// Fraction (M1-21): both ends accepted, either side of them refused by name.
+// The non-finite refusals are tested at run time, for the reason above.
+static_assert(Fraction::from(0.0).has_value() && Fraction::from(1.0).has_value(),
+              "both ends are on the way");
+static_assert(!Fraction::from(-0.5).has_value() &&
+                  Fraction::from(-0.5).error() == UnitError::OutsideZeroToOne,
+              "before the start is not");
+static_assert(!Fraction::from(1.5).has_value() &&
+                  Fraction::from(1.5).error() == UnitError::OutsideZeroToOne,
+              "and neither is past the end");
+static_assert(fraction(0.25).value() == 0.25);
+static_assert(!std::is_default_constructible_v<Fraction>, "the call site says which end");
+static_assert(!std::is_constructible_v<Fraction, f64>, "and only the factory makes one");
+static_assert(sizeof(Fraction) == sizeof(f64));
+static_assert(std::is_trivially_copyable_v<Fraction>);
 
 // **The reason GravParam holds a Scalar rather than an f64** (decision 110),
 // and the one assertion M1-62 depends on: mu still takes part in the unit

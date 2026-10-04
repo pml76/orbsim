@@ -625,6 +625,8 @@ unset(BUILD_SHARED_LIBS)
 # ---------------------------------------------------------------------------
 set(ORBSIM_VIEW_SOURCES
         src/view/Camera.cpp
+        src/view/CameraController.cpp
+        src/view/CameraPath.cpp
         src/view/GoldenPath.cpp
         src/view/ImageCompare.cpp
         src/view/ImageFiles.cpp
@@ -731,6 +733,8 @@ target_compile_definitions(orbsim_test_support PRIVATE
 set(ORBSIM_TESTS
         test_astro_time
         test_camera
+        test_camera_controller
+        test_camera_path
         test_double_double
         test_earth_orientation
         test_exposure
@@ -770,6 +774,8 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/TestSuites.cmake)
 target_link_libraries(test_view_math PRIVATE orbsim_view)
 target_link_libraries(test_projection PRIVATE orbsim_view)
 target_link_libraries(test_camera PRIVATE orbsim_view)
+target_link_libraries(test_camera_controller PRIVATE orbsim_view)
+target_link_libraries(test_camera_path PRIVATE orbsim_view)
 target_link_libraries(test_render_quality PRIVATE orbsim_view)
 target_link_libraries(test_pipeline_inputs PRIVATE orbsim_view)
 target_link_libraries(test_srgb PRIVATE orbsim_view)
@@ -1078,6 +1084,7 @@ target_link_libraries(orbsim_render_deps INTERFACE
 )
 
 set(ORBSIM_APP_SOURCES
+        src/app/InteractiveView.cpp
         src/app/main.cpp
         src/app/ProbeMode.cpp
         src/render/LineRenderer.cpp
@@ -1456,6 +1463,9 @@ orbsim_add_header_selfcheck(orbsim_header_selfcheck orbsim_core
 )
 orbsim_add_header_selfcheck(orbsim_view_header_selfcheck orbsim_view
         view/Camera.hpp
+        view/CameraController.hpp
+        view/CameraInput.hpp
+        view/CameraPath.hpp
         view/Exposure.hpp
         view/Frame.hpp
         view/GoldenPath.hpp
@@ -1466,6 +1476,7 @@ orbsim_add_header_selfcheck(orbsim_view_header_selfcheck orbsim_view
         view/LineBatch.hpp
         view/Mat4.hpp
         view/PlanetaryGrid.hpp
+        view/Pose.hpp
         view/Projection.hpp
         view/ProbeGradient.hpp
         view/ProbeImage.hpp
@@ -1489,6 +1500,8 @@ add_dependencies(test_orbit orbsim_header_selfcheck orbsim_test_header_selfcheck
 add_dependencies(test_view_math orbsim_view_header_selfcheck)
 add_dependencies(test_projection orbsim_view_header_selfcheck)
 add_dependencies(test_camera orbsim_view_header_selfcheck)
+add_dependencies(test_camera_controller orbsim_view_header_selfcheck)
+add_dependencies(test_camera_path orbsim_view_header_selfcheck)
 add_dependencies(test_render_quality orbsim_view_header_selfcheck)
 add_dependencies(test_pipeline_inputs orbsim_view_header_selfcheck)
 add_dependencies(test_srgb orbsim_view_header_selfcheck)
@@ -1512,6 +1525,7 @@ if(ORBSIM_BUILD_APP)
             render/VulkanHandle.hpp
             render/VulkanContext.hpp
             app/ExitCodes.hpp
+            app/InteractiveView.hpp
             app/ProbeMode.hpp
             app/SdlHandle.hpp
     )

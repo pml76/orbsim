@@ -62,3 +62,9 @@ line-list pipelines only, so a `TriangleList` pipeline with
 `PolygonMode::Line`, whose edges Vulkan rasterizes as lines, is drawn by the
 device's default rule today. The terrain wireframe of phase D is where that
 matters, and where this decision is to be extended.
+
+**2026-10-04, with M1-21: the application draws lines.** The window draws the
+Earth's grid and horizon every frame, through both frame slots (register
+decision 344), so there is now a frame whose cost includes the rule. It is
+measured by M1-22's benchmark, which is next and whose baseline is exactly
+this frame (decision 351), rather than separately here.

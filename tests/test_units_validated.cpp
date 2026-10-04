@@ -1,6 +1,7 @@
 //
-// Tests for the two validated scalars in core/Units.hpp: Eccentricity and
-// GravParam (M1-87, register decisions 106-114).
+// Tests for the validated scalars in core/Units.hpp: Eccentricity and
+// GravParam (M1-87, register decisions 106-114), and Fraction (M1-21, register
+// decision 356).
 //
 // **This suite holds what a static_assert cannot.** Most of what these types
 // buy is a compile-time refusal -- `Eccentricity{-0.5}` does not compile, and
@@ -51,6 +52,7 @@ namespace {
 
 using orb::Eccentricity;
 using orb::f64;
+using orb::Fraction;
 using orb::GravParam;
 using orb::nearlyEqual;
 using orb::Tolerance;
@@ -72,6 +74,16 @@ constexpr auto kAcceptedEccentricities =
 constexpr auto kNegatives = std::to_array<f64>({-kTiniest, -1e-300, -0.5, -1.0, -1e300});
 
 constexpr auto kNonFinite = std::to_array<f64>({kNaN, kInf, -kInf});
+
+// Both ends, and the values either side of each that a rounding could produce.
+// The one below 1 is the largest double under it, 1 - 2^-53.
+constexpr auto kAcceptedFractions =
+    std::to_array<f64>({0.0, kTiniest, 1e-300, 0.25, 0.5, 1.0 - 0x1p-53, 1.0});
+
+// Just outside either end, and far outside: the next double above 1 is
+// 1 + 2^-52, and extrapolating by any of these is what the type refuses.
+constexpr auto kOutsideFractions =
+    std::to_array<f64>({-kTiniest, -1e-300, -0.5, 1.0 + 0x1p-52, 1.5, 3.0, 1e300, -1e300});
 
 } // namespace
 
@@ -169,6 +181,39 @@ TEST_CASE("a gravitational parameter keeps its place in the dimension system",
         Tolerance{0.0}));
 }
 
+TEST_CASE("a fraction accepts zero, one, and everything between", "[units][fraction]") {
+    for (const f64 accepted : kAcceptedFractions) {
+        INFO("fraction " << accepted);
+        const auto fraction = Fraction::from(accepted);
+        REQUIRE(fraction.has_value());
+        REQUIRE(orb::bitsOf(fraction->value()) == orb::bitsOf(accepted));
+    }
+}
+
+TEST_CASE("a fraction outside zero to one is refused by its own name", "[units][fraction]") {
+    for (const f64 outside : kOutsideFractions) {
+        INFO("fraction " << outside);
+        const auto fraction = Fraction::from(outside);
+        REQUIRE(!fraction.has_value());
+        REQUIRE(fraction.error() == UnitError::OutsideZeroToOne);
+    }
+}
+
+TEST_CASE("a non-finite fraction is refused by a different name", "[units][fraction]") {
+    for (const f64 value : kNonFinite) {
+        INFO("fraction " << value);
+        const auto fraction = Fraction::from(value);
+        REQUIRE(!fraction.has_value());
+        REQUIRE(fraction.error() == UnitError::NotFinite);
+    }
+}
+
+TEST_CASE("negative zero is a fraction, because it is zero", "[units][fraction]") {
+    const auto fraction = Fraction::from(-0.0);
+    REQUIRE(fraction.has_value());
+    REQUIRE(nearlyEqual(fraction->value(), 0.0, Tolerance{0.0}));
+}
+
 TEST_CASE("an accepted eccentricity survives the factory bit for bit", "[units]") {
     // Bit identity, not nearness: the factory validates and stores, and must
     // not round, scale or otherwise touch what it was given. A value that came
@@ -187,8 +232,12 @@ TEST_CASE("an accepted gravitational parameter survives the factory bit for bit"
 }
 
 TEST_CASE("every unit error describes itself", "[units]") {
-    constexpr auto kAll = std::to_array<UnitError>(
-        {UnitError::NotFinite, UnitError::NegativeEccentricity, UnitError::NonPositiveGravity});
+    constexpr auto kAll = std::to_array<UnitError>({
+        UnitError::NotFinite,
+        UnitError::NegativeEccentricity,
+        UnitError::NonPositiveGravity,
+        UnitError::OutsideZeroToOne,
+    });
     for (const UnitError error : kAll) {
         REQUIRE(!describe(error).empty());
     }
@@ -200,4 +249,6 @@ TEST_CASE("and no two unit errors describe the same thing", "[units]") {
     REQUIRE(describe(UnitError::NotFinite) != describe(UnitError::NegativeEccentricity));
     REQUIRE(describe(UnitError::NegativeEccentricity) != describe(UnitError::NonPositiveGravity));
     REQUIRE(describe(UnitError::NotFinite) != describe(UnitError::NonPositiveGravity));
+    REQUIRE(describe(UnitError::NonPositiveGravity) != describe(UnitError::OutsideZeroToOne));
+    REQUIRE(describe(UnitError::NotFinite) != describe(UnitError::OutsideZeroToOne));
 }

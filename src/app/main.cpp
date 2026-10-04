@@ -5,6 +5,7 @@
 // frame loop runs. The simulation and renderer land on top of this next.
 //
 #include "app/ExitCodes.hpp"
+#include "app/InteractiveView.hpp"
 #include "app/ProbeMode.hpp"
 #include "app/SdlHandle.hpp"
 #include "core/Units.hpp"
@@ -347,8 +348,10 @@ struct OptionValue {
     return checkProbeOptions(options);
 }
 
-// Drains the event queue. Returns false once the user has asked to quit.
-[[nodiscard]] bool handleEvents(orb::gfx::VulkanContext& gfx) {
+// Drains the event queue, handing the mouse to the view (M1-21). Returns
+// false once the user has asked to quit.
+[[nodiscard]] bool
+handleEvents(SDL_Window* window, orb::gfx::VulkanContext& gfx, orb::app::InteractiveView& view) {
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
         switch (event.type) {
@@ -361,6 +364,14 @@ struct OptionValue {
             if (event.key.key == SDLK_ESCAPE) return false;
             break;
         default:
+            // Physical pixels per window unit, which SDL reports as 0 if it
+            // cannot say -- a drag then moves nothing, rather than guessing.
+            view.handle(
+                event,
+                {
+                    .pixelsPerWindowUnit = static_cast<double>(SDL_GetWindowPixelDensity(window)),
+                    .height = orb::Pixels{static_cast<double>(gfx.extent().height)},
+                });
             break;
         }
     }
@@ -370,8 +381,18 @@ struct OptionValue {
 // The frame loop, until the user quits or `--seconds` runs out. Split out of
 // runRenderer, which owns what the loop uses and so decides when it is
 // destroyed; this only uses it.
-[[nodiscard]] int runFrameLoop(orb::gfx::VulkanContext& gfx,
-                               const orb::gfx::ResolvePass& resolve,
+// What the frame loop draws with besides the renderer: the scene's pipelines,
+// the resolve pass, and the view the user flies (M1-21). By name, as a struct
+// of pointers that do not own -- each outlives the loop, in runRenderer.
+struct FrameDrawing {
+    const orb::gfx::ScenePipelines* pipelines{};
+    const orb::gfx::ResolvePass* resolve{};
+    orb::app::InteractiveView* view{};
+};
+
+[[nodiscard]] int runFrameLoop(SDL_Window* window,
+                               orb::gfx::VulkanContext& gfx,
+                               const FrameDrawing& drawing,
                                const Options& options) {
     // The one quality value the application owns (M1-12, ADR 0007). It is
     // handed to each frame by value and nothing reads it yet -- the fields
@@ -388,7 +409,7 @@ struct OptionValue {
     uint64_t frames = 0;
     const uint64_t startTicks = SDL_GetTicks();
 
-    while (handleEvents(gfx)) {
+    while (handleEvents(window, gfx, *drawing.view)) {
         const Seconds elapsed{static_cast<double>(SDL_GetTicks() - startTicks) / 1000.0};
         if (options.runFor.value() > 0.0 && elapsed >= options.runFor) break;
 
@@ -402,9 +423,13 @@ struct OptionValue {
             continue;
         }
 
-        // Nothing drawn yet: the clear colour is the whole frame, and the
-        // resolve pass carries it to the display.
-        if (const auto ended = gfx.endFrame(**frame, resolve); !ended) {
+        // The Earth's grid from where the camera now is (M1-21), then the
+        // resolve pass carries the frame to the display.
+        if (const auto drawn = drawing.view->record(gfx, **frame, *drawing.pipelines); !drawn) {
+            std::print(stderr, "Frame could not be drawn: {}\n", drawn.error().message);
+            return kExitFailure;
+        }
+        if (const auto ended = gfx.endFrame(**frame, *drawing.resolve); !ended) {
             std::print(stderr, "Frame could not be presented: {}\n", ended.error().message);
             return kExitFailure;
         }
@@ -450,10 +475,9 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
     std::print("Swapchain: {}x{}\n", gfx.extent().width, gfx.extent().height);
 
     // Every pipeline the scene will draw with, created here and not during a
-    // frame (render/Pipeline.hpp says why). Nothing draws with them yet --
-    // that is M1-19 -- but creating them at start-up is what puts shader
-    // loading and pipeline creation under the validation layers on every run.
-    // Declared after `gfx`, so they are destroyed before the device is.
+    // frame (render/Pipeline.hpp says why); the window draws its lines with
+    // one of them since M1-21. Declared after `gfx`, so they are destroyed
+    // before the device is.
     const auto pipelines = orb::gfx::ScenePipelines::create(gfx, options.shaderDirectory);
     if (!pipelines) {
         std::print(stderr, "Pipelines could not be created: {}\n", pipelines.error().message);
@@ -474,6 +498,14 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
         return kExitFailure;
     }
 
+    // The scene the window shows and the camera that flies it (M1-21): the
+    // Earth's grid and horizon, through the line renderer's per-frame buffers.
+    auto view = orb::app::InteractiveView::create(gfx);
+    if (!view) {
+        std::print(stderr, "The view could not be created: {}\n", view.error().message);
+        return kExitFailure;
+    }
+
     // Declared after everything a frame uses, so destroyed before any of it:
     // the GPU is idle before the resolve pass and the pipelines go, on every
     // path out of this function. The last frame's commands still use the
@@ -482,7 +514,14 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
     // for inside VulkanContext.
     const orb::gfx::DeviceIdleGuard idleBeforeTeardown{gfx.device()};
 
-    const int status = runFrameLoop(gfx, *resolve, options);
+    const int status = runFrameLoop(window,
+                                    gfx,
+                                    {
+                                        .pipelines = &*pipelines,
+                                        .resolve = &*resolve,
+                                        .view = &*view,
+                                    },
+                                    options);
 
     // No shutdown() call: ~VulkanContext runs here, in reverse declaration
     // order, without anyone having to remember.

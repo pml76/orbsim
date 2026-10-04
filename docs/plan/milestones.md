@@ -131,7 +131,7 @@ rather than recalled, and each names the milestone that now owns it.
 | **The vessel as an entity** — mass properties, engines, tanks, docking ports, configuration | `realism.md` section 1.4 covers attitude dynamics and nothing else about the vessel | M2 |
 | **The vessel being drawn at all** | No task, record or plan mentions a vessel model, material, animation or exhaust plume. Section 2 of `realism.md` is entirely planet-side | M2 |
 | **Units for any of it** | [`src/core/Units.hpp`](../../src/core/Units.hpp) has `Radians`, `Degrees`, `Metres`, `Seconds`, `MetresPerSecond`, `RadiansPerSecond`, `SpecificEnergy`, `Eccentricity`, `Pixels`, `PerSecond`, `Irradiance` and `GravParam` — and **no mass, force, torque or inertia** | M2 |
-| **Input, and what it costs determinism** | A replay of a flown trajectory needs the input that flew it. Nothing plans one | M2 |
+| **Input, and what it costs determinism** | A replay of a flown trajectory needs the input that flew it. Nothing plans one. *(2026-10-04: the shape is settled for the camera by [ADR 0026](../adr/0026-input-is-commands.md) -- device-neutral commands, one mapping per device, held input sampled at a fixed step -- and its vessel half is M2's to write against it, register decision 355.)* | M2 |
 | **Per-body parameters** — rotation elements, per-body atmospheres, rings | Milestone 1 models one body's orientation. Nothing says what a second body needs | M3 |
 | **Aerodynamic flight** — lift, moments, control surfaces, Mach | `realism.md` names drag only as an orbital-decay term. A flight model is a different and much larger thing | M4 |
 | **Surface operations** — contact, landing gear, ground handling, bases | One clause in `realism.md` section 1.6: *"Surface gravity, terrain contact and landing gear are their own problem"* | M5 |
@@ -240,7 +240,7 @@ wheels with saturation, and gravity-gradient torque.
 
 **The minimum autopilot**: kill rotation, prograde and retrograde hold.
 
-**Input, and the input log** without which a replay is a different flight.
+**Input, and the input log** without which a replay is a different flight. Its shape is [ADR 0026](../adr/0026-input-is-commands.md)'s.
 
 **A vessel mesh, material and exhaust plume** — the first thing this renderer
 draws that is not a planet.

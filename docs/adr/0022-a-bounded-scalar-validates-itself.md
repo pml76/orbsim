@@ -133,3 +133,14 @@ that a control loop **rebuilds every frame** must be rebuilt through the
 factory, so M1-21's camera controls handle a reported error where an aggregate
 would have taken an assignment. That was put up before the ruling and accepted
 ([register decision 116](../plan/milestone-1-decisions.md)).
+
+**2026-10-04, with M1-21: a third scalar, and the cost above as it came out.**
+`Fraction` in `core/Units.hpp` -- how far along the way from 0 to 1 -- holds
+its bound the same way (register decision 356): an interpolation handed 3
+extrapolates to a finite, plausible orientation three times as far round,
+which is the failure shape this record removes. And the camera controls did
+*not* need to handle a refused camera: `view/CameraController.hpp` makes only
+finite positions and unit orientations, so the window builds its `Camera`
+through the factory and asserts the result, a refusal being a defect. What a
+caller can cause -- a command holding a NaN, a start outside the limits -- is
+refused one step earlier, by the controller, by name.

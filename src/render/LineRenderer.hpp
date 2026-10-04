@@ -23,10 +23,10 @@
 // tested with the reverse-Z comparison and not written, Bresenham's rule. It
 // is a parameter rather than a member, because ScenePipelines owns it.
 //
-// **Only the first frame slot is drawn with before M1-21** (decision 282): the
-// application has no camera to draw lines with until then, and the probe
-// renders one frame. Switching between the slots is a known gap until the
-// interactive frame draws lines.
+// **Both frame slots are drawn with since M1-21** (register decision 344): the
+// window uploads its lines into the slot of each frame it begins. The probes
+// render one frame and use the first slot alone, which until M1-21 was all
+// that ran (decision 282).
 //
 #include "core/Attributes.hpp"
 #include "render/Pipeline.hpp"

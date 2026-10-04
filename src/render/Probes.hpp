@@ -244,6 +244,15 @@ createScene(VulkanContext& context,
 // right.
 [[nodiscard]] ProbeConditions grid400kmConditions();
 
+// The grid probes' date, TT and UT1 (register decisions 323 and 336) -- and,
+// since M1-21, the date the window draws its grid at, so that the two show
+// one Earth (register decisions 344 and 361).
+struct GridEpoch {
+    TtTime tt;
+    Ut1Time ut1;
+};
+[[nodiscard]] GridEpoch gridEpoch();
+
 // Which of the two jitter sequences (register decisions 321 and 332).
 enum class JitterSequence : std::uint8_t {
     From400km, // grid-400km's camera

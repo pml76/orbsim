@@ -268,14 +268,11 @@ constexpr f64 kJitterStepMetres = 0.25;
 
 // The grid probes' conditions: `clear`'s, at the grid epoch, with `camera`.
 [[nodiscard]] ProbeConditions gridConditionsWith(const view::Camera& camera) {
-    const auto tt = TtTime::fromJulianDate(kGridEpochTt);
-    const auto ut1 = Ut1Time::fromJulianDate(kGridEpochUt1);
-    // Two dates well inside the calendar: a refusal is a defect in them.
-    ORBSIM_ENSURES(tt.has_value() && ut1.has_value());
+    const GridEpoch epoch = gridEpoch();
     ProbeConditions conditions = clearConditions();
-    conditions.epoch = *tt;
+    conditions.epoch = epoch.tt;
     conditions.camera = camera;
-    conditions.picture = GridPicture{.ut1 = *ut1};
+    conditions.picture = GridPicture{.ut1 = epoch.ut1};
     return conditions;
 }
 
@@ -622,6 +619,14 @@ ProbeConditions lambertExposureConditions() {
 
 ProbeConditions grid400kmConditions() {
     return gridConditionsWith(gridCamera(k400kmView, Metres{0.0}));
+}
+
+GridEpoch gridEpoch() {
+    const auto tt = TtTime::fromJulianDate(kGridEpochTt);
+    const auto ut1 = Ut1Time::fromJulianDate(kGridEpochUt1);
+    // Two dates well inside the calendar: a refusal is a defect in them.
+    ORBSIM_ENSURES(tt.has_value() && ut1.has_value());
+    return GridEpoch{.tt = *tt, .ut1 = *ut1};
 }
 
 ProbeConditions gridJitterConditions(JitterSequence sequence, std::uint32_t frame) {

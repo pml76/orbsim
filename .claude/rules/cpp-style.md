@@ -49,15 +49,17 @@ cmake -S coding-guidelines-example -B coding-guidelines-example/build -G Ninja \
   body that runs onto its own line. Prefer configuring a check to disabling it:
   [`lint-config.md`](lint-config.md).
 - A formatting pass gets its own commit, doing nothing else.
-- **Two scalars validate themselves**, and a third answer to a bad value came
-  with them. `Eccentricity` and `GravParam` in `core/Units.hpp` have private
+- **Three scalars validate themselves**, and a third answer to a bad value came
+  with the first two. `Eccentricity` and `GravParam` in `core/Units.hpp` have private
   constructors: `Eccentricity{0.5}` does not compile. Build one with
   `Eccentricity::from(v)`, which reports a `UnitError`, or with the `consteval`
   helpers `eccentricity(v)` / `gravParam(v)` for a literal, which fail the
   build rather than throwing. `GravParam::quantity()` is the way back into the
   unit algebra, which is why the force model can still write
   `mu.quantity() / (r * r)`. Adding a unit with a physical bound? Give it the
-  same shape ([ADR 0022](../../docs/adr/0022-a-bounded-scalar-validates-itself.md)).
+  same shape ([ADR 0022](../../docs/adr/0022-a-bounded-scalar-validates-itself.md)),
+  as `Fraction` did with M1-21: 0 to 1, built with `Fraction::from(v)` or
+  `fraction(v)`, and what `slerp` takes.
   **Since M1-11 a composite type may take it too**: `view::Camera` has a private
   constructor and a `Camera::from(...)` returning
   `std::expected<Camera, CameraError>`, and is still trivially copyable. A type
@@ -92,8 +94,9 @@ cmake -S coding-guidelines-example -B coding-guidelines-example/build -G Ninja \
   `tests/test_image_files.cpp` and `tests/test_probe_sidecar.cpp` (M1-16),
   `tests/test_image_compare.cpp` (M1-17), `tests/test_lambert.cpp`,
   `tests/test_radiometry.cpp` and `tests/test_tonemap_port.cpp` (M1-18),
-  `tests/test_golden_path.cpp` (M1-110), `tests/test_line_batch.cpp` (M1-19) and
-  `tests/test_planetary_grid.cpp` (M1-20)
+  `tests/test_golden_path.cpp` (M1-110), `tests/test_line_batch.cpp` (M1-19),
+  `tests/test_planetary_grid.cpp` (M1-20), and `tests/test_camera_controller.cpp`
+  and `tests/test_camera_path.cpp` (M1-21)
   additionally link `orbsim_view`,
   which links `orbsim_core` and -- privately, since M1-16 -- the image
   libraries behind `src/view/ImageFiles.cpp`: lodepng and OpenEXR, and since
