@@ -314,6 +314,18 @@
       "program test_camera_path.exe": "ae80d5929e806f43"
     }
   },
+  "m1-22.json": {
+    "commit": "1401cc8d4594cb0a85c38a5fafba0be9a34eff56",
+    "tree": "build/debug",
+    "date": "2026-10-04",
+    "judges": {
+      "program test_statistics.exe": "c630fe707b5cbf9e",
+      "program test_gpu_clock.exe": "4918f7f9eff5fe90",
+      "program test_benchmark_path.exe": "7916d77a5baf869b",
+      "program orbsim.exe": "f6a5c6c7716e4f34",
+      "ctest orbsim_bench_smoke": "044aeb3999b45cfa"
+    }
+  },
   "m1-87.json": {
     "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/relwithdebinfo",

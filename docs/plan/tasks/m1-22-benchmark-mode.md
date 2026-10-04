@@ -125,6 +125,14 @@ GPU 0.0593 ms -- [`../../PROJECT_STATE.md`](../../PROJECT_STATE.md) section 10.*
 - [x] The baseline figure for the grid scene is recorded in the commit message
       and in `PROJECT_STATE.md`.
 - [x] Nothing in `check` asserts a frame time.
-- [ ] The mutation pass is run and recorded, as
+- [x] The mutation pass is run and recorded, as
       [`scripts/mutants/m1-22.json`](../../../scripts/mutants/m1-22.json), with
-      decision 382's mutants.
+      decision 382's mutants: **thirteen caught and the three declared
+      survivors surviving**, none invalid or hung, at `1401cc8`; the mask one
+      bit short by its `static_assert`, the swapped timestamps by
+      `orbsim_bench_smoke`'s check of decision 380. **One kill is recorded for
+      what it was**: the reversed pitch makes the camera's axes stop being a
+      rotation, so in Debug it dies on `quaternionFrom`'s precondition, and in
+      `relwithdebinfo`, by hand the same day, the suite crashes where the
+      refused path is used -- both before the horizon test that names it can
+      look.
