@@ -88,13 +88,13 @@
     }
   },
   "m1-107.json": {
-    "commit": "c58035418f16197c1445446dc3d08b2480398ce8",
+    "commit": "faa05e0546abfbf1a51436558c2e4224f5484743",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-03",
+    "date": "2026-10-04",
     "judges": {
-      "program orbsim.exe": "87968d5c2b00ed84",
+      "program orbsim.exe": "7761a5512a9eadf9",
       "ctest orbsim_smoke": "50442db549e7cc6b",
-      "ctest probe_clear": "7c29146035f43e7e"
+      "ctest probe_clear": "e5b9395131c74935"
     }
   },
   "m1-11.json": {
@@ -163,14 +163,17 @@
     }
   },
   "m1-14.json": {
-    "commit": "87af0280cbfd2c352b20691a1e9c56732b64350c",
+    "commit": "faa05e0546abfbf1a51436558c2e4224f5484743",
     "tree": "build/debug",
-    "date": "2026-10-03",
+    "date": "2026-10-04",
     "judges": {
-      "program test_srgb.exe": "cdc144bd6ced86a4",
-      "program orbsim.exe": "2cd8b455969f5f28",
+      "program test_srgb.exe": "c0930be44d9bfaad",
+      "program orbsim.exe": "8e0ec059125575c4",
       "ctest orbsim_smoke": "50442db549e7cc6b",
-      "ctest probe_clear": "9acad6acc0860410",
+      "ctest probe_clear": "e5b9395131c74935",
+      "ctest probe_clear_golden": "c49638cdac19776a",
+      "ctest probe_lines": "4a81e119c2d07d94",
+      "ctest probe_lines_golden": "a4ee220e44bb6a59",
       "program test_probe_clear.exe": "8642849137ac4d33",
       "ctest every band carries the ramp's radiance, to within one binary16 step": "841800cd0cb33aab",
       "ctest the grey band's three channels are the same number": "eec08cd9ca57f761",

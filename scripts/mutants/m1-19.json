@@ -174,7 +174,7 @@
         "the port check holds on lines' picture, to 1/255 and to 2/65535"
       ],
       "expect": "survives",
-      "why": "The probe draws with a white tint, so a shader that ignores the tint draws the same frame: equivalent here. Predicted before the pass, and to be put to the owner if it survives."
+      "why": "The probe draws with a white tint, so a shader that ignores the tint draws the same frame: equivalent here. Predicted before the pass and confirmed by it; accepted by the owner, 2026-10-04 (register decision 318), to be killed by the first caller that uses a tint other than white."
     },
     {
       "name": "the line pipeline writes depth",
@@ -196,12 +196,36 @@
         "the search finds nothing where nothing is drawn, so it can fail",
         "the port check holds on lines' picture, to 1/255 and to 2/65535"
       ],
-      "expect": "caught"
+      "expect": "survives",
+      "why": "No line of the lines probe passes behind another: the three axes meet only at the origin, where they share one depth, so writing depth changes no pixel. Depth writes matter once lines are drawn over a surface -- the reason the task gives for switching them off -- so the first task that draws lines over a surface, the orbit track over the Earth (M1-76), kills it. Accepted by the owner, 2026-10-04 (register decision 317)."
     },
     {
-      "name": "the device does not enable VK_KHR_line_rasterization",
+      "name": "the device does not request VK_KHR_line_rasterization, only its feature",
       "file": "src/render/VulkanContext.cpp",
       "find": "                          .add_required_extension(VK_KHR_LINE_RASTERIZATION_EXTENSION_NAME)\n",
+      "replace": "",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_probe_lines",
+        "test_tonemap_port"
+      ],
+      "ctest": [
+        "orbsim_smoke",
+        "probe_lines",
+        "probe_lines_golden",
+        "each axis lands where the pinhole camera puts it, in its own colour",
+        "the square's corners and sides land where the pinhole camera puts them, in white",
+        "the search finds nothing where nothing is drawn, so it can fail",
+        "the port check holds on lines' picture, to 1/255 and to 2/65535"
+      ],
+      "expect": "survives",
+      "why": "Measured 2026-10-04 on the RX 7900 XTX, driver 26.8.1: the device is created without the extension but with its bresenhamLines feature in the chain, the driver -- a Vulkan 1.4 implementation, where line rasterization is core -- honours it, and validation layers 1.4.363 report nothing, so the probe draws the same frame. vk-bootstrap enables only the extensions it is asked for, read in its source. The request stays: Vulkan 1.3, which this renderer targets, requires it. A known gap accepted by the owner (register decision 316); the mutant below, which drops both requests, is caught."
+    },
+    {
+      "name": "the device requests neither VK_KHR_line_rasterization nor Bresenham lines",
+      "file": "src/render/VulkanContext.cpp",
+      "find": "                          .add_required_extension(VK_KHR_LINE_RASTERIZATION_EXTENSION_NAME)\n                          .add_required_extension_features(required.lineRasterization)\n",
       "replace": "",
       "suites": [],
       "targets": [
