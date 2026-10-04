@@ -304,6 +304,16 @@
       "program test_camera.exe": "8710163477fea6ad"
     }
   },
+  "m1-21.json": {
+    "commit": "79adb0487a9a5807e5fd7dfc05058f45bd9418a5",
+    "tree": "build/debug",
+    "date": "2026-10-04",
+    "judges": {
+      "program test_camera_controller.exe": "1257272d5e6773b5",
+      "program test_math.exe": "1d854e828fdad491",
+      "program test_camera_path.exe": "ae80d5929e806f43"
+    }
+  },
   "m1-87.json": {
     "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/relwithdebinfo",

@@ -145,5 +145,13 @@ it and judges whether the controls are usable -- a judgement, recorded as one.
 - [x] Both fuzzers run for their budgets from their corpora, `src/core/` having
       changed: `fuzz_orbit` 19.4 million inputs in 241 s, `fuzz_time` 9.4 million,
       no findings.
-- [ ] The mutation pass is run and recorded, as `scripts/mutants/m1-21.json`,
-      with decision 352's mutants.
+- [x] The mutation pass is run and recorded, as
+      [`scripts/mutants/m1-21.json`](../../../scripts/mutants/m1-21.json), with
+      decision 352's mutants: **twelve of twelve caught**, none surviving, invalid
+      or hung, at `79adb04`, the wheel's sign by its `static_assert`. **It ran
+      twice.** The first time the wrong-segment mutant -- `lower_bound` for
+      `upper_bound`, which steps before the first keyframe -- hung its suite:
+      the debug library stopped it in a dialog the test listener did not
+      suppress. Decision 363 sends those reports to stderr, and the second run
+      records it as a non-zero exit; in the release tree, by hand the same day,
+      three cases catch it -- exact at the keyframes, replay, and unit length.
