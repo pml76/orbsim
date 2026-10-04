@@ -41,8 +41,8 @@
 #include <filesystem>
 #include <numbers>
 #include <optional>
-#include <string>
 #include <string_view>
+#include <utility>
 
 using namespace orb;
 using namespace orb::test;
@@ -62,12 +62,20 @@ struct Point {
     f64 z{};
 };
 
-[[nodiscard]] Point minus(const Point& a, const Point& b) noexcept {
+[[nodiscard]] Point operator-(const Point& a, const Point& b) noexcept {
     return {.x = a.x - b.x, .y = a.y - b.y, .z = a.z - b.z};
 }
 
-[[nodiscard]] f64 dotOf(const Point& a, const Point& b) noexcept {
-    return a.x * b.x + a.y * b.y + a.z * b.z;
+// One of a camera's three unit axes: a type of its own, so that the
+// component of a displacement along it takes two different types and the two
+// cannot be given the wrong way round (non-negotiable 1).
+struct Axis {
+    Point direction;
+};
+
+[[nodiscard]] f64 along(const Point& displacement, const Axis& axis) noexcept {
+    const Point& a = axis.direction;
+    return (displacement.x * a.x) + (displacement.y * a.y) + (displacement.z * a.z);
 }
 
 // Decision 280's camera, from its words: 3 m from (0.5, 0.5, 0.3), on the
@@ -75,9 +83,9 @@ struct Point {
 // with world Z up on screen; a 45-degree vertical field of view.
 struct PinholeCamera {
     Point position;
-    Point right;   // unit, horizontal
-    Point up;      // unit
-    Point forward; // unit, toward the point looked at
+    Axis right;   // horizontal
+    Axis up;      //
+    Axis forward; // toward the point looked at
 };
 
 [[nodiscard]] PinholeCamera decision280Camera() {
@@ -91,28 +99,33 @@ struct PinholeCamera {
     // that view, which from the +X +Y side is toward +Y and away from +X; up
     // is perpendicular to both, with a positive Z.
     const Point right{.x = -1.0 / std::numbers::sqrt2, .y = 1.0 / std::numbers::sqrt2, .z = 0.0};
-    const Point up{.x = -std::sin(elevation) / std::numbers::sqrt2,
-                   .y = -std::sin(elevation) / std::numbers::sqrt2,
-                   .z = std::cos(elevation)};
+    const Point up{
+        .x = -std::sin(elevation) / std::numbers::sqrt2,
+        .y = -std::sin(elevation) / std::numbers::sqrt2,
+        .z = std::cos(elevation),
+    };
     return {
-        .position = {.x = target.x + kDistance * outward.x,
-                     .y = target.y + kDistance * outward.y,
-                     .z = target.z + kDistance * outward.z},
-        .right = right,
-        .up = up,
-        .forward = {.x = -outward.x, .y = -outward.y, .z = -outward.z},
+        .position =
+            {
+                .x = target.x + (kDistance * outward.x),
+                .y = target.y + (kDistance * outward.y),
+                .z = target.z + (kDistance * outward.z),
+            },
+        .right = {.direction = right},
+        .up = {.direction = up},
+        .forward = {.direction = {.x = -outward.x, .y = -outward.y, .z = -outward.z}},
     };
 }
 
 // Where `world` lands, as the pixel holding it.
 [[nodiscard]] Pixel pixelOf(const Point& world) {
     const PinholeCamera camera = decision280Camera();
-    const Point d = minus(world, camera.position);
-    const f64 depth = dotOf(d, camera.forward);
+    const Point d = world - camera.position;
+    const f64 depth = along(d, camera.forward);
     REQUIRE(depth > 1.0); // in front of the 1 m near plane
     const f64 pixelsPerUnit = (kHeight / 2.0) / std::tan(std::numbers::pi / 8.0);
-    const f64 column = kWidth / 2.0 + dotOf(d, camera.right) / depth * pixelsPerUnit;
-    const f64 row = kHeight / 2.0 - dotOf(d, camera.up) / depth * pixelsPerUnit;
+    const f64 column = (kWidth / 2.0) + (along(d, camera.right) / depth * pixelsPerUnit);
+    const f64 row = (kHeight / 2.0) - (along(d, camera.up) / depth * pixelsPerUnit);
     REQUIRE(column >= 1.0);
     REQUIRE(column < kWidth - 1.0);
     REQUIRE(row >= 1.0);
@@ -137,15 +150,23 @@ constexpr Radiance3 kWhite{.red = 130.0, .green = 130.0, .blue = 130.0};
 // exponent e it is 2^(e - 10), as tests/test_radiometry.cpp computes it.
 [[nodiscard]] f64 halfStep(f64 value) { return std::exp2(std::floor(std::log2(value)) - 10.0); }
 
-[[nodiscard]] bool channelMatches(f32 read, f64 expected) {
-    if (expected == 0.0) return bitsOf(read) == bitsOf(0.0F);
-    return std::abs(static_cast<f64>(read) - expected) <= halfStep(expected);
+// A channel as read beside what it should be. A struct rather than an f32
+// and an f64 in a row, which convert into each other (non-negotiable 1).
+struct ChannelReading {
+    f32 read{};
+    f64 expected{};
+};
+
+[[nodiscard]] bool channelMatches(const ChannelReading& channel) {
+    if (channel.expected == 0.0) return bitsOf(channel.read) == bitsOf(0.0F);
+    return std::abs(static_cast<f64>(channel.read) - channel.expected) <=
+           halfStep(channel.expected);
 }
 
 [[nodiscard]] bool pixelMatches(const HdrDump& dump, Pixel pixel, const Radiance3& expected) {
-    return channelMatches(dump.at(pixel, Channel::Red), expected.red) &&
-           channelMatches(dump.at(pixel, Channel::Green), expected.green) &&
-           channelMatches(dump.at(pixel, Channel::Blue), expected.blue);
+    return channelMatches({.read = dump.at(pixel, Channel::Red), .expected = expected.red}) &&
+           channelMatches({.read = dump.at(pixel, Channel::Green), .expected = expected.green}) &&
+           channelMatches({.read = dump.at(pixel, Channel::Blue), .expected = expected.blue});
 }
 
 // The pixel in the 3x3 square around `centre` holding `expected`, if any.
@@ -207,16 +228,18 @@ TEST_CASE("the square's corners and sides land where the pinhole camera puts the
         Point{.x = kHigh, .y = kHigh, .z = 0.0},
         Point{.x = kLow, .y = kHigh, .z = 0.0},
     };
-    for (const Point& corner : corners)
+    for (const Point& corner : corners) {
         requireLineAt(dump, "a corner of the square", corner, kWhite);
+    }
     const std::array sides{
         Point{.x = kMiddle, .y = kLow, .z = 0.0},
         Point{.x = kHigh, .y = kMiddle, .z = 0.0},
         Point{.x = kMiddle, .y = kHigh, .z = 0.0},
         Point{.x = kLow, .y = kMiddle, .z = 0.0},
     };
-    for (const Point& side : sides)
+    for (const Point& side : sides) {
         requireLineAt(dump, "the middle of a side", side, kWhite);
+    }
 }
 
 TEST_CASE("the search finds nothing where nothing is drawn, so it can fail") {

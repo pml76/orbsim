@@ -114,7 +114,7 @@ if(ORBSIM_CLANG_TIDY)
     endforeach()
     if(ORBSIM_BUILD_APP)
         list(APPEND orbsim_lint_targets orbsim test_probe_clear test_radiometry
-                test_tonemap_port make_broken_goldens)
+                test_tonemap_port make_broken_goldens test_probe_lines)
     endif()
 
     set(orbsim_lint_stamps "")

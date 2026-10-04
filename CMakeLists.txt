@@ -1518,7 +1518,8 @@ foreach(operation IN LISTS ORBSIM_COUNT_WRAPAROUND_OPERATIONS)
 endforeach()
 if(ORBSIM_BUILD_APP)
     list(APPEND ORBSIM_LINT_SOURCES ${ORBSIM_APP_SOURCES} tests/test_probe_clear.cpp
-            tests/test_radiometry.cpp tests/test_tonemap_port.cpp tests/make_broken_goldens.cpp)
+            tests/test_radiometry.cpp tests/test_tonemap_port.cpp tests/make_broken_goldens.cpp
+            tests/test_probe_lines.cpp)
 endif()
 
 # Formatting covers everything that is ours, whether or not it is built in
