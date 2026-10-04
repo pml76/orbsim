@@ -284,6 +284,26 @@
       "ctest the port check holds on lines' picture, to 1/255 and to 2/65535": "412eb1f9d505efb3"
     }
   },
+  "m1-20.json": {
+    "commit": "c1776a57570300b6c5659ad0ee222318f26339cf",
+    "tree": "build/debug",
+    "date": "2026-10-04",
+    "judges": {
+      "program test_planetary_grid.exe": "a40e98f584d91a6c",
+      "program orbsim.exe": "2fec0eabbeb2bdd8",
+      "program test_probe_grid.exe": "a7c9c600443bbad9",
+      "program test_tonemap_port.exe": "61b2ed313d818451",
+      "ctest probe_grid-400km_golden": "1c3e2cfe2460c4f4",
+      "ctest grid-400km: the equator, the prime meridian and the grid land where Skyfield puts them": "6db218ab1cf40d69",
+      "ctest grid-400km: the horizon lands where the sphere's limb is, in blue": "694b6ede606237d0",
+      "ctest grid-400km: the search finds nothing where the colours would be swapped": "501398fbcee0068c",
+      "ctest from 400 km the crossing moves between frames as the pinhole camera predicts": "74e6cd30b88d3e49",
+      "ctest from 1 km the crossing moves between frames as the pinhole camera predicts": "c87c9a8cd2094971",
+      "ctest the port check holds on grid-400km's picture, to 1/255 and to 2/65535": "f8a27dceff1df31d",
+      "ctest the port check holds on grid-jitter-1km-0's picture, to 1/255 and to 2/65535": "2594392675a58d37",
+      "program test_camera.exe": "8710163477fea6ad"
+    }
+  },
   "m1-87.json": {
     "commit": "7655041bdc256bd0474f34acac906d6859179f07",
     "tree": "build/relwithdebinfo",
