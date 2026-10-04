@@ -1,6 +1,6 @@
 # M1-19 — The line renderer
 
-Phase: A | Status: not started
+Phase: A | Status: **done, 2026-10-04** -- code, tests, the RX 7900 XTX's golden and the documents; the RTX A2000's golden waits for the owner on the first machine (decision 302)
 Prerequisites: M1-11, M1-12, M1-13 *(Corrected 2026-09-21: the queue says each task lists its true
 prerequisites so that a reordering can be reasoned about, and draw takes a
 `RenderQuality` by value, which M1-12 creates.)*
@@ -80,14 +80,18 @@ The standing rules, plus `ctest -R probe_lines`.
 
 ## Done when
 
-- [ ] `check` green in both trees.
-- [ ] `lines.png` approved and committed as a golden.
-- [ ] No allocation happens inside the frame path — checked by reading the code
+- [x] `check` green in both trees.
+- [x] `lines.png` approved and committed as a golden.
+- [x] No allocation happens inside the frame path — checked by reading the code
       and by the capacity test.
-- [ ] `line.vert` and `line.frag` are drawn with for the first time. *(Amended 2026-09-24: M1-13
+- [x] `line.vert` and `line.frag` are drawn with for the first time. *(Amended 2026-09-24: M1-13
       loads them at start-up, so "loaded" was already true.)*
-- [ ] **M1-13's declared survivor is killed**: the mutant in `scripts/mutants/m1-13.json` that
+- [x] **M1-13's declared survivor is killed**: the mutant in `scripts/mutants/m1-13.json` that
       compares depth with `LESS` is re-run against the `lines` probe and caught, and its
       `"expect": "survives"` is changed to `"caught"`. The owner accepted that gap on
       2026-09-24 on condition that it is documented prominently, and a checklist is what
-      closes a task.
+      closes a task. *(Corrected 2026-10-04, register decision 283: that mutant was already
+      caught on 2026-09-26, by `clear`, and its file says `"caught"`; `probe_lines` joins its
+      judges instead. **M1-14's survivor is the one this task kills**: the scene pipelines
+      built for the swapchain's format, caught by `probe_lines` through a validation error --
+      checked by hand on 2026-10-04 -- and its declaration removed from `m1-14.json`.)*

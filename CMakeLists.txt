@@ -629,6 +629,7 @@ set(ORBSIM_VIEW_SOURCES
         src/view/ImageCompare.cpp
         src/view/ImageFiles.cpp
         src/view/Lambert.cpp
+        src/view/LineBatch.cpp
         src/view/ProbeImage.cpp
         src/view/ProbeSidecar.cpp
 )
@@ -739,6 +740,7 @@ set(ORBSIM_TESTS
         test_image_compare
         test_image_files
         test_lambert
+        test_line_batch
         test_math
         test_orbit
         test_orbit_elements
@@ -777,6 +779,7 @@ target_link_libraries(test_probe_sidecar PRIVATE orbsim_view)
 target_link_libraries(test_image_compare PRIVATE orbsim_view)
 target_link_libraries(test_golden_path PRIVATE orbsim_view)
 target_link_libraries(test_lambert PRIVATE orbsim_view)
+target_link_libraries(test_line_batch PRIVATE orbsim_view)
 # And OpenEXR itself: the EXR is read back through the reference
 # implementation's own decoder, which is the check that the file is one.
 target_link_libraries(test_image_files PRIVATE orbsim_view OpenEXR::OpenEXRCore)
@@ -1074,6 +1077,7 @@ target_link_libraries(orbsim_render_deps INTERFACE
 set(ORBSIM_APP_SOURCES
         src/app/main.cpp
         src/app/ProbeMode.cpp
+        src/render/LineRenderer.cpp
         src/render/Pipeline.cpp
         src/render/Probes.cpp
         src/render/ResolvePass.cpp
@@ -1210,6 +1214,7 @@ set(ORBSIM_NUMERIC_PROBES
         lambert-exposure
         lambert-backlit
         tonemap-port
+        lines
 )
 foreach(probe IN LISTS ORBSIM_NUMERIC_PROBES)
     add_test(NAME probe_${probe}
@@ -1231,6 +1236,31 @@ catch_discover_tests(test_radiometry
         PROPERTIES FIXTURES_REQUIRED probe_data LABELS gpu RESOURCE_LOCK gpu)
 catch_discover_tests(test_tonemap_port
         PROPERTIES FIXTURES_REQUIRED probe_data LABELS gpu RESOURCE_LOCK gpu)
+
+# The `lines` probe (M1-19; register decisions 280, 281 and 283). It is in the
+# list above, so probe_lines renders it without a golden and sets up
+# probe_data; test_probe_lines then holds every axis tip and square corner to
+# the pixel the pinhole camera puts it on, in its colour -- a check that is
+# the same on every graphics card (decision 281). And, unlike the radiometry
+# probes, it has a golden too, compared by probe_lines_golden on a render of
+# its own, as probe_clear_golden compares `clear` (decision 293): one golden
+# per card (decision 287), so a card with none fails this test by name and
+# leaves the number check running.
+add_executable(test_probe_lines tests/test_probe_lines.cpp)
+target_link_libraries(test_probe_lines PRIVATE orbsim_abort_behaviour orbsim_test_support)
+target_compile_definitions(test_probe_lines PRIVATE ORBSIM_PROBE_DIR="${ORBSIM_PROBE_DIR}")
+catch_discover_tests(test_probe_lines
+        PROPERTIES FIXTURES_REQUIRED probe_data LABELS gpu RESOURCE_LOCK gpu)
+add_test(NAME probe_lines_golden
+        COMMAND ${CMAKE_COMMAND}
+                -DORBSIM=$<TARGET_FILE:orbsim>
+                -DPROBE=lines
+                -DOUT=${CMAKE_CURRENT_BINARY_DIR}/probes-golden
+                -DGOLDEN_DIR=${ORBSIM_GOLDEN_DIR}
+                -DPLANT_DIFF=ON
+                "-DEXPECT_STDOUT=: matches"
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/RunProbe.cmake)
+set_tests_properties(probe_lines_golden PROPERTIES LABELS gpu RESOURCE_LOCK gpu)
 
 # A golden mismatch, caught end to end (M1-17, register decision 236).
 #
@@ -1375,6 +1405,7 @@ orbsim_add_header_selfcheck(orbsim_header_selfcheck orbsim_core
         astro/EarthOrientation.hpp
         astro/Sun.hpp
         astro/Tdb.hpp
+        core/Attributes.hpp
         core/Contract.hpp
         core/Scalar.hpp
         core/Units.hpp
@@ -1393,6 +1424,7 @@ orbsim_add_header_selfcheck(orbsim_view_header_selfcheck orbsim_view
         view/ImageCompare.hpp
         view/ImageFiles.hpp
         view/Lambert.hpp
+        view/LineBatch.hpp
         view/Mat4.hpp
         view/Projection.hpp
         view/ProbeGradient.hpp
@@ -1428,9 +1460,11 @@ add_dependencies(test_image_files orbsim_view_header_selfcheck)
 add_dependencies(test_probe_sidecar orbsim_view_header_selfcheck)
 add_dependencies(test_image_compare orbsim_view_header_selfcheck)
 add_dependencies(test_golden_path orbsim_view_header_selfcheck)
+add_dependencies(test_line_batch orbsim_view_header_selfcheck)
 
 if(ORBSIM_BUILD_APP)
     orbsim_add_header_selfcheck(orbsim_render_header_selfcheck orbsim_render_deps
+            render/LineRenderer.hpp
             render/Pipeline.hpp
             render/Probes.hpp
             render/ResolvePass.hpp
@@ -1623,10 +1657,11 @@ if(ORBSIM_BUILD_APP)
     # test_probe_clear with the application it checks: a suite `check` does
     # not build is one ctest reports as NOT_BUILT (M1-16, found the first time
     # a fresh tree ran it).
-    # make_broken_goldens for the golden tests' fixture (M1-17), and the two
-    # suites that read the numeric probes' frames (M1-18).
+    # make_broken_goldens for the golden tests' fixture (M1-17), the two
+    # suites that read the numeric probes' frames (M1-18), and the `lines`
+    # probe's number check (M1-19).
     add_dependencies(check orbsim orbsim_render_header_selfcheck test_probe_clear
-            test_radiometry test_tonemap_port make_broken_goldens)
+            test_radiometry test_tonemap_port make_broken_goldens test_probe_lines)
 endif()
 
 # Every library and program this file defines compiles in the memory pool

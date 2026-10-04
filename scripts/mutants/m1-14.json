@@ -193,10 +193,12 @@
         "orbsim"
       ],
       "ctest": [
-        "orbsim_smoke"
+        "orbsim_smoke",
+        "probe_lines",
+        "probe_lines_golden"
       ],
-      "expect": "survives",
-      "why": "Vulkan compares a pipeline's formats with the attachments only when it draws, and nothing is drawn before M1-19. This is exactly the edit kHdrFormat's named constant exists to make unlikely; M1-19's first draw kills it. Found by this pass on 2026-09-24 and accepted by the owner on 2026-09-25 (register decision 171), on the same grounds as the gaps accepted in advance."
+      "expect": "caught",
+      "why": "Vulkan compares a pipeline's formats with the attachments only when it draws, and nothing is drawn before M1-19. This is exactly the edit kHdrFormat's named constant exists to make unlikely; M1-19's first draw kills it. Found by this pass on 2026-09-24 and accepted by the owner on 2026-09-25 (register decision 171), on the same grounds as the gaps accepted in advance. **Killed by M1-19's first draw, as predicted**: probe_lines draws through ScenePipelines::lines(), and with this mutant the validation layers report VUID-vkCmdDraw-dynamicRenderingUnusedAttachments-08910 -- the HDR target's format against the swapchain's -- and the probe exits 3; checked by hand on 2026-10-04 before the pass. probe_lines joined its judges and the declaration went (register decision 283)."
     },
     {
       "name": "the resolve pass is never drawn",

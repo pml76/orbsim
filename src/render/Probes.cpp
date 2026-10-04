@@ -5,12 +5,14 @@
 #include "core/Scalar.hpp"
 #include "core/Time.hpp"
 #include "core/Units.hpp"
+#include "render/LineRenderer.hpp"
 #include "render/Pipeline.hpp"
 #include "render/VulkanContext.hpp"
 #include "render/VulkanHandle.hpp"
 #include "view/Camera.hpp"
 #include "view/Exposure.hpp"
 #include "view/Lambert.hpp"
+#include "view/LineBatch.hpp"
 #include "view/Mat4.hpp"
 #include "view/ProbeGradient.hpp"
 #include "view/ProbeImage.hpp"
@@ -22,6 +24,7 @@
 #include <vulkan/vulkan_core.h>
 
 #include <array>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <expected>
@@ -126,26 +129,71 @@ withLambert(Metres sunDistance, Radians tilt, const Direction& towardSun) {
     return conditions;
 }
 
-} // namespace
+// The `lines` probe's scene (register decision 280): axes 1 m long from the
+// origin, and a unit square in the XY plane from (0.25, 0.25) to (1.25, 1.25)
+// -- touching no axis, so each line is seen on its own.
+constexpr f64 kAxisLengthMetres = 1.0;
+constexpr f64 kSquareLowMetres = 0.25;
+constexpr f64 kSquareHighMetres = 1.25;
 
-ProbeScene::ProbeScene(ProbeDraw draw) noexcept : draw_(std::move(draw)) {}
+// The square's white: 130 W/(m^2 sr) in each channel, the green axis's
+// radiance and about the lambert patch's (decision 279).
+constexpr view::Rgba kSquareColour{.r = 130.0F, .g = 130.0F, .b = 130.0F, .a = 1.0F};
 
-void ProbeScene::record(VkCommandBuffer cmd) const {
-    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, draw_.pipeline.pipeline());
-    if (draw_.vertices) {
-        VkBuffer buffer = draw_.vertices.get();
+// Room for exactly what the probe draws: three axes of two vertices each, and
+// the square's four sides of two each.
+constexpr view::VertexCount kLinesProbeCapacity{14U};
+
+// The draw of a probe with its own pipeline.
+void recordDraw(VkCommandBuffer cmd, const ProbeDraw& draw) {
+    vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, draw.pipeline.pipeline());
+    if (draw.vertices) {
+        VkBuffer buffer = draw.vertices.get();
         constexpr VkDeviceSize kOffset = 0;
         vkCmdBindVertexBuffers(cmd, 0, 1, &buffer, &kOffset);
     }
-    if (!draw_.pushConstants.empty()) {
+    if (!draw.pushConstants.empty()) {
         vkCmdPushConstants(cmd,
-                           draw_.pipeline.layout(),
-                           draw_.pushStages,
+                           draw.pipeline.layout(),
+                           draw.pushStages,
                            0,
-                           static_cast<std::uint32_t>(draw_.pushConstants.size()),
-                           draw_.pushConstants.data());
+                           static_cast<std::uint32_t>(draw.pushConstants.size()),
+                           draw.pushConstants.data());
     }
-    vkCmdDraw(cmd, draw_.vertexCount, 1, 0, 0);
+    vkCmdDraw(cmd, draw.vertexCount, 1, 0, 0);
+}
+
+// The view-projection a probe's camera sees the probe frame through, composed
+// in f64 and narrowed once (register decision 268). A validated camera's
+// projection can fail only on the aspect ratio, and the probe frame's is a
+// positive constant: a refusal is a defect here.
+[[nodiscard]] view::Mat4f probeViewProjection(const view::Camera& camera) {
+    const view::Aspect aspect{static_cast<f64>(view::kProbeImageSize.width) /
+                              static_cast<f64>(view::kProbeImageSize.height)};
+    const auto projection =
+        view::infiniteReverseZPerspective(camera.verticalFov(), aspect, camera.nearPlane());
+    ORBSIM_ENSURES(projection.has_value());
+    return view::toShaderMatrix(*projection * view::viewMatrix(camera));
+}
+
+} // namespace
+
+ProbeScene::ProbeScene(ProbeDraw draw) noexcept : draw_(std::move(draw)) {}
+ProbeScene::ProbeScene(LinesDraw draw) noexcept : draw_(std::move(draw)) {}
+
+void ProbeScene::record(VkCommandBuffer cmd) const {
+    std::visit(
+        [cmd](const auto& draw) {
+            using Draw = std::decay_t<decltype(draw)>;
+            if constexpr (std::is_same_v<Draw, LinesDraw>) {
+                draw.renderer.draw(
+                    cmd, draw.lines, draw.pipelines.lines(), draw.pushConstants, draw.quality);
+            } else {
+                static_assert(std::is_same_v<Draw, ProbeDraw>);
+                recordDraw(cmd, draw);
+            }
+        },
+        draw_);
 }
 
 std::expected<ProbeScene, RenderError>
@@ -209,14 +257,6 @@ createLambertScene(VulkanContext& context,
         return std::unexpected(uploaded.error());
     }
 
-    // The view-projection, composed in f64 and narrowed once (decision 268).
-    // A validated camera's projection can fail only on the aspect ratio, and
-    // the probe frame's is a positive constant: a refusal is a defect here.
-    const view::Aspect aspect{static_cast<f64>(view::kProbeImageSize.width) /
-                              static_cast<f64>(view::kProbeImageSize.height)};
-    const auto projection =
-        view::infiniteReverseZPerspective(camera.verticalFov(), aspect, camera.nearPlane());
-    ORBSIM_ENSURES(projection.has_value());
     const view::LambertPushConstants block = view::toShaderLambert(
         {
             .albedo = scene.albedo,
@@ -224,7 +264,7 @@ createLambertScene(VulkanContext& context,
             .surfaceNormal = patch.normal,
             .towardSun = scene.towardSun,
         },
-        view::toShaderMatrix(*projection * view::viewMatrix(camera)));
+        probeViewProjection(camera));
 
     auto vertexShader = context.loadShaderModule(shaderDirectory / "lambert.vert.spv");
     if (!vertexShader) return std::unexpected(vertexShader.error());
@@ -264,6 +304,50 @@ createLambertScene(VulkanContext& context,
     }};
 }
 
+std::expected<ProbeScene, RenderError>
+createLinesScene(VulkanContext& context,
+                 const std::filesystem::path& shaderDirectory,
+                 const ProbeConditions& conditions) {
+    const view::Camera& camera = conditions.camera;
+
+    view::LineBatch batch{kLinesProbeCapacity};
+    const std::array square{
+        Position{kSquareLowMetres, kSquareLowMetres, 0.0},
+        Position{kSquareHighMetres, kSquareLowMetres, 0.0},
+        Position{kSquareHighMetres, kSquareHighMetres, 0.0},
+        Position{kSquareLowMetres, kSquareHighMetres, 0.0},
+        Position{kSquareLowMetres, kSquareLowMetres, 0.0},
+    };
+    // The capacity is exactly what these two need, so a refusal is a defect
+    // in the constants above.
+    [[maybe_unused]] const auto axes =
+        batch.addAxes(Position{0.0, 0.0, 0.0}, Metres{kAxisLengthMetres}, camera);
+    [[maybe_unused]] const auto outline = batch.addPolyline(square, kSquareColour, camera);
+    ORBSIM_ENSURES(axes.has_value() && outline.has_value());
+
+    auto pipelines = ScenePipelines::create(context, shaderDirectory);
+    if (!pipelines) return std::unexpected(pipelines.error());
+    auto renderer = LineRenderer::create(context, kLinesProbeCapacity);
+    if (!renderer) return std::unexpected(renderer.error());
+    // The first frame slot: a probe renders one frame (decision 282).
+    auto lines = renderer->upload(context, 0, batch);
+    if (!lines) return std::unexpected(lines.error());
+
+    return ProbeScene{LinesDraw{
+        .pipelines = *std::move(pipelines),
+        .renderer = *std::move(renderer),
+        .lines = *lines,
+        // White: the tint multiplies every colour, and the probe draws them
+        // as they are.
+        .pushConstants =
+            {
+                .viewProjection = probeViewProjection(camera),
+                .tint = {1.0F, 1.0F, 1.0F, 1.0F},
+            },
+        .quality = conditions.quality,
+    }};
+}
+
 std::expected<ProbeScene, RenderError> createScene(VulkanContext& context,
                                                    const std::filesystem::path& shaderDirectory,
                                                    const ProbeConditions& conditions) {
@@ -274,6 +358,8 @@ std::expected<ProbeScene, RenderError> createScene(VulkanContext& context,
                 return createLambertScene(context, shaderDirectory, conditions, picture);
             } else if constexpr (std::is_same_v<Picture, PortPicture>) {
                 return createPortScene(context, shaderDirectory, conditions);
+            } else if constexpr (std::is_same_v<Picture, LinesPicture>) {
+                return createLinesScene(context, shaderDirectory, conditions);
             } else {
                 // Exhaustive: a fourth picture without a scene fails here.
                 static_assert(std::is_same_v<Picture, GradientPicture>);
@@ -324,6 +410,46 @@ ProbeConditions lambertTilted60Conditions() {
 
 ProbeConditions lambertBacklitConditions() {
     return withLambert(kAstronomicalUnit, Radians{0.0}, kSunBeyondPatch);
+}
+
+ProbeConditions linesConditions() {
+    // Decision 280's camera: 3 m from the point it looks at, on the azimuth
+    // halfway between +X and +Y, 30 degrees above the XY plane. The
+    // orientation runs camera-to-world (view/Camera.hpp), so the rotation's
+    // columns are the camera's right, up and back in world coordinates; the
+    // camera looks down its -z, along -back. Right is horizontal, so world Z
+    // is up on screen, and up = back x right completes a right-handed frame.
+    constexpr f64 kDistanceMetres = 3.0;
+    const Position target{0.5, 0.5, 0.3};
+    const f64 elevation = kPi / 6.0;
+    const f64 inverseRootTwo = 1.0 / std::numbers::sqrt2;
+    const Direction back{std::cos(elevation) * inverseRootTwo,
+                         std::cos(elevation) * inverseRootTwo,
+                         std::sin(elevation)};
+    const Direction right{-inverseRootTwo, inverseRootTwo, 0.0};
+    const Direction up = cross(back, right);
+    const RotationMatrix rotation{
+        // std::to_array, row by row: MSVC (C5246) and gcc want a std::array's
+        // inner braces written out.
+        .rows = std::to_array({
+            std::to_array({right.x.value(), up.x.value(), back.x.value()}),
+            std::to_array({right.y.value(), up.y.value(), back.y.value()}),
+            std::to_array({right.z.value(), up.z.value(), back.z.value()}),
+        }),
+    };
+    const Position position{target.x.value() + (kDistanceMetres * back.x.value()),
+                            target.y.value() + (kDistanceMetres * back.y.value()),
+                            target.z.value() + (kDistanceMetres * back.z.value())};
+    // Constants the factory accepts: a finite position, a rotation, the
+    // probes' 45-degree field of view and 1 m near plane.
+    const auto camera =
+        view::Camera::from(position, quaternionFrom(rotation), Radians{kPi / 4.0}, Metres{1.0});
+    ORBSIM_ENSURES(camera.has_value());
+
+    ProbeConditions conditions = clearConditions();
+    conditions.camera = camera.value();
+    conditions.picture = LinesPicture{};
+    return conditions;
 }
 
 ProbeConditions lambertExposureConditions() {

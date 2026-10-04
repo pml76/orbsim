@@ -178,7 +178,10 @@ public:
     // the moment a second one wants it. Copying 128 bytes once per matrix at
     // the upload boundary is cheaper than moving a macro across two libraries
     // in a task about neither, so the reference is what gives way. Reconsider
-    // if a caller ever reads this per vertex rather than per frame.
+    // if a caller ever reads this per vertex rather than per frame. *(The macro
+    // moved to core/Attributes.hpp with M1-19, register decision 312, so the
+    // reference would now cost nothing to write; changing this was not that
+    // task's.)*
     [[nodiscard]] constexpr std::array<f64, 16> columnMajor() const noexcept { return elements_; }
 
     [[nodiscard]] constexpr Scalar<kLinearRef> linear(Row row, Column column) const noexcept {

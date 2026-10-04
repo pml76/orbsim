@@ -158,7 +158,7 @@
       "replace": "inline constexpr VkCompareOp kDepthCompareOp = VK_COMPARE_OP_LESS;",
       "suites": [],
       "targets": ["orbsim", "test_probe_clear"],
-      "ctest": ["orbsim_smoke", "probe_clear", "probe_clear_golden", "every band carries the ramp's radiance, to within one binary16 step", "the grey band's three channels are the same number", "below the bands nothing is drawn, and every pixel is opaque"],
+      "ctest": ["orbsim_smoke", "probe_clear", "probe_clear_golden", "every band carries the ramp's radiance, to within one binary16 step", "the grey band's three channels are the same number", "below the bands nothing is drawn, and every pixel is opaque", "probe_lines", "probe_lines_golden"],
       "expect": "caught"
     }
   ]

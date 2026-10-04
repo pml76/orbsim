@@ -223,3 +223,8 @@ names all of them and is maintained by the people who add them. The exemption
 existed only for that switch and went with it. That is the better ending for an
 entry in this table: not a suppression re-argued, but the code that needed it
 replaced by something that does not.
+
+**Appended 2026-10-04 (M1-19, register decision 312).** `ORBSIM_LIFETIMEBOUND`,
+which this record placed in `render/VulkanHandle.hpp`, moved unchanged to
+`core/Attributes.hpp` when `src/view/` first needed it: `view/LineBatch.hpp`
+hands out a view of its vertices, and `src/view/` cannot include `src/render/`.

@@ -88,8 +88,10 @@ public:
     // How many values the image holds, width x height x 3, and one of them,
     // row by row and R, G, B within a pixel. **By value, not a view of the
     // storage**: a view would want [[clang::lifetimebound]], whose portable
-    // spelling lives in render/VulkanHandle.hpp, and view/Mat4.hpp and
-    // view/VertexLayout.hpp give way to that the same way.
+    // spelling lived in render/VulkanHandle.hpp, and view/Mat4.hpp and
+    // view/VertexLayout.hpp give way to that the same way. *(The macro is
+    // core/Attributes.hpp's since M1-19, register decision 312, so a view is
+    // possible now; changing this was not that task's.)*
     [[nodiscard]] std::size_t valueCount() const noexcept { return rgb_.size(); }
     [[nodiscard]] std::uint8_t value(std::size_t index) const { return rgb_.at(index); }
 

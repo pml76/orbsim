@@ -289,3 +289,7 @@ TEST_CASE("the port check holds on lambert-exposure's picture, to 1/255 and to 2
 TEST_CASE("the port check holds on lambert-backlit's picture, to 1/255 and to 2/65535") {
     requirePort({.name = "lambert-backlit", .fNumber = 16.0});
 }
+
+TEST_CASE("the port check holds on lines' picture, to 1/255 and to 2/65535") {
+    requirePort({.name = "lines", .fNumber = 16.0});
+}

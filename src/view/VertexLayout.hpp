@@ -89,8 +89,9 @@ public:
     [[nodiscard]] constexpr Bytes stride() const noexcept { return stride_; }
     // By value, not by reference: a handful of 24-byte records, and a copy
     // cannot outlive the layout it came from. A reference would want
-    // [[clang::lifetimebound]], whose portable spelling lives in src/render and
-    // is not worth moving down for this.
+    // [[clang::lifetimebound]], whose portable spelling lived in src/render and
+    // was not worth moving down for this. *(It moved down with M1-19, register
+    // decision 312, to core/Attributes.hpp; changing this was not that task's.)*
     [[nodiscard]] constexpr std::array<VertexAttribute, kCount> attributes() const noexcept {
         return attributes_;
     }

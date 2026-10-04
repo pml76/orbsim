@@ -1,0 +1,247 @@
+{
+  "task": "M1-19",
+  "tree": "build/debug",
+  "note": "The line renderer (register decisions 278-286). Judged two ways: the CPU half, view/LineBatch, by test_line_batch; the GPU half -- the renderer, the probe, the line shaders, the device and pipeline requirements -- by the lines probe's CTest tests, the number check test_probe_lines and the port check. The flush VulkanContext::writeMapped performs is M1-107's mutant, merged there (owner's ruling, 2026-10-04), and not repeated here.",
+  "mutants": [
+    {
+      "name": "a polyline writes each segment's first end only",
+      "file": "src/view/LineBatch.cpp",
+      "find": "        append(from, colour, camera);\n        append(to, colour, camera);",
+      "replace": "        append(from, colour, camera);",
+      "suites": [
+        "test_line_batch"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "a polyline of one point is refused",
+      "file": "src/view/LineBatch.cpp",
+      "find": "    if (world.size() < 2) return {};",
+      "replace": "    if (world.size() < 2) return std::unexpected(LineBatchError::OverCapacity);",
+      "suites": [
+        "test_line_batch"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "a polyline asks room for n - 1 vertices, not 2(n - 1)",
+      "file": "src/view/LineBatch.cpp",
+      "find": "    if (!fits(2 * (world.size() - 1))) return std::unexpected(LineBatchError::OverCapacity);",
+      "replace": "    if (!fits(world.size() - 1)) return std::unexpected(LineBatchError::OverCapacity);",
+      "suites": [
+        "test_line_batch"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "exactly full is refused",
+      "file": "src/view/LineBatch.cpp",
+      "find": "    return more <= std::size_t{capacity_.value()} - vertices_.size();",
+      "replace": "    return more < std::size_t{capacity_.value()} - vertices_.size();",
+      "suites": [
+        "test_line_batch"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "clear empties nothing",
+      "file": "src/view/LineBatch.cpp",
+      "find": "    vertices_.clear();",
+      "replace": "    vertices_.resize(vertices_.size());",
+      "suites": [
+        "test_line_batch"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the batch narrows a position itself, without the camera",
+      "file": "src/view/LineBatch.cpp",
+      "find": "    vertices_.push_back(LineVertex{.position = toRenderSpace(world, camera), .colour = colour});",
+      "replace": "    vertices_.push_back(LineVertex{.position = Vec3f{static_cast<f32>(world.x.value()), static_cast<f32>(world.y.value()), static_cast<f32>(world.z.value())}, .colour = colour});\n    static_cast<void>(camera);",
+      "suites": [
+        "test_line_batch"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the X axis is drawn in the Y axis's colour",
+      "file": "src/view/LineBatch.cpp",
+      "find": "    append(origin, kAxisXColour, camera);\n    append(x, kAxisXColour, camera);",
+      "replace": "    append(origin, kAxisYColour, camera);\n    append(x, kAxisYColour, camera);",
+      "suites": [
+        "test_line_batch"
+      ],
+      "expect": "caught",
+      "targets": [
+        "orbsim",
+        "test_probe_lines",
+        "test_tonemap_port"
+      ],
+      "ctest": [
+        "orbsim_smoke",
+        "probe_lines",
+        "probe_lines_golden",
+        "each axis lands where the pinhole camera puts it, in its own colour",
+        "the square's corners and sides land where the pinhole camera puts them, in white",
+        "the search finds nothing where nothing is drawn, so it can fail",
+        "the port check holds on lines' picture, to 1/255 and to 2/65535"
+      ]
+    },
+    {
+      "name": "half the vertices are drawn",
+      "file": "src/render/LineRenderer.cpp",
+      "find": "    vkCmdDraw(cmd, lines.vertexCount().value(), 1, 0, 0);",
+      "replace": "    vkCmdDraw(cmd, lines.vertexCount().value() / 2U, 1, 0, 0);",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_probe_lines",
+        "test_tonemap_port"
+      ],
+      "ctest": [
+        "orbsim_smoke",
+        "probe_lines",
+        "probe_lines_golden",
+        "each axis lands where the pinhole camera puts it, in its own colour",
+        "the square's corners and sides land where the pinhole camera puts them, in white",
+        "the search finds nothing where nothing is drawn, so it can fail",
+        "the port check holds on lines' picture, to 1/255 and to 2/65535"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the vertex shader multiplies by the transposed matrix",
+      "file": "shaders/line.vert",
+      "find": "    gl_Position = pc.viewProj * vec4(inPos, 1.0);",
+      "replace": "    gl_Position = vec4(inPos, 1.0) * pc.viewProj;",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_probe_lines",
+        "test_tonemap_port"
+      ],
+      "ctest": [
+        "orbsim_smoke",
+        "probe_lines",
+        "probe_lines_golden",
+        "each axis lands where the pinhole camera puts it, in its own colour",
+        "the square's corners and sides land where the pinhole camera puts them, in white",
+        "the search finds nothing where nothing is drawn, so it can fail",
+        "the port check holds on lines' picture, to 1/255 and to 2/65535"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the probe's tint is not white",
+      "file": "src/render/Probes.cpp",
+      "find": "                .tint = {1.0F, 1.0F, 1.0F, 1.0F},",
+      "replace": "                .tint = {1.0F, 1.0F, 0.5F, 1.0F},",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_probe_lines",
+        "test_tonemap_port"
+      ],
+      "ctest": [
+        "orbsim_smoke",
+        "probe_lines",
+        "probe_lines_golden",
+        "each axis lands where the pinhole camera puts it, in its own colour",
+        "the square's corners and sides land where the pinhole camera puts them, in white",
+        "the search finds nothing where nothing is drawn, so it can fail",
+        "the port check holds on lines' picture, to 1/255 and to 2/65535"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the vertex shader ignores the tint",
+      "file": "shaders/line.vert",
+      "find": "    vColor = inColor * pc.tint;",
+      "replace": "    vColor = inColor + 0.0 * pc.tint;",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_probe_lines",
+        "test_tonemap_port"
+      ],
+      "ctest": [
+        "orbsim_smoke",
+        "probe_lines",
+        "probe_lines_golden",
+        "each axis lands where the pinhole camera puts it, in its own colour",
+        "the square's corners and sides land where the pinhole camera puts them, in white",
+        "the search finds nothing where nothing is drawn, so it can fail",
+        "the port check holds on lines' picture, to 1/255 and to 2/65535"
+      ],
+      "expect": "survives",
+      "why": "The probe draws with a white tint, so a shader that ignores the tint draws the same frame: equivalent here. Predicted before the pass, and to be put to the owner if it survives."
+    },
+    {
+      "name": "the line pipeline writes depth",
+      "file": "src/render/Pipeline.cpp",
+      "find": "            .depth = {.test = DepthTest::Enabled, .write = DepthWrite::Disabled},",
+      "replace": "            .depth = {.test = DepthTest::Enabled, .write = DepthWrite::Enabled},",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_probe_lines",
+        "test_tonemap_port"
+      ],
+      "ctest": [
+        "orbsim_smoke",
+        "probe_lines",
+        "probe_lines_golden",
+        "each axis lands where the pinhole camera puts it, in its own colour",
+        "the square's corners and sides land where the pinhole camera puts them, in white",
+        "the search finds nothing where nothing is drawn, so it can fail",
+        "the port check holds on lines' picture, to 1/255 and to 2/65535"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the device does not enable VK_KHR_line_rasterization",
+      "file": "src/render/VulkanContext.cpp",
+      "find": "                          .add_required_extension(VK_KHR_LINE_RASTERIZATION_EXTENSION_NAME)\n",
+      "replace": "",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_probe_lines",
+        "test_tonemap_port"
+      ],
+      "ctest": [
+        "orbsim_smoke",
+        "probe_lines",
+        "probe_lines_golden",
+        "each axis lands where the pinhole camera puts it, in its own colour",
+        "the square's corners and sides land where the pinhole camera puts them, in white",
+        "the search finds nothing where nothing is drawn, so it can fail",
+        "the port check holds on lines' picture, to 1/255 and to 2/65535"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "line lists are drawn without Bresenham's rule",
+      "file": "src/render/Pipeline.cpp",
+      "find": "        .pNext = desc.topology == Topology::LineList ? &kBresenhamLines : nullptr,",
+      "replace": "        .pNext = desc.topology == Topology::TriangleList ? &kBresenhamLines : nullptr,",
+      "suites": [],
+      "targets": [
+        "orbsim",
+        "test_probe_lines",
+        "test_tonemap_port"
+      ],
+      "ctest": [
+        "orbsim_smoke",
+        "probe_lines",
+        "probe_lines_golden",
+        "each axis lands where the pinhole camera puts it, in its own colour",
+        "the square's corners and sides land where the pinhole camera puts them, in white",
+        "the search finds nothing where nothing is drawn, so it can fail",
+        "the port check holds on lines' picture, to 1/255 and to 2/65535"
+      ],
+      "expect": "survives",
+      "why": "On the RX 7900 XTX the default rule and Bresenham's light the same pixels, bit for bit (register decision 278's measurement), so nothing on this machine can see the rule dropped. The RTX A2000 draws other pixels without it, so its own golden, probe_lines_golden on the first machine, catches it there. Accepted by the owner in advance, 2026-10-04 (question 5 of M1-19)."
+    }
+  ]
+}

@@ -13,7 +13,8 @@
 // lambert probes, the light and the surface. The scene is the pipeline and the
 // draws that put the picture into the HDR target.
 //
-// **Seven probes** (M1-16 and M1-18; register decisions 189, 256 and 261):
+// **Nine probes** (M1-16, M1-18 and M1-19; register decisions 189, 256, 261
+// and 280):
 //
 //   * `clear` (view/ProbeGradient.hpp): the scene's clear radiance and a
 //     gradient, through the real pipeline, the real HDR target and the real
@@ -25,7 +26,10 @@
 //     whose read-back radiance tests/test_radiometry.cpp holds to the analytic
 //     value;
 //   * `tonemap-port` (shaders/probe_port.frag): light the tonemap's clamps act
-//     on, negative channels included, for the port check.
+//     on, negative channels included, for the port check;
+//   * `lines` (view/LineBatch.hpp, render/LineRenderer.hpp): three axes and a
+//     unit square through the camera, the line renderer's first frame, with a
+//     golden image and a number check (tests/test_probe_lines.cpp).
 //
 // **No wall clock anywhere in a probe's path.** Nothing here or in
 // VulkanContext::renderOffscreen reads the time: the one clock a probe run
@@ -33,12 +37,14 @@
 // pixel depends on.
 //
 #include "core/Time.hpp"
+#include "render/LineRenderer.hpp"
 #include "render/Pipeline.hpp"
 #include "render/VulkanContext.hpp"
 #include "render/VulkanHandle.hpp"
 #include "view/Camera.hpp"
 #include "view/Exposure.hpp"
 #include "view/Lambert.hpp"
+#include "view/PushConstants.hpp"
 #include "view/RenderQuality.hpp"
 
 #include <vulkan/vulkan_core.h>
@@ -56,12 +62,13 @@
 
 namespace orb::gfx {
 
-// What a probe draws, and the state that only that picture has. One of three,
+// What a probe draws, and the state that only that picture has. One of four,
 // as a variant (M1-18): a lambert probe without its light cannot be written,
 // which is the first of non-negotiable 3's answers to a bad value.
 struct GradientPicture {}; // clear's: view/ProbeGradient.hpp, from the exposure alone
 struct PortPicture {};     // tonemap-port's: shaders/probe_port.frag, from nothing at all
-using ProbePicture = std::variant<GradientPicture, view::LambertScene, PortPicture>;
+struct LinesPicture {};    // lines': the axes and the square of register decision 280
+using ProbePicture = std::variant<GradientPicture, view::LambertScene, PortPicture, LinesPicture>;
 
 // What a probe holds fixed. Every field has a physical or named meaning, and
 // each is written into the probe's sidecar.
@@ -87,6 +94,18 @@ struct ProbeDraw {
     VkShaderStageFlags pushStages{};
 };
 
+// What the `lines` probe draws (M1-19, register decision 283): through the
+// line renderer and ScenePipelines::lines(), as the application will, rather
+// than with a pipeline of its own -- so the probe is the first draw through
+// ScenePipelines. The lines are uploaded when the scene is built.
+struct LinesDraw {
+    ScenePipelines pipelines;
+    LineRenderer renderer;
+    LinesToDraw lines;
+    view::LinePushConstants pushConstants;
+    view::RenderQuality quality;
+};
+
 class ProbeScene {
 public:
     // Records the probe's draws into the HDR target's rendering, which the
@@ -106,11 +125,16 @@ public:
     createPortScene(const VulkanContext& context,
                     const std::filesystem::path& shaderDirectory,
                     const ProbeConditions& conditions);
+    friend std::expected<ProbeScene, RenderError>
+    createLinesScene(VulkanContext& context,
+                     const std::filesystem::path& shaderDirectory,
+                     const ProbeConditions& conditions);
 
 private:
     explicit ProbeScene(ProbeDraw draw) noexcept;
+    explicit ProbeScene(LinesDraw draw) noexcept;
 
-    ProbeDraw draw_;
+    std::variant<ProbeDraw, LinesDraw> draw_;
 };
 
 // `clear`'s scene: probe_gradient.frag over fullscreen.vert, into the HDR
@@ -136,6 +160,15 @@ createLambertScene(VulkanContext& context,
 createPortScene(const VulkanContext& context,
                 const std::filesystem::path& shaderDirectory,
                 const ProbeConditions& conditions);
+
+// The `lines` probe's scene (register decisions 280 and 283): three axes 1 m
+// long from the origin and a unit square in the XY plane, gathered in a
+// LineBatch, uploaded into the line renderer's first frame slot and drawn
+// with ScenePipelines::lines() through the camera's view-projection.
+[[nodiscard]] std::expected<ProbeScene, RenderError>
+createLinesScene(VulkanContext& context,
+                 const std::filesystem::path& shaderDirectory,
+                 const ProbeConditions& conditions);
 
 // The scene `conditions.picture` names (M1-18). One dispatch, so that the
 // lambert scene, which makes a buffer, is the one handed a context it may
@@ -165,6 +198,11 @@ createScene(VulkanContext& context,
 [[nodiscard]] ProbeConditions lambertTilted60Conditions(); // the patch tilted 60 degrees
 [[nodiscard]] ProbeConditions lambertExposureConditions(); // f/8 instead of f/16
 [[nodiscard]] ProbeConditions lambertBacklitConditions();  // the Sun beyond the patch
+
+// The `lines` probe's pinned state (register decision 280): `clear`'s, with
+// the camera 3 m from (0.5, 0.5, 0.3) on the azimuth between +X and +Y, 30
+// degrees up, world Z up on screen.
+[[nodiscard]] ProbeConditions linesConditions();
 
 struct Probe {
     std::string_view name;
@@ -213,6 +251,14 @@ inline constexpr std::array kProbes{
         .description = "the lambert patch with the Sun straight beyond it, lighting only its "
                        "back: no radiance at all, the patch drawn black",
         .conditions = lambertBacklitConditions,
+    },
+    Probe{
+        .name = "lines",
+        .description = "three axes 1 m long from the origin, X red, Y green and Z blue, "
+                       "equally bright, and a white unit square in the XY plane, from 3 m "
+                       "and 30 degrees up: X points down-left, Y down-right, the square a "
+                       "diamond symmetric left to right",
+        .conditions = linesConditions,
     },
     Probe{
         .name = "tonemap-port",

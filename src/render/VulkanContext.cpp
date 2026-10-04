@@ -271,23 +271,54 @@ struct DeviceBundle {
     std::string name;
 };
 
-[[nodiscard]] std::expected<DeviceBundle, RenderError> makeDevice(const vkb::Instance& instance,
-                                                                  VkSurfaceKHR surface) {
-    // Dynamic rendering and synchronization2 are the two 1.3 features this
-    // renderer is built around; there is no fallback path for them.
-    VkPhysicalDeviceVulkan13Features const features13{
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
-        .synchronization2 = VK_TRUE,
-        .dynamicRendering = VK_TRUE,
+// What every device must offer, as the structs vk-bootstrap is handed. A
+// struct of four rather than four locals in the selection, so that function
+// fits on a screen (readability-function-size).
+struct RequiredFeatures {
+    VkPhysicalDeviceFeatures features10;
+    VkPhysicalDeviceVulkan12Features features12;
+    VkPhysicalDeviceVulkan13Features features13;
+    VkPhysicalDeviceLineRasterizationFeaturesKHR lineRasterization;
+};
+
+[[nodiscard]] RequiredFeatures requiredFeatures() noexcept {
+    return {
+        .features10 =
+            {
+                .fillModeNonSolid = VK_TRUE, // wireframe, for debugging meshes
+                .wideLines = VK_FALSE,       // widely unsupported; lines stay 1px
+            },
+        .features12 =
+            {
+                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
+                .bufferDeviceAddress = VK_TRUE,
+            },
+        // Dynamic rendering and synchronization2 are the two 1.3 features this
+        // renderer is built around; there is no fallback path for them.
+        .features13 =
+            {
+                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES,
+                .synchronization2 = VK_TRUE,
+                .dynamicRendering = VK_TRUE,
+            },
+        // **Bresenham lines** (M1-19, register decision 278, ADR 0025).
+        // Without them each card chooses which pixels a one-pixel line
+        // covers: measured on 2026-10-03, the RTX A2000 drew 1,003 pixels of
+        // the `lines` probe where the RX 7900 XTX and the Intel UHD drew 889,
+        // and with them all three light the same 889. An extension, not core,
+        // in the Vulkan 1.3 this renderer targets; every pipeline drawing a
+        // line list asks for the rule (render/Pipeline.cpp).
+        .lineRasterization =
+            {
+                .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_LINE_RASTERIZATION_FEATURES_KHR,
+                .bresenhamLines = VK_TRUE,
+            },
     };
-    VkPhysicalDeviceVulkan12Features const features12{
-        .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES,
-        .bufferDeviceAddress = VK_TRUE,
-    };
-    VkPhysicalDeviceFeatures const features10{
-        .fillModeNonSolid = VK_TRUE, // wireframe, for debugging meshes
-        .wideLines = VK_FALSE,       // widely unsupported; lines stay 1px
-    };
+}
+
+[[nodiscard]] std::expected<vkb::PhysicalDevice, RenderError>
+selectPhysicalDevice(const vkb::Instance& instance, VkSurfaceKHR surface) {
+    const RequiredFeatures required = requiredFeatures();
 
     // Always the discrete GPU where there is one.
     //
@@ -311,9 +342,11 @@ struct DeviceBundle {
         vkb::PhysicalDeviceSelector selector{instance};
         auto result = selector.set_surface(surface)
                           .set_minimum_version(1, 3)
-                          .set_required_features(features10)
-                          .set_required_features_12(features12)
-                          .set_required_features_13(features13)
+                          .set_required_features(required.features10)
+                          .set_required_features_12(required.features12)
+                          .set_required_features_13(required.features13)
+                          .add_required_extension(VK_KHR_LINE_RASTERIZATION_EXTENSION_NAME)
+                          .add_required_extension_features(required.lineRasterization)
                           .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
                           .allow_any_gpu_device_type(choice == DeviceChoice::AnyType)
                           .select();
@@ -334,7 +367,21 @@ struct DeviceBundle {
                 selectionError.c_str());
         physical = pick(DeviceChoice::AnyType);
     }
-    if (!physical) return fail("No suitable Vulkan 1.3 device: " + selectionError);
+    // vk-bootstrap says only "no_suitable_device", so the message names what
+    // was asked for: a card refused for lacking Bresenham lines is told so.
+    if (!physical) {
+        return fail("No Vulkan 1.3 device with dynamic rendering, synchronization2, "
+                    "buffer device addresses, non-solid fill and Bresenham lines "
+                    "(VK_KHR_line_rasterization): " +
+                    selectionError);
+    }
+    return *std::move(physical);
+}
+
+[[nodiscard]] std::expected<DeviceBundle, RenderError> makeDevice(const vkb::Instance& instance,
+                                                                  VkSurfaceKHR surface) {
+    auto physical = selectPhysicalDevice(instance, surface);
+    if (!physical) return std::unexpected(physical.error());
 
     vkb::DeviceBuilder const deviceBuilder{*physical};
     auto device = deviceBuilder.build();
@@ -1248,6 +1295,29 @@ std::expected<UniqueBuffer, RenderError> VulkanContext::createBuffer(const Buffe
     return UniqueBuffer{allocator_.get(), buffer, allocation, info.pMappedData, size};
 }
 
+std::expected<void, RenderError> VulkanContext::writeMapped(UniqueBuffer& dst,
+                                                            std::span<const std::byte> data) {
+    if (data.empty()) return {};
+    if (dst.mapped() == nullptr) return fail("The buffer to write is not host-visible");
+    if (data.size() > dst.size()) return fail("Write larger than the destination buffer");
+
+    // VMA hands mapped memory back as a bare pointer, and the way to write
+    // through one is a C library copy, which -Wunsafe-buffer-usage-in-libc-call
+    // reports; it is off for this copy (ADR 0017). The bound is checked above.
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-libc-call"
+#endif
+    std::memcpy(dst.mapped(), data.data(), data.size());
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
+    // VMA does nothing here where the memory is coherent -- the counterpart
+    // of readBack's invalidate. The header says why it is never skipped.
+    return vkCheck(vmaFlushAllocation(allocator_.get(), dst.allocation(), 0, data.size()),
+                   "vmaFlushAllocation");
+}
+
 std::expected<void, RenderError> VulkanContext::uploadBuffer(UniqueBuffer& dst,
                                                              std::span<const std::byte> data) {
     if (data.empty()) return {};
@@ -1255,28 +1325,7 @@ std::expected<void, RenderError> VulkanContext::uploadBuffer(UniqueBuffer& dst,
 
     // A host-visible destination can be written directly; the staging round
     // trip is only needed for device-local memory.
-    //
-    // VMA hands mapped memory back as a bare pointer, and the way to write
-    // through one is a C library copy, which -Wunsafe-buffer-usage-in-libc-call
-    // reports; it is off for the two copies (ADR 0017). The bound is checked
-    // above: the data is no larger than either buffer.
-    if (dst.mapped() != nullptr) {
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-libc-call"
-#endif
-        std::memcpy(dst.mapped(), data.data(), data.size());
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
-        // Flushed, because the next queue submission makes visible only host
-        // writes "available to the host memory domain", and memory that is
-        // not host-coherent holds them in the CPU's caches until flushed
-        // (M1-107). VMA does nothing here where the memory is coherent -- the
-        // counterpart of readBack's invalidate.
-        return vkCheck(vmaFlushAllocation(allocator_.get(), dst.allocation(), 0, data.size()),
-                       "vmaFlushAllocation (upload)");
-    }
+    if (dst.mapped() != nullptr) return writeMapped(dst, data);
 
     auto staging = createBuffer({
         .size = data.size(),
@@ -1284,20 +1333,8 @@ std::expected<void, RenderError> VulkanContext::uploadBuffer(UniqueBuffer& dst,
         .memory = Memory::HostVisible,
     });
     if (!staging) return std::unexpected(staging.error());
-    if (staging->mapped() == nullptr) return fail("Staging buffer was not mapped");
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-libc-call"
-#endif
-    std::memcpy(staging->mapped(), data.data(), data.size());
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
-    // Flushed before the copy reads it, for the reason the direct path gives.
-    if (auto ok =
-            vkCheck(vmaFlushAllocation(allocator_.get(), staging->allocation(), 0, data.size()),
-                    "vmaFlushAllocation (staging)");
-        !ok) {
+    // Written and flushed before the copy reads it.
+    if (auto ok = writeMapped(*staging, data); !ok) {
         return ok;
     }
 

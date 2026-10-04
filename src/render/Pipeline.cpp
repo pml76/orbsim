@@ -204,10 +204,24 @@ toVulkan(std::span<const view::VertexAttribute> attributes) {
     };
 }
 
+// **Bresenham's rule for every line list** (M1-19, register decision 278,
+// ADR 0025). Without it Vulkan lets each card choose which pixels a one-pixel
+// line covers, and the cards this project runs on choose differently; with it
+// they light the same pixels. Not a field of GraphicsPipelineDesc: there is no
+// line this renderer should draw by another rule, and a field would be a
+// choice that can only be made wrongly. VulkanContext requires the feature, so
+// every device that exists here has it. Constant, at namespace scope, because
+// the rasterization state points at it.
+constexpr VkPipelineRasterizationLineStateCreateInfoKHR kBresenhamLines{
+    .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_LINE_STATE_CREATE_INFO_KHR,
+    .lineRasterizationMode = VK_LINE_RASTERIZATION_MODE_BRESENHAM_KHR,
+};
+
 [[nodiscard]] VkPipelineRasterizationStateCreateInfo
 rasterization(const GraphicsPipelineDesc& desc) noexcept {
     return {
         .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+        .pNext = desc.topology == Topology::LineList ? &kBresenhamLines : nullptr,
         .polygonMode = toVulkan(desc.polygonMode),
         .cullMode = toVulkan(desc.cullMode),
         // Which winding is the front is the mesh's to say, and no mesh exists

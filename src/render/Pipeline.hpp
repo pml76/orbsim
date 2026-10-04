@@ -25,6 +25,7 @@
 // application under the validation layers, which fails on any report -- until
 // M1-16 and M1-17 verify pipelines by the frames they draw.
 //
+#include "core/Attributes.hpp"
 #include "render/VulkanContext.hpp"
 #include "render/VulkanHandle.hpp"
 #include "view/PushConstants.hpp"

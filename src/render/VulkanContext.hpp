@@ -15,6 +15,7 @@
 // here that can fail says so in its return type. A dropped VkResult is how a
 // lost device turns into a hang three frames later.
 //
+#include "core/Attributes.hpp"
 #include "render/VulkanHandle.hpp"
 #include "view/RenderQuality.hpp"
 
@@ -295,6 +296,21 @@ public:
     // data, not per-frame streaming.
     [[nodiscard]] std::expected<void, RenderError> uploadBuffer(UniqueBuffer& dst,
                                                                 std::span<const std::byte> data);
+
+    // Copies `data` into a host-visible buffer through its mapping, and
+    // flushes the write (M1-19, register decision 284). **For every frame**,
+    // unlike uploadBuffer: it allocates nothing and waits for nothing. A
+    // buffer that is not mapped, or is smaller than `data`, is refused by
+    // name rather than staged, so a frame cannot quietly take the slow path.
+    //
+    // **The flush is the point of it being here.** The next queue submission
+    // makes visible only host writes "available to the host memory domain",
+    // and memory that is not host-coherent holds them in the CPU's caches
+    // until flushed (M1-107). One function does the copy and the flush
+    // together, so no caller can do one without the other; uploadBuffer's own
+    // two copies go through it too.
+    [[nodiscard]] std::expected<void, RenderError> writeMapped(UniqueBuffer& dst,
+                                                               std::span<const std::byte> data);
 
     // Loads a SPIR-V module from disk.
     //

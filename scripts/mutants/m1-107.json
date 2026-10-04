@@ -20,10 +20,10 @@
       "why": "The barrier the specification asks for between the copy and any later read (chapters/synchronization.adoc: a fence signal's second access scope is empty, and a queue submission orders only earlier host writes). Nothing calls uploadBuffer before M1-18, and the validation layers cannot see a missing barrier across a host fence wait. Declared with the fix (register decision 272)."
     },
     {
-      "name": "a direct upload is not flushed",
+      "name": "a write through a mapping is not flushed",
       "file": "src/render/VulkanContext.cpp",
-      "find": "        return vkCheck(vmaFlushAllocation(allocator_.get(), dst.allocation(), 0, data.size()),\n                       \"vmaFlushAllocation (upload)\");",
-      "replace": "        return {};",
+      "find": "    return vkCheck(vmaFlushAllocation(allocator_.get(), dst.allocation(), 0, data.size()),\n                   \"vmaFlushAllocation\");",
+      "replace": "    return {};",
       "suites": [],
       "targets": [
         "orbsim"
@@ -33,23 +33,7 @@
         "probe_clear"
       ],
       "expect": "survives",
-      "why": "The flush matters only on memory that is not host-coherent, and nothing calls uploadBuffer before M1-18. Declared with the fix (register decision 272)."
-    },
-    {
-      "name": "the staging buffer is not flushed before the copy",
-      "file": "src/render/VulkanContext.cpp",
-      "find": "            vkCheck(vmaFlushAllocation(allocator_.get(), staging->allocation(), 0, data.size()),",
-      "replace": "            vkCheck(VK_SUCCESS,",
-      "suites": [],
-      "targets": [
-        "orbsim"
-      ],
-      "ctest": [
-        "orbsim_smoke",
-        "probe_clear"
-      ],
-      "expect": "survives",
-      "why": "As the direct path's flush: it matters only on memory that is not host-coherent, and nothing calls uploadBuffer before M1-18. Declared with the fix (register decision 272)."
+      "why": "The flush matters only on memory that is not host-coherent, and nothing calls uploadBuffer before M1-18. Declared with the fix (register decision 272). **Since M1-19 (2026-10-04) one mutant for both of the original two flushes**: the direct write's and the staging buffer's each go through VulkanContext::writeMapped, which copies and flushes in one place (register decision 284), so removing its flush removes both, and the second mutant -- 'the staging buffer is not flushed before the copy' -- would have been this one under another name. Merged by the owner's ruling. Still a survivor on the RX 7900 XTX: its host-visible memory measured DEVICE_LOCAL | HOST_VISIBLE | HOST_COHERENT (0x7) on 2026-10-04."
     }
   ]
 }
