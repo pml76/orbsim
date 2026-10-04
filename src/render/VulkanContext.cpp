@@ -1,7 +1,10 @@
 #include "render/VulkanContext.hpp"
 #include "core/Contract.hpp"
+#include "core/Scalar.hpp"
+#include "core/Units.hpp"
 #include "render/ResolvePass.hpp"
 #include "render/VulkanHandle.hpp"
+#include "view/GpuClock.hpp"
 #include "view/RenderQuality.hpp"
 #include "view/SceneClear.hpp"
 
@@ -18,6 +21,7 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -63,6 +67,35 @@ enum class FenceState : std::uint8_t {
 [[nodiscard]] std::unexpected<RenderError> failSdl(std::string_view what) {
     return fail(std::string(what) + " failed: " + SDL_GetError());
 }
+
+// The CPU's time since `start`, from the steady clock -- the one that never
+// steps backward -- for the waits a frame reports (M1-22).
+[[nodiscard]] Seconds secondsSince(std::chrono::steady_clock::time_point start) {
+    return Seconds{std::chrono::duration<f64>(std::chrono::steady_clock::now() - start).count()};
+}
+
+// Where a frame's first timestamp is written (M1-22): before its first
+// command, as M1-14's measurement wrote it. The question was whether the GPU
+// time then takes in the wait for the display's image, which the submission
+// waits for at the colour-output stage. Measured 2026-10-04 on the
+// RX 7900 XTX with the benchmark held to FIFO, which waits for the display:
+// the frame interval was 16.8 ms and the GPU time 0.06 ms, as under
+// immediate: the wait fell on the CPU, and none of it in the GPU's figure.
+// Another driver may differ, and a run through FIFO shows it the same way.
+constexpr VkPipelineStageFlags2 kFrameBeginStage = VK_PIPELINE_STAGE_2_TOP_OF_PIPE_BIT;
+
+// Where its last is written: once everything before it has finished.
+constexpr VkPipelineStageFlags2 kFrameEndStage = VK_PIPELINE_STAGE_2_ALL_COMMANDS_BIT;
+
+// Two timestamps a frame slot: its first, then its last.
+constexpr uint32_t kTimestampsPerFrame = 2;
+
+// How they are read: as 64-bit values, and waited for. The flag bits are a C
+// enumeration, so each is converted to the unsigned flag type before they
+// are combined.
+constexpr VkQueryResultFlags kTimestampReadFlags =
+    static_cast<VkQueryResultFlags>(VK_QUERY_RESULT_64_BIT) |
+    static_cast<VkQueryResultFlags>(VK_QUERY_RESULT_WAIT_BIT);
 
 // Vulkan-Utility-Libraries names every result, including the ones added after
 // this was written. It replaced a hand-written switch here on 2026-09-16: that
@@ -501,6 +534,21 @@ void requestPresentableFormats(vkb::SwapchainBuilder& builder) {
     }
 }
 
+// Hands vk-bootstrap the present modes for `presentation`, in order, the way
+// requestPresentableFormats hands it the formats. Mailbox keeps latency low
+// without tearing; immediate waits for nothing at all, which only a benchmark
+// wants (M1-22, decision 364). FIFO is the required fallback and is always
+// present.
+void requestPresentModes(vkb::SwapchainBuilder& builder, Presentation presentation) {
+    if (presentation == Presentation::Unthrottled) {
+        builder.set_desired_present_mode(VK_PRESENT_MODE_IMMEDIATE_KHR)
+            .add_fallback_present_mode(VK_PRESENT_MODE_MAILBOX_KHR);
+    } else {
+        builder.set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR);
+    }
+    builder.add_fallback_present_mode(VK_PRESENT_MODE_FIFO_KHR);
+}
+
 // Both passes cover the whole target, and the viewport and scissor are
 // dynamic in every pipeline (render/Pipeline.cpp), so each pass sets them.
 //
@@ -774,10 +822,14 @@ void transitionImage(VkCommandBuffer cmd,
 
 // ---------------------------------------------------------------------------
 
-std::expected<VulkanContext, RenderError> VulkanContext::create(
-    SDL_Window* window, Validation validation, std::atomic<uint32_t>& validationErrors) {
+std::expected<VulkanContext, RenderError>
+VulkanContext::create(SDL_Window* window,
+                      Validation validation,
+                      std::atomic<uint32_t>& validationErrors,
+                      Presentation presentation) {
     VulkanContext ctx;
     ctx.window_ = window;
+    ctx.presentation_ = presentation;
 
     auto instance = makeInstanceAndSurface(window, validation, validationErrors);
     if (!instance) return std::unexpected(instance.error());
@@ -804,6 +856,7 @@ std::expected<VulkanContext, RenderError> VulkanContext::create(
 
     if (auto step = ctx.createAllocator(); !step) return std::unexpected(step.error());
     if (auto step = ctx.createFrameResources(); !step) return std::unexpected(step.error());
+    if (auto step = ctx.createTimestamps(); !step) return std::unexpected(step.error());
     if (auto step = ctx.createUploadContext(); !step) return std::unexpected(step.error());
     if (auto step = ctx.createSwapchain(); !step) return std::unexpected(step.error());
 
@@ -855,6 +908,83 @@ std::expected<void, RenderError> VulkanContext::createFrameResources() {
     return {};
 }
 
+// The GPU's clock and the pool its timestamps go in (M1-22). A graphics queue
+// whose counter has no valid bits cannot time anything, and that is a fact
+// about the device rather than a failure: the window runs without timing, and
+// the benchmark, which cannot, says so (view/GpuClock.hpp).
+std::expected<void, RenderError> VulkanContext::createTimestamps() {
+    uint32_t familyCount = 0;
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice_, &familyCount, nullptr);
+    std::vector<VkQueueFamilyProperties> families(familyCount);
+    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice_, &familyCount, families.data());
+    VkPhysicalDeviceProperties properties{};
+    vkGetPhysicalDeviceProperties(physicalDevice_, &properties);
+
+    const auto clock = orb::view::GpuClock::from({
+        .validBits = families.at(graphicsQueueFamily_).timestampValidBits,
+        .nanosecondsPerTick = static_cast<f64>(properties.limits.timestampPeriod),
+    });
+    if (!clock) return {};
+
+    const VkQueryPoolCreateInfo info{
+        .sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO,
+        .queryType = VK_QUERY_TYPE_TIMESTAMP,
+        .queryCount = kTimestampsPerFrame * kFramesInFlight,
+    };
+    VkQueryPool pool = VK_NULL_HANDLE;
+    if (auto ok =
+            vkCheck(vkCreateQueryPool(device_.get(), &info, nullptr, &pool), "vkCreateQueryPool");
+        !ok) {
+        return ok;
+    }
+    timestamps_ = UniqueQueryPool{device_.get(), pool};
+    gpuClock_ = *clock;
+    return {};
+}
+
+// The timestamps of the frame that last used `slot`, once, if it was timed.
+// Only after the slot's fence has been waited on, so the GPU has written both
+// and the wait flag below never waits; it is there so that a mistake in that
+// order reads late rather than reads garbage.
+std::expected<std::optional<CompletedFrame>, RenderError>
+VulkanContext::takeCompleted(uint32_t slot) {
+    const std::optional<std::uint64_t> number = std::exchange(timedFrame_.at(slot), std::nullopt);
+    if (!number || !timestamps_) return std::optional<CompletedFrame>{};
+    std::array<std::uint64_t, kTimestampsPerFrame> ticks{};
+    if (auto ok = vkCheck(vkGetQueryPoolResults(device_.get(),
+                                                timestamps_.get(),
+                                                slot * kTimestampsPerFrame,
+                                                kTimestampsPerFrame,
+                                                sizeof(ticks),
+                                                ticks.data(),
+                                                sizeof(std::uint64_t),
+                                                kTimestampReadFlags),
+                          "vkGetQueryPoolResults");
+        !ok) {
+        return std::unexpected(ok.error());
+    }
+    return CompletedFrame{
+        .number = *number,
+        .ticks = {.begin = ticks.at(0), .end = ticks.at(1)},
+    };
+}
+
+std::expected<std::vector<CompletedFrame>, RenderError> VulkanContext::drainCompletedFrames() {
+    if (auto idle = waitIdle(); !idle) return std::unexpected(idle.error());
+    std::vector<CompletedFrame> completed;
+    for (uint32_t slot = 0; slot < kFramesInFlight; ++slot) {
+        auto taken = takeCompleted(slot);
+        if (!taken) return std::unexpected(taken.error());
+        if (*taken) completed.push_back(**taken);
+    }
+    std::ranges::sort(completed, {}, &CompletedFrame::number);
+    return completed;
+}
+
+std::string_view VulkanContext::presentModeName() const noexcept {
+    return string_VkPresentModeKHR(presentMode_);
+}
+
 std::expected<void, RenderError> VulkanContext::createUploadContext() {
     auto pool = makeCommandPool(device_.get(), graphicsQueueFamily_);
     if (!pool) return std::unexpected(pool.error());
@@ -888,13 +1018,9 @@ std::expected<void, RenderError> VulkanContext::createSwapchain() {
     // because what a surface offers depends on the GPU, the driver and the
     // display; see kPresentableFormats.
     requestPresentableFormats(builder);
+    requestPresentModes(builder, presentation_);
     auto built =
-        builder
-            // Mailbox keeps latency low without tearing. FIFO is the
-            // required fallback and is always present.
-            .set_desired_present_mode(VK_PRESENT_MODE_MAILBOX_KHR)
-            .add_fallback_present_mode(VK_PRESENT_MODE_FIFO_KHR)
-            .set_desired_extent(static_cast<uint32_t>(width), static_cast<uint32_t>(height))
+        builder.set_desired_extent(static_cast<uint32_t>(width), static_cast<uint32_t>(height))
             .add_image_usage_flags(VK_IMAGE_USAGE_TRANSFER_DST_BIT)
             // A surface may have only one live swapchain. Handing the old one
             // over retires it, which is what lets the new one be created while
@@ -916,6 +1042,8 @@ std::expected<void, RenderError> VulkanContext::createSwapchain() {
     swapchain_ = UniqueSwapchain{device_.get(), vkbSwapchain.swapchain}; // destroys the retired one
     swapchainFormat_ = vkbSwapchain.image_format;
     swapchainExtent_ = vkbSwapchain.extent;
+    presentMode_ = vkbSwapchain.present_mode;
+    ++swapchainBuilds_;
 
     auto images = vkbSwapchain.get_images();
     if (!images) return fail("Swapchain images unavailable: " + images.error().message());
@@ -929,17 +1057,23 @@ std::expected<void, RenderError> VulkanContext::createSwapchain() {
         swapchainViews_.emplace_back(device_.get(), view);
     }
 
+    if (auto finished = createPresentSemaphores(); !finished) return finished;
+    if (auto depth = createDepthAttachment(); !depth) return depth;
+    if (auto hdr = createHdrTarget(); !hdr) return hdr;
+
+    swapchainDirty_ = false;
+    return {};
+}
+
+// One present-wait semaphore a swapchain image (see renderFinished_). Split
+// out of createSwapchain in M1-22, which had grown past the size limit.
+std::expected<void, RenderError> VulkanContext::createPresentSemaphores() {
     renderFinished_.reserve(swapchainImages_.size());
     for (size_t i = 0; i < swapchainImages_.size(); ++i) {
         auto finished = makeSemaphore(device_.get());
         if (!finished) return std::unexpected(finished.error());
         renderFinished_.push_back(std::move(*finished));
     }
-
-    if (auto depth = createDepthAttachment(); !depth) return depth;
-    if (auto hdr = createHdrTarget(); !hdr) return hdr;
-
-    swapchainDirty_ = false;
     return {};
 }
 
@@ -1086,6 +1220,69 @@ std::expected<void, RenderError> VulkanContext::recreateSwapchain() {
     return createSwapchain();
 }
 
+// Waits for the slot's previous frame to finish on the GPU, then for an image
+// from the display: the image's index, or none when the swapchain was out of
+// date and has just been rebuilt. Split out of beginFrame in M1-22, which
+// times exactly these two waits (decision 365).
+std::expected<std::optional<uint32_t>, RenderError> VulkanContext::acquireImage(uint32_t slot) {
+    VkFence waitFence = inFlight_.at(slot).get();
+    if (auto ok = vkCheck(vkWaitForFences(device_.get(), 1, &waitFence, VK_TRUE, UINT64_MAX),
+                          "vkWaitForFences");
+        !ok) {
+        return std::unexpected(ok.error());
+    }
+
+    uint32_t imageIndex = 0;
+    const VkResult acquire = vkAcquireNextImageKHR(device_.get(),
+                                                   swapchain_.get(),
+                                                   UINT64_MAX,
+                                                   imageAvailable_.at(slot).get(),
+                                                   VK_NULL_HANDLE,
+                                                   &imageIndex);
+    if (acquire == VK_ERROR_OUT_OF_DATE_KHR) {
+        if (auto rebuilt = recreateSwapchain(); !rebuilt) return std::unexpected(rebuilt.error());
+        return std::nullopt;
+    }
+    // Suboptimal still hands back a usable image; the rebuild happens after
+    // this frame is presented.
+    if (acquire != VK_SUBOPTIMAL_KHR) {
+        if (auto ok = vkCheck(acquire, "vkAcquireNextImageKHR"); !ok) {
+            return std::unexpected(ok.error());
+        }
+    }
+    return imageIndex;
+}
+
+// Opens the slot's command buffer for a frame that will be submitted: the
+// fence reset, the first timestamp written (M1-22), and the HDR target and
+// depth attachment bound and cleared.
+std::expected<VkCommandBuffer, RenderError> VulkanContext::openCommands(uint32_t slot) {
+    // Only reset the fence once the frame is definitely going to be submitted;
+    // returning early in acquireImage with the fence already reset would
+    // deadlock the next wait on this slot.
+    VkFence waitFence = inFlight_.at(slot).get();
+    if (auto ok = vkCheck(vkResetFences(device_.get(), 1, &waitFence), "vkResetFences"); !ok) {
+        return std::unexpected(ok.error());
+    }
+
+    VkCommandBuffer cmd = commandBuffers_.at(slot);
+    if (auto ok = beginOneTimeCommandBuffer(cmd); !ok) return std::unexpected(ok.error());
+    if (timestamps_) {
+        vkCmdResetQueryPool(
+            cmd, timestamps_.get(), slot * kTimestampsPerFrame, kTimestampsPerFrame);
+        vkCmdWriteTimestamp2(cmd, kFrameBeginStage, timestamps_.get(), slot * kTimestampsPerFrame);
+    }
+
+    prepareSceneTargets(cmd, {.hdr = hdr_.image.get(), .depth = depth_.image.get()});
+    beginSceneRendering(cmd,
+                        {
+                            .hdr = hdr_.view.get(),
+                            .depth = depth_.view.get(),
+                            .extent = swapchainExtent_,
+                        });
+    return cmd;
+}
+
 std::expected<std::optional<FrameContext>, RenderError>
 VulkanContext::beginFrame(orb::view::RenderQuality quality) {
     // A minimised window has a zero-size swapchain, which cannot be created.
@@ -1102,55 +1299,29 @@ VulkanContext::beginFrame(orb::view::RenderQuality quality) {
     }
 
     const uint32_t frame = frameIndex_;
-    VkFence waitFence = inFlight_.at(frame).get();
-    if (auto ok = vkCheck(vkWaitForFences(device_.get(), 1, &waitFence, VK_TRUE, UINT64_MAX),
-                          "vkWaitForFences");
-        !ok) {
-        return std::unexpected(ok.error());
-    }
+    const auto waitStart = std::chrono::steady_clock::now();
+    const auto image = acquireImage(frame);
+    if (!image) return std::unexpected(image.error());
+    if (!*image) return std::nullopt;
+    const Seconds waited = secondsSince(waitStart);
 
-    uint32_t imageIndex = 0;
-    const VkResult acquire = vkAcquireNextImageKHR(device_.get(),
-                                                   swapchain_.get(),
-                                                   UINT64_MAX,
-                                                   imageAvailable_.at(frame).get(),
-                                                   VK_NULL_HANDLE,
-                                                   &imageIndex);
-    if (acquire == VK_ERROR_OUT_OF_DATE_KHR) {
-        if (auto rebuilt = recreateSwapchain(); !rebuilt) return std::unexpected(rebuilt.error());
-        return std::nullopt;
-    }
-    // Suboptimal still hands back a usable image; the rebuild happens after
-    // this frame is presented.
-    if (acquire != VK_SUBOPTIMAL_KHR) {
-        if (auto ok = vkCheck(acquire, "vkAcquireNextImageKHR"); !ok) {
-            return std::unexpected(ok.error());
-        }
-    }
+    // The slot's fence has signalled, so the frame that last used it has
+    // finished and its timestamps are written; they are read before
+    // openCommands resets them.
+    auto completed = takeCompleted(frame);
+    if (!completed) return std::unexpected(completed.error());
 
-    // Only reset the fence once the frame is definitely going to be submitted;
-    // returning early above with the fence already reset would deadlock the
-    // next wait on this slot.
-    if (auto ok = vkCheck(vkResetFences(device_.get(), 1, &waitFence), "vkResetFences"); !ok) {
-        return std::unexpected(ok.error());
-    }
-
-    VkCommandBuffer cmd = commandBuffers_.at(frame);
-    if (auto ok = beginOneTimeCommandBuffer(cmd); !ok) return std::unexpected(ok.error());
-
-    prepareSceneTargets(cmd, {.hdr = hdr_.image.get(), .depth = depth_.image.get()});
-    beginSceneRendering(cmd,
-                        {
-                            .hdr = hdr_.view.get(),
-                            .depth = depth_.view.get(),
-                            .extent = swapchainExtent_,
-                        });
+    const auto cmd = openCommands(frame);
+    if (!cmd) return std::unexpected(cmd.error());
 
     return FrameContext{
-        .cmd = cmd,
-        .imageIndex = imageIndex,
+        .cmd = *cmd,
+        .imageIndex = **image,
         .frameIndex = frame,
         .extent = swapchainExtent_,
+        .number = framesBegun_++,
+        .waited = waited,
+        .completed = *completed,
         .quality = quality,
     };
 }
@@ -1177,19 +1348,9 @@ void VulkanContext::recordResolve(const FrameContext& frame, const ResolvePass& 
                       frame.frameIndex);
 }
 
-std::expected<void, RenderError> VulkanContext::endFrame(const FrameContext& frame,
-                                                         const ResolvePass& resolve) {
-    vkCmdEndRendering(frame.cmd);
-    recordResolve(frame, resolve);
-
-    transitionImage(frame.cmd,
-                    swapchainImages_.at(frame.imageIndex),
-                    {
-                        .from = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-                        .to = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-                    });
-    if (auto ok = vkCheck(vkEndCommandBuffer(frame.cmd), "vkEndCommandBuffer"); !ok) return ok;
-
+// Submits the frame's commands, to wait for its image and to signal the
+// present. Split out of endFrame in M1-22, which times the present.
+std::expected<void, RenderError> VulkanContext::submitFrame(const FrameContext& frame) {
     const VkSemaphoreSubmitInfo waitInfo{
         .sType = VK_STRUCTURE_TYPE_SEMAPHORE_SUBMIT_INFO,
         .semaphore = imageAvailable_.at(frame.frameIndex).get(),
@@ -1219,6 +1380,34 @@ std::expected<void, RenderError> VulkanContext::endFrame(const FrameContext& fra
         !ok) {
         return ok;
     }
+    // The frame's timestamps are the slot's to hand out once its fence has
+    // signalled (beginFrame, drainCompletedFrames).
+    if (timestamps_) timedFrame_.at(frame.frameIndex) = frame.number;
+    return {};
+}
+
+std::expected<Seconds, RenderError> VulkanContext::endFrame(const FrameContext& frame,
+                                                            const ResolvePass& resolve) {
+    vkCmdEndRendering(frame.cmd);
+    recordResolve(frame, resolve);
+
+    transitionImage(frame.cmd,
+                    swapchainImages_.at(frame.imageIndex),
+                    {
+                        .from = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+                        .to = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
+                    });
+    if (timestamps_) {
+        vkCmdWriteTimestamp2(frame.cmd,
+                             kFrameEndStage,
+                             timestamps_.get(),
+                             (frame.frameIndex * kTimestampsPerFrame) + 1U);
+    }
+    if (auto ok = vkCheck(vkEndCommandBuffer(frame.cmd), "vkEndCommandBuffer"); !ok) {
+        return std::unexpected(ok.error());
+    }
+
+    if (auto ok = submitFrame(frame); !ok) return std::unexpected(ok.error());
 
     VkSemaphore presentWait = renderFinished_.at(frame.imageIndex).get();
     VkSwapchainKHR swapchain = swapchain_.get();
@@ -1230,7 +1419,9 @@ std::expected<void, RenderError> VulkanContext::endFrame(const FrameContext& fra
         .pSwapchains = &swapchain,
         .pImageIndices = &frame.imageIndex,
     };
+    const auto presentStart = std::chrono::steady_clock::now();
     const VkResult presented = vkQueuePresentKHR(graphicsQueue_, &present);
+    const Seconds presenting = secondsSince(presentStart);
 
     // The work was submitted whatever present said, so the slot advances.
     frameIndex_ = (frameIndex_ + 1) % kFramesInFlight;
@@ -1239,9 +1430,10 @@ std::expected<void, RenderError> VulkanContext::endFrame(const FrameContext& fra
     // Anything else is a real failure.
     if (presented == VK_ERROR_OUT_OF_DATE_KHR || presented == VK_SUBOPTIMAL_KHR) {
         swapchainDirty_ = true;
-        return {};
+        return presenting;
     }
-    return vkCheck(presented, "vkQueuePresentKHR");
+    if (auto ok = vkCheck(presented, "vkQueuePresentKHR"); !ok) return std::unexpected(ok.error());
+    return presenting;
 }
 
 std::expected<void, RenderError> VulkanContext::waitIdle() const {

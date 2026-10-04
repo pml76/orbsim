@@ -1,0 +1,186 @@
+{
+  "task": "M1-22",
+  "tree": "build/debug",
+  "note": "The benchmark mode (register decisions 364-384), decision 382's sixteen mutants. The statistics, the GPU clock and the path are judged headlessly by test_statistics, test_gpu_clock and test_benchmark_path; the counter's mask one bit short is expected to die at compile time, on maskOf's static_asserts. The renderer and the run are judged by orbsim_bench_smoke, which asserts no frame time: it catches the swapped timestamps through decision 380's check, and three mutants are declared survivors for decision 5's reason.",
+  "mutants": [
+    {
+      "name": "the percentile's interpolation dropped",
+      "file": "src/view/FrameStatistics.cpp",
+      "find": "    return lower + ((h - below) * (upper - lower));",
+      "replace": "    return lower + (0.0 * (h - below) * (upper - lower));",
+      "suites": [
+        "test_statistics"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the percentile's rank taken from n rather than n - 1",
+      "file": "src/view/FrameStatistics.cpp",
+      "find": "    const f64 h = static_cast<f64>(sorted.size() - 1) * p.value();",
+      "replace": "    const f64 h = static_cast<f64>(sorted.size()) * p.value();",
+      "suites": [
+        "test_statistics"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the sum's compensation dropped",
+      "file": "src/view/FrameStatistics.cpp",
+      "find": "    return sum + compensation;",
+      "replace": "    return sum + (compensation * 0.0);",
+      "suites": [
+        "test_statistics"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "a negative value accepted",
+      "file": "src/view/FrameStatistics.cpp",
+      "find": "        if (value.value() < 0.0) return StatisticsError::Negative;",
+      "replace": "        if (value.value() < -1e300) return StatisticsError::Negative;",
+      "suites": [
+        "test_statistics"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "only the first value checked",
+      "file": "src/view/FrameStatistics.cpp",
+      "find": "    for (const Seconds value : sample) {\n        if (!isFinite(value.value()))",
+      "replace": "    for (const Seconds value : sample.first(1)) {\n        if (!isFinite(value.value()))",
+      "suites": [
+        "test_statistics"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the summary's p95 taken at p99",
+      "file": "src/view/FrameStatistics.cpp",
+      "find": "        .p95 = Seconds{percentileOfSorted(sorted, fraction(0.95))},",
+      "replace": "        .p95 = Seconds{percentileOfSorted(sorted, fraction(0.99))},",
+      "suites": [
+        "test_statistics"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the counter's mask not applied",
+      "file": "src/view/GpuClock.cpp",
+      "find": "    const std::uint64_t counted = (ticks.end - ticks.begin) & mask_;",
+      "replace": "    const std::uint64_t counted = (ticks.end - ticks.begin) & (mask_ | ~mask_);",
+      "suites": [
+        "test_gpu_clock"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the counter's mask one bit short",
+      "file": "src/view/GpuClock.cpp",
+      "find": "    return (std::uint64_t{1} << bits) - 1U;",
+      "replace": "    return (std::uint64_t{1} << (bits - 1U)) - 1U;",
+      "suites": [
+        "test_gpu_clock"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "a 64-bit counter refused",
+      "file": "src/view/GpuClock.cpp",
+      "find": "    if (facts.validBits > kTimestampBits) return std::unexpected(GpuClockError::TooManyBits);",
+      "replace": "    if (facts.validBits >= kTimestampBits) return std::unexpected(GpuClockError::TooManyBits);",
+      "suites": [
+        "test_gpu_clock"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the path's pitch reversed",
+      "file": "src/view/BenchmarkPath.cpp",
+      "find": "    const Direction forward = (along * cosDip) - (outward * sinDip);",
+      "replace": "    const Direction forward = (along * cosDip) + (outward * sinDip);",
+      "suites": [
+        "test_benchmark_path"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the path's inclination ignored",
+      "file": "src/view/BenchmarkPath.cpp",
+      "find": "        .quarterOn = Direction{0.0, std::cos(i), std::sin(i)},",
+      "replace": "        .quarterOn = Direction{0.0, std::cos(i * 0.0), std::sin(i * 0.0)},",
+      "suites": [
+        "test_benchmark_path"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the last frame's time by the sum, not the stored end",
+      "file": "src/view/BenchmarkPath.cpp",
+      "find": "    if (frame.index + 1U == frame.count) return frame.count == 1U ? start : end;",
+      "replace": "    if (frame.count == 1U) return path.keyframes().front().time;",
+      "suites": [
+        "test_benchmark_path"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the two timestamps read the wrong way round",
+      "file": "src/render/VulkanContext.cpp",
+      "find": "        .ticks = {.begin = ticks.at(0), .end = ticks.at(1)},",
+      "replace": "        .ticks = {.begin = ticks.at(1), .end = ticks.at(0)},",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "ctest": [
+        "orbsim_bench_smoke"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the waits not subtracted from the CPU's working time",
+      "file": "src/app/BenchMode.cpp",
+      "find": "                .working = interval - frame.waited,",
+      "replace": "                .working = interval + (frame.waited * 0.0),",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "ctest": [
+        "orbsim_bench_smoke"
+      ],
+      "expect": "survives",
+      "why": "Nothing in check asserts a frame time (register decision 5), so nothing can see this figure change. Declared before the pass and accepted by the owner, 2026-10-04 (register decision 382)."
+    },
+    {
+      "name": "the window's paced presentation used",
+      "file": "src/app/BenchMode.cpp",
+      "find": "        window, request.validation, validationErrors, gfx::Presentation::Unthrottled);",
+      "replace": "        window, request.validation, validationErrors, gfx::Presentation::Paced);",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "ctest": [
+        "orbsim_bench_smoke"
+      ],
+      "expect": "survives",
+      "why": "The run is as clean through FIFO as through immediate, and which mode it got is printed, not asserted: a test cannot require immediate of a card that may not offer it, and decision 5 rules out asserting the frame rate that would show it. Declared before the pass and accepted by the owner, 2026-10-04 (register decision 382)."
+    },
+    {
+      "name": "the stop on a rebuilt swapchain removed",
+      "file": "src/app/BenchMode.cpp",
+      "find": "        if (!*begun || gfx_->swapchainBuilds() != builds_) {",
+      "replace": "        if (!*begun || gfx_->swapchainBuilds() < builds_) {",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "ctest": [
+        "orbsim_bench_smoke"
+      ],
+      "expect": "survives",
+      "why": "Nothing in check resizes or minimises the window during a run, so the check is never reached. Declared before the pass and accepted by the owner, 2026-10-04 (register decision 382)."
+    }
+  ]
+}

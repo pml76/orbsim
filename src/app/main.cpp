@@ -4,6 +4,7 @@
 // Current milestone: bring up the window, device and swapchain, and prove the
 // frame loop runs. The simulation and renderer land on top of this next.
 //
+#include "app/BenchMode.hpp"
 #include "app/ExitCodes.hpp"
 #include "app/InteractiveView.hpp"
 #include "app/ProbeMode.hpp"
@@ -34,6 +35,7 @@
 #include <exception>
 #include <expected>
 #include <filesystem>
+#include <format>
 #include <memory>
 #include <optional>
 #include <print>
@@ -60,6 +62,9 @@ constexpr std::string_view kUsage =
     "       orbsim [--validate | --no-validate] --probe <name> [--probe-out <dir>] "
     "[--shader-dir <path>]\n"
     "              [--golden <path> | --golden-dir <dir>] [--accept-golden]\n"
+    "       orbsim [--validate | --no-validate] --bench <path> [--frames <n>]\n"
+    "              [--width <pixels> --height <pixels>] [--quality <preset>]\n"
+    "              [--bench-out <dir>] [--shader-dir <path>]\n"
     "       orbsim --probe-list\n"
     "       orbsim --help\n";
 
@@ -75,6 +80,14 @@ constexpr std::string_view kHelp =
     "  --probe-out <dir>          where a probe writes its files; the build tree's probes/ by\n"
     "                             default\n"
     "  --probe-list               list the probes\n"
+    "  --bench <path>             fly a camera path, time every frame on the CPU and the GPU,\n"
+    "                             print the figures, and write them with a table of every\n"
+    "                             frame; the one path is grid-orbit. The validation layers are\n"
+    "                             off unless --validate is given\n"
+    "  --frames <n>               the frames --bench measures after its warm-up; 600 by default\n"
+    "  --width, --height <pixels> the image --bench draws; 1920x1080 by default\n"
+    "  --quality <preset>         low, medium, high or ultra, for --bench; high by default\n"
+    "  --bench-out <dir>          where --bench writes; the build tree's bench/ by default\n"
     "  --golden <path>            compare the probe's frame, halved to 640x360, with this\n"
     "                             golden PNG; on a mismatch write <name>.diff.png and exit 4\n"
     "  --golden-dir <dir>         the same, with this graphics card's own golden,\n"
@@ -86,20 +99,6 @@ constexpr std::string_view kHelp =
     "  --help                     this text\n"
     "\n"
     "exit codes: 0 success, 1 failure, 2 usage, 3 validation errors, 4 golden mismatch\n";
-
-// The camera the application exposes the scene with (M1-15, register decision
-// 176): **f/16, 1/125 s, ISO 100 -- the "sunny 16" rule**, a photographer's
-// setting for a subject in direct sunlight, which is what milestone 1 draws.
-// A sunlit surface of albedo 0.3 lands 0.89 stops above a metered mid-grey
-// (tests/test_exposure.cpp). Not a tuning constant: it is a published rule
-// with a stated purpose, and ADR 0014 leaves the choice of default open. The
-// probes of M1-16 pin their own. Unwrapping a refused setting is not a
-// constant expression, so a bad value here fails the build.
-constexpr orb::view::CameraSettings kDefaultCamera{
-    .aperture = orb::view::Aperture::from(16.0).value(),
-    .shutterTime = orb::view::ShutterTime::from(Seconds{1.0 / 125.0}).value(),
-    .iso = orb::view::Iso::from(100.0).value(),
-};
 
 // How long to sleep when there is no frame to draw (minimised, or mid-rebuild):
 // about one frame at 60 Hz, long enough not to spin a core, short enough that
@@ -132,6 +131,7 @@ enum class Mode : std::uint8_t {
     Probe,
     ListProbes,
     Help,
+    Bench, // since M1-22
 };
 
 struct Options {
@@ -174,6 +174,19 @@ struct Options {
     // given beside --golden (decision 295).
     std::optional<std::filesystem::path> goldenDirectory;
     GoldenAction golden{GoldenAction::None};
+
+    // --bench's path, and the options only it takes (M1-22, register
+    // decisions 369-373). Each is absent unless given, so that one given
+    // without --bench is refused rather than ignored.
+    std::string bench;
+    std::optional<std::uint32_t> frames;
+    std::optional<std::uint32_t> width;
+    std::optional<std::uint32_t> height;
+    std::optional<std::string> quality;
+    // The preset --quality names, looked up when it is read, so a name
+    // nobody knows is refused there and this is never absent.
+    orb::view::RenderQuality qualityPreset{orb::view::RenderQuality::high()};
+    std::optional<std::filesystem::path> benchOut;
 };
 
 // Whether a person is at the window: a run without --seconds goes on until
@@ -199,6 +212,38 @@ struct Options {
     return Seconds{value};
 }
 
+// An option and the value that followed it, by name, so the two cannot be
+// handed over the wrong way round (non-negotiable 1).
+struct OptionValue {
+    std::string_view option;
+    std::string_view value;
+};
+
+// The least and the most a whole-number option accepts, both included.
+struct CountRange {
+    std::uint32_t least{};
+    std::uint32_t most{};
+};
+
+// A whole number within `range`, for --frames, --width and --height (M1-22),
+// read as --seconds is: a malformed one is a usage error to explain.
+[[nodiscard]] std::expected<std::uint32_t, SdlError> parseCount(OptionValue given,
+                                                                CountRange range) {
+    std::uint32_t value = 0;
+    const char* const last = std::to_address(given.value.end());
+    const auto [end, ec] = std::from_chars(std::to_address(given.value.begin()), last, value);
+    if (ec != std::errc{} || end != last || value < range.least || value > range.most) {
+        return std::unexpected(SdlError{
+            .message = std::format("{} needs a whole number from {} to {}, got '{}'",
+                                   given.option,
+                                   range.least,
+                                   range.most,
+                                   given.value),
+        });
+    }
+    return value;
+}
+
 // What --accept-golden refuses (register decisions 232 and 233), in this
 // order: it runs under the validation layers, so --no-validate is refused
 // first, and it writes to --golden's path, so without one there is nowhere to
@@ -218,6 +263,51 @@ struct Options {
         });
     }
     options.validation = orb::gfx::Validation::Enabled;
+    return options;
+}
+
+// The names in `names`, comma-separated, for a refusal to list.
+[[nodiscard]] std::string listOf(std::span<const std::string_view> names) {
+    std::string list;
+    for (const std::string_view name : names) {
+        list += (list.empty() ? "" : ", ") + std::string(name);
+    }
+    return list;
+}
+
+// The combinations a benchmark run refuses (M1-22, register decisions
+// 369-372). Its own options mean nothing without --bench, and are refused
+// rather than ignored; a running time and a probe mean nothing with it; and
+// the path must be one it knows, said here with the list
+// rather than discovered after a window and a device have been made.
+[[nodiscard]] std::expected<Options, SdlError> checkBenchOptions(Options options) {
+    if (options.mode == Mode::Help) return options;
+    // Before the mode is looked at: whichever of the two came last set it.
+    if (!options.bench.empty() && !options.probe.empty()) {
+        return std::unexpected(SdlError{.message = "--bench and --probe cannot go together"});
+    }
+    if (options.mode != Mode::Bench) {
+        if (options.frames || options.width || options.height || options.quality ||
+            options.benchOut) {
+            return std::unexpected(SdlError{
+                .message = "--frames, --width, --height, --quality and --bench-out need "
+                           "--bench <path>",
+            });
+        }
+        return options;
+    }
+    if (options.runFor.value() > 0.0) {
+        return std::unexpected(SdlError{
+            .message = "--bench measures a number of frames; --seconds does not apply",
+        });
+    }
+    if (std::ranges::find(orb::app::benchPathNames(), options.bench) ==
+        orb::app::benchPathNames().end()) {
+        return std::unexpected(SdlError{
+            .message = "no benchmark path named '" + options.bench +
+                       "'; the paths are: " + listOf(orb::app::benchPathNames()),
+        });
+    }
     return options;
 }
 
@@ -281,7 +371,53 @@ struct Options {
 
 // What an option that takes a value is missing when it has none, as the
 // message says it -- or nothing, when `arg` is not such an option.
+// The same, for the options only --bench takes (M1-22), which applyBenchValue
+// reads.
+[[nodiscard]] std::optional<std::string_view> benchValueNeededBy(std::string_view arg) {
+    if (arg == "--bench") return "a path's name";
+    if (arg == "--frames") return "a number of frames";
+    if (arg == "--width" || arg == "--height") return "a number of pixels";
+    if (arg == "--quality") return "a preset's name";
+    if (arg == "--bench-out") return "a directory";
+    return std::nullopt;
+}
+
+// The largest image side --width and --height accept: the RX 7900 XTX's
+// maxImageDimension2D, measured 2026-10-04 with vulkaninfo, and the common
+// figure for desktop GPUs. A size the window cannot reach is refused later,
+// by measuring what the swapchain got (register decision 370).
+constexpr std::uint32_t kLargestImageSide = 16'384;
+
+[[nodiscard]] std::expected<void, SdlError> applyBenchValue(Options& options, OptionValue given) {
+    if (given.option == "--bench") {
+        options.mode = Mode::Bench;
+        options.bench = std::string(given.value);
+    } else if (given.option == "--quality") {
+        const auto preset = orb::app::qualityPreset(given.value);
+        if (!preset) {
+            return std::unexpected(SdlError{
+                .message = "no quality preset named '" + std::string(given.value) +
+                           "'; the presets are: " + listOf(orb::app::qualityPresetNames()),
+            });
+        }
+        options.quality = std::string(given.value);
+        options.qualityPreset = *preset;
+    } else if (given.option == "--bench-out") {
+        options.benchOut = pathFromUtf8(given.value);
+    } else if (given.option == "--frames") {
+        const auto frames = parseCount(given, {.least = 1, .most = orb::app::kBenchMaximumFrames});
+        if (!frames) return std::unexpected(frames.error());
+        options.frames = *frames;
+    } else {
+        const auto side = parseCount(given, {.least = 1, .most = kLargestImageSide});
+        if (!side) return std::unexpected(side.error());
+        (given.option == "--width" ? options.width : options.height) = *side;
+    }
+    return {};
+}
+
 [[nodiscard]] std::optional<std::string_view> valueNeededBy(std::string_view arg) {
+    if (const auto bench = benchValueNeededBy(arg)) return bench;
     if (arg == "--seconds") return "a value";
     if (arg == "--shader-dir") return "a path";
     if (arg == "--probe") return "a probe's name";
@@ -291,14 +427,8 @@ struct Options {
     return std::nullopt;
 }
 
-// An option and the value that followed it, by name, so the two cannot be
-// handed over the wrong way round (non-negotiable 1).
-struct OptionValue {
-    std::string_view option;
-    std::string_view value;
-};
-
 [[nodiscard]] std::expected<void, SdlError> applyValue(Options& options, OptionValue given) {
+    if (benchValueNeededBy(given.option)) return applyBenchValue(options, given);
     if (given.option == "--seconds") {
         auto seconds = parseSeconds(given.value);
         if (!seconds) return std::unexpected(seconds.error());
@@ -345,7 +475,7 @@ struct OptionValue {
             return std::unexpected(applied.error());
         }
     }
-    return checkProbeOptions(options);
+    return checkBenchOptions(options).and_then(checkProbeOptions);
 }
 
 // Drains the event queue, handing the mouse to the view (M1-21). Returns
@@ -452,7 +582,8 @@ struct FrameDrawing {
 [[nodiscard]] int
 runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& validationErrors) {
     // A factory, so there is no moment where `gfx` exists but is not usable.
-    auto created = orb::gfx::VulkanContext::create(window, options.validation, validationErrors);
+    auto created = orb::gfx::VulkanContext::create(
+        window, options.validation, validationErrors, orb::gfx::Presentation::Paced);
     if (!created) {
         const std::string& message = created.error().message;
         std::print(stderr, "Renderer initialisation failed: {}\n", message);
@@ -491,7 +622,7 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
     const auto resolve = orb::gfx::ResolvePass::create(
         gfx,
         options.shaderDirectory,
-        orb::view::radianceExposure(orb::view::exposureValue100(kDefaultCamera)),
+        orb::view::radianceExposure(orb::view::exposureValue100(orb::app::kDefaultCamera)),
         gfx.swapchainFormat());
     if (!resolve) {
         std::print(stderr, "Resolve pass could not be created: {}\n", resolve.error().message);
@@ -554,6 +685,52 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
     return 0;
 }
 
+// The window a run draws in. A probe's is hidden: it is created, so that there
+// is one device path rather than two, and never presented (ADR 0008), and a
+// window flashing up during a test run would only be a distraction. Measured
+// on 2026-09-26 that a swapchain builds on a hidden SDL window here. A
+// benchmark's is shown -- presenting to it is part of what is measured -- the
+// size asked for, and not resizable (M1-22, register decision 370); it is made
+// that many window units across, and runBench corrects it to that many pixels.
+[[nodiscard]] orb::app::WindowSpec windowFor(const Options& options) {
+    if (options.mode == Mode::Bench) {
+        return {
+            .title = "orbsim --bench",
+            .width = static_cast<int>(options.width.value_or(orb::app::kBenchDefaultSize.width)),
+            .height = static_cast<int>(options.height.value_or(orb::app::kBenchDefaultSize.height)),
+            .flags = SDL_WINDOW_VULKAN | SDL_WINDOW_HIGH_PIXEL_DENSITY,
+        };
+    }
+    const SDL_WindowFlags hidden = options.mode == Mode::Probe ? SDL_WINDOW_HIDDEN : 0;
+    return {
+        .title = "orbsim",
+        .width = 1600,
+        .height = 900,
+        .flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | hidden,
+    };
+}
+
+// What runBench is asked for, from the options (M1-22). **The validation
+// layers are off unless --validate was given**, in every build, where the
+// window turns them on in a Debug build: a frame timed under them is not a
+// measurement (register decision 372).
+[[nodiscard]] orb::app::BenchRequest benchRequestOf(const Options& options) {
+    return {
+        .path = options.bench,
+        .frames = options.frames.value_or(orb::app::kBenchDefaultFrames),
+        .size =
+            {
+                .width = options.width.value_or(orb::app::kBenchDefaultSize.width),
+                .height = options.height.value_or(orb::app::kBenchDefaultSize.height),
+            },
+        .qualityName = options.quality ? std::string_view{*options.quality} : "high",
+        .quality = options.qualityPreset,
+        .outDirectory = options.benchOut.value_or(pathFromUtf8(ORBSIM_BENCH_DIR)),
+        .shaderDirectory = options.shaderDirectory,
+        .validation = options.validationAsked.value_or(orb::gfx::Validation::Disabled),
+    };
+}
+
 [[nodiscard]] int run(std::span<char* const> args) {
     const auto options = parseArguments(args);
     if (!options) {
@@ -578,17 +755,7 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
         return kExitFailure;
     }
 
-    // A probe's window is hidden: it is created, so that there is one device
-    // path rather than two, and never presented (ADR 0008), and a window
-    // flashing up during a test run would only be a distraction. Measured on
-    // 2026-09-26 that a swapchain builds on a hidden SDL window here.
-    const SDL_WindowFlags hidden = options->mode == Mode::Probe ? SDL_WINDOW_HIDDEN : 0;
-    const auto window = orb::app::createWindow({
-        .title = "orbsim",
-        .width = 1600,
-        .height = 900,
-        .flags = SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY | hidden,
-    });
+    const auto window = orb::app::createWindow(windowFor(*options));
     if (!window) {
         std::print(stderr, "{}\n", window.error().message);
         return kExitFailure;
@@ -597,6 +764,12 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
     // Counted outside the renderer's lifetime, because teardown is where
     // validation errors hide and the count has to survive it.
     std::atomic<uint32_t> validationErrors{0};
+    if (options->mode == Mode::Bench) {
+        const int status =
+            orb::app::runBench(window->get(), benchRequestOf(*options), validationErrors);
+        if (status != 0) return status;
+        return validationVerdict(validationErrors.load());
+    }
     if (options->mode != Mode::Probe) {
         const int status = runRenderer(window->get(), *options, validationErrors);
         if (status != 0) return status;

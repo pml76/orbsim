@@ -16,7 +16,9 @@
 // lost device turns into a hang three frames later.
 //
 #include "core/Attributes.hpp"
+#include "core/Units.hpp"
 #include "render/VulkanHandle.hpp"
+#include "view/GpuClock.hpp"
 #include "view/RenderQuality.hpp"
 
 #include <array>
@@ -29,6 +31,7 @@
 #include <optional>
 #include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 struct SDL_Window;
@@ -104,6 +107,22 @@ enum class Validation : std::uint8_t {
     Enabled,
 };
 
+// How the swapchain hands frames to the display (M1-22, register decision
+// 364), in order of preference. FIFO -- wait for the display's refresh -- is
+// the one mode every device must offer, so both end there.
+//
+// **Paced** is the window's: mailbox, which replaces a waiting frame with a
+// newer one and so never tears, else FIFO. **Unthrottled** is the
+// benchmark's: immediate, which waits for nothing and may tear, then mailbox,
+// then FIFO. Measured 2026-10-04: the RX 7900 XTX's driver offers immediate,
+// FIFO, FIFO relaxed and FIFO latest-ready, and no mailbox, so the window
+// there waits for the display's 59 Hz -- and a benchmark through it would
+// measure the monitor. Which mode a swapchain got is `presentModeName()`.
+enum class Presentation : std::uint8_t {
+    Paced,
+    Unthrottled,
+};
+
 enum class Memory : std::uint8_t {
     DeviceLocal,  // fastest for the GPU; needs a staging copy to write
     HostVisible,  // mappable, so the CPU can write it directly
@@ -173,6 +192,14 @@ struct DeviceDescription {
     std::uint32_t apiVersion{};
 };
 
+// A frame the GPU has finished, and the two timestamps that bracket its work
+// (M1-22): `number` is the frame's FrameContext::number. The ticks become a
+// duration through the context's `gpuClock()`.
+struct CompletedFrame {
+    std::uint64_t number{};
+    orb::view::TimestampPair ticks;
+};
+
 // Everything a frame needs to record its commands. Handed out by beginFrame.
 // What is recorded into `cmd` between beginFrame and endFrame draws into the
 // HDR target, never into the swapchain.
@@ -181,6 +208,16 @@ struct FrameContext {
     uint32_t imageIndex{0};
     uint32_t frameIndex{0}; // which of the kFramesInFlight slots
     VkExtent2D extent{};
+
+    // Since M1-22, for the benchmark. Which frame this is, counting from 0
+    // at the context's first; how long beginFrame waited on the CPU -- for
+    // this slot's previous frame to finish on the GPU, then for an image
+    // from the display -- which is not work (register decision 365); and
+    // the GPU's timestamps for the frame that last used this slot, now that
+    // it has finished, when the device can time its work.
+    std::uint64_t number{0};
+    Seconds waited{0.0};
+    std::optional<CompletedFrame> completed;
 
     // The quality settings this frame draws at, snapshotted by value (M1-12,
     // ADR 0007). **Nothing reads it yet**, and nothing will until M1-46 gives
@@ -238,8 +275,14 @@ public:
     // hide, and teardown is after this object is gone: the caller reads the
     // count once the context has been destroyed. Untouched when validation is
     // disabled or unavailable.
+    //
+    // `presentation` is how the swapchain paces frames (M1-22), kept for
+    // every rebuild of it.
     [[nodiscard]] static std::expected<VulkanContext, RenderError>
-    create(SDL_Window* window, Validation validation, std::atomic<uint32_t>& validationErrors);
+    create(SDL_Window* window,
+           Validation validation,
+           std::atomic<uint32_t>& validationErrors,
+           Presentation presentation);
 
     // Acquires a swapchain image and opens a command buffer with the HDR
     // target and the depth attachment already bound and cleared.
@@ -261,8 +304,17 @@ public:
     // presents. The resolve pass is a parameter rather than something a
     // caller may remember to record, so a frame cannot reach the display
     // without its one encode.
-    [[nodiscard]] std::expected<void, RenderError> endFrame(const FrameContext& frame,
-                                                            const ResolvePass& resolve);
+    //
+    // Returns how long the CPU spent handing the image to the display, which
+    // the benchmark counts as waiting rather than work (M1-22, decision 365).
+    [[nodiscard]] std::expected<Seconds, RenderError> endFrame(const FrameContext& frame,
+                                                               const ResolvePass& resolve);
+
+    // Waits for the GPU to finish every frame submitted, and returns the
+    // timestamps of those not yet handed out through FrameContext::completed
+    // (M1-22) -- the last kFramesInFlight frames of a run, oldest first.
+    // Empty when the device cannot time its work.
+    [[nodiscard]] std::expected<std::vector<CompletedFrame>, RenderError> drainCompletedFrames();
 
     [[nodiscard]] std::expected<void, RenderError> waitIdle() const;
 
@@ -340,13 +392,31 @@ public:
     // The device and its driver, asked of the device when called.
     [[nodiscard]] DeviceDescription deviceDescription() const;
 
+    // Since M1-22. The present mode the swapchain got, by its Vulkan name;
+    // how many times a swapchain has been built, which a benchmark reads to
+    // know that the image it measures did not change under it; and the GPU's
+    // timestamp clock, absent when the graphics queue cannot record one.
+    [[nodiscard]] std::string_view presentModeName() const noexcept;
+    [[nodiscard]] std::uint64_t swapchainBuilds() const noexcept { return swapchainBuilds_; }
+    [[nodiscard]] const std::optional<orb::view::GpuClock>&
+    gpuClock() const noexcept ORBSIM_LIFETIMEBOUND {
+        return gpuClock_;
+    }
+
 private:
     VulkanContext() = default;
 
     [[nodiscard]] std::expected<void, RenderError> createAllocator();
     [[nodiscard]] std::expected<void, RenderError> createFrameResources();
     [[nodiscard]] std::expected<void, RenderError> createUploadContext();
+    [[nodiscard]] std::expected<void, RenderError> createTimestamps();
+    [[nodiscard]] std::expected<std::optional<CompletedFrame>, RenderError>
+    takeCompleted(uint32_t slot);
+    [[nodiscard]] std::expected<std::optional<uint32_t>, RenderError> acquireImage(uint32_t slot);
+    [[nodiscard]] std::expected<VkCommandBuffer, RenderError> openCommands(uint32_t slot);
+    [[nodiscard]] std::expected<void, RenderError> submitFrame(const FrameContext& frame);
     [[nodiscard]] std::expected<void, RenderError> createSwapchain();
+    [[nodiscard]] std::expected<void, RenderError> createPresentSemaphores();
     [[nodiscard]] std::expected<ImageAndView, RenderError>
     createImage(const ImageRequest& request) const;
     [[nodiscard]] std::expected<void, RenderError> createDepthAttachment();
@@ -381,6 +451,9 @@ private:
     std::vector<VkImage> swapchainImages_; // owned by the swapchain
     std::vector<UniqueImageView> swapchainViews_;
     bool swapchainDirty_{false};
+    Presentation presentation_{Presentation::Paced};
+    VkPresentModeKHR presentMode_{VK_PRESENT_MODE_FIFO_KHR};
+    std::uint64_t swapchainBuilds_{0};
 
     ImageAndView depth_;
 
@@ -397,6 +470,15 @@ private:
     std::array<VkCommandBuffer, kFramesInFlight> commandBuffers_{}; // freed with the pool
     std::array<UniqueSemaphore, kFramesInFlight> imageAvailable_;
     std::array<UniqueFence, kFramesInFlight> inFlight_;
+
+    // The GPU's timestamps (M1-22): two queries a slot -- where its frame's
+    // commands begin and where they end -- and which frame each slot last
+    // timed, until that frame's figures are handed out. No pool, and no
+    // clock, when the graphics queue cannot record a timestamp.
+    std::optional<orb::view::GpuClock> gpuClock_;
+    UniqueQueryPool timestamps_;
+    std::array<std::optional<std::uint64_t>, kFramesInFlight> timedFrame_{};
+    std::uint64_t framesBegun_{0};
 
     // Per swapchain image. A present-wait semaphore must not be reused while a
     // previous present on the same image is still pending, and the swapchain

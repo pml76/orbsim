@@ -61,6 +61,13 @@ constexpr Metres kNearPlane{1.0};
 
 } // namespace
 
+Quat gridWorldFromEarthFixed() {
+    const gfx::GridEpoch epoch = gfx::gridEpoch();
+    // ERFA's rotation takes the celestial frame to the Earth-fixed one, and
+    // the grid wants the other way, as the grid probes turn it.
+    return earthFixedFromInertial(epoch.tt, epoch.ut1).conjugate();
+}
+
 InteractiveView::InteractiveView(const view::CameraController& controller,
                                  view::PlanetaryGrid grid,
                                  gfx::LineRenderer renderer)
@@ -71,10 +78,7 @@ InteractiveView::InteractiveView(const view::CameraController& controller,
 
 std::expected<InteractiveView, gfx::RenderError>
 InteractiveView::create(gfx::VulkanContext& context) {
-    const gfx::GridEpoch epoch = gfx::gridEpoch();
-    // ERFA's rotation takes the celestial frame to the Earth-fixed one, and
-    // the grid wants the other way, as the grid probes turn it.
-    const Quat worldFromEarthFixed = earthFixedFromInertial(epoch.tt, epoch.ut1).conjugate();
+    const Quat worldFromEarthFixed = gridWorldFromEarthFixed();
     const auto layout = view::GridLayout::from(view::kEarthGridCounts);
     // The task's counts, which view/PlanetaryGrid.hpp asserts can be made.
     ORBSIM_ENSURES(layout.has_value());
@@ -134,9 +138,17 @@ std::expected<void, gfx::RenderError>
 InteractiveView::record(gfx::VulkanContext& context,
                         const gfx::FrameContext& frame,
                         const gfx::ScenePipelines& pipelines) {
-    const view::Pose pose = controller_.pose();
-    // The controller makes only finite positions and unit orientations, and
-    // the field of view and near plane are constants the factory accepts.
+    return recordFrom(controller_.pose(), context, frame, pipelines);
+}
+
+std::expected<void, gfx::RenderError>
+InteractiveView::recordFrom(const view::Pose& pose,
+                            gfx::VulkanContext& context,
+                            const gfx::FrameContext& frame,
+                            const gfx::ScenePipelines& pipelines) {
+    // The controller and a camera path make only finite positions and unit
+    // orientations, and the field of view and near plane are constants the
+    // factory accepts.
     const auto camera =
         view::Camera::from(pose.position, pose.orientation, kFieldOfView, kNearPlane);
     ORBSIM_ENSURES(camera.has_value());

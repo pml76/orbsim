@@ -98,6 +98,8 @@ using UniquePipeline = OwnedHandle<VkPipeline, VkDevice, vkDestroyPipeline>;
 using UniqueDescriptorSetLayout =
     OwnedHandle<VkDescriptorSetLayout, VkDevice, vkDestroyDescriptorSetLayout>;
 using UniqueDescriptorPool = OwnedHandle<VkDescriptorPool, VkDevice, vkDestroyDescriptorPool>;
+// Since M1-22, whose frames are timed on the GPU by timestamp queries.
+using UniqueQueryPool = OwnedHandle<VkQueryPool, VkDevice, vkDestroyQueryPool>;
 
 // The rest do not fit that shape, so each gets its own small type rather than
 // a template contorted to cover them.

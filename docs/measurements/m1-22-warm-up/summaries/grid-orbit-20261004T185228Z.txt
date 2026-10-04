@@ -1,0 +1,11 @@
+orbsim benchmark: grid-orbit, 100 measured frames after a warm-up of 65917 frames in 30.00 s
+GPU:          AMD Radeon RX 7900 XTX (1002-744c), AMD proprietary driver 26.8.1 (LLPC), Vulkan 1.4.349
+Image:        1920x1080 pixels, VK_PRESENT_MODE_IMMEDIATE_KHR, display refreshing at 59.94 Hz
+Quality:      high
+Build:        RelWithDebInfo, clang 23.1.2 (https://github.com/llvm/llvm-project 85ac560262434c9ccfc0c183ec22d4138ed647fb)
+Validation:   off
+
+                    mean    median       p95       p99       max   (ms)
+frame interval    0.4627    0.4499    0.5237    0.6401    0.8337
+CPU working       0.1738    0.1681    0.1938    0.3479    0.3712
+GPU               0.0594    0.0594    0.0597    0.0598    0.0602

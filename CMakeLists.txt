@@ -624,10 +624,13 @@ unset(BUILD_SHARED_LIBS)
 # link it back.
 # ---------------------------------------------------------------------------
 set(ORBSIM_VIEW_SOURCES
+        src/view/BenchmarkPath.cpp
         src/view/Camera.cpp
         src/view/CameraController.cpp
         src/view/CameraPath.cpp
+        src/view/FrameStatistics.cpp
         src/view/GoldenPath.cpp
+        src/view/GpuClock.cpp
         src/view/ImageCompare.cpp
         src/view/ImageFiles.cpp
         src/view/Lambert.cpp
@@ -732,6 +735,7 @@ target_compile_definitions(orbsim_test_support PRIVATE
 
 set(ORBSIM_TESTS
         test_astro_time
+        test_benchmark_path
         test_camera
         test_camera_controller
         test_camera_path
@@ -740,6 +744,7 @@ set(ORBSIM_TESTS
         test_exposure
         test_fixture_file
         test_golden_path
+        test_gpu_clock
         test_half
         test_hdr_dump
         test_image_compare
@@ -756,6 +761,7 @@ set(ORBSIM_TESTS
         test_projection
         test_render_quality
         test_srgb
+        test_statistics
         test_sun
         test_time
         test_time_leap
@@ -789,6 +795,9 @@ target_link_libraries(test_golden_path PRIVATE orbsim_view)
 target_link_libraries(test_lambert PRIVATE orbsim_view)
 target_link_libraries(test_line_batch PRIVATE orbsim_view)
 target_link_libraries(test_planetary_grid PRIVATE orbsim_view)
+target_link_libraries(test_statistics PRIVATE orbsim_view)
+target_link_libraries(test_gpu_clock PRIVATE orbsim_view)
+target_link_libraries(test_benchmark_path PRIVATE orbsim_view)
 # And OpenEXR itself: the EXR is read back through the reference
 # implementation's own decoder, which is the check that the file is one.
 target_link_libraries(test_image_files PRIVATE orbsim_view OpenEXR::OpenEXRCore)
@@ -1084,6 +1093,7 @@ target_link_libraries(orbsim_render_deps INTERFACE
 )
 
 set(ORBSIM_APP_SOURCES
+        src/app/BenchMode.cpp
         src/app/InteractiveView.cpp
         src/app/main.cpp
         src/app/ProbeMode.cpp
@@ -1104,12 +1114,16 @@ target_link_libraries(orbsim PRIVATE
 )
 
 # Where probes write by default -- the build tree, register decision 192 --
-# and which configuration built the binary, for the probe's sidecar.
+# where a benchmark writes by default, the same way (M1-22, decision 373),
+# and which configuration built the binary, for the probe's sidecar and the
+# benchmark's report.
 set(ORBSIM_PROBE_DIR "${CMAKE_CURRENT_BINARY_DIR}/probes")
+set(ORBSIM_BENCH_DIR "${CMAKE_CURRENT_BINARY_DIR}/bench")
 target_compile_definitions(orbsim PRIVATE
         ORBSIM_SHADER_DIR="${SHADER_OUT_DIR}"
         ORBSIM_ASSET_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data"
         ORBSIM_PROBE_DIR="${ORBSIM_PROBE_DIR}"
+        ORBSIM_BENCH_DIR="${ORBSIM_BENCH_DIR}"
         ORBSIM_BUILD_CONFIG="$<CONFIG>"
 )
 
@@ -1411,6 +1425,38 @@ orbsim_add_usage_test(golden_dir_without_probe "--golden-dir|x"
 orbsim_add_usage_test(golden_and_golden_dir "--probe|clear|--golden|x.png|--golden-dir|x"
         "give one")
 
+# The benchmark's options, refused by name before a window exists (M1-22,
+# register decisions 369-372).
+orbsim_add_usage_test(bench_option_without_bench "--frames|10" "need --bench <path>")
+orbsim_add_usage_test(bench_unknown_path "--bench|nowhere" "the paths are: grid-orbit")
+orbsim_add_usage_test(bench_unknown_quality "--bench|grid-orbit|--quality|best"
+        "the presets are: low, medium, high, ultra")
+orbsim_add_usage_test(bench_zero_frames "--bench|grid-orbit|--frames|0"
+        "--frames needs a whole number from 1 to 1000000, got '0'")
+orbsim_add_usage_test(bench_frames_not_a_number "--bench|grid-orbit|--frames|ten" "got 'ten'")
+orbsim_add_usage_test(bench_too_wide "--bench|grid-orbit|--width|16385"
+        "--width needs a whole number from 1 to 16384")
+orbsim_add_usage_test(bench_with_seconds "--bench|grid-orbit|--seconds|2"
+        "--seconds does not apply")
+orbsim_add_usage_test(bench_with_probe "--bench|grid-orbit|--probe|clear"
+        "--bench and --probe cannot go together")
+orbsim_add_usage_test(probe_with_bench "--probe|clear|--bench|grid-orbit"
+        "--bench and --probe cannot go together")
+
+# The benchmark, run briefly under the validation layers (M1-22, register
+# decision 372): the timestamp queries, the swapchain that does not wait for
+# the display and the report, checked on every run of `check` -- and no frame
+# time asserted, which register decision 5 rules out. cmake/RunBench.cmake
+# says what it checks.
+add_test(NAME orbsim_bench_smoke
+        COMMAND ${CMAKE_COMMAND}
+                -DORBSIM=$<TARGET_FILE:orbsim>
+                -DOUT=${CMAKE_CURRENT_BINARY_DIR}/bench-smoke
+                -DFRAMES=30
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/RunBench.cmake
+)
+set_tests_properties(orbsim_bench_smoke PROPERTIES LABELS gpu RESOURCE_LOCK gpu)
+
 # A build tree whose shaders are missing is reported, by path, and the
 # application exits 1 rather than starting (M1-13, register decision 148). It
 # needs a device to get as far as loading shaders, so it is `gpu` too. The
@@ -1462,13 +1508,16 @@ orbsim_add_header_selfcheck(orbsim_header_selfcheck orbsim_core
         orbit/Orbit.hpp
 )
 orbsim_add_header_selfcheck(orbsim_view_header_selfcheck orbsim_view
+        view/BenchmarkPath.hpp
         view/Camera.hpp
         view/CameraController.hpp
         view/CameraInput.hpp
         view/CameraPath.hpp
         view/Exposure.hpp
         view/Frame.hpp
+        view/FrameStatistics.hpp
         view/GoldenPath.hpp
+        view/GpuClock.hpp
         view/Half.hpp
         view/ImageCompare.hpp
         view/ImageFiles.hpp
@@ -1515,6 +1564,9 @@ add_dependencies(test_image_compare orbsim_view_header_selfcheck)
 add_dependencies(test_golden_path orbsim_view_header_selfcheck)
 add_dependencies(test_line_batch orbsim_view_header_selfcheck)
 add_dependencies(test_planetary_grid orbsim_view_header_selfcheck)
+add_dependencies(test_statistics orbsim_view_header_selfcheck)
+add_dependencies(test_gpu_clock orbsim_view_header_selfcheck)
+add_dependencies(test_benchmark_path orbsim_view_header_selfcheck)
 
 if(ORBSIM_BUILD_APP)
     orbsim_add_header_selfcheck(orbsim_render_header_selfcheck orbsim_render_deps

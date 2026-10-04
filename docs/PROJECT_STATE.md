@@ -30,6 +30,8 @@ numbers so existing references still resolve:
 - [7. Open questions — for the project owner, not for me](#7-open-questions--for-the-project-owner-not-for-me)
 - [8. Gotchas worth not rediscovering](#8-gotchas-worth-not-rediscovering)
 - [9. If you are picking this up cold](#9-if-you-are-picking-this-up-cold)
+- [10. Frame time, measured](#10-frame-time-measured) — the benchmark's
+  figures, one row per card and phase
 
 ---
 
@@ -1265,3 +1267,42 @@ Read in this order:
 
 Then run `check` in both trees. If it is green, the tree is as this file
 describes it.
+
+---
+
+## 10. Frame time, measured
+
+Register decision 5 asks for a frame-time figure at the end of phases D, C
+and G; [M1-22](plan/tasks/m1-22-benchmark-mode.md) built the instrument and
+took the first, the floor everything later is measured against. Each row is
+one card and one moment, kept rather than replaced, so the phases can be
+compared. **None of it is a test**: nothing in `check` asserts a frame time.
+
+How a row is taken (register decisions 374 and 383): in `relwithdebinfo`,
+with the machine otherwise idle,
+
+```
+orbsim --bench grid-orbit --frames 600 --width 1920 --height 1080
+```
+
+three times, all three recorded, the middle one by median interval the
+headline. The run warms up for 5 s and at least 30 frames first
+([`measurements/m1-22-warm-up.md`](measurements/m1-22-warm-up.md)), presents
+without waiting for the display where the card allows, and writes its
+summary and a table of every frame to the build tree's `bench/`.
+`realism.md` section 6.5's budget, 16.6 ms on the RTX A2000, is the figure
+these are to stay under.
+
+| When | Scene | Card, driver | Run, UTC | Interval median, p95, p99 (ms) | CPU working median, p95 | GPU median, p95 |
+|---|---|---|---|---|---|---|
+| 2026-10-04, M1-22 | `grid-orbit`, the wireframe grid | RX 7900 XTX, AMD 26.8.1, immediate; Threadripper PRO 3955WX | 19:28:28 | 0.4461, 0.5106, 0.7033 | 0.1648, 0.1850 | 0.0593, 0.0597 |
+| | | | **19:28:40, the headline** | **0.4442, 0.5108, 0.6829** | **0.1641, 0.1936** | **0.0593, 0.0598** |
+| | | | 19:28:34 | 0.4431, 0.4915, 0.5540 | 0.1643, 0.1850 | 0.0593, 0.0597 |
+| *to come* | the same | RTX A2000, on the first machine (decision 374) | | | | |
+
+The runs are listed largest median interval first. Their files, named for
+those times, are in this machine's build tree and are not committed. At this point the
+frame is cheap everywhere: the GPU's 0.06 ms is the grid's lines and the
+resolve pass, the CPU works for 0.16 ms, and the rest of the 0.44 ms
+interval, about 63 %, is the CPU waiting -- for the GPU and the display
+together, which this figure does not split.

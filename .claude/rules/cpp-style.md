@@ -95,8 +95,9 @@ cmake -S coding-guidelines-example -B coding-guidelines-example/build -G Ninja \
   `tests/test_image_compare.cpp` (M1-17), `tests/test_lambert.cpp`,
   `tests/test_radiometry.cpp` and `tests/test_tonemap_port.cpp` (M1-18),
   `tests/test_golden_path.cpp` (M1-110), `tests/test_line_batch.cpp` (M1-19),
-  `tests/test_planetary_grid.cpp` (M1-20), and `tests/test_camera_controller.cpp`
-  and `tests/test_camera_path.cpp` (M1-21)
+  `tests/test_planetary_grid.cpp` (M1-20), `tests/test_camera_controller.cpp`
+  and `tests/test_camera_path.cpp` (M1-21), and `tests/test_statistics.cpp`,
+  `tests/test_gpu_clock.cpp` and `tests/test_benchmark_path.cpp` (M1-22)
   additionally link `orbsim_view`,
   which links `orbsim_core` and -- privately, since M1-16 -- the image
   libraries behind `src/view/ImageFiles.cpp`: lodepng and OpenEXR, and since
