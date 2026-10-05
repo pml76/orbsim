@@ -95,5 +95,12 @@ task (CLAUDE.md working agreement 1).
 
 - [x] `check` green in both trees -- 517 of 517 in each, 2026-10-05, on the
       RTX A2000 machine.
-- [ ] The four new mutants caught, and the four old ones declared with their
-      reason re-worded as the call they remove.
+- [x] The four new mutants caught, and the four old ones declared with their
+      reason re-worded as the call they remove. Run at `67c6df2`, in
+      `build/debug`: **`m1-108.json` 4 of 4 caught** -- the exit-code order,
+      the HDR rule and the colour-space rule each by a `static_assert`, the
+      rename by `test_file_replace`; **`m1-14.json` 15 caught and its 2
+      declared survivors surviving**, the re-anchored mutant caught by
+      `orbsim_smoke` as before; **`m1-17.json` 24 caught and its 2 declared
+      survivors surviving**. None invalid or hung. **13 minutes 29 s for the
+      three files**: 1 min 48 s, 5 min 21 s and 6 min 20 s.

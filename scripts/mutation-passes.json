@@ -97,6 +97,15 @@
       "ctest probe_clear": "e5b9395131c74935"
     }
   },
+  "m1-108.json": {
+    "commit": "67c6df22b0db56a52a8429143582005efa51965b",
+    "tree": "build/debug",
+    "date": "2026-10-05",
+    "judges": {
+      "program orbsim.exe": "1abd0f84dc210548",
+      "program test_file_replace.exe": "18783f280402044d"
+    }
+  },
   "m1-11.json": {
     "commit": "ca25281f5bdd04189f41f303601b1b285e20d4a6",
     "tree": "build/relwithdebinfo",
@@ -163,18 +172,18 @@
     }
   },
   "m1-14.json": {
-    "commit": "faa05e0546abfbf1a51436558c2e4224f5484743",
+    "commit": "67c6df22b0db56a52a8429143582005efa51965b",
     "tree": "build/debug",
-    "date": "2026-10-04",
+    "date": "2026-10-05",
     "judges": {
-      "program test_srgb.exe": "c0930be44d9bfaad",
-      "program orbsim.exe": "8e0ec059125575c4",
+      "program test_srgb.exe": "32479687d9b10f03",
+      "program orbsim.exe": "1abd0f84dc210548",
       "ctest orbsim_smoke": "50442db549e7cc6b",
-      "ctest probe_clear": "e5b9395131c74935",
-      "ctest probe_clear_golden": "c49638cdac19776a",
-      "ctest probe_lines": "4a81e119c2d07d94",
-      "ctest probe_lines_golden": "a4ee220e44bb6a59",
-      "program test_probe_clear.exe": "8642849137ac4d33",
+      "ctest probe_clear": "8547cc2a6e626026",
+      "ctest probe_clear_golden": "362c647c3fa4d983",
+      "ctest probe_lines": "d1f15ef8634d4a9d",
+      "ctest probe_lines_golden": "9613b2bca50dae05",
+      "program test_probe_clear.exe": "173654db863bec34",
       "ctest every band carries the ramp's radiance, to within one binary16 step": "841800cd0cb33aab",
       "ctest the grey band's three channels are the same number": "eec08cd9ca57f761",
       "ctest below the bands nothing is drawn, and every pixel is opaque": "7ab0e73987e5b549"
@@ -218,23 +227,24 @@
     }
   },
   "m1-17.json": {
-    "commit": "87af0280cbfd2c352b20691a1e9c56732b64350c",
+    "commit": "67c6df22b0db56a52a8429143582005efa51965b",
     "tree": "build/debug",
-    "date": "2026-10-03",
+    "date": "2026-10-05",
     "judges": {
-      "program test_image_compare.exe": "d815c0c11e58ecf1",
-      "program test_image_files.exe": "a92bd9de55821673",
-      "program test_probe_sidecar.exe": "b32747fae83e4a9d",
-      "program orbsim.exe": "2cd8b455969f5f28",
-      "program make_broken_goldens.exe": "25f912616c801647",
-      "ctest probe_golden_block": "bc2f0bb336eb5bfb",
-      "ctest probe_golden_shift": "5109fda488b4781c",
-      "ctest probe_clear": "9acad6acc0860410",
-      "ctest probe_golden_missing": "73b4832b890ed993",
-      "ctest usage_accept_without_validation": "3317cd352122b7f1",
-      "program orbsim_shaders": "aaf9306a0b5e5d7e",
-      "ctest accept_golden_self_test": "46b66b5cf634c1d4",
-      "ctest accept_golden": "3ef9febe547ea5f5"
+      "program test_image_compare.exe": "b4d9ac9250d2c223",
+      "program test_image_files.exe": "96c86dc9c020e918",
+      "program test_probe_sidecar.exe": "90d550e8bfe03f1a",
+      "program orbsim.exe": "1abd0f84dc210548",
+      "program make_broken_goldens.exe": "c37449b2896c4489",
+      "ctest probe_golden_block": "2359f81230803da2",
+      "ctest probe_golden_shift": "32daea166bd41abc",
+      "ctest probe_clear_golden": "362c647c3fa4d983",
+      "ctest probe_golden_missing": "fd2899a0cc9fcaae",
+      "ctest usage_accept_without_validation": "3ff85598e7112a69",
+      "ctest probe_clear": "8547cc2a6e626026",
+      "program orbsim_shaders": "f2fe6b5a30baf54e",
+      "ctest accept_golden_self_test": "67a916ccf8c019a7",
+      "ctest accept_golden": "b560531f34d914e4"
     }
   },
   "m1-18.json": {
