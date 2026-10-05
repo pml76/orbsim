@@ -6,6 +6,7 @@
 #include "render/VulkanContext.hpp"
 #include "render/VulkanHandle.hpp"
 #include "view/Exposure.hpp"
+#include "view/FileWrite.hpp"
 #include "view/GoldenPath.hpp"
 #include "view/ImageCompare.hpp"
 #include "view/ImageFiles.hpp"
@@ -29,7 +30,6 @@
 #include <iterator>
 #include <optional>
 #include <print>
-#include <span>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -64,33 +64,15 @@ constexpr std::string_view kCompilerName = "gcc " __VERSION__;
     return std::format("{:%Y-%m-%dT%H:%M:%SZ}", now);
 }
 
-// Writes bytes to a file, replacing what was there, through
-// std::filesystem::path so that the platform's own encoding of the name is
-// used (CODING_GUIDELINES section 18). The bytes become chars by value rather
-// than by a pointer cast, which costs one copy of a few megabytes.
-[[nodiscard]] std::expected<void, std::string> writeFile(const std::filesystem::path& path,
-                                                         std::span<const std::byte> bytes) {
-    std::vector<char> chars(bytes.size());
-    std::ranges::transform(bytes, chars.begin(), [](std::byte b) { return static_cast<char>(b); });
-    // Binary alone: an output stream truncates by itself, and openmode is a
-    // signed bitmask type, so combining two of its values is what
-    // bugprone-signed-bitwise reports.
-    std::ofstream file(path, std::ios::binary);
-    if (!file) return std::unexpected("cannot open " + path.string() + " for writing");
-    file.write(chars.data(), static_cast<std::streamsize>(chars.size()));
-    if (!file) return std::unexpected("could not write all of " + path.string());
-    return {};
-}
-
 [[nodiscard]] std::expected<void, std::string> writeText(const std::filesystem::path& path,
                                                          std::string_view text) {
     std::vector<std::byte> bytes(text.size());
     std::ranges::transform(text, bytes.begin(), [](char c) { return static_cast<std::byte>(c); });
-    return writeFile(path, bytes);
+    return view::writeFile(path, bytes);
 }
 
 // A file's bytes, or why they could not be read -- the other direction of
-// writeFile, through std::filesystem::path for the same reason (M1-17).
+// view::writeFile, through std::filesystem::path for the same reason (M1-17).
 [[nodiscard]] std::expected<std::vector<std::byte>, std::string>
 readFile(const std::filesystem::path& path) {
     std::ifstream file(path, std::ios::binary);
@@ -220,7 +202,7 @@ writeEncoded(RunRecord& run,
         std::print(stderr, "orbsim: {}: {}\n", name, encoded.error().message);
         return false;
     }
-    if (auto ok = writeFile(run.outDirectory / name, *encoded); !ok) {
+    if (auto ok = view::writeFile(run.outDirectory / name, *encoded); !ok) {
         std::print(stderr, "orbsim: {}\n", ok.error());
         return false;
     }
@@ -499,22 +481,10 @@ int acceptGolden(const GoldenToAccept& accepted) {
                    error.message());
         return kExitFailure;
     }
-    // Beside the golden, so that the rename stays on one volume and replaces
-    // the old file in one step (decision 232).
-    std::filesystem::path partial = golden;
-    partial += ".partial";
-    if (auto ok = writeFile(partial, *png); !ok) {
-        std::print(stderr, "orbsim: --accept-golden: {}\n", ok.error());
-        std::filesystem::remove(partial, error);
-        return kExitFailure;
-    }
-    std::filesystem::rename(partial, golden, error);
-    if (error) {
-        std::print(stderr,
-                   "orbsim: --accept-golden: cannot put {} in place: {}\n",
-                   golden.string(),
-                   error.message());
-        std::filesystem::remove(partial, error);
+    // Written beside the golden and renamed over it, so a failed write never
+    // leaves half of one (decision 232; view/FileWrite.hpp since M1-108).
+    if (auto replaced = view::replaceFile(golden, *png); !replaced) {
+        std::print(stderr, "orbsim: --accept-golden: {}\n", replaced.error());
         return kExitFailure;
     }
     std::print("accepted: wrote {} as the approved frame. Commit it with the code that produces "

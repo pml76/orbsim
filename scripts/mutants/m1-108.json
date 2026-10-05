@@ -1,0 +1,50 @@
+{
+  "task": "M1-108",
+  "tree": "build/debug",
+  "note": "Four rules that sat where no test could reach them, moved where one can (register decisions 273, 276 and 385-390). Judged two ways: the three that need no file system -- the exit-code order in app/ExitCodes.hpp and the two device rules in render/VulkanContext.cpp -- by the static_asserts beside them, which stop the build of orbsim, so a kill names the assertion; and write-then-rename by test_file_replace, on a temporary folder, never through --accept-golden (decision 233). **The limit, stated in advance**: these kill a broken rule, not a call to the rule that is removed. The four mutants that remove the calls stay declared survivors in m1-14.json and m1-17.json, re-worded, so the blind spot that remains is written where a machine reads it (decision 276). No survivor is declared here.",
+  "mutants": [
+    {
+      "name": "a golden mismatch outranks a validation error, in the rule",
+      "file": "src/app/ExitCodes.hpp",
+      "find": "    if (results.probeExitCode != 0 && results.probeExitCode != kExitGoldenMismatch) {",
+      "replace": "    if (results.probeExitCode != 0) {",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "replaceFile removes the partial file instead of renaming it over the target",
+      "file": "src/view/FileWrite.cpp",
+      "find": "    std::filesystem::rename(partial, target, error);",
+      "replace": "    std::filesystem::remove(partial, error);",
+      "suites": [
+        "test_file_replace"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the HDR format rule never reports a lack",
+      "file": "src/render/VulkanContext.cpp",
+      "find": "        return (have & static_cast<VkFormatFeatureFlags>(feature)) == 0;",
+      "replace": "        return (have & static_cast<VkFormatFeatureFlags>(feature)) == 0 && have == 0x7FFFFFFFU;",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the colour-space rule accepts any colour space",
+      "file": "src/render/VulkanContext.cpp",
+      "find": "    return colourSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;",
+      "replace": "    return colourSpace != VK_COLOR_SPACE_MAX_ENUM_KHR;",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "expect": "caught"
+    }
+  ]
+}

@@ -628,6 +628,7 @@ set(ORBSIM_VIEW_SOURCES
         src/view/Camera.cpp
         src/view/CameraController.cpp
         src/view/CameraPath.cpp
+        src/view/FileWrite.cpp
         src/view/FrameStatistics.cpp
         src/view/GoldenPath.cpp
         src/view/GpuClock.cpp
@@ -742,6 +743,7 @@ set(ORBSIM_TESTS
         test_double_double
         test_earth_orientation
         test_exposure
+        test_file_replace
         test_fixture_file
         test_golden_path
         test_gpu_clock
@@ -798,6 +800,7 @@ target_link_libraries(test_planetary_grid PRIVATE orbsim_view)
 target_link_libraries(test_statistics PRIVATE orbsim_view)
 target_link_libraries(test_gpu_clock PRIVATE orbsim_view)
 target_link_libraries(test_benchmark_path PRIVATE orbsim_view)
+target_link_libraries(test_file_replace PRIVATE orbsim_view)
 # And OpenEXR itself: the EXR is read back through the reference
 # implementation's own decoder, which is the check that the file is one.
 target_link_libraries(test_image_files PRIVATE orbsim_view OpenEXR::OpenEXRCore)
@@ -1514,6 +1517,7 @@ orbsim_add_header_selfcheck(orbsim_view_header_selfcheck orbsim_view
         view/CameraInput.hpp
         view/CameraPath.hpp
         view/Exposure.hpp
+        view/FileWrite.hpp
         view/Frame.hpp
         view/FrameStatistics.hpp
         view/GoldenPath.hpp
@@ -1567,6 +1571,7 @@ add_dependencies(test_planetary_grid orbsim_view_header_selfcheck)
 add_dependencies(test_statistics orbsim_view_header_selfcheck)
 add_dependencies(test_gpu_clock orbsim_view_header_selfcheck)
 add_dependencies(test_benchmark_path orbsim_view_header_selfcheck)
+add_dependencies(test_file_replace orbsim_view_header_selfcheck)
 
 if(ORBSIM_BUILD_APP)
     orbsim_add_header_selfcheck(orbsim_render_header_selfcheck orbsim_render_deps

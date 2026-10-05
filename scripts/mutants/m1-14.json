@@ -112,8 +112,8 @@
     {
       "name": "the HDR format check refuses a format the device supports",
       "file": "src/render/VulkanContext.cpp",
-      "find": "    if (lacks(VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)) {",
-      "replace": "    if (!lacks(VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)) {",
+      "find": "    if (lack == HdrFormatLack::ColourAttachment) {",
+      "replace": "    if (lack != HdrFormatLack::ColourAttachment) {",
       "suites": [],
       "targets": [
         "orbsim"
@@ -138,10 +138,10 @@
       "expect": "caught"
     },
     {
-      "name": "the HDR format check never reports",
+      "name": "the HDR format check never calls its rule",
       "file": "src/render/VulkanContext.cpp",
-      "find": "        return (have & static_cast<VkFormatFeatureFlags>(feature)) == 0;",
-      "replace": "        return (have & static_cast<VkFormatFeatureFlags>(feature)) == 0 && have == 0x7FFFFFFFU;",
+      "find": "    const HdrFormatLack lack = hdrFormatLack(properties.optimalTilingFeatures);",
+      "replace": "    const HdrFormatLack lack = HdrFormatLack::None;",
       "suites": [],
       "targets": [
         "orbsim"
@@ -150,12 +150,12 @@
         "orbsim_smoke"
       ],
       "expect": "survives",
-      "why": "The refusal can only be reached on a device without a format the Vulkan specification makes mandatory, and this machine has none. Accepted in advance by the owner on 2026-09-24 (M1-14 question 10). The mutant above, which makes the check refuse a supported format, shows the check is wired in."
+      "why": "The refusal can only be reached on a device without a format the Vulkan specification makes mandatory, and this machine has none. Accepted in advance by the owner on 2026-09-24 (M1-14 question 10). **Re-worded by M1-108 (register decision 276)**: the rule itself -- which feature bits are lacking -- is now hdrFormatLack, held by static_asserts beside it, and m1-108.json's mutant that breaks it is caught. What stays unseen is the call to the rule removed, which only a device lacking a mandatory feature would show. The mutant above, which makes the check refuse a format the device supports, shows the check is wired in."
     },
     {
-      "name": "the swapchain check accepts any colour space",
+      "name": "the swapchain check never calls its colour-space rule",
       "file": "src/render/VulkanContext.cpp",
-      "find": "    if (colourSpace != VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {",
+      "find": "    if (!isSrgbColourSpace(colourSpace)) {",
       "replace": "    if (colourSpace == VK_COLOR_SPACE_MAX_ENUM_KHR) {",
       "suites": [],
       "targets": [
@@ -165,7 +165,7 @@
         "orbsim_smoke"
       ],
       "expect": "survives",
-      "why": "Both of this machine's surfaces offer B8G8R8A8_UNORM in the sRGB colour space first, so the refusal cannot be reached here. Accepted in advance by the owner on 2026-09-24 (M1-14 question 10)."
+      "why": "Both of this machine's surfaces offer B8G8R8A8_UNORM in the sRGB colour space first, so the refusal cannot be reached here. Accepted in advance by the owner on 2026-09-24 (M1-14 question 10). **Re-worded by M1-108 (register decision 276)**: the rule itself is now isSrgbColourSpace, held by static_asserts beside it, and m1-108.json's mutant that breaks it is caught. What stays unseen is the call to the rule removed, which only a surface offering another colour space first would show."
     },
     {
       "name": "the tonemap shader encodes with the gamma-2.2 exponent",

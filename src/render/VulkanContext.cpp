@@ -433,6 +433,48 @@ selectPhysicalDevice(const vkb::Instance& instance, VkSurfaceKHR surface) {
     };
 }
 
+// The first of the HDR target's three uses a format's feature bits lack, in
+// the order checkHdrFormat reports them, or None. A function of the bits
+// alone, so that the compiler can check it below on bits no device on this
+// machine reports (M1-108, register decision 389).
+enum class HdrFormatLack : std::uint8_t { None, ColourAttachment, Sampling, CopyOut };
+
+[[nodiscard]] constexpr HdrFormatLack hdrFormatLack(VkFormatFeatureFlags have) {
+    const auto lacks = [have](VkFormatFeatureFlagBits feature) {
+        return (have & static_cast<VkFormatFeatureFlags>(feature)) == 0;
+    };
+    if (lacks(VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)) return HdrFormatLack::ColourAttachment;
+    if (lacks(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) return HdrFormatLack::Sampling;
+    // Since M1-16 the target is also copied out, by a probe's readback
+    // (register decision 188).
+    if (lacks(VK_FORMAT_FEATURE_TRANSFER_SRC_BIT)) return HdrFormatLack::CopyOut;
+    return HdrFormatLack::None;
+}
+
+constexpr VkFormatFeatureFlags kHdrFormatUses =
+    static_cast<VkFormatFeatureFlags>(VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT) |
+    static_cast<VkFormatFeatureFlags>(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT) |
+    static_cast<VkFormatFeatureFlags>(VK_FORMAT_FEATURE_TRANSFER_SRC_BIT);
+// All three, alone or among every other bit, lack nothing.
+static_assert(hdrFormatLack(kHdrFormatUses) == HdrFormatLack::None);
+static_assert(hdrFormatLack(~VkFormatFeatureFlags{0}) == HdrFormatLack::None);
+// Each one missing is reported by name, whatever else is there.
+static_assert(hdrFormatLack(kHdrFormatUses & ~static_cast<VkFormatFeatureFlags>(
+                                                 VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)) ==
+              HdrFormatLack::ColourAttachment);
+static_assert(hdrFormatLack(kHdrFormatUses & ~static_cast<VkFormatFeatureFlags>(
+                                                 VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) ==
+              HdrFormatLack::Sampling);
+static_assert(hdrFormatLack(kHdrFormatUses & ~static_cast<VkFormatFeatureFlags>(
+                                                 VK_FORMAT_FEATURE_TRANSFER_SRC_BIT)) ==
+              HdrFormatLack::CopyOut);
+static_assert(hdrFormatLack(~static_cast<VkFormatFeatureFlags>(
+                  VK_FORMAT_FEATURE_TRANSFER_SRC_BIT)) == HdrFormatLack::CopyOut);
+// With several missing, the first in checkHdrFormat's order.
+static_assert(hdrFormatLack(VkFormatFeatureFlags{0}) == HdrFormatLack::ColourAttachment);
+static_assert(hdrFormatLack(static_cast<VkFormatFeatureFlags>(
+                  VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)) == HdrFormatLack::Sampling);
+
 // Whether the device can draw into kHdrFormat and let a shader read it. Both
 // are mandatory in the Vulkan specification, so a conformant device always
 // passes; the device is asked anyway, once, because "mandatory" is a claim
@@ -440,21 +482,16 @@ selectPhysicalDevice(const vkb::Instance& instance, VkSurfaceKHR surface) {
 [[nodiscard]] std::expected<void, RenderError> checkHdrFormat(VkPhysicalDevice physicalDevice) {
     VkFormatProperties properties{};
     vkGetPhysicalDeviceFormatProperties(physicalDevice, kHdrFormat, &properties);
-    const VkFormatFeatureFlags have = properties.optimalTilingFeatures;
-    const auto lacks = [have](VkFormatFeatureFlagBits feature) {
-        return (have & static_cast<VkFormatFeatureFlags>(feature)) == 0;
-    };
-    if (lacks(VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT)) {
+    const HdrFormatLack lack = hdrFormatLack(properties.optimalTilingFeatures);
+    if (lack == HdrFormatLack::ColourAttachment) {
         return fail(std::string("The GPU cannot render into ") + string_VkFormat(kHdrFormat) +
                     ", which the Vulkan specification makes mandatory");
     }
-    if (lacks(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT)) {
+    if (lack == HdrFormatLack::Sampling) {
         return fail(std::string("The GPU cannot read ") + string_VkFormat(kHdrFormat) +
                     " in a shader, which the Vulkan specification makes mandatory");
     }
-    // Since M1-16 the target is also copied out, by a probe's readback
-    // (register decision 188).
-    if (lacks(VK_FORMAT_FEATURE_TRANSFER_SRC_BIT)) {
+    if (lack == HdrFormatLack::CopyOut) {
         return fail(std::string("The GPU cannot copy out of ") + string_VkFormat(kHdrFormat) +
                     ", which a probe's readback needs");
     }
@@ -512,9 +549,30 @@ constexpr std::array kPresentableFormats{
 // may be an _SRGB format or an HDR colour space. So what came back is checked
 // against Vulkan-Utility-Libraries' format table -- an opinion formed without
 // this code -- and refused by name rather than presented wrong.
+// Whether a swapchain's colour space is sRGB's, the one tonemap.frag encodes
+// for. A function of its own, so that the compiler can check it below on
+// colour spaces neither of this machine's surfaces offers (M1-108, register
+// decision 389).
+[[nodiscard]] constexpr bool isSrgbColourSpace(VkColorSpaceKHR colourSpace) {
+    return colourSpace == VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+}
+
+static_assert(std::ranges::all_of(kPresentableFormats, [](const VkSurfaceFormatKHR& wanted) {
+    return isSrgbColourSpace(wanted.colorSpace);
+}));
+// Linear, wide-gamut and HDR spaces are refused -- among them the two whose
+// names are sRGB's with a word added.
+static_assert(!isSrgbColourSpace(VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT));
+static_assert(!isSrgbColourSpace(VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT));
+static_assert(!isSrgbColourSpace(VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT));
+static_assert(!isSrgbColourSpace(VK_COLOR_SPACE_BT709_NONLINEAR_EXT));
+static_assert(!isSrgbColourSpace(VK_COLOR_SPACE_HDR10_ST2084_EXT));
+static_assert(!isSrgbColourSpace(VK_COLOR_SPACE_PASS_THROUGH_EXT));
+static_assert(!isSrgbColourSpace(VK_COLOR_SPACE_MAX_ENUM_KHR));
+
 [[nodiscard]] std::expected<void, RenderError> checkPresentableFormat(VkFormat format,
                                                                       VkColorSpaceKHR colourSpace) {
-    if (colourSpace != VK_COLOR_SPACE_SRGB_NONLINEAR_KHR) {
+    if (!isSrgbColourSpace(colourSpace)) {
         return fail(std::string("The display offers no sRGB swapchain; the closest was ") +
                     string_VkFormat(format) + " in " + string_VkColorSpaceKHR(colourSpace));
     }

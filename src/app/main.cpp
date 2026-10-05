@@ -53,7 +53,6 @@ using orb::app::SdlError;
 
 using orb::app::GoldenAction;
 using orb::app::kExitFailure;
-using orb::app::kExitGoldenMismatch;
 using orb::app::kExitUsage;
 using orb::app::kExitValidationErrors;
 
@@ -659,30 +658,37 @@ runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& v
     return status;
 }
 
+void reportValidationErrors(uint32_t errors) {
+    std::print(stderr, "orbsim: {} validation error(s) reported; see the log above\n", errors);
+}
+
 // 3 if the validation layers reported anything, read once the renderer is
 // torn down -- teardown is where validation errors hide.
 [[nodiscard]] int validationVerdict(uint32_t errors) {
     if (errors == 0) return 0;
-    std::print(stderr, "orbsim: {} validation error(s) reported; see the log above\n", errors);
+    reportValidationErrors(errors);
     return kExitValidationErrors;
 }
 
 // A probe run's exit code, in register decision 230's order -- a failure,
 // then validation errors, then a golden mismatch -- and the golden accepted
-// only once all three are clear (decision 232).
+// only once all three are clear (decision 232). The order is probeExit's, in
+// app/ExitCodes.hpp, where the compiler checks it (M1-108).
 [[nodiscard]] int finishProbe(const orb::app::ProbeOutcome& outcome, uint32_t errors) {
-    if (outcome.exitCode != 0 && outcome.exitCode != kExitGoldenMismatch) return outcome.exitCode;
-    if (const int verdict = validationVerdict(errors); verdict != 0) {
+    const orb::app::ProbeExit verdict =
+        orb::app::probeExit({.probeExitCode = outcome.exitCode, .validationErrors = errors});
+    if (verdict.exitCode == kExitValidationErrors) {
+        reportValidationErrors(errors);
         if (outcome.toAccept) {
             std::print(stderr,
                        "orbsim: --accept-golden: nothing written, because of the "
                        "validation errors\n");
         }
-        return verdict;
     }
-    if (outcome.exitCode == kExitGoldenMismatch) return kExitGoldenMismatch;
-    if (outcome.toAccept) return orb::app::acceptGolden(*outcome.toAccept);
-    return 0;
+    if (outcome.toAccept && verdict.golden == orb::app::GoldenWrite::Allowed) {
+        return orb::app::acceptGolden(*outcome.toAccept);
+    }
+    return verdict.exitCode;
 }
 
 // The window a run draws in. A probe's is hidden: it is created, so that there

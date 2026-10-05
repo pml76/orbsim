@@ -198,26 +198,26 @@
       "expect": "caught"
     },
     {
-      "name": "--accept-golden never puts the golden in place",
+      "name": "--accept-golden never calls replaceFile",
       "file": "src/app/ProbeMode.cpp",
-      "find": "    std::filesystem::rename(partial, golden, error);",
-      "replace": "    std::filesystem::remove(partial, error);",
+      "find": "    if (auto replaced = view::replaceFile(golden, *png); !replaced) {",
+      "replace": "    if (std::expected<void, std::string> replaced{}; !replaced) {",
       "suites": [],
       "targets": ["orbsim"],
       "ctest": ["probe_clear"],
       "expect": "survives",
-      "why": "No test may run --accept-golden with --golden (register decision 233; the CTest test accept_golden refuses one), so nothing automated writes a golden. The path was exercised once, by the owner, on 2026-09-29 (decision 241), and its result checked value for value against an independent implementation. Declared for the owner's acceptance."
+      "why": "No test may run --accept-golden with --golden (register decision 233; the CTest test accept_golden refuses one), so nothing automated writes a golden. The path was exercised once, by the owner, on 2026-09-29 (decision 241), and its result checked value for value against an independent implementation. Declared for the owner's acceptance. **Re-worded by M1-108 (register decision 276)**: write-then-rename is now view::replaceFile, held by test_file_replace on a temporary folder, and m1-108.json's mutant that breaks it is caught. What stays unseen is the call to it removed."
     },
     {
-      "name": "a golden mismatch outranks a validation error",
+      "name": "finishProbe never calls probeExit",
       "file": "src/app/main.cpp",
-      "find": "    if (outcome.exitCode != 0 && outcome.exitCode != kExitGoldenMismatch) return outcome.exitCode;",
-      "replace": "    if (outcome.exitCode != 0) return outcome.exitCode;",
+      "find": "        orb::app::probeExit({.probeExitCode = outcome.exitCode, .validationErrors = errors});",
+      "replace": "        orb::app::ProbeExit{.exitCode = outcome.exitCode, .golden = orb::app::GoldenWrite::Allowed};",
       "suites": [],
       "targets": ["orbsim", "make_broken_goldens"],
       "ctest": ["probe_clear_golden", "probe_golden_block", "probe_golden_shift"],
       "expect": "survives",
-      "why": "Telling decision 230's order apart needs a run with a validation error and a mismatch at once, and a validation error can be planted only by a fault in the product -- the hidden switch decision 193 refuses. The order is written in finishProbe in main.cpp and stated beside it. Declared for the owner's acceptance."
+      "why": "Telling decision 230's order apart in the application needs a run with a validation error and a mismatch at once, and a validation error can be planted only by a fault in the product -- the hidden switch decision 193 refuses. Declared for the owner's acceptance. **Re-worded by M1-108 (register decision 276)**: the order itself is now probeExit in app/ExitCodes.hpp, held by static_asserts over every pairing, and m1-108.json's mutant that breaks it is caught. What stays unseen is the call to it removed, which takes the validation count out of a probe's exit code."
     },
     {
       "name": "the guard does not read the scripts a test runs",
