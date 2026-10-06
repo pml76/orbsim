@@ -24,6 +24,8 @@ Run all of it, and write the numbers down.
 ```
 cmake --preset asan && cmake --build build/asan && ctest --test-dir build/asan --output-on-failure
 
+call vcvars64.bat && cmake --preset windows-msvc && cmake --build build/windows-msvc &&     ctest --test-dir build/windows-msvc --output-on-failure      # PROJECT_STATE.md section 2
+
 wsl -d Ubuntu -u root -- bash -c "cd /mnt/c/Users/U439644/Projects/untitled && \
     cmake --preset linux-sanitize && cmake --build build/linux-sanitize && \
     ctest --test-dir build/linux-sanitize --output-on-failure"
@@ -33,6 +35,13 @@ wsl -d Ubuntu -u root -- bash -c "… --preset linux-gcc … && ctest --test-dir
 wsl -d Ubuntu -u root -- bash -c "… --preset linux-fuzz … && ./build/linux-fuzz/fuzz_orbit tests/corpus/fuzz_orbit -max_total_time=240"
 wsl -d Ubuntu -u root -- bash -c "… --preset linux-fuzz … && ./build/linux-fuzz/fuzz_time  tests/corpus/fuzz_time  -max_total_time=900"
 ```
+
+*(Amended 2026-10-06, register decisions 400 and 404.)* **`windows-msvc` was
+missing from this list**, although the checklist below requires it. **And the
+fuzzers run in both builds**: `windows-fuzz`, the route
+[`VERIFICATION.md`](../../VERIFICATION.md) rule 13 names, and `linux-fuzz`
+above, the only place LeakSanitizer exists -- each for its full budget from
+its committed corpus.
 
 **Both fuzz targets, not one.** `fuzz_time` was added on 2026-09-18 with M1-04
 (decision 41) and gained claims again with M1-05 and M1-86; it is the only
@@ -55,7 +64,9 @@ great deal of new code to it.
   means a test is compiled out somewhere, which is worse than a failure because
   it looks like success.
 - **The sanitizers are actually linked**, not merely configured — the check
-  `PROJECT_STATE.md` section 6.3 describes, because a green run under a
+  [`VERIFICATION.md`](../../VERIFICATION.md) rule 20 describes *(this pointed
+  at `PROJECT_STATE.md` section 6.3, which names the result but not the check,
+  until 2026-10-06, decision 404)*, because a green run under a
   sanitizer that was never enabled is the exact failure mode the clang-tidy
   header filter had for sixteen commits.
 - **gcc-14 sees the new code.** It has already found two defects Windows clang
@@ -76,8 +87,11 @@ In `PROJECT_STATE.md`:
   modelled, and the solar formula is ERFA's);
 - every golden image now committed, and the date each was approved.
 
-And in `VERIFICATION.md` Part 4: rule 3 moves off **to build** — external truth
-now reaches both the physics and the renderer.
+~~And in `VERIFICATION.md` Part 4: rule 3 moves off **to build** — external truth
+now reaches both the physics and the renderer.~~ *(Struck 2026-10-06, decision
+404: rule 3's row has read **done for what exists** since M1-08 brought the Sun
+against Horizons, and external truth for the renderer waits for a real
+photograph, register decision 265 -- so Part 4 stays as it is.)*
 
 ## Done when
 

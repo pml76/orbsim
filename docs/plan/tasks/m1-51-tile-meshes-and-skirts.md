@@ -63,7 +63,11 @@ On the GPU:
 
 - **Probe `terrain-tiles`** with a golden: several tiles at two levels, drawn
   with a wireframe overlay from the M1-19 line renderer so the tessellation is
-  visible.
+  visible. *(Added 2026-10-06, register decision 405 (e).)* **Drawn as line
+  lists, the overlay already follows Bresenham's rule; drawn as triangles in
+  a line polygon mode, it does not**, and ADR 0025's rule is extended to that
+  pipeline in this task -- the hand-over M1-19 made to phase D and no task
+  document had carried.
 
 ## Frames to look at
 

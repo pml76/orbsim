@@ -1,6 +1,6 @@
 # Milestone 1 — the task queue
 
-Status: **planned 2026-09-08.** 110 tasks, in one order. (84 until 2026-09-13,
+Status: **planned 2026-09-08.** 114 tasks, in one order. (84 until 2026-09-13,
 when an audit found phase F had no gate although the rule below says every
 phase ends with one. The new task is **M1-85**, sitting between 77 and 78:
 renumbering seven tasks to make it "78" would have broken the identifiers that
@@ -31,7 +31,10 @@ added, to run after M1-108: the due list made to list only what a change can
 reach, measured first -- decision 276. The same day both moved to just
 before the phase A gate, M1-23, where the mutation pass next runs in full --
 decision 277. 109 until later that day, when **M1-110** was added, to run
-before M1-19: one golden per graphics card -- decisions 287 and 288.)
+before M1-19: one golden per graphics card -- decisions 287 and 288. 110 until
+2026-10-06, when the phase A gate turned four open items into tasks rather
+than carry them into phase B: **M1-111 to M1-113** at the start of phase B,
+and **M1-114**, smoother lines, after M1-76 -- decision 405.)
 Which of them are done is in [`../STATUS.md`](../STATUS.md), not here.
 
 This is the working document for [milestone 1](milestone-1-earth.md): Earth, an
@@ -252,6 +255,9 @@ compilers' included -- passing.
 
 | # | Task | Prerequisites | Ends with |
 |---|---|---|---|
+| [111](tasks/m1-111-one-write-file.md) | The benchmark writes its files through `writeFile` | 108 | One `writeFile`, tested |
+| [112](tasks/m1-112-probe-format-rule.md) | The probe display format's rule made reachable | 108 | A rule a `static_assert` can see |
+| [113](tasks/m1-113-main-debug-dialog.md) | The application stops, rather than waits, on a debug-library check | 21 | A message and an exit, not a dialog |
 | [24](tasks/m1-24-tile-identity.md) | `TileId` and the tile scheme | 09 | Orbiter's own indexing, tested |
 | [25](tasks/m1-25-tilesource.md) | The `TileSource` seam | 24 | A closed set, and a synthetic source |
 | [26](tasks/m1-26-ktx2-reader.md) | The KTX2 reader, and its fuzz target | 01, 25 | Untrusted bytes, refused by name |
@@ -325,6 +331,7 @@ compilers' included -- passing.
 |---|---|---|---|
 | [75](tasks/m1-75-orbitpath.md) | `OrbitPath` moves into `src/orbit/` | 01 | The example's algorithm, in the project |
 | [76](tasks/m1-76-draw-the-track.md) | Drawing the track, and apsis markers | 19, 71, 75 | A track, camera-relative |
+| [114](tasks/m1-114-smooth-lines.md) | Smoother lines, as a quality setting | 46, 76 | The owner's choice of method, visual only |
 | [77](tasks/m1-77-precession-budget.md) | The precession budget | 63, 68, 76 | Phase F's inverted criterion: it must move |
 | [85](tasks/m1-85-phase-f-gate.md) | **Phase F gate** | 75–77 | The track precesses, and drawing changed nothing |
 

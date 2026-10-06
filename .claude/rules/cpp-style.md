@@ -74,7 +74,10 @@ cmake -S coding-guidelines-example -B coding-guidelines-example/build -G Ninja \
   `toShaderLambert` in `src/view/Lambert.cpp`, for the lambert probes' light
   (M1-18) -- three of its casts in `narrowedDirection`, a helper only it calls.
   `grep static_cast<f32> src/` is the audit and it should find fourteen casts
-  in those places; a fifteenth anywhere else is a defect waiting to be filed. A position needs a camera-relative subtraction
+  in those places, beside comment lines that name the audit itself -- five on
+  2026-10-06, so nineteen lines, which M1-22 once read as nineteen casts
+  (register decision 405 (d)); a fifteenth cast anywhere else is a defect
+  waiting to be filed. A position needs a camera-relative subtraction
   in `f64` before it narrows, which is the whole point of `toRenderSpace`; a
   scale factor does not, since a float's relative precision is the same at
   every magnitude.

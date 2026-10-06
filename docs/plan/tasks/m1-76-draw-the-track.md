@@ -27,6 +27,15 @@ see as a curve than as six numbers.
   is `GREATER`.
 - The sample count is a constant now; if it ever becomes a quality setting it
   belongs in `RenderQuality`, and the comment says so.
+- *(Added 2026-10-06, register decision 405 (f).)* **Two of M1-19's declared
+  survivors are this task's to kill**, and it re-runs
+  `scripts/mutants/m1-19.json` and removes each declaration it kills, or says
+  why the survivor still stands: **the line pipeline writing depth** (register
+  decision 317), which no frame can see until lines are drawn over a surface;
+  and **the vertex shader ignoring the tint** (register decision 318), handed
+  "to the first caller that uses a tint other than white" -- the apsis
+  markers' distinct colour is that caller, if it is given as a tint. No task
+  document had carried the second.
 
 ## Out of scope
 
