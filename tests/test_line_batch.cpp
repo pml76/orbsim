@@ -85,14 +85,16 @@ constexpr Rgba kWhite{.r = 1.0F, .g = 1.0F, .b = 1.0F, .a = 1.0F};
 
 TEST_CASE("a polyline of n points is 2(n - 1) vertices, each segment's ends in order") {
     const Camera camera = cameraAt(Position{0.5, -2.0, 7.0});
-    const std::array<Position, 6> points{{
-        Position{0.0, 0.0, 0.0},
-        Position{1.0, 0.0, 0.0},
-        Position{1.0, 2.0, 0.0},
-        Position{1.0, 2.0, -3.0},
-        Position{-4.0, 2.0, -3.0},
-        Position{-4.0, 5.0, 6.0},
-    }};
+    const std::array<Position, 6> points{
+        {
+            Position{0.0, 0.0, 0.0},
+            Position{1.0, 0.0, 0.0},
+            Position{1.0, 2.0, 0.0},
+            Position{1.0, 2.0, -3.0},
+            Position{-4.0, 2.0, -3.0},
+            Position{-4.0, 5.0, 6.0},
+        },
+    };
     for (std::size_t n = 2; n <= points.size(); ++n) {
         INFO("n = " << n);
         LineBatch batch{VertexCount{64U}};
@@ -200,12 +202,14 @@ TEST_CASE("every position is toRenderSpace's, bit for bit, at every scale") {
     // astronomical unit -- so the camera-relative difference is both tiny and
     // enormous, and nothing needs a seed.
     const std::array<f64, 6> magnitudes{{0.0, 1.0, 1.0e3, 6.371e6, 3.844e8, 1.495978707e11}};
-    const std::array<Direction, 4> directions{{
-        Direction{1.0, 0.0, 0.0},
-        Direction{0.0, -1.0, 0.0},
-        Direction{0.6, 0.0, -0.8},
-        Direction{-0.48, 0.6, 0.64},
-    }};
+    const std::array<Direction, 4> directions{
+        {
+            Direction{1.0, 0.0, 0.0},
+            Direction{0.0, -1.0, 0.0},
+            Direction{0.6, 0.0, -0.8},
+            Direction{-0.48, 0.6, 0.64},
+        },
+    };
     std::vector<Position> points;
     for (const f64 magnitude : magnitudes) {
         for (const Direction& d : directions) {
@@ -245,11 +249,13 @@ TEST_CASE("past the capacity is refused by name, and leaves the batch unchanged"
     const Camera camera = cameraAt(Position{0.0, 0.0, 5.0});
     const Segment first{.from = Position{0.0, 0.0, 0.0}, .to = Position{1.0, 0.0, 0.0}};
     const Segment second{.from = Position{0.0, 1.0, 0.0}, .to = Position{1.0, 1.0, 0.0}};
-    const std::array<Position, 3> threePoints{{
-        Position{0.0, 2.0, 0.0},
-        Position{1.0, 2.0, 0.0},
-        Position{2.0, 2.0, 0.0},
-    }};
+    const std::array<Position, 3> threePoints{
+        {
+            Position{0.0, 2.0, 0.0},
+            Position{1.0, 2.0, 0.0},
+            Position{2.0, 2.0, 0.0},
+        },
+    };
 
     LineBatch batch{VertexCount{4U}};
     REQUIRE(batch.addSegment(first, kWhite, camera).has_value());

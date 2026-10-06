@@ -442,23 +442,25 @@ TEST_CASE("the prime meridian, the equator and the pole are where Skyfield puts 
         Position grid;
         Plain bodyFixed;
     };
-    const std::array<Check, 3> checks{{
-        Check{
-            .what = "latitude 0, longitude 0",
-            .grid = meridian.at(180),
-            .bodyFixed = {.x = kRadius, .y = 0.0, .z = 0.0},
+    const std::array<Check, 3> checks{
+        {
+            Check{
+                .what = "latitude 0, longitude 0",
+                .grid = meridian.at(180),
+                .bodyFixed = {.x = kRadius, .y = 0.0, .z = 0.0},
+            },
+            Check{
+                .what = "latitude 0, longitude 90 east",
+                .grid = equator.at(180),
+                .bodyFixed = {.x = 0.0, .y = kRadius, .z = 0.0},
+            },
+            Check{
+                .what = "the north pole",
+                .grid = meridian.at(360),
+                .bodyFixed = {.x = 0.0, .y = 0.0, .z = kRadius},
+            },
         },
-        Check{
-            .what = "latitude 0, longitude 90 east",
-            .grid = equator.at(180),
-            .bodyFixed = {.x = 0.0, .y = kRadius, .z = 0.0},
-        },
-        Check{
-            .what = "the north pole",
-            .grid = meridian.at(360),
-            .bodyFixed = {.x = 0.0, .y = 0.0, .z = kRadius},
-        },
-    }};
+    };
     for (const Check& check : checks) {
         const f64 angle = angleBetweenPlain({
             .measured = plainOf(check.grid),
