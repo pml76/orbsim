@@ -105,3 +105,14 @@ The numbers are in [the measurement](../../measurements/m1-109-due-list.md).
       by `m1-109.json`'s pass.
 - [x] `check` green in both trees -- 524 of 524 in each, 2026-10-06, on the
       RTX A2000 machine.
+- [x] The mutation pass, at `9da2aee`, with the build capped at two jobs for
+      want of memory: **`m1-109.json` 22 caught and its 3 declared survivors
+      surviving**, 23 min 9 s, after a first run (18 min 17 s) found one
+      mutant that did not compile and was rewritten; and the sixteen files
+      whose mutants changed, **every one with only its declared survivors
+      surviving** -- `m1-92.json` 6 of 6, its former survivor caught. None
+      invalid or hung; 1 h 43 min for the seventeen. Checked by hand after
+      it, for the two survivors reached by no test: the three GPU-judged
+      files just passed record this machine's card and come out current,
+      `m1-13` and `m1-19` report "no graphics card recorded", and script-only
+      files record none.
