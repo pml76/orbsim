@@ -120,6 +120,46 @@ if(ORBSIM_PYTHON AND ORBSIM_BUILD_APP)
             COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutants-due.py
                     ${CMAKE_BINARY_DIR} --fingerprints m1-17.json
     )
+    # The narrowings of M1-109 (register decisions 392-394), each held from
+    # both sides. A shader read by the lambert probes only: it must make
+    # m1-18 due through those probes' sidecars, and m1-19 only through the
+    # fixture its readers require (CTest runs every probe before them); it
+    # must not make due m1-16, whose probe is `clear` and reads other shaders,
+    # nor m1-97, whose mutants are of a Python script and build nothing. The
+    # sidecars must be this build's, so the probes run first: probe_data, and
+    # the two reruns of clear that m1-16 judges by too, probe_clear_reruns --
+    # without them a sidecar older than the application counts every shader,
+    # and m1-16 is due in a run where they happened to come later (measured
+    # in the Debug tree, 2026-10-05).
+    add_test(NAME mutants_due_probe_shaders
+            COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutants-due.py
+                    ${CMAKE_BINARY_DIR} --assume-changed shaders/lambert.frag --only-assumed
+                    --expect-due m1-18.json --expect-due m1-19.json
+                    --expect-current m1-16.json --expect-current m1-97.json
+    )
+    # And --expect-current must be able to fail: expecting a file current where
+    # it is due must fail the run and say so, as for --expect-due.
+    add_test(NAME mutants_due_unmet_current_fails
+            COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutants-due.py
+                    ${CMAKE_BINARY_DIR} --assume-changed shaders/lambert.frag --only-assumed
+                    --expect-unmet-current m1-18.json
+    )
+    set_tests_properties(mutants_due_probe_shaders PROPERTIES
+            LABELS fixtures RESOURCE_LOCK ninja_deps FIXTURES_REQUIRED "probe_data;probe_clear_reruns")
+    set_tests_properties(mutants_due_unmet_current_fails PROPERTIES
+            LABELS fixtures RESOURCE_LOCK ninja_deps FIXTURES_REQUIRED probe_data)
+    # The graphics card a pass records for a file judged on one (register
+    # decision 397), read the way mutate.py reads it: a clear probe's sidecar.
+    # It fails where the card cannot be read, which would leave every
+    # GPU-judged file due on every run, and where the run asked for validation
+    # and had no layer, which would leave every GPU test passing unvalidated
+    # (decision 398). It runs the application, so it holds the GPU's lock, and
+    # runs mutants-due.py, so the header record's too.
+    add_test(NAME mutants_due_gpu_identity
+            COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutants-due.py
+                    ${CMAKE_BINARY_DIR} --gpu-identity
+    )
+    set_tests_properties(mutants_due_gpu_identity PROPERTIES LABELS gpu RESOURCE_LOCK "gpu;ninja_deps")
     # --expect-unmet requires the check to fail and to say why, both: CTest's own
     # rules can require one or the other, and each let a defect through -- a
     # refusal or a crash under WILL_FAIL, a check that said so but exited 0
@@ -136,8 +176,13 @@ elseif(ORBSIM_BUILD_APP)
     add_test(NAME mutants_due_scripts COMMAND ${CMAKE_COMMAND} -E false)
     add_test(NAME mutants_due_unmet_expectation_fails COMMAND ${CMAKE_COMMAND} -E false)
     add_test(NAME mutants_due_fingerprints COMMAND ${CMAKE_COMMAND} -E false)
+    add_test(NAME mutants_due_probe_shaders COMMAND ${CMAKE_COMMAND} -E false)
+    add_test(NAME mutants_due_unmet_current_fails COMMAND ${CMAKE_COMMAND} -E false)
+    add_test(NAME mutants_due_gpu_identity COMMAND ${CMAKE_COMMAND} -E false)
     set_tests_properties(mutants_due mutants_due_shaders mutants_due_scripts mutants_due_fingerprints
-            mutants_due_unmet_expectation_fails PROPERTIES LABELS fixtures)
+            mutants_due_unmet_expectation_fails mutants_due_probe_shaders
+            mutants_due_unmet_current_fails PROPERTIES LABELS fixtures)
+    set_tests_properties(mutants_due_gpu_identity PROPERTIES LABELS gpu)
 endif()
 if(ORBSIM_PYTHON)
     add_test(NAME mutants_due_self_test

@@ -1,7 +1,7 @@
 {
   "task": "M1-98",
   "tree": "build/relwithdebinfo",
-  "note": "The stale-tree guard (register decision 225). The script mutants blind scripts/check-configure-current.py one way each and are judged by its self-test; the module mutants break the configure-time refusal or its record and are judged by configure_guard, which configures a scratch project that edits itself, and by configure_current on this tree; the CMake mutants unhook the guard from this project and are judged by configure_current against the tree they regenerate. Nothing here needs a compile, but the harness always builds, so every mutant names orbsim_shaders -- which, after a CMakeLists.txt mutant, also regenerates the tree.",
+  "note": "The stale-tree guard (register decision 225). The script mutants blind scripts/check-configure-current.py one way each and are judged by its self-test; the module mutants break the configure-time refusal or its record and are judged by configure_guard, which configures a scratch project that edits itself, and by configure_current on this tree; the CMake mutants unhook the guard from this project and are judged by configure_current against the tree they regenerate. Since M1-109 (register decision 392) a Python mutant names no build target, and the harness builds nothing for it; until then every mutant named orbsim_shaders as a no-op, which made every shader an input of this file. A CMake mutant names build.ninja instead, which re-runs CMake when a CMake file changed and builds nothing else.",
   "mutants": [
     {
       "name": "a changed file is not reported",
@@ -10,9 +10,7 @@
       "replace": "        elif False:",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "configure_current_self_test",
         "configure_current"
@@ -25,9 +23,7 @@
       "replace": "    if False:",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "configure_current_self_test",
         "configure_current"
@@ -40,9 +36,7 @@
       "replace": "    if edge is None:",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "configure_current_self_test",
         "configure_current"
@@ -56,7 +50,7 @@
       "expect": "caught",
       "suites": [],
       "targets": [
-        "orbsim_shaders"
+        "build.ninja"
       ],
       "ctest": [
         "configure_guard",
@@ -71,7 +65,7 @@
       "expect": "caught",
       "suites": [],
       "targets": [
-        "orbsim_shaders"
+        "build.ninja"
       ],
       "ctest": [
         "configure_guard",
@@ -86,7 +80,7 @@
       "expect": "caught",
       "suites": [],
       "targets": [
-        "orbsim_shaders"
+        "build.ninja"
       ],
       "ctest": [
         "configure_current"
@@ -100,7 +94,7 @@
       "expect": "caught",
       "suites": [],
       "targets": [
-        "orbsim_shaders"
+        "build.ninja"
       ],
       "ctest": [
         "configure_current"
@@ -114,7 +108,7 @@
       "expect": "caught",
       "suites": [],
       "targets": [
-        "orbsim_shaders"
+        "build.ninja"
       ],
       "ctest": [
         "configure_current"

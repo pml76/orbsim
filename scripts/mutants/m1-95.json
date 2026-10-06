@@ -21,7 +21,7 @@
       "expect": "survives",
       "why": "Equivalent by construction: a Python comment changes no behaviour. It exists to be judged right after mutant A, and it survives only if the harness rebuilt test_math after restoring A's file (M1-95, register decision 221).",
       "suites": [],
-      "targets": ["orbsim_shaders"],
+      "targets": [],
       "ctest": ["abort_listener"]
     }
   ]

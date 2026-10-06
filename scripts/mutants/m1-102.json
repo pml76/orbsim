@@ -1,7 +1,7 @@
 {
   "task": "M1-102",
   "tree": "build/relwithdebinfo",
-  "note": "Ninja's header record read one query at a time, and never trusted empty (register decision 249). The CMake mutant takes the lock away and is judged by parallel_tests on this tree; the script mutants switch off the refusal of an empty record, the lock rule, or its exemption for a self-test, and are judged by the self-tests and the real check. Not a mutant here: how the unmet-expectation test decides. Its first form, a CTest message rule, let m1-92.json's mutant that returns 0 survive in the full pass of 2026-09-30; it became --expect-unmet in mutants-due.py, which requires the failure and the message both (decision 251), and m1-92.json's mutant is its judge. Python needs no build, but the harness always builds, so every mutant names orbsim_shaders as a no-op.",
+  "note": "Ninja's header record read one query at a time, and never trusted empty (register decision 249). The CMake mutant takes the lock away and is judged by parallel_tests on this tree; the script mutants switch off the refusal of an empty record, the lock rule, or its exemption for a self-test, and are judged by the self-tests and the real check. Not a mutant here: how the unmet-expectation test decides. Its first form, a CTest message rule, let m1-92.json's mutant that returns 0 survive in the full pass of 2026-09-30; it became --expect-unmet in mutants-due.py, which requires the failure and the message both (decision 251), and m1-92.json's mutant is its judge. Since M1-109 (register decision 392) a Python mutant names no build target, and the harness builds nothing for it; until then every mutant named orbsim_shaders as a no-op, which made every shader an input of this file. A CMake mutant names build.ninja instead, which re-runs CMake when a CMake file changed and builds nothing else.",
   "mutants": [
     {
       "name": "the tests that ask Ninja run without the lock",
@@ -11,7 +11,7 @@
       "expect": "caught",
       "suites": [],
       "targets": [
-        "orbsim_shaders"
+        "build.ninja"
       ],
       "ctest": [
         "parallel_tests"
@@ -24,9 +24,7 @@
       "replace": "    if False:\n        return (f\"mutants-due: Ninja reported no header dependencies",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "mutants_due_self_test"
       ]
@@ -38,9 +36,7 @@
       "replace": "        if False:",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "parallel_tests_self_test"
       ]
@@ -52,9 +48,7 @@
       "replace": "",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "parallel_tests_self_test",
         "parallel_tests"

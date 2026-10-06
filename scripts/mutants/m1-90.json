@@ -1,7 +1,7 @@
 {
   "task": "M1-90",
   "tree": "build/relwithdebinfo",
-  "note": "The abort listener compiled once, and the check that every suite has it, scripts/check-abort-listener.py. The CMake mutant drops the OBJECT library from every suite and is judged by abort_listener against the real programs; the script mutants switch off one judgement each and are judged by its self-test and the real check. A Python mutant needs no build, but the harness always builds, so those name orbsim_shaders as a no-op. The CMake mutant is last on purpose: it rebuilds suites without the listener, and the harness restores the file but rebuilds only each later mutant's targets, so any mutant after it would be judged against programs still missing the listener -- which is exactly what the first run did, counting two kills for the wrong reason. **Run twice on 2026-09-27.** First: 4 caught, 1 survived -- 'a missing listener is not reported', a real hole, since the self-test judged one listing at a time and never the tally across suites -- and two of the four caught for the wrong reason, by programs the CMake mutant, then first, had left without the listener. The tally became a pure function the self-test reaches (its own commit), and the CMake mutant moved last. Second run: 5 of 5 caught, none invalid, none hung, the script mutants by the self-test and the CMake mutant by abort_listener against the rebuilt programs.",
+  "note": "The abort listener compiled once, and the check that every suite has it, scripts/check-abort-listener.py. The CMake mutant drops the OBJECT library from every suite and is judged by abort_listener against the real programs; the script mutants switch off one judgement each and are judged by its self-test and the real check. Since M1-109 (register decision 392) a Python mutant names no build target, and the harness builds nothing for it; until then every mutant named orbsim_shaders as a no-op, which made every shader an input of this file. The CMake mutant is last on purpose: it rebuilds suites without the listener, and the harness restores the file but rebuilds only each later mutant's targets, so any mutant after it would be judged against programs still missing the listener -- which is exactly what the first run did, counting two kills for the wrong reason. **Run twice on 2026-09-27.** First: 4 caught, 1 survived -- 'a missing listener is not reported', a real hole, since the self-test judged one listing at a time and never the tally across suites -- and two of the four caught for the wrong reason, by programs the CMake mutant, then first, had left without the listener. The tally became a pure function the self-test reaches (its own commit), and the CMake mutant moved last. Second run: 5 of 5 caught, none invalid, none hung, the script mutants by the self-test and the CMake mutant by abort_listener against the rebuilt programs.",
   "mutants": [
     {
       "name": "a failed program counts as carrying the listener",
@@ -10,9 +10,7 @@
       "replace": "    if returncode != 0:\n        pass",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "abort_listener_self_test",
         "abort_listener"
@@ -25,9 +23,7 @@
       "replace": "    return LISTENER in listing",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "abort_listener_self_test",
         "abort_listener"
@@ -40,9 +36,7 @@
       "replace": "    missing = []",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "abort_listener_self_test",
         "abort_listener"
@@ -55,9 +49,7 @@
       "replace": "    if missing:",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "abort_listener_self_test",
         "abort_listener"

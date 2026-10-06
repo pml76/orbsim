@@ -176,3 +176,37 @@ push, and commits the record.
   the list as short as a change allows, measured first; and a line in every
   gate's checklist, which until now named no mutation pass at all although
   this record and `VERIFICATION.md` said the full pass runs at every gate.
+
+## Update, 2026-10-05: the list as short as a change allows
+
+Register decisions 392 to 397, [M1-109](../plan/tasks/m1-109-due-list-reach.md),
+measured first ([the record](../measurements/m1-109-due-list.md)). **Point 5
+keeps its strict rule; what changed is how precisely "its judges' inputs" are
+read.**
+
+- **Why**: a change to one shader made 26 of 34 files due where the
+  shader's measured reach is 4, and a fresh tree of the same commit on the
+  same machine moved every Debug program's fingerprint. Three routes brought
+  the shaders in -- a no-op build step in the script mutants, the
+  application's build-order edge, and a run-time rule that counted every
+  shader for every judge naming the application -- and two things made a
+  fresh tree differ, neither of them the compiler: a Debug postfix that
+  only a second configure applied, and a generated header holding the
+  tree's own path.
+- **What changed**: script mutants build nothing; build-order edges are not
+  followed, though a generated header really included still is; a probe
+  test's shaders are the ones its sidecar names; a test's judges include
+  the tests CTest runs before it; Debug libraries carry `_d` from the first
+  configure; a file inside the build tree is hashed without the tree's path;
+  fingerprints are recorded in parts; and a file judged on the GPU records
+  the card, the driver and the validation layer, and is due on any other.
+  And every Ninja tool the script runs is a dry run (decision 399): a read
+  could rewrite the header record while the Ninja running `check` held it
+  open, which M1-102's lock between readers did not cover.
+- **What it gives up**: nothing it can see -- each narrowing has a test that
+  a file which must stay due still does, and the one widening (the card,
+  and the tests run before a judge) only adds. **What it still costs**: a
+  test that starts the application without a sidecar -- the smoke test, the
+  benchmark, the golden-acceptance script -- counts every shader, and a real
+  toolchain change, or a second machine's, still makes every file it
+  reaches due.

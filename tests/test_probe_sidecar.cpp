@@ -30,6 +30,7 @@
 #include <memory>
 #include <numbers>
 #include <optional>
+#include <span>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -89,9 +90,24 @@ constexpr SidecarGolden kNoGolden{
     .difference = std::nullopt,
 };
 
+// A validation layer's two versions, each a value no other field has (M1-109).
+constexpr SidecarLayer kLayer{
+    .specVersion = (1U << 22U) | (4U << 12U) | 357U, // 1.4.357
+    .implementationVersion = 7,
+};
+
+// The shader files a resolve pass reads, the most any probe without a scene of
+// its own reads (M1-109).
+constexpr auto kResolveShaders = std::to_array<std::string_view>({
+    "fullscreen.vert.spv",
+    "tonemap.frag.spv",
+});
+
 [[nodiscard]] std::string sidecarText(const SidecarGolden& golden = kNoGolden,
                                       const std::optional<LambertScene>& scene = std::nullopt,
-                                      const std::optional<Ut1Time>& ut1 = std::nullopt) {
+                                      const std::optional<Ut1Time>& ut1 = std::nullopt,
+                                      std::span<const std::string_view> shaders = kResolveShaders,
+                                      const std::optional<SidecarLayer>& layer = kLayer) {
     const auto camera = Camera::from(Position{1.5, -2.0, 3.25}, Quat{}, Radians{0.5}, Metres{0.25});
     REQUIRE(camera.has_value());
     const std::array<std::string_view, 2> files{{"a.png", "a.exr"}};
@@ -124,6 +140,8 @@ constexpr SidecarGolden kNoGolden{
         .build = {.configuration = "Debug", .compiler = "clang 23.1.0"},
         .runDateUtc = "2026-09-26T12:34:56Z",
         .files = files,
+        .shaders = shaders,
+        .validationLayer = layer,
     });
 }
 
@@ -260,4 +278,47 @@ TEST_CASE("a probe that turns the Earth records its UT1, and one that does not s
             "UT1 2025-07-30T06:27:31.245 (MJD 60886 + 23251245117187500 ps)");
     const std::vector<std::string> plain = linesOf(sidecarText());
     REQUIRE(valueOf(plain, "earth.ut1") == "none: no rotating body is drawn");
+}
+
+// --- the shader files the run read (M1-109, register decision 394) ------------
+//
+// scripts/mutants-due.py reads this line to know which shaders a probe's
+// verdict depends on, so a shader no probe reads makes no probe's mutant file
+// due. A name lost or misspelt here would narrow that list silently.
+
+TEST_CASE("the sidecar names every shader file the run read, in the order it read them") {
+    constexpr auto kLambertRead = std::to_array<std::string_view>({
+        "lambert.vert.spv",
+        "lambert.frag.spv",
+        "fullscreen.vert.spv",
+        "tonemap.frag.spv",
+    });
+    const std::vector<std::string> lines =
+        linesOf(sidecarText(kNoGolden, std::nullopt, std::nullopt, kLambertRead));
+    REQUIRE(valueOf(lines, "shaders") ==
+            "lambert.vert.spv lambert.frag.spv fullscreen.vert.spv tonemap.frag.spv");
+}
+
+TEST_CASE("a run that read no shader says so, rather than leaving the line empty") {
+    // A run that stopped before its scene was built: an empty value would read
+    // the same as a line cut short.
+    const std::vector<std::string> lines =
+        linesOf(sidecarText(kNoGolden, std::nullopt, std::nullopt, {}));
+    REQUIRE(valueOf(lines, "shaders") == "none");
+}
+
+// --- the validation layer the run had (M1-109, register decision 397) ---------
+//
+// scripts/mutants-due.py takes the layer's version as part of the graphics
+// card a GPU test ran on: a newer layer can report what an older one did not.
+
+TEST_CASE("the sidecar records the validation layer's version and its implementation") {
+    const std::vector<std::string> lines = linesOf(sidecarText());
+    REQUIRE(valueOf(lines, "validation.layer") == "1.4.357 (variant 0), implementation 7");
+}
+
+TEST_CASE("a run without the validation layer says so") {
+    const std::vector<std::string> lines =
+        linesOf(sidecarText(kNoGolden, std::nullopt, std::nullopt, kResolveShaders, std::nullopt));
+    REQUIRE(valueOf(lines, "validation.layer") == "none: the run had no validation layer");
 }

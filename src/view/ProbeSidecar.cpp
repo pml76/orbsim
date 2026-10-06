@@ -58,6 +58,13 @@ template <TimeScale Scale>
                        packed >> 29U);
 }
 
+[[nodiscard]] std::string formatLayer(const std::optional<SidecarLayer>& layer) {
+    if (!layer) return "none: the run had no validation layer";
+    return std::format("{}, implementation {}",
+                       formatApiVersion(layer->specVersion),
+                       layer->implementationVersion);
+}
+
 [[nodiscard]] std::string joined(std::span<const std::string_view> words) {
     std::string text;
     for (const std::string_view word : words) {
@@ -187,10 +194,17 @@ std::string formatSidecar(const SidecarFields& fields) {
             .value = std::format("0x{:08x}", fields.device.driverVersion),
         },
         Entry{.key = "vulkan.api", .value = formatApiVersion(fields.device.apiVersion)},
+        Entry{.key = "validation.layer", .value = formatLayer(fields.validationLayer)},
         Entry{.key = "build.configuration", .value = std::string(fields.build.configuration)},
         Entry{.key = "build.compiler", .value = std::string(fields.build.compiler)},
         Entry{.key = "run.date", .value = std::string(fields.runDateUtc)},
         Entry{.key = "files", .value = joined(fields.files)},
+        // "none" rather than an empty value, which would read the same as a
+        // line cut short.
+        Entry{
+            .key = "shaders",
+            .value = fields.shaders.empty() ? std::string("none") : joined(fields.shaders),
+        },
     });
     entries.insert(entries.end(), rest.begin(), rest.end());
 

@@ -232,7 +232,40 @@ VKAPI_ATTR VkBool32 VKAPI_CALL onValidationMessage(VkDebugUtilsMessageSeverityFl
 struct InstanceBundle {
     vkb::Instance instance;
     VkSurfaceKHR surface{VK_NULL_HANDLE};
+    std::optional<LayerVersion> validationLayer;
 };
+
+// The validation layer's versions as the loader lists them, or nothing where
+// it is not installed (M1-109). vk-bootstrap enables a requested layer exactly
+// when the loader lists it (VkBootstrap.cpp, InstanceBuilder::build, at the v1.3.302 this project
+// pins), so after a build that requested it this is the layer the instance runs.
+[[nodiscard]] std::expected<std::optional<LayerVersion>, RenderError> listedValidationLayer() {
+    uint32_t count = 0;
+    if (auto ok = vkCheck(vkEnumerateInstanceLayerProperties(&count, nullptr),
+                          "vkEnumerateInstanceLayerProperties");
+        !ok) {
+        return std::unexpected(ok.error());
+    }
+    std::vector<VkLayerProperties> layers(count);
+    if (auto ok = vkCheck(vkEnumerateInstanceLayerProperties(&count, layers.data()),
+                          "vkEnumerateInstanceLayerProperties");
+        !ok) {
+        return std::unexpected(ok.error());
+    }
+    layers.resize(count);
+    for (const VkLayerProperties& layer : layers) {
+        // A fixed-size, null-terminated char array, as deviceDescription reads one.
+        const std::string name(std::ranges::begin(layer.layerName),
+                               std::ranges::find(layer.layerName, '\0'));
+        if (name == "VK_LAYER_KHRONOS_validation") {
+            return LayerVersion{
+                .specVersion = layer.specVersion,
+                .implementationVersion = layer.implementationVersion,
+            };
+        }
+    }
+    return std::nullopt;
+}
 
 [[nodiscard]] std::expected<InstanceBundle, RenderError> makeInstanceAndSurface(
     SDL_Window* window, Validation validation, std::atomic<uint32_t>& validationErrors) {
@@ -281,15 +314,27 @@ struct InstanceBundle {
     // Validation layers ship with the SDK, not the driver, so a machine with
     // only a runtime will not have them. Fall back rather than refusing to run.
     auto built = build(validation);
+    Validation running = validation;
     if (!built && validation == Validation::Enabled) {
         // NOLINTNEXTLINE(cppcoreguidelines-pro-type-vararg) -- SDL's C logging API is variadic
         SDL_Log("Validation layers unavailable (%s); continuing without them.",
                 built.error().message().c_str());
         built = build(Validation::Disabled);
+        running = Validation::Disabled;
     }
     if (!built) return fail("Vulkan instance creation failed: " + built.error().message());
 
-    InstanceBundle bundle{.instance = built.value(), .surface = VK_NULL_HANDLE};
+    std::optional<LayerVersion> layer;
+    if (running == Validation::Enabled) {
+        auto listed = listedValidationLayer();
+        if (!listed) return std::unexpected(listed.error());
+        layer = *listed;
+    }
+    InstanceBundle bundle{
+        .instance = built.value(),
+        .surface = VK_NULL_HANDLE,
+        .validationLayer = layer,
+    };
     if (!SDL_Vulkan_CreateSurface(window, bundle.instance.instance, nullptr, &bundle.surface)) {
         return failSdl("SDL_Vulkan_CreateSurface");
     }
@@ -899,6 +944,7 @@ VulkanContext::create(SDL_Window* window,
     ctx.debugMessenger_ =
         UniqueDebugMessenger{ctx.instance_.get(), instance->instance.debug_messenger};
     ctx.surface_ = UniqueSurface{ctx.instance_.get(), instance->surface};
+    ctx.validationLayer_ = instance->validationLayer;
 
     auto device = makeDevice(instance->instance, ctx.surface_.get());
     if (!device) return std::unexpected(device.error());
@@ -1858,6 +1904,12 @@ DeviceDescription VulkanContext::deviceDescription() const {
 
 std::expected<UniqueShaderModule, RenderError>
 VulkanContext::loadShaderModule(const std::filesystem::path& path) const {
+    // Noted before anything can fail: a run stopped by a missing shader
+    // depended on that shader as much as one that read it (M1-109).
+    const std::string name = path.filename().string();
+    if (std::ranges::find(shadersRequested_, name) == shadersRequested_.end()) {
+        shadersRequested_.push_back(name);
+    }
     // Opened binary and seeked, rather than `binary | ate`: std::ios::openmode
     // is a signed bitmask type, and one seek says the same thing.
     std::ifstream file(path, std::ios::binary);

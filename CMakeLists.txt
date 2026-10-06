@@ -46,6 +46,19 @@ endif()
 include(FetchContent)
 set(FETCHCONTENT_QUIET OFF)
 
+# Debug libraries carry `_d`, from the first configure on (M1-109, register
+# decision 395). Imath writes `CMAKE_DEBUG_POSTFIX "_d"` into the cache
+# (config/ImathSetup.cmake, v3.2.3), so until this line every target declared
+# above OpenEXR's fetch got the suffix only from a tree's *second* configure:
+# measured on 2026-10-05, a fresh Debug tree named `orbsim_core.lib` and
+# configured once more named it `orbsim_core_d.lib` -- the same commit made
+# two build plans, and every Debug program's fingerprint in
+# scripts/mutants-due.py differed between a new tree and an old one. A normal
+# variable, which a cache entry set later cannot replace (CMP0126); OpenEXR
+# keeps a postfix that is already defined. `_d`, the owner's choice: what
+# every tree already settled on, and the one the dependencies use.
+set(CMAKE_DEBUG_POSTFIX "_d")
+
 # ---------------------------------------------------------------------------
 # The processor this project assumes (ADR 0023, register decisions 200-201).
 #
@@ -1187,7 +1200,11 @@ add_test(NAME probe_clear_golden
                 -DPLANT_DIFF=ON
                 "-DEXPECT_STDOUT=: matches"
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/RunProbe.cmake)
-set_tests_properties(probe_clear_golden PROPERTIES LABELS gpu RESOURCE_LOCK gpu)
+# Both clear reruns set up probe_clear_reruns (M1-109): mutants_due_probe_shaders
+# reads every sidecar of m1-16's judges, theirs among them, and must read ones
+# this build wrote -- in a whole `check` and when CTest is asked for it alone.
+set_tests_properties(probe_clear_golden PROPERTIES
+        LABELS gpu RESOURCE_LOCK gpu FIXTURES_SETUP probe_clear_reruns)
 add_test(NAME probe_clear_determinism
         COMMAND ${CMAKE_COMMAND}
                 -DORBSIM=$<TARGET_FILE:orbsim>
@@ -1198,7 +1215,8 @@ add_test(NAME probe_clear_determinism
 set_tests_properties(probe_clear PROPERTIES
         LABELS gpu RESOURCE_LOCK gpu FIXTURES_SETUP "probe_clear_frame;probe_data")
 set_tests_properties(probe_clear_determinism PROPERTIES
-        LABELS gpu RESOURCE_LOCK gpu FIXTURES_REQUIRED probe_clear_frame)
+        LABELS gpu RESOURCE_LOCK gpu FIXTURES_REQUIRED probe_clear_frame
+        FIXTURES_SETUP probe_clear_reruns)
 
 # The frame read back and checked number by number (decision 194): an
 # ordinary suite of the tests' own, linking no Vulkan, that runs after
@@ -1781,6 +1799,29 @@ endif()
 # Every library and program this file defines compiles in the memory pool
 # (M1-96): last, so that every target exists. cmake/MemoryPool.cmake says why.
 orbsim_pool_top_level_compiles()
+
+# Every static library this file defines carries the Debug postfix from the
+# first configure on (M1-109, register decision 395): a target takes it from
+# CMAKE_DEBUG_POSTFIX as it is created, so one declared before the line that
+# sets it would be named differently by a tree's first configure and by its
+# second -- which is what Imath's cache entry did until then. Checked only
+# where Debug is built: CMake gives a target the property only for the
+# configurations a tree builds (measured with CMake 4.3.1 on 2026-10-05:
+# `_d` in a Debug tree, not set at all in a RelWithDebInfo one).
+if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR "Debug" IN_LIST CMAKE_CONFIGURATION_TYPES)
+    get_directory_property(orbsim_defined_targets BUILDSYSTEM_TARGETS)
+    foreach(orbsim_target IN LISTS orbsim_defined_targets)
+        get_target_property(orbsim_target_type ${orbsim_target} TYPE)
+        if(orbsim_target_type STREQUAL "STATIC_LIBRARY")
+            get_target_property(orbsim_target_postfix ${orbsim_target} DEBUG_POSTFIX)
+            if(NOT orbsim_target_postfix STREQUAL "_d")
+                message(FATAL_ERROR "${orbsim_target} is not given the Debug postfix _d: it "
+                        "was declared before CMAKE_DEBUG_POSTFIX is set, so a tree's first "
+                        "configure would name it differently from its second (M1-109)")
+            endif()
+        endif()
+    endforeach()
+endif()
 
 # Last of all, once everything this configure reads has been read: fail if any
 # of it changed while the configure ran, and record the fingerprints for

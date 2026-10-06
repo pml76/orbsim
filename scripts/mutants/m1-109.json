@@ -1,0 +1,260 @@
+{
+  "task": "M1-109",
+  "tree": "build/debug",
+  "note": "The due list made to read what a judge reads (register decisions 392-397). Each mutant takes one narrowing or one widening away; the judges are the two self-tests, the real runs against this tree -- a lambert-shader change, which must list m1-18 and m1-19 and must not list m1-16 or m1-97 -- the must-fail runs, test_probe_sidecar for the sidecar's two new lines, and mutants_due_gpu_identity, which refuses a validated run without the layer (decision 398). The script mutants build nothing (decision 392). The C++ mutants build the application and are judged by mutants_due_probe_shaders, which requires probe_data, so CTest runs every probe with the mutated application first. Proposed survivors, declared: the call that asks for the graphics card's reason, the test of which files are judged on a card, and the harness skipping the build of a mutant that names none -- each reached only by a real pass or a real record, never by a test.",
+  "mutants": [
+    {
+      "name": "a build-order-only input is read as an input",
+      "file": "scripts/mutants-due.py",
+      "find": "            if entry.startswith(\"|| \"):\n                continue",
+      "replace": "            if entry.startswith(\"|| \"):\n                entry = entry[1:]",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["mutants_due_self_test", "mutants_due_probe_shaders"]
+    },
+    {
+      "name": "a generated header is not followed back to what it is made from",
+      "file": "scripts/mutants-due.py",
+      "find": "                if header in built and header not in seen:",
+      "replace": "                if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["mutants_due_self_test"]
+    },
+    {
+      "name": "a required fixture's setup tests are not judges",
+      "file": "scripts/mutants-due.py",
+      "find": "            frontier += setups.get(fixture, [])",
+      "replace": "            frontier += []",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["mutants_due_self_test", "mutants_due_probe_shaders"]
+    },
+    {
+      "name": "a test's earlier tests are not judges",
+      "file": "scripts/mutants-due.py",
+      "find": "        frontier += list(props.get(\"DEPENDS\", []))",
+      "replace": "        frontier += []",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["mutants_due_self_test"]
+    },
+    {
+      "name": "a sidecar older than the application is trusted",
+      "file": "scripts/mutants-due.py",
+      "find": "    if written_ns < built_ns:\n        return None",
+      "replace": "    if False:\n        return None",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["mutants_due_self_test"]
+    },
+    {
+      "name": "a sidecar from a run that did not render is trusted",
+      "file": "scripts/mutants-due.py",
+      "find": "    if sidecar_value(text, \"outcome\") != \"rendered\":",
+      "replace": "    if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["mutants_due_self_test"]
+    },
+    {
+      "name": "a probe's sidecar is never used, so every shader counts",
+      "file": "scripts/mutants-due.py",
+      "find": "        if named is None or any(n not in nodes for n in named):",
+      "replace": "        if True:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["mutants_due_probe_shaders"]
+    },
+    {
+      "name": "a file in the build tree is hashed with the tree's path in it",
+      "file": "scripts/mutants-due.py",
+      "find": "    if inside_tree:",
+      "replace": "    if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["mutants_due_self_test"]
+    },
+    {
+      "name": "a moved fingerprint names no part",
+      "file": "scripts/mutants-due.py",
+      "find": "if (before or {}).get(p) != (after or {}).get(p)) if before and after else []",
+      "replace": "if (before or {}).get(p) != (after or {}).get(p)) if False else []",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["mutants_due_self_test"]
+    },
+    {
+      "name": "a record without a graphics card is no reason",
+      "file": "scripts/mutants-due.py",
+      "find": "    if was is None:\n        return \"no graphics card recorded\"",
+      "replace": "    if was is None:\n        return None",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["mutants_due_self_test"]
+    },
+    {
+      "name": "another graphics card is no reason",
+      "file": "scripts/mutants-due.py",
+      "find": "    return \"graphics card changed: \" + \"; \".join(moved) if moved else None",
+      "replace": "    return None",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["mutants_due_self_test"]
+    },
+    {
+      "name": "the card is read without its validation layer",
+      "file": "scripts/mutants-due.py",
+      "find": "            \"validation layer\": (\"validation.layer\",)}",
+      "replace": "            }",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["mutants_due_self_test"]
+    },
+    {
+      "name": "an expected-current file that is due is not reported",
+      "file": "scripts/mutants-due.py",
+      "find": "    listed = [name for name in expect_current if name in due_names]",
+      "replace": "    listed = []",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["mutants_due_unmet_current_fails"]
+    },
+    {
+      "name": "the graphics card's reason is never asked for",
+      "file": "scripts/mutants-due.py",
+      "find": "        if record and not only_assumed and t.needs_gpu(spec):",
+      "replace": "        if False:",
+      "expect": "survives",
+      "why": "Reached only when records are compared, which no test does: a test against the repository's own records would pass or fail with its history. The rule it calls is the self-tested gpu_reason; the call is checked by hand after this task's pass, where every GPU-judged file must report that no card was recorded.",
+      "suites": [],
+      "targets": [],
+      "ctest": ["mutants_due_self_test", "mutants_due_probe_shaders", "mutants_due_gpu_identity"]
+    },
+    {
+      "name": "no file is judged on the graphics card",
+      "file": "scripts/mutants-due.py",
+      "find": "        tests = [self.tests[e] for e in self.judging_tests(spec) if e in self.tests]",
+      "replace": "        return False",
+      "expect": "survives",
+      "why": "Asked only when records are compared or a pass is recorded, which no test does, for the reason above. Checked by hand with the same run.",
+      "suites": [],
+      "targets": [],
+      "ctest": ["mutants_due_self_test", "mutants_due_probe_shaders", "mutants_due_gpu_identity"]
+    },
+    {
+      "name": "a C++ mutant that builds nothing passes --verify",
+      "file": "scripts/mutate.py",
+      "find": "    if built_by(mutant) or mutant[\"file\"].endswith(\".py\"):",
+      "replace": "    if True:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["mutate_self_test"]
+    },
+    {
+      "name": "a pass records no graphics card",
+      "file": "scripts/mutate.py",
+      "find": "    if gpu is not None:\n        record[\"gpu\"] = gpu",
+      "replace": "    if False:\n        record[\"gpu\"] = gpu",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["mutate_self_test"]
+    },
+    {
+      "name": "a mutant that names nothing is built anyway",
+      "file": "scripts/mutate.py",
+      "find": "                               timeout=BUILD_TIMEOUT_SECONDS) if targets else None",
+      "replace": "                               timeout=BUILD_TIMEOUT_SECONDS)",
+      "expect": "survives",
+      "why": "Only a real pass runs run_mutant; this pass's own script mutants would each be reported INVALID by it, since `cmake --build --target` with no target fails -- which is how it would be noticed.",
+      "suites": [],
+      "targets": [],
+      "ctest": ["mutate_self_test"]
+    },
+    {
+      "name": "the context notes no shader",
+      "file": "src/render/VulkanContext.cpp",
+      "find": "        shadersRequested_.push_back(name);",
+      "replace": "        static_cast<void>(name);",
+      "expect": "caught",
+      "suites": [],
+      "targets": ["orbsim"],
+      "ctest": ["mutants_due_probe_shaders"]
+    },
+    {
+      "name": "a rendered probe's sidecar is written before its shaders are noted",
+      "file": "src/app/ProbeMode.cpp",
+      "find": "    if (!frame) return stopAfterContext(run, gfx, frame.error().message);\n    noteShaders(run, gfx);",
+      "replace": "    if (!frame) return stopAfterContext(run, gfx, frame.error().message);",
+      "expect": "caught",
+      "suites": [],
+      "targets": ["orbsim"],
+      "ctest": ["mutants_due_probe_shaders"]
+    },
+    {
+      "name": "a run that read no shader writes an empty line",
+      "file": "src/view/ProbeSidecar.cpp",
+      "find": "fields.shaders.empty() ? std::string(\"none\") : joined(fields.shaders)",
+      "replace": "joined(fields.shaders)",
+      "expect": "caught",
+      "suites": ["test_probe_sidecar"],
+      "targets": [],
+      "ctest": []
+    },
+    {
+      "name": "the sidecar writes no validation layer line",
+      "file": "src/view/ProbeSidecar.cpp",
+      "find": "        Entry{.key = \"validation.layer\", .value = formatLayer(fields.validationLayer)},",
+      "replace": "        Entry{.key = \"validation.layer\", .value = std::string(\"none\")},",
+      "expect": "caught",
+      "suites": ["test_probe_sidecar"],
+      "targets": [],
+      "ctest": []
+    },
+    {
+      "name": "a validated run without the layer is accepted",
+      "file": "scripts/mutants-due.py",
+      "find": "    if found.get(\"validation layer\", \"\").startswith(\"none\"):",
+      "replace": "    if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["mutants_due_self_test"]
+    },
+    {
+      "name": "the context never reads its validation layer",
+      "file": "src/render/VulkanContext.cpp",
+      "find": "        layer = *listed;",
+      "replace": "        layer = std::nullopt;",
+      "expect": "caught",
+      "suites": [],
+      "targets": ["orbsim"],
+      "ctest": ["mutants_due_gpu_identity"]
+    },
+    {
+      "name": "a Ninja tool may rewrite the logs it reads",
+      "file": "scripts/mutants-due.py",
+      "find": "    return [ninja, \"-n\", \"-t\", tool, *args]",
+      "replace": "    return [ninja, \"-t\", tool, *args]",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["mutants_due_self_test"]
+    }
+  ]
+}

@@ -1,7 +1,7 @@
 {
   "task": "M1-97",
   "tree": "build/relwithdebinfo",
-  "note": "The harness's rebuild plan (register decision 224): after restoring a mutant, rebuild what it built, less what the next mutant builds itself. Each mutant breaks rebuild_plan one way and is judged by its self-test. Python needs no build, but the harness always builds, so every mutant names orbsim_shaders as a no-op. The last mutant stops the main loop using the plan at all; the self-test cannot see the loop, so it survives here, declared -- it is caught by running m1-95.json, which every full rerun does.",
+  "note": "The harness's rebuild plan (register decision 224): after restoring a mutant, rebuild what it built, less what the next mutant builds itself. Each mutant breaks rebuild_plan one way and is judged by its self-test. Since M1-109 (register decision 392) a Python mutant names no build target, and the harness builds nothing for it; until then every mutant named orbsim_shaders as a no-op, which made every shader an input of this file. The last mutant stops the main loop using the plan at all; the self-test cannot see the loop, so it survives here, declared -- it is caught by running m1-95.json, which every full rerun does.",
   "mutants": [
     {
       "name": "the next mutant's own targets are rebuilt first as well",
@@ -10,7 +10,7 @@
       "replace": "        plan.append([t for t in dict.fromkeys(built_by(previous))])",
       "expect": "caught",
       "suites": [],
-      "targets": ["orbsim_shaders"],
+      "targets": [],
       "ctest": ["mutate_self_test"]
     },
     {
@@ -20,7 +20,7 @@
       "replace": "        plan.append([])",
       "expect": "caught",
       "suites": [],
-      "targets": ["orbsim_shaders"],
+      "targets": [],
       "ctest": ["mutate_self_test"]
     },
     {
@@ -30,7 +30,7 @@
       "replace": "        own = set(following.get(\"targets\", []))",
       "expect": "caught",
       "suites": [],
-      "targets": ["orbsim_shaders"],
+      "targets": [],
       "ctest": ["mutate_self_test"]
     },
     {
@@ -40,7 +40,7 @@
       "replace": "    for following, previous in zip(mutants, mutants[1:]):",
       "expect": "caught",
       "suites": [],
-      "targets": ["orbsim_shaders"],
+      "targets": [],
       "ctest": ["mutate_self_test"]
     },
     {
@@ -50,7 +50,7 @@
       "replace": "    plan = []\n",
       "expect": "caught",
       "suites": [],
-      "targets": ["orbsim_shaders"],
+      "targets": [],
       "ctest": ["mutate_self_test"]
     },
     {
@@ -61,7 +61,7 @@
       "expect": "survives",
       "why": "The self-test judges rebuild_plan, not the loop that uses it. This fault is M1-95's own, and m1-95.json is its test: run with this mutant, its comment-only mutant is judged against a stale test_math and caught, so that file fails. Every full rerun runs m1-95.json. A nested pass as a ctest judge was not added, because check would then run a mutation pass. Declared 2026-09-28 under decision 224.",
       "suites": [],
-      "targets": ["orbsim_shaders"],
+      "targets": [],
       "ctest": ["mutate_self_test"]
     }
   ]

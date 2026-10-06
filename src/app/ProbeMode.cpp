@@ -115,7 +115,9 @@ struct RunRecord {
     std::filesystem::path outDirectory;
     ProbeFiles files;
     std::optional<gfx::DeviceDescription> device; // absent if no device was made
-    std::vector<std::string_view> written;        // names of the files written
+    // The validation layer the instance ran with (M1-109); absent without one.
+    std::optional<gfx::LayerVersion> validationLayer;
+    std::vector<std::string_view> written; // names of the files written
     // What happened with the golden, for the sidecar (register decision 237).
     // Under --golden-dir both name the directory until the device is open,
     // and then the card's own file (decision 289).
@@ -123,6 +125,10 @@ struct RunRecord {
     std::filesystem::path goldenFile; // the same, as a path to open
     std::string goldenVerdict;
     std::optional<view::ImageDifference> goldenDifference;
+    // The shader files the context was asked for (M1-109), copied from it
+    // before each sidecar is written, since the context does not outlive
+    // the run's every exit.
+    std::vector<std::string> shaders;
 };
 
 // A lambert probe's light and surface for its sidecar, or none (M1-18).
@@ -139,6 +145,15 @@ lambertSceneOf(const gfx::ProbeConditions& conditions) {
     return std::nullopt;
 }
 
+// The validation layer for the sidecar, in its own layer's type (M1-109).
+[[nodiscard]] std::optional<view::SidecarLayer> layerOf(const RunRecord& run) {
+    if (!run.validationLayer) return std::nullopt;
+    return view::SidecarLayer{
+        .specVersion = run.validationLayer->specVersion,
+        .implementationVersion = run.validationLayer->implementationVersion,
+    };
+}
+
 // The sidecar, written last and in every case (register decision 193).
 [[nodiscard]] std::expected<void, std::string> writeSidecar(const RunRecord& run,
                                                             std::string_view outcome) {
@@ -146,6 +161,7 @@ lambertSceneOf(const gfx::ProbeConditions& conditions) {
     const gfx::DeviceDescription& device = run.device ? *run.device : none;
     const std::string date = runDateUtc();
     const std::string compiler = compilerName();
+    const std::vector<std::string_view> shaders(run.shaders.begin(), run.shaders.end());
     const std::string text = view::formatSidecar({
         .probe = run.probe.name,
         .description = run.probe.description,
@@ -175,6 +191,8 @@ lambertSceneOf(const gfx::ProbeConditions& conditions) {
         .build = {.configuration = kBuildConfiguration, .compiler = compiler},
         .runDateUtc = date,
         .files = run.written,
+        .shaders = shaders,
+        .validationLayer = layerOf(run),
     });
     return writeText(run.outDirectory / run.files.sidecar, text);
 }
@@ -191,6 +209,20 @@ lambertSceneOf(const gfx::ProbeConditions& conditions) {
 // The same, as a probe run's whole outcome.
 [[nodiscard]] ProbeOutcome stopBeforeFrame(const RunRecord& run, std::string_view what) {
     return {.exitCode = failBeforeFrame(run, what), .toAccept = std::nullopt};
+}
+
+// The shader files the context was asked for, into the run's record (M1-109):
+// every sidecar written once the context exists names them, whichever exit
+// writes it.
+void noteShaders(RunRecord& run, const gfx::VulkanContext& gfx) {
+    run.shaders.assign(gfx.shadersRequested().begin(), gfx.shadersRequested().end());
+}
+
+// stopBeforeFrame, once the context exists.
+[[nodiscard]] ProbeOutcome
+stopAfterContext(RunRecord& run, const gfx::VulkanContext& gfx, std::string_view what) {
+    noteShaders(run, gfx);
+    return stopBeforeFrame(run, what);
 }
 
 // One file's bytes, or the encoder's refusal, written and recorded.
@@ -401,12 +433,14 @@ ProbeOutcome runProbe(SDL_Window* window,
         .outDirectory = request.outDirectory,
         .files = filesOf(probe->name),
         .device = std::nullopt,
+        .validationLayer = std::nullopt,
         .written = {},
         .goldenPath = withGolden ? request.goldenPath.string() : std::string{},
         .goldenFile = withGolden ? request.goldenPath : std::filesystem::path{},
         .goldenVerdict =
             withGolden ? "not compared: the run stopped before a frame existed" : "not compared",
         .goldenDifference = std::nullopt,
+        .shaders = {},
     };
     std::error_code error;
     std::filesystem::create_directories(run.outDirectory, error);
@@ -430,19 +464,20 @@ ProbeOutcome runProbe(SDL_Window* window,
     if (!created) return stopBeforeFrame(run, created.error().message);
     gfx::VulkanContext gfx = std::move(*created);
     run.device = gfx.deviceDescription();
+    run.validationLayer = gfx.validationLayer();
     std::print("GPU: {}\n", gfx.deviceName());
     resolveCardGolden(run, request);
 
     auto scene = gfx::createScene(gfx, request.shaderDirectory, run.conditions);
-    if (!scene) return stopBeforeFrame(run, scene.error().message);
+    if (!scene) return stopAfterContext(run, gfx, scene.error().message);
     const view::PerRadiance exposure =
         view::radianceExposure(view::exposureValue100(run.conditions.exposure));
     auto resolve8 =
         gfx::ResolvePass::create(gfx, request.shaderDirectory, exposure, gfx::kProbeDisplayFormat8);
-    if (!resolve8) return stopBeforeFrame(run, resolve8.error().message);
+    if (!resolve8) return stopAfterContext(run, gfx, resolve8.error().message);
     auto resolve16 = gfx::ResolvePass::create(
         gfx, request.shaderDirectory, exposure, gfx::kProbeDisplayFormat16);
-    if (!resolve16) return stopBeforeFrame(run, resolve16.error().message);
+    if (!resolve16) return stopAfterContext(run, gfx, resolve16.error().message);
     // Declared after everything the frame uses, so destroyed before any of it.
     const gfx::DeviceIdleGuard idleBeforeTeardown{gfx.device()};
 
@@ -450,7 +485,8 @@ ProbeOutcome runProbe(SDL_Window* window,
         {.width = view::kProbeImageSize.width, .height = view::kProbeImageSize.height},
         [&scene](VkCommandBuffer cmd) { scene->record(cmd); },
         {.eightBit = &*resolve8, .sixteenBit = &*resolve16});
-    if (!frame) return stopBeforeFrame(run, frame.error().message);
+    if (!frame) return stopAfterContext(run, gfx, frame.error().message);
+    noteShaders(run, gfx);
 
     const bool allWritten = writeFrameFiles(run, *frame);
     GoldenStep golden = compareWithGolden(run, request, *frame);

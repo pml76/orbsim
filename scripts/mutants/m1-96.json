@@ -1,7 +1,7 @@
 {
   "task": "M1-96",
   "tree": "build/relwithdebinfo",
-  "note": "The compile half of the memory pool (register decision 222). The CMake mutant stops the top-level targets compiling in the pool and is judged by memory_pool against the regenerated Ninja file; the script mutants switch off the compile check and are judged by its self-test and the real check. Python and a regenerated Ninja file need no build, but the harness always builds, so every mutant names orbsim_shaders as a no-op.",
+  "note": "The compile half of the memory pool (register decision 222). The CMake mutant stops the top-level targets compiling in the pool and is judged by memory_pool against the regenerated Ninja file; the script mutants switch off the compile check and are judged by its self-test and the real check. Since M1-109 (register decision 392) a Python mutant names no build target, and the harness builds nothing for it; until then every mutant named orbsim_shaders as a no-op, which made every shader an input of this file. A CMake mutant names build.ninja instead, which re-runs CMake when a CMake file changed and builds nothing else.",
   "mutants": [
     {
       "name": "a compile of this project outside the pool is not reported",
@@ -10,9 +10,7 @@
       "replace": "    for obj in outside[:0]:\n        found.append(f\"compile outside the pool: {obj}\")",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "memory_pool_self_test",
         "memory_pool"
@@ -25,9 +23,7 @@
       "replace": "if re.match(r\"(C|CXX)_COMPILER__\", rule)]",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "memory_pool_self_test",
         "memory_pool"
@@ -40,9 +36,7 @@
       "replace": "    if False:\n        found.append(",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "memory_pool_self_test",
         "memory_pool"
@@ -56,7 +50,7 @@
       "expect": "caught",
       "suites": [],
       "targets": [
-        "orbsim_shaders"
+        "build.ninja"
       ],
       "ctest": [
         "memory_pool"

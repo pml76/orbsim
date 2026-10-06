@@ -93,7 +93,7 @@
       "find": "        if any(ACCEPT in a for a in command) and any(GOLDEN in a for a in command):",
       "replace": "        if any(ACCEPT in a for a in command) and any(a == GOLDEN for a in command):",
       "suites": [],
-      "targets": ["orbsim_shaders"],
+      "targets": [],
       "ctest": ["accept_golden_self_test"],
       "expect": "caught"
     }

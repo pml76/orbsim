@@ -1,7 +1,7 @@
 {
   "task": "M1-104",
   "tree": "build/relwithdebinfo",
-  "note": "A restore that did not happen stops the pass (register decision 252). Each mutant takes one signal away -- git's exit status, the files still modified afterwards -- or the stop itself, and is judged by mutate.py's self-test, which holds each as a case and runs restore in a scratch repository. Python needs no build, but the harness always builds, so every mutant names orbsim_shaders as a no-op.",
+  "note": "A restore that did not happen stops the pass (register decision 252). Each mutant takes one signal away -- git's exit status, the files still modified afterwards -- or the stop itself, and is judged by mutate.py's self-test, which holds each as a case and runs restore in a scratch repository. Since M1-109 (register decision 392) a Python mutant names no build target, and the harness builds nothing for it; until then every mutant named orbsim_shaders as a no-op, which made every shader an input of this file.",
   "mutants": [
     {
       "name": "a failed git checkout is accepted",
@@ -10,9 +10,7 @@
       "replace": "    if False:",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "mutate_self_test"
       ]
@@ -24,9 +22,7 @@
       "replace": "    if False:",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "mutate_self_test"
       ]
@@ -38,9 +34,7 @@
       "replace": "        if False:\n            raise RuntimeError(f\"the mutated files",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "mutate_self_test"
       ]

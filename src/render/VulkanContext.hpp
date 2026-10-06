@@ -192,6 +192,14 @@ struct DeviceDescription {
     std::uint32_t apiVersion{};
 };
 
+// The validation layer an instance runs with (M1-109): the specification
+// version it implements, packed as `apiVersion` above, and its own build
+// number, both as the loader lists them.
+struct LayerVersion {
+    std::uint32_t specVersion{};
+    std::uint32_t implementationVersion{};
+};
+
 // A frame the GPU has finished, and the two timestamps that bracket its work
 // (M1-22): `number` is the frame's FrameContext::number. The ticks become a
 // duration through the context's `gpuClock()`.
@@ -403,6 +411,24 @@ public:
         return gpuClock_;
     }
 
+    // Since M1-109. The validation layer this context's instance runs with,
+    // absent when validation was not asked for or is not installed -- which
+    // the context falls back to rather than refusing to start.
+    [[nodiscard]] const std::optional<LayerVersion>&
+    validationLayer() const noexcept ORBSIM_LIFETIMEBOUND {
+        return validationLayer_;
+    }
+
+    // Since M1-109. Every shader file loadShaderModule was asked for, by file
+    // name, once each, in the order first asked -- whether or not it could be
+    // read, since a run that failed on a missing shader depended on it too. A
+    // probe's sidecar writes it down, and scripts/mutants-due.py reads it there
+    // to know which shaders a probe's verdict depends on (register decision 394).
+    [[nodiscard]] std::span<const std::string>
+    shadersRequested() const noexcept ORBSIM_LIFETIMEBOUND {
+        return shadersRequested_;
+    }
+
 private:
     VulkanContext() = default;
 
@@ -438,6 +464,7 @@ private:
     UniqueInstance instance_;
     UniqueDebugMessenger debugMessenger_;
     UniqueSurface surface_;
+    std::optional<LayerVersion> validationLayer_;
     VkPhysicalDevice physicalDevice_{VK_NULL_HANDLE}; // owned by the instance
     UniqueDevice device_;
     VkQueue graphicsQueue_{VK_NULL_HANDLE}; // owned by the device
@@ -491,6 +518,13 @@ private:
     UniqueFence uploadFence_;
 
     uint32_t frameIndex_{0};
+
+    // What shadersRequested() returns (M1-109). Mutable, because
+    // loadShaderModule is const and is called through const references by
+    // every pipeline that loads a shader: noting which file was asked for
+    // changes no Vulkan state, and no Vulkan call depends on it. One thread
+    // builds pipelines, as one thread does everything with this context.
+    mutable std::vector<std::string> shadersRequested_;
 
     // LAST, deliberately: destroyed first, so the GPU is idle before any handle
     // above it is destroyed. See DeviceIdleGuard in render/VulkanHandle.hpp.

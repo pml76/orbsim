@@ -1,7 +1,7 @@
 {
   "task": "M1-103",
   "tree": "build/relwithdebinfo",
-  "note": "A build-definition change judged by its effect (register decision 250). Each mutant takes away one part of the rule or of its fallbacks: the build definition ignored where no fingerprint can speak, a changed fingerprint ignored, a new judge ignored, a test's line number counted, the placeholders applied to nothing, untracked files left out of a program's fingerprint, and a pass that records no fingerprints. Judged by the self-tests of mutants-due.py and mutate.py, which hold each rule as a case. Not a mutant here: main_check's use of the comparison, which only a record from a real pass can exercise -- it was measured instead on the real tree on 2026-09-30 (a comment in CMakeLists.txt made no fingerprint change; a compile definition on orbsim_core made due every file whose judges link it). Python needs no build, but the harness always builds, so every mutant names orbsim_shaders as a no-op.",
+  "note": "A build-definition change judged by its effect (register decision 250). Each mutant takes away one part of the rule or of its fallbacks: the build definition ignored where no fingerprint can speak, a changed fingerprint ignored, a new judge ignored, a test's line number counted, the placeholders applied to nothing, untracked files left out of a program's fingerprint, and a pass that records no fingerprints. Judged by the self-tests of mutants-due.py and mutate.py, which hold each rule as a case. Not a mutant here: main_check's use of the comparison, which only a record from a real pass can exercise -- it was measured instead on the real tree on 2026-09-30 (a comment in CMakeLists.txt made no fingerprint change; a compile definition on orbsim_core made due every file whose judges link it). Since M1-109 (register decision 392) a Python mutant names no build target, and the harness builds nothing for it; until then every mutant named orbsim_shaders as a no-op, which made every shader an input of this file.",
   "mutants": [
     {
       "name": "a record without fingerprints ignores a build-definition change",
@@ -10,9 +10,7 @@
       "replace": "    watched = ALWAYS",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "mutants_due_self_test"
       ]
@@ -24,9 +22,7 @@
       "replace": "    reasons = hits + sorted(set(always) - set(hits))",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "mutants_due_self_test"
       ]
@@ -34,13 +30,11 @@
     {
       "name": "a judge that is new since the pass is ignored",
       "file": "scripts/mutants-due.py",
-      "find": "if was.get(key) != now.get(key)]",
-      "replace": "if was.get(key) != now.get(key) and key in was]",
+      "find": "        if was.get(key) == now.get(key):\n            continue",
+      "replace": "        if was.get(key) == now.get(key) or key not in was:\n            continue",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "mutants_due_self_test"
       ]
@@ -52,9 +46,7 @@
       "replace": "    kept = dict(test)",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "mutants_due_self_test"
       ]
@@ -66,9 +58,7 @@
       "replace": "    for path, mark in ():",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "mutants_due_self_test"
       ]
@@ -76,13 +66,11 @@
     {
       "name": "untracked files are left out of a program's fingerprint",
       "file": "scripts/mutants-due.py",
-      "find": "    return fingerprint(placeholders(commands, tree, root) + \"\\n--\\n\" + listed)",
-      "replace": "    return fingerprint(placeholders(commands, tree, root))",
+      "find": "        return \"\\n\".join(f\"{placeholders(path, tree, root)} {digest}\" for path, digest in sorted(chosen))",
+      "replace": "        return \"\"",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "mutants_due_self_test"
       ]
@@ -94,9 +82,7 @@
       "replace": "    if False:\n        record[\"judges\"] = judges",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "mutate_self_test"
       ]

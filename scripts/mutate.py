@@ -169,13 +169,16 @@ def run_mutant(root: Path, cmake: str, tree: str, mutant: dict) -> tuple:
                     encoding="utf-8", newline="\n")
 
     targets = built_by(mutant)
+    # A mutant of a Python script names nothing to build (M1-109, register
+    # decision 392): the script is read when its test runs, and `--verify`
+    # refuses a mutant of anything else that names no build.
     try:
         build = subprocess.run([cmake, "--build", tree, "--target", *targets],
                                cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace",
-                               timeout=BUILD_TIMEOUT_SECONDS)
+                               timeout=BUILD_TIMEOUT_SECONDS) if targets else None
     except subprocess.TimeoutExpired:
         return "HUNG", f"the build did not finish in {BUILD_TIMEOUT_SECONDS} s"
-    if build.returncode != 0:
+    if build is not None and build.returncode != 0:
         output = build.stdout + build.stderr
         fired = static_assert_message(output)
         if fired:
@@ -247,6 +250,9 @@ def verify(root: Path, given: Path) -> int:
             if found != 1:
                 problems.append(f"{path.name}: {mutant['name']}: anchor appears "
                                 f"{found} times in {mutant['file']}")
+            problem = build_problem(mutant)
+            if problem:
+                problems.append(f"{path.name}: {mutant['name']}: {problem}")
     for problem in problems:
         print(problem, file=sys.stderr)
     print(f"mutant-anchors: {len(files)} tasks, {anchors} anchors, "
@@ -331,6 +337,19 @@ def main(argv: list) -> int:
         return 1
     record_pass(root, given, tree, spec)
     return 0
+
+
+def build_problem(mutant: dict):
+    """Why a mutant cannot go without a build, or None (M1-109, register
+    decision 392). Only a Python script is read as it stands when its test
+    runs; a C++ file must be compiled, and a CMake file is read by a configure
+    that only a build triggers -- `build.ninja` is the target that does that
+    and nothing else. A mutant of either that builds nothing changes nothing,
+    and would survive as a hole that is not there."""
+    if built_by(mutant) or mutant["file"].endswith(".py"):
+        return None
+    return (f"names nothing to build, but {mutant['file']} is not a Python script: name the "
+            "targets it reaches, or build.ninja for a CMake file")
 
 
 def built_by(mutant: dict) -> list:
@@ -420,6 +439,25 @@ def self_test() -> int:
         "a record holds its commit and tree": pass_record("c0ffee", "build/rel", judges)["commit"] == "c0ffee"
             and pass_record("c0ffee", "build/rel", judges)["tree"] == "build/rel",
     }
+    parts = {"ctest t": {"definition": "0123456789abcdef"}}
+    card = {"card": "0x10de 0x25ba"}
+    record_cases["a record holds the judges' parts and the graphics card (M1-109)"] = (
+        pass_record("c0ffee", "build/rel", judges, parts, card).get("judge_parts") == parts
+        and pass_record("c0ffee", "build/rel", judges, parts, card).get("gpu") == card)
+    record_cases["a record for a file not judged on a card names none"] = (
+        "gpu" not in pass_record("c0ffee", "build/rel", judges, parts, None))
+    # A mutant that names no build (M1-109, register decision 392): allowed for
+    # a Python script, refused for anything a build must read first.
+    script = {"file": "scripts/x.py", "suites": [], "targets": []}
+    record_cases["a script's mutant may build nothing"] = build_problem(script) is None
+    record_cases["a C++ mutant that builds nothing is refused"] = build_problem(
+        dict(script, file="src/a.cpp")) is not None
+    record_cases["a CMake mutant that builds nothing is refused"] = build_problem(
+        dict(script, file="cmake/ScriptTests.cmake")) is not None
+    record_cases["a CMake mutant that builds build.ninja is accepted"] = build_problem(
+        dict(script, file="CMakeLists.txt", targets=["build.ninja"])) is None
+    record_cases["a mutant that builds nothing rebuilds nothing after it"] = rebuild_plan(
+        [m(), m(targets=["a"])]) == [[], []]
     for name, ok in record_cases.items():
         failures += not ok
         print(f"self-test: {name}: {'ok' if ok else 'WRONG'}")
@@ -460,31 +498,46 @@ def restore_problem(checkout_status: int, left: str):
     return None
 
 
-def pass_record(head: str, tree: str, judges) -> dict:
-    """What mutation-passes.json holds for a clean pass."""
+def pass_record(head: str, tree: str, judges, parts=None, gpu=None) -> dict:
+    """What mutation-passes.json holds for a clean pass: since M1-109 also each
+    judge's fingerprint in parts, and the graphics card for a file judged on it
+    (register decisions 396 and 397)."""
     record = {"commit": head, "tree": tree, "date": datetime.date.today().isoformat()}
     if judges is not None:
         record["judges"] = judges
+    if parts is not None:
+        record["judge_parts"] = parts
+    if gpu is not None:
+        record["gpu"] = gpu
     return record
 
 
-def judge_fingerprints(root: Path, tree: str, spec: dict):
-    """The judges' fingerprints, computed by mutants-due.py's own code so that
-    the two can never disagree about what one is (M1-103); None, with the
-    reason printed, if they cannot be taken -- the file then stays under the
-    strict rule, which is the safe side."""
+def judge_fingerprints(root: Path, tree: str, spec: dict) -> tuple:
+    """(fingerprints, their parts, the graphics card), computed by
+    mutants-due.py's own code so that the two can never disagree about what
+    one is (M1-103, M1-109). Fingerprints and parts are None, with the reason
+    printed, if they cannot be taken -- the file then stays under the strict
+    rule, which is the safe side; the card is None for a file not judged on
+    one, and None with the reason printed where it cannot be read, which
+    leaves a GPU-judged file due."""
     sys.dont_write_bytecode = True  # no __pycache__ in scripts/
     loader = importlib.util.spec_from_file_location("mutants_due", root / "scripts" / "mutants-due.py")
     module = importlib.util.module_from_spec(loader)
     try:
         loader.loader.exec_module(module)
         reading = module.Tree((root / tree).resolve())
-        found = reading.fingerprints(spec)
+        parts = reading.fingerprint_parts(spec)
+        found = {key: module.combine(value) for key, value in parts.items()}
+        gpu = None
+        if reading.needs_gpu(spec):
+            gpu, why = module.gpu_identity((root / tree).resolve())
+            if gpu is None:
+                print(f"no graphics card recorded, so this file stays due: {why}")
         reading.save_hashes()
-        return found
+        return found, parts, gpu
     except (SystemExit, OSError, ValueError, subprocess.CalledProcessError) as error:
         print(f"no fingerprints recorded, so the build definition keeps this file due: {error}")
-        return None
+        return None, None, None
 
 
 # Where a clean pass is recorded, file by file: the commit it ran at. The strict
@@ -511,7 +564,7 @@ def record_pass(root: Path, given: Path, tree: str, spec: dict) -> None:
                           text=True, check=True).stdout.strip()
     path = root / PASSES
     passes = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
-    passes[given.name] = pass_record(head, tree, judge_fingerprints(root, tree, spec))
+    passes[given.name] = pass_record(head, tree, *judge_fingerprints(root, tree, spec))
     path.write_text(json.dumps(dict(sorted(passes.items())), indent=2) + "\n",
                     encoding="utf-8", newline="\n")
     print(f"pass recorded in {PASSES}: {given.name} at {head[:12]}")

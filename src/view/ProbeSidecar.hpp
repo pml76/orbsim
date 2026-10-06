@@ -41,6 +41,15 @@ struct SidecarDevice {
     std::uint32_t apiVersion{}; // Vulkan's packed form: variant, major, minor, patch
 };
 
+// The validation layer an instance ran with (M1-109): the specification
+// version it implements, in Vulkan's packed form as `apiVersion` above, and
+// its own build number. The Vulkan SDK's part of a GPU test's verdict, since
+// the SDK's compiler and loader are already in the build's commands.
+struct SidecarLayer {
+    std::uint32_t specVersion{};
+    std::uint32_t implementationVersion{};
+};
+
 // What built the application.
 struct SidecarBuild {
     std::string_view configuration; // CMake's: Debug, RelWithDebInfo, ...
@@ -77,6 +86,13 @@ struct SidecarFields {
     SidecarBuild build;
     std::string_view runDateUtc; // ISO 8601, to the second, with a Z
     std::span<const std::string_view> files;
+    // The shader files the run read, by name, in the order it first read them
+    // (M1-109, register decision 394): what scripts/mutants-due.py takes a
+    // probe's verdict to depend on, and every one it tried, read or not.
+    std::span<const std::string_view> shaders;
+    // Absent when the run had no validation layer: not asked for, or not
+    // installed (M1-109, register decision 397).
+    std::optional<SidecarLayer> validationLayer;
 };
 
 // The whole file's text, LF line endings, ending in a newline.

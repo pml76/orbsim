@@ -225,7 +225,7 @@
       "find": "        for script in scripts_of(command):",
       "replace": "        for script in []:",
       "suites": [],
-      "targets": ["orbsim_shaders"],
+      "targets": [],
       "ctest": ["accept_golden_self_test", "accept_golden"],
       "expect": "caught"
     }

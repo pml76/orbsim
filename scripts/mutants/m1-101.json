@@ -1,7 +1,7 @@
 {
   "task": "M1-101",
   "tree": "build/relwithdebinfo",
-  "note": "Paths read with either separator (register decision 247). Each mutant takes away the reading of one separator and is judged by its script's self-test, which holds a tree written with backslashes as well as one written with forward slashes, and by the real check on this tree. Python needs no build, but the harness always builds, so every mutant names orbsim_shaders as a no-op.",
+  "note": "Paths read with either separator (register decision 247). Each mutant takes away the reading of one separator and is judged by its script's self-test, which holds a tree written with backslashes as well as one written with forward slashes, and by the real check on this tree. Since M1-109 (register decision 392) a Python mutant names no build target, and the harness builds nothing for it; until then every mutant named orbsim_shaders as a no-op, which made every shader an input of this file.",
   "mutants": [
     {
       "name": "the memory pool check reads compiles with forward slashes only",
@@ -10,9 +10,7 @@
       "replace": "    edges = [(outputs, rule, body) for outputs, rule, body in",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "memory_pool_self_test",
         "memory_pool"
@@ -25,9 +23,7 @@
       "replace": "    edge = re.search(r\"^build CMakeFiles/check[ |][^\\n]*\", ninja_text, re.MULTILINE)",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "configure_current_self_test",
         "configure_current"
@@ -40,9 +36,7 @@
       "replace": "    edge = re.search(r\"^build CMakeFiles[\\\\]check[ |][^\\n]*\", ninja_text, re.MULTILINE)",
       "expect": "caught",
       "suites": [],
-      "targets": [
-        "orbsim_shaders"
-      ],
+      "targets": [],
       "ctest": [
         "configure_current_self_test",
         "configure_current"

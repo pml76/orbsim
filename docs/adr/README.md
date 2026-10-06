@@ -39,7 +39,7 @@ usually enough.
 | [0021](0021-transforms-carry-their-frames.md) | A transform carries the frames it maps between, and the transpose is a dual map | accepted | 2026-09-20 |
 | [0022](0022-a-bounded-scalar-validates-itself.md) | A scalar with a physical bound validates itself | accepted | 2026-09-22 |
 | [0023](0023-the-processor-we-assume.md) | The processor this project assumes: x86-64 with SSE4.2, FMA3, AVX2, F16C and BMI2, set for every file compiled | accepted | 2026-09-26 |
-| [0024](0024-verification-costs-what-changed.md) | Verification re-does only what a change can affect: a memory-sized lint pool, per-file lint dependencies, parallel tests, a strict mutation-rerun rule -- since 2026-09-30 judging a build-definition change by its effect -- committed fuzz corpora | accepted | 2026-09-27 |
+| [0024](0024-verification-costs-what-changed.md) | Verification re-does only what a change can affect: a memory-sized lint pool, per-file lint dependencies, parallel tests, a strict mutation-rerun rule -- since 2026-09-30 judging a build-definition change by its effect -- committed fuzz corpora -- since 2026-10-05 reading what a judge reads more precisely, and the graphics card | accepted | 2026-09-27 |
 | [0025](0025-bresenham-lines-required.md) | Lines are drawn by Bresenham's rule, which every device must offer, so a one-pixel line lands on the same pixels on every card | accepted | 2026-10-03 |
 | [0026](0026-input-is-commands.md) | Input becomes device-neutral commands through one mapping per device, and held input is sampled at a fixed step, so a replay of the commands is exact | accepted for the camera; the vessel half is milestone 2's | 2026-10-04 |
 

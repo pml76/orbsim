@@ -591,11 +591,23 @@ changed since `scripts/mutation-passes.json` says it last passed. That covers:
 
 - the mutated files;
 - every file the judging programs are built from, headers included, from
-  Ninja's own records;
-- the shaders for a judge that runs the application;
+  Ninja's own records -- **through the edges that say "this reads that", not
+  the build-order ones** (M1-109, register decision 393), which had made every
+  shader an input of every program built with the application;
+- for a test that starts the application, the shaders it reads: for a probe
+  test, those its last sidecar names, where the sidecar comes from a run that
+  rendered and is newer than the application; every shader otherwise (M1-109,
+  decision 394);
+- every test CTest runs before a judging test -- the setup tests of the
+  fixtures it requires, and the tests it is ordered after -- since `ctest -R`
+  runs those too (M1-109, decision 394);
 - `data/`;
 - the scripts the judges run;
 - the harness itself;
+- **for a file judged on the GPU, the graphics card**: the card, its driver
+  and the validation layer the pass ran with, read from a `clear` probe's
+  sidecar; a different one, or none recorded, makes the file due (M1-109,
+  decision 397);
 - **and a change to the build definition** -- `CMakeLists.txt`, `cmake/`,
   `CMakePresets.json` -- **only through what it changed** (M1-103, since
   2026-09-30): a clean pass records a fingerprint of each judge, a program's
@@ -603,10 +615,24 @@ changed since `scripts/mutation-passes.json` says it last passed. That covers:
   built from, toolchain files included, and a CTest entry's definition. The
   build definition makes a file due through a changed fingerprint, or where
   no fingerprint was recorded in this tree. A file that mutates
-  `CMakeLists.txt` itself is still due whenever it changes.
+  `CMakeLists.txt` itself is still due whenever it changes. Since M1-109 a
+  fingerprint is recorded in parts -- build commands, files inside the build
+  tree, files outside it -- so a moved one says what moved (decision 396), and
+  a file inside the tree is hashed with the tree's path taken out, so a fresh
+  tree of the same commit agrees with an old one (decision 395).
 
 Each file is judged in the tree its pass was recorded in, whichever tree is
 named (M1-106), so either Windows tree gives the same list.
+
+**What a mutant builds** (M1-109, decision 392): a mutant of a Python script
+names nothing, and the harness builds nothing for it; a mutant of a CMake file
+read at configure time names `build.ninja`, which re-runs CMake and builds
+nothing else; every other mutant names the programs it reaches. `--verify`
+refuses a mutant of anything but a Python script that names nothing, since it
+would change nothing and survive as a hole that is not there. Until M1-109 the
+script mutants named `orbsim_shaders` as a no-op, which made every shader an
+input of every one of them -- 26 of 34 files due for a change to one shader
+that four can reach ([the measurement](measurements/m1-109-due-list.md)).
 
 `mutate.py` writes a file's entry after a clean run, and only when the code
 matches the commit, since otherwise the record would vouch for code that is
