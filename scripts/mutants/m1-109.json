@@ -217,10 +217,10 @@
       "ctest": []
     },
     {
-      "name": "the sidecar writes no validation layer line",
+      "name": "the validation layer is written under another key",
       "file": "src/view/ProbeSidecar.cpp",
       "find": "        Entry{.key = \"validation.layer\", .value = formatLayer(fields.validationLayer)},",
-      "replace": "        Entry{.key = \"validation.layer\", .value = std::string(\"none\")},",
+      "replace": "        Entry{.key = \"validation\", .value = formatLayer(fields.validationLayer)},",
       "expect": "caught",
       "suites": ["test_probe_sidecar"],
       "targets": [],
