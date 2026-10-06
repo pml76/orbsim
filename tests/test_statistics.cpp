@@ -39,7 +39,8 @@ constexpr f64 kInf = std::numeric_limits<f64>::infinity();
 [[nodiscard]] std::vector<Seconds> secondsOf(std::span<const f64> values) {
     std::vector<Seconds> made;
     made.reserve(values.size());
-    std::ranges::transform(values, std::back_inserter(made), [](f64 v) { return Seconds{v}; });
+    std::ranges::transform(
+        values, std::back_inserter(made), [](f64 v) noexcept { return Seconds{v}; });
     return made;
 }
 

@@ -25,7 +25,8 @@ std::expected<void, std::string> writeFile(const std::filesystem::path& path,
     // The bytes become chars by value rather than by a pointer cast, which
     // costs one copy of a few megabytes.
     std::vector<char> chars(bytes.size());
-    std::ranges::transform(bytes, chars.begin(), [](std::byte b) { return static_cast<char>(b); });
+    std::ranges::transform(
+        bytes, chars.begin(), [](std::byte b) noexcept { return static_cast<char>(b); });
     // Binary alone: an output stream truncates by itself, and openmode is a
     // signed bitmask type, so combining two of its values is what
     // bugprone-signed-bitwise reports.

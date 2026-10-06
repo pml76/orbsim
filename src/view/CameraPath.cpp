@@ -57,8 +57,8 @@ std::expected<CameraPath, CameraPathError> CameraPath::from(std::span<const Keyf
     }
     // Strictly: two keyframes at one time would make a segment of zero
     // length, and the fraction along it 0 / 0.
-    const auto notIncreasing =
-        std::ranges::adjacent_find(keyframes, [](const Keyframe& earlier, const Keyframe& later) {
+    const auto notIncreasing = std::ranges::adjacent_find(
+        keyframes, [](const Keyframe& earlier, const Keyframe& later) noexcept {
             return !(earlier.time < later.time);
         });
     if (notIncreasing != keyframes.end()) {
@@ -80,7 +80,9 @@ std::expected<Pose, CameraPathError> CameraPath::poseAt(Seconds time) const noex
     // The first keyframe after `time`; the segment starts at the one before.
     // None after it means `time` is the last keyframe's own.
     const auto after = std::ranges::upper_bound(
-        keyframes_, time, std::less<>{}, [](const Keyframe& keyframe) { return keyframe.time; });
+        keyframes_, time, std::less<>{}, [](const Keyframe& keyframe) noexcept {
+            return keyframe.time;
+        });
     if (after == keyframes_.end()) return keyframes_.back().pose;
     const Keyframe& start = *std::prev(after);
     const Keyframe& end = *after;

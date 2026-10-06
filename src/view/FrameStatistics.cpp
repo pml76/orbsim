@@ -34,7 +34,8 @@ namespace {
 [[nodiscard]] std::vector<f64> sortedValues(std::span<const Seconds> sample) {
     std::vector<f64> values;
     values.reserve(sample.size());
-    std::ranges::transform(sample, std::back_inserter(values), [](Seconds s) { return s.value(); });
+    std::ranges::transform(
+        sample, std::back_inserter(values), [](Seconds s) noexcept { return s.value(); });
     std::ranges::sort(values);
     return values;
 }

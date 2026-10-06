@@ -121,7 +121,7 @@ constexpr JulianDate kEpochUt1{.day = 2'460'886.5, .fraction = 0.269111633300781
     REQUIRE(fixture.has_value());
     const auto tt = TtTime::fromJulianDate(kEpochTt);
     REQUIRE(tt.has_value());
-    const auto row = std::ranges::find_if(fixture->rows, [&](const RotationAtEpoch& r) {
+    const auto row = std::ranges::find_if(fixture->rows, [&](const RotationAtEpoch& r) noexcept {
         return r.tt.modifiedJulianDay() == tt->modifiedJulianDay() &&
                r.tt.picosecondOfDay() == tt->picosecondOfDay();
     });
@@ -228,7 +228,7 @@ struct DirectionPair {
 // meridian 2 s + 1, a parallel 4 s + 1, for s segments per quarter circle.
 [[nodiscard]] std::ptrdiff_t linesOfWrongLength(std::span<const GridPolyline> lines,
                                                 std::size_t perQuarter) {
-    return std::ranges::count_if(lines, [perQuarter](const GridPolyline& line) {
+    return std::ranges::count_if(lines, [perQuarter](const GridPolyline& line) noexcept {
         const bool meridian =
             line.line == GridLine::Meridian || line.line == GridLine::PrimeMeridian;
         return line.points.size() != (meridian ? 2 * perQuarter : 4 * perQuarter) + 1;
@@ -336,15 +336,15 @@ TEST_CASE("in the body's own frame the equator lies in z = 0 and the prime merid
         PlanetaryGrid::make(Metres{kRadius}, layoutOf(kEarthGridCounts), Quat{});
     const auto& equator = onlyLine(grid, GridLine::Equator).points;
     const auto& meridian = onlyLine(grid, GridLine::PrimeMeridian).points;
-    CHECK(std::ranges::count_if(equator, [](const Position& p) {
+    CHECK(std::ranges::count_if(equator, [](const Position& p) noexcept {
               return !nearlyEqual(p.z.value(), 0.0, Tolerance{0.0});
           }) == 0);
-    CHECK(std::ranges::count_if(meridian, [](const Position& p) {
+    CHECK(std::ranges::count_if(meridian, [](const Position& p) noexcept {
               return !nearlyEqual(p.y.value(), 0.0, Tolerance{0.0});
           }) == 0);
     // Longitude 0, not 180.
-    CHECK(std::ranges::count_if(meridian, [](const Position& p) { return p.x.value() < 0.0; }) ==
-          0);
+    CHECK(std::ranges::count_if(meridian,
+                                [](const Position& p) noexcept { return p.x.value() < 0.0; }) == 0);
 }
 
 TEST_CASE("the parallels are every 10 degrees") {
@@ -363,7 +363,7 @@ TEST_CASE("the parallels are every 10 degrees") {
         if (k != 0) expected.push_back(kRadius * std::sin(degreesToRadians(10.0 * k)));
     }
     REQUIRE(found.size() == expected.size());
-    CHECK(std::ranges::count_if(std::views::zip(found, expected), [](const auto& pair) {
+    CHECK(std::ranges::count_if(std::views::zip(found, expected), [](const auto& pair) noexcept {
               return std::abs(std::get<0>(pair) - std::get<1>(pair)) > kSpacingToleranceMetres;
           }) == 0);
 }
@@ -442,7 +442,7 @@ TEST_CASE("the prime meridian, the equator and the pole are where Skyfield puts 
         Position grid;
         Plain bodyFixed;
     };
-    const std::array checks{
+    const std::array<Check, 3> checks{{
         Check{
             .what = "latitude 0, longitude 0",
             .grid = meridian.at(180),
@@ -458,7 +458,7 @@ TEST_CASE("the prime meridian, the equator and the pole are where Skyfield puts 
             .grid = meridian.at(360),
             .bodyFixed = {.x = 0.0, .y = 0.0, .z = kRadius},
         },
-    };
+    }};
     for (const Check& check : checks) {
         const f64 angle = angleBetweenPlain({
             .measured = plainOf(check.grid),

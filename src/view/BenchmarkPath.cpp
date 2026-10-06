@@ -65,10 +65,10 @@ struct OrbitPlane {
     const Direction right = cross(up, back);
 
     // Camera to world: the columns are the camera's right, up and back.
-    const std::array<f64, 3> rowX{right.x.value(), up.x.value(), back.x.value()};
-    const std::array<f64, 3> rowY{right.y.value(), up.y.value(), back.y.value()};
-    const std::array<f64, 3> rowZ{right.z.value(), up.z.value(), back.z.value()};
-    const RotationMatrix axes{.rows = {rowX, rowY, rowZ}};
+    const std::array<f64, 3> rowX{{right.x.value(), up.x.value(), back.x.value()}};
+    const std::array<f64, 3> rowY{{right.y.value(), up.y.value(), back.y.value()}};
+    const std::array<f64, 3> rowZ{{right.z.value(), up.z.value(), back.z.value()}};
+    const RotationMatrix axes{.rows = {{rowX, rowY, rowZ}}};
     return Pose{
         .position = Position{outward.x.value() * r, outward.y.value() * r, outward.z.value() * r},
         .orientation = quaternionFrom(axes),
