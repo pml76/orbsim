@@ -27,6 +27,7 @@
 #include <SDL3/SDL_timer.h>
 #include <SDL3/SDL_video.h>
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <charconv>
 #include <cstddef>
@@ -39,6 +40,7 @@
 #include <memory>
 #include <optional>
 #include <print>
+#include <ranges>
 #include <span>
 #include <string>
 #include <string_view>
@@ -57,7 +59,8 @@ using orb::app::kExitUsage;
 using orb::app::kExitValidationErrors;
 
 constexpr std::string_view kUsage =
-    "usage: orbsim [--validate | --no-validate] [--seconds <n>] [--shader-dir <path>]\n"
+    "usage: orbsim [--validate | --no-validate] [--seconds <n>] [--scene <name>]\n"
+    "              [--shader-dir <path>]\n"
     "       orbsim [--validate | --no-validate] --probe <name> [--probe-out <dir>] "
     "[--shader-dir <path>]\n"
     "              [--golden <path> | --golden-dir <dir>] [--accept-golden]\n"
@@ -74,6 +77,8 @@ constexpr std::string_view kHelp =
     "  --validate, --no-validate  the Vulkan validation layers on or off; on by default in a\n"
     "                             Debug build\n"
     "  --seconds <n>              run the window for n seconds, then exit\n"
+    "  --scene <name>             what the window draws: grid, the Earth's grid and horizon\n"
+    "                             (the default), or none, nothing before the resolve pass\n"
     "  --shader-dir <path>        where the compiled shaders are\n"
     "  --probe <name>             render one probe's frame at 1280x720, write its files, exit\n"
     "  --probe-out <dir>          where a probe writes its files; the build tree's probes/ by\n"
@@ -133,6 +138,24 @@ enum class Mode : std::uint8_t {
     Bench, // since M1-22
 };
 
+// What the window draws before its resolve pass (the phase A gate, register
+// decision 409). `None` exists for orbsim_smoke_bare: since M1-21 the grid's
+// lines are pushed first, and the validation layer then counts their push
+// constants as set for the resolve pass too, so only a frame with nothing
+// drawn before it lets the layer see the resolve pass on its own.
+enum class WindowScene : std::uint8_t {
+    Grid,
+    None,
+};
+
+// The scenes by name, in the order --scene's refusal lists them.
+constexpr std::array<std::pair<std::string_view, WindowScene>, 2> kWindowScenes{
+    {
+        {"grid", WindowScene::Grid},
+        {"none", WindowScene::None},
+    },
+};
+
 struct Options {
     Mode mode{Mode::Window};
 
@@ -153,6 +176,11 @@ struct Options {
     // automated smoke test a way to exercise startup, the frame loop and
     // teardown -- the teardown path is where validation errors hide.
     Seconds runFor{0.0}; // zero means run until the user quits
+
+    // --scene's choice. Absent unless given, so that one given beside
+    // --probe or --bench is refused rather than ignored; the window draws
+    // the grid when it is absent.
+    std::optional<WindowScene> scene;
 
     // Where the compiled shaders are. The build tree's by default, which is
     // where CMake writes them; an argument so that a run can be pointed
@@ -310,6 +338,18 @@ struct CountRange {
     return options;
 }
 
+// --scene is the window's alone (register decision 409): a probe and a
+// benchmark draw scenes of their own, so it is refused beside either rather
+// than ignored.
+[[nodiscard]] std::expected<Options, SdlError> checkSceneOption(Options options) {
+    if (options.mode == Mode::Help || !options.scene || options.mode == Mode::Window) {
+        return options;
+    }
+    return std::unexpected(SdlError{
+        .message = "--scene is the window's; it does not apply to --probe or --bench",
+    });
+}
+
 // The combinations a probe run refuses (register decision 192). A probe is one
 // frame and exits, so a running time means nothing to it; and a name must be
 // one the registry knows, which is said here with the list rather than
@@ -418,6 +458,7 @@ constexpr std::uint32_t kLargestImageSide = 16'384;
 [[nodiscard]] std::optional<std::string_view> valueNeededBy(std::string_view arg) {
     if (const auto bench = benchValueNeededBy(arg)) return bench;
     if (arg == "--seconds") return "a value";
+    if (arg == "--scene") return "a scene's name";
     if (arg == "--shader-dir") return "a path";
     if (arg == "--probe") return "a probe's name";
     if (arg == "--probe-out") return "a directory";
@@ -432,6 +473,17 @@ constexpr std::uint32_t kLargestImageSide = 16'384;
         auto seconds = parseSeconds(given.value);
         if (!seconds) return std::unexpected(seconds.error());
         options.runFor = *seconds;
+    } else if (given.option == "--scene") {
+        const auto found = std::ranges::find(
+            kWindowScenes, given.value, &std::pair<std::string_view, WindowScene>::first);
+        if (found == kWindowScenes.end()) {
+            const auto names = kWindowScenes | std::views::keys | std::ranges::to<std::vector>();
+            return std::unexpected(SdlError{
+                .message = "no scene named '" + std::string(given.value) +
+                           "'; the scenes are: " + listOf(names),
+            });
+        }
+        options.scene = found->second;
     } else if (given.option == "--shader-dir") {
         options.shaderDirectory = pathFromUtf8(given.value);
     } else if (given.option == "--probe") {
@@ -474,7 +526,7 @@ constexpr std::uint32_t kLargestImageSide = 16'384;
             return std::unexpected(applied.error());
         }
     }
-    return checkBenchOptions(options).and_then(checkProbeOptions);
+    return checkBenchOptions(options).and_then(checkProbeOptions).and_then(checkSceneOption);
 }
 
 // Drains the event queue, handing the mouse to the view (M1-21). Returns
@@ -552,11 +604,14 @@ struct FrameDrawing {
             continue;
         }
 
-        // The Earth's grid from where the camera now is (M1-21), then the
-        // resolve pass carries the frame to the display.
-        if (const auto drawn = drawing.view->record(gfx, **frame, *drawing.pipelines); !drawn) {
-            std::print(stderr, "Frame could not be drawn: {}\n", drawn.error().message);
-            return kExitFailure;
+        // The Earth's grid from where the camera now is (M1-21), unless
+        // --scene none asked for nothing (decision 409), then the resolve
+        // pass carries the frame to the display.
+        if (options.scene.value_or(WindowScene::Grid) == WindowScene::Grid) {
+            if (const auto drawn = drawing.view->record(gfx, **frame, *drawing.pipelines); !drawn) {
+                std::print(stderr, "Frame could not be drawn: {}\n", drawn.error().message);
+                return kExitFailure;
+            }
         }
         if (const auto ended = gfx.endFrame(**frame, *drawing.resolve); !ended) {
             std::print(stderr, "Frame could not be presented: {}\n", ended.error().message);

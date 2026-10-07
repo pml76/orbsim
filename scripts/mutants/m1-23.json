@@ -1,0 +1,56 @@
+{
+  "task": "M1-23",
+  "tree": "build/debug",
+  "note": "What the phase A gate added (register decisions 409-414): --scene and the bare smoke test, the eye that runs leastAlignedAxis's third case, and the per-card expectation in the harness. Two survivors are declared, each with its reason; neither is a hole a test could close: one only hides another file's mutant, which that file's pass then reports, and one is equivalent, measured.",
+  "mutants": [
+    {
+      "name": "--scene is accepted beside --probe or --bench",
+      "file": "src/app/main.cpp",
+      "find": "options.mode == Mode::Help || !options.scene || options.mode == Mode::Window",
+      "replace": "options.mode == Mode::Help || !options.scene || options.mode != Mode::Help",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "ctest": [
+        "usage_scene_with_probe",
+        "usage_scene_with_bench"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the bare scene draws the grid's lines after all",
+      "file": "src/app/main.cpp",
+      "find": "    {\"none\", WindowScene::None},",
+      "replace": "    {\"none\", WindowScene::Grid},",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "ctest": [
+        "orbsim_smoke_bare",
+        "usage_scene_unknown"
+      ],
+      "expect": "survives",
+      "why": "Drawing the lines in the bare scene changes nothing a test reads: the run is still valid, and the frame is not looked at. What it does is blind orbsim_smoke_bare to a resolve pass that never pushes its exposure, the defect the bare scene exists for (decision 409) -- and m1-15.json names orbsim_smoke_bare as that mutant's judge, so the blindness is reported by m1-15's next pass, which runs whenever main.cpp changes. Declared by decision 414, 2026-10-07."
+    },
+    {
+      "name": "leastAlignedAxis's third case returns x",
+      "file": "src/view/PlanetaryGrid.cpp",
+      "find": "    return Direction{0.0, 0.0, 1.0};",
+      "replace": "    return Direction{1.0, 0.0, 0.0};",
+      "suites": [
+        "test_planetary_grid"
+      ],
+      "targets": [
+        "orbsim"
+      ],
+      "ctest": [
+        "probe_grid-400km",
+        "probe_grid-400km_golden"
+      ],
+      "expect": "survives",
+      "why": "Equivalent, measured (decision 413): the case is taken only when the eye's z is the smallest of its three, and then any axis not parallel to the eye gives the same horizon, because crossing a direction with a coordinate axis is exact and length() is exact at every scale. Returning x there passed every horizon case, from the equatorial eye that now runs it and from one 1e-8 off the x axis. Declared by decision 414, 2026-10-07."
+    }
+  ]
+}

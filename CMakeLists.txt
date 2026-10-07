@@ -1163,6 +1163,16 @@ add_test(NAME orbsim_smoke COMMAND orbsim --validate --seconds 2)
 # parallel_tests refuses a gpu-labelled test without it.
 set_tests_properties(orbsim_smoke PROPERTIES LABELS gpu RESOURCE_LOCK gpu)
 
+# The same, with no scene drawn (the phase A gate, register decision 409).
+# Since M1-21 the window draws its lines before the resolve pass, and the
+# validation layer then counts the lines' push constants as set for the
+# resolve pipeline as well, although the two layouts differ -- so a resolve
+# pass that never pushes its exposure went unreported in orbsim_smoke, shown
+# by bisecting to M1-21 and by skipping the lines. With nothing drawn first,
+# the layer sees the resolve pass alone.
+add_test(NAME orbsim_smoke_bare COMMAND orbsim --validate --seconds 2 --scene none)
+set_tests_properties(orbsim_smoke_bare PROPERTIES LABELS gpu RESOURCE_LOCK gpu)
+
 # The probes (M1-16; ADR 0008; register decisions 192-194).
 #
 # probe_clear renders `clear` under the validation layers into the build
@@ -1463,6 +1473,14 @@ orbsim_add_usage_test(bench_with_probe "--bench|grid-orbit|--probe|clear"
         "--bench and --probe cannot go together")
 orbsim_add_usage_test(probe_with_bench "--probe|clear|--bench|grid-orbit"
         "--bench and --probe cannot go together")
+
+# The window's scene (the phase A gate, register decision 409): a name it
+# knows, and only for the window.
+orbsim_add_usage_test(scene_unknown "--scene|earth" "the scenes are: grid, none")
+orbsim_add_usage_test(scene_with_probe "--probe|clear|--scene|none"
+        "--scene is the window's; it does not apply to --probe or --bench")
+orbsim_add_usage_test(scene_with_bench "--bench|grid-orbit|--scene|none"
+        "--scene is the window's; it does not apply to --probe or --bench")
 
 # The benchmark, run briefly under the validation layers (M1-22, register
 # decision 372): the timestamp queries, the swapchain that does not wait for
