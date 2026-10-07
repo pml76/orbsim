@@ -1324,11 +1324,11 @@ the owner in M1-47.
 ## 11. The phase A gate, 2026-10-06 to 07
 
 [M1-23](plan/tasks/m1-23-phase-a-gate.md), run on the first machine -- the
-RTX A2000 and Ubuntu 26.04 under WSL -- under register decisions 400-416.
+RTX A2000 and Ubuntu 26.04 under WSL -- under register decisions 400-417.
 **Every configuration below was run on `2c8a90c`**; coverage was measured at
 `b0b1244`, two commits of test and option before it. **The final commit,
 `367d2ab`, changes a comment and a mutant's expectation** (decision 416), and
-`check` ran on it in both trees.
+`check` ran on it in both trees, which the owner ruled enough (decision 417).
 
 **What it found that the day-to-day `check` could not:**
 
