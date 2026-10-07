@@ -26,6 +26,17 @@ Then repeat at Low and Ultra, and at 2560×1440, because a single number does no
 say whether the cost is per pixel or per frame — and that distinction decides
 what to do about it.
 
+**A question for the owner before the runs** *(added 2026-10-07, from the
+phase A gate)*. On the RTX A2000 machine the processor's figures swing by up
+to 40 % from one half second to the next, at every warm-up length tried out
+to 30 s, while the GPU's agree to 0.5 % -- and the phase A baseline's 600
+frames lasted 0.4 s there, so its three runs' median intervals came out 0.40,
+0.53 and 0.62 ms. Medians over fifteen seconds agreed within 3 %.
+[`PROJECT_STATE.md`](../../PROJECT_STATE.md) section 11.8 has the
+measurement. Whether a figure should span a set time rather than a set
+number of frames, or simply more frames on that machine, is the owner's
+decision, and it is put before the first run here.
+
 ## What to record
 
 In `PROJECT_STATE.md`, as a table beside the phase A and phase B baselines:

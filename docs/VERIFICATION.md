@@ -505,6 +505,32 @@ llvm-cov report ./test_orbit_scales -object ./test_orbit \
     -instr-profile=merged.profdata ../../src/
 ```
 
+**Measured again at the phase A gate, 2026-10-06**, over every suite and on
+both platforms -- Windows with the renderer and the application -- and the
+table and the reading are in [`PROJECT_STATE.md`](PROJECT_STATE.md) section
+11.4. **The recipe above is right for one or two programs and wrong for
+many**, and the gate found out how. Reporting over several programs with one
+merged profile makes `llvm-cov` drop every function whose records differ
+between them, printing only "N functions have mismatched data" -- and a
+dropped function leaves the table entirely, its unexecuted lines with it.
+Over all the Linux suites that hid 2,840 functions: `core/Time.hpp` showed 5
+unexecuted lines where it has 28, and `src/` 93.30 % where it is 91.43 %. It
+is rule 23's shape exactly -- an instrument that silently stops measuring
+reads like a better result. **Read each program with its own profile, and
+combine the line hits afterwards**:
+
+```
+for t in test_*; do
+    LLVM_PROFILE_FILE=each/$t.profraw ./$t
+    llvm-profdata merge -sparse each/$t.profraw -o each/$t.profdata
+    llvm-cov export -format=lcov ./$t -instr-profile=each/$t.profdata ../../src/ > each/$t.lcov
+done
+```
+
+then count a line as executed if any program's `.lcov` gives it a hit.
+Exporting each program against the merged profile is not enough: measured,
+it still drops the same functions.
+
 ### Rule 19. Mutation testing, occasionally
 
 Deliberately break the code — flip a sign, change a constant, weaken a
@@ -556,6 +582,16 @@ accepted survivor is recorded, as M1-09 has one -- the perspective divide
 multiplying by w, handed to M1-10 by name and killed there; an undeclared
 survivor fails the run, so a mutant that starts surviving after a change is a
 result rather than a line nobody reads.
+
+**A verdict can depend on the graphics card** (the phase A gate, register
+decisions 410 and 411). M1-19's "line lists are drawn without Bresenham's
+rule" survives on the RX 7900 XTX, which lights the same pixels either way,
+and is caught on the RTX A2000 by its golden. `expect` may therefore be a
+map from card to verdict, the card named as the goldens' folders are --
+`{"10de-25ba": "caught", "1002-744c": "survives"}` -- with **no default**: the
+card is read before anything runs, and a card the map does not name stops the
+pass before it builds anything. A third card is a decision about every such
+mutant, not an inheritance.
 
 **Five earlier passes have no file, and cannot be re-run.** M1-04, M1-06,
 M1-05, M1-86 and M1-07 were mutated by hand before the harness existed or on
@@ -844,7 +880,7 @@ rules a machine checks and which depend on a person remembering.
 | 15 Runtime monitors | `check` in the Debug tree, via assertions | **to build** |
 | 16 Determinism | `check` — `TEST_CASE("propagation is bit-identical across runs")`, over 100 steps | **done** |
 | 17 Dimensional analysis | The compiler — mp-units under `core/Units.hpp` and `Vec3<R>`, [ADR 0019](adr/0019-vectors-carry-their-unit.md) | **done** |
-| 18 Coverage | By hand, periodically. Orbit.cpp 99.2% lines | **done** |
+| 18 Coverage | By hand, at each gate. **Since the phase A gate, every suite on both platforms, renderer and application included, each program read with its own profile** -- the merged report hid unexecuted lines; [`PROJECT_STATE.md`](PROJECT_STATE.md) section 11.4 has the table and the reading | **done** |
 | 19 Mutation testing | By hand, periodically; the **anchors** are in `check` | exercised 2026-09-07, again 2026-09-19 on M1-04, M1-06 and M1-05, and 2026-09-20 on M1-86, M1-07, M1-08 and M1-09. **2026-09-21 on M1-10: fourteen of fourteen, none surviving, none invalid**, six of them at compile time -- M1-09's declared survivor died there, and the pass found that *two written-down claims about which test would catch what* had never been run, one of them in M1-09's own mutant file. **2026-09-22 on M1-87: twelve mutants, and the pass ran twice** -- 11 caught and 1 surviving first, because the *test* was wrong rather than the code, then twelve of twelve, none surviving, none invalid, seven of them at compile time |
 | 20 WSL, UBSan, second compiler | By hand, before a milestone | **done** |
 | 21 `check` is the definition of done | The build, both trees | **done** |

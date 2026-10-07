@@ -32,6 +32,9 @@ numbers so existing references still resolve:
 - [9. If you are picking this up cold](#9-if-you-are-picking-this-up-cold)
 - [10. Frame time, measured](#10-frame-time-measured) — the benchmark's
   figures, one row per card and phase
+- [11. The phase A gate](#11-the-phase-a-gate-2026-10-06-to-07) — six
+  configurations, fuzzing, coverage, the mutation pass and the model errors,
+  as measured at the gate
 
 ---
 
@@ -1298,7 +1301,9 @@ these are to stay under.
 | 2026-10-04, M1-22 | `grid-orbit`, the wireframe grid | RX 7900 XTX, AMD 26.8.1, immediate; Threadripper PRO 3955WX | 19:28:28 | 0.4461, 0.5106, 0.7033 | 0.1648, 0.1850 | 0.0593, 0.0597 |
 | | | | **19:28:40, the headline** | **0.4442, 0.5108, 0.6829** | **0.1641, 0.1936** | **0.0593, 0.0598** |
 | | | | 19:28:34 | 0.4431, 0.4915, 0.5540 | 0.1643, 0.1850 | 0.0593, 0.0597 |
-| *to come* | the same | RTX A2000, on the first machine (decision 374) | | | | |
+| 2026-10-07, M1-23 | `grid-orbit`, the wireframe grid | RTX A2000 Laptop, NVIDIA 582.53, immediate; Core i9-12900H | 01:35:48 | 0.6186, 1.5272, 1.9217 | 0.1546, 0.2679 | 0.1149, 0.1169 |
+| | | | **01:35:41, the headline** | **0.5269, 1.6372, 1.9283** | **0.1523, 0.2445** | **0.1145, 0.1163** |
+| | | | 01:35:35 | 0.4006, 1.3469, 1.8398 | 0.1174, 0.2023 | 0.1143, 0.1182 |
 
 The runs are listed largest median interval first. Their files, named for
 those times, are in this machine's build tree and are not committed. At this point the
@@ -1306,3 +1311,305 @@ frame is cheap everywhere: the GPU's 0.06 ms is the grid's lines and the
 resolve pass, the CPU works for 0.16 ms, and the rest of the 0.44 ms
 interval, about 63 %, is the CPU waiting -- for the GPU and the display
 together, which this figure does not split.
+
+**The RTX A2000's three runs disagree by half on the CPU side, and that is
+the machine, not the instrument**: its processor's half-second figures swing
+by up to 40 % at every warm-up length tried, out to 30 s, and 600 frames is
+under half a second there. The GPU's figure agrees to 0.5 %. Section 11.8
+has the measurement; whether a figure here should span more frames is put to
+the owner in M1-47.
+
+---
+
+## 11. The phase A gate, 2026-10-06 to 07
+
+[M1-23](plan/tasks/m1-23-phase-a-gate.md), run on the first machine -- the
+RTX A2000 and Ubuntu 26.04 under WSL -- under register decisions 400-416.
+**Every configuration below was run on `2c8a90c`**; coverage was measured at
+`b0b1244`, two commits of test and option before it. **The final commit,
+`367d2ab`, changes a comment and a mutant's expectation** (decision 416), and
+`check` ran on it in both trees.
+
+**What it found that the day-to-day `check` could not:**
+
+- **gcc-14 refused seven files written since M1-20**, which it had not seen
+  (decision 408): ten `std::array` initialisers with elided inner braces and
+  ten lambdas it proved cannot throw, wanting `noexcept`.
+- **A mutant no test had caught since M1-21**: a resolve pass that never
+  pushes its exposure (`m1-15.json`). Since M1-21 the window draws its lines
+  before the resolve pass, and the validation layer counts their push
+  constants as set for the resolve pipeline too, though the layouts differ.
+  Bisected to `4e6e3f1` and shown both ways; `orbsim_smoke_bare` now judges
+  it (decision 409).
+- **A survivor that is caught on one card**: Bresenham's rule dropped from
+  line lists, which the A2000's golden sees and the RX 7900 XTX cannot, as
+  decision 306 predicted. The harness now takes a verdict per card, with no
+  default (decisions 410, 411).
+- **The usual way of merging coverage across programs hides unexecuted
+  lines** -- 93.30 % reported where the truth is 91.43 % (11.4).
+- **Three Windows trees still pointed at clang 23.1.0**, no longer on disk,
+  and had to be set up again (11.1).
+- **The RTX A2000's CPU-side frame figures never settle**, at any warm-up
+  length (11.8).
+- **An equivalence the gate itself declared was wrong**:
+  `leastAlignedAxis`'s third case, which decision 413 called impossible to
+  judge, is judged by the `grid-400km` golden (11.5, decision 416).
+
+### 11.1 Six configurations, and their counts
+
+Counted from each suite's own summary, not carried forward. **Matching** means
+suite by suite (decision 401): every suite a configuration builds reports the
+RelWithDebInfo tree's count, and what a configuration lacks is named.
+
+| Configuration | CTest | Suites | Assertions | Cases | What it lacks, and why |
+|---|---|---|---|---|---|
+| `relwithdebinfo` | 528 of 528 | 41 | 3,862,337 | 444 | -- (the three count-wraparound probes report skipped: they need live assertions) |
+| `debug` | 528 of 528 | 41 | 3,862,337 | 444 | -- |
+| `asan` | 528 of 528 | 41 | 3,862,337 | 444 | -- |
+| `windows-msvc` | 527 of 527 | 41 | 3,796,800 | 443 | `test_half`'s case "the conversion agrees with the compiler's own `_Float16`", 65,537 assertions: MSVC has no `_Float16`. Zero warnings under `/Wall /WX` |
+| `linux-sanitize` | 439 of 439 | 36 | 2,095,242 | 415 | the five suites that read the GPU's frames -- `test_probe_clear`, `test_probe_grid`, `test_probe_lines`, `test_radiometry`, `test_tonemap_port`, 1,767,095 assertions in 29 cases -- defined only where the application is built (`CMakeLists.txt`'s `ORBSIM_BUILD_APP` block) |
+| `linux-gcc` | 439 of 439 | 36 | 2,095,242 | 415 | the same five |
+
+Every suite two configurations share reports the same count in both. The
+same held at `b0b1244`, one assertion fewer everywhere: the new horizon
+eye's (11.4).
+
+**The sanitizers are live, not merely configured** (`VERIFICATION.md` rule 20,
+repeated):
+
+- `asan`: all 85 of the project's own translation units that are linked into
+  a program carry `-fsanitize=address`; none carries `NDEBUG`; `test_time`,
+  `test_probe_clear` and `orbsim.exe` all import
+  `clang_rt.asan_dynamic-x86_64.dll`; and a planted one-past-the-end heap read,
+  built the same way, stops with `AddressSanitizer: heap-buffer-overflow`
+  while the clean run exits 0. Not instrumented, as before: the 51 header
+  self-check units, compiled and never run; the two fuzz sources, built here
+  but not run; and `src/render/VmaImpl.cpp`, VMA's implementation and so
+  third-party code, like SDL and vk-bootstrap.
+- `linux-sanitize`: all 70 of the project's own linked units carry
+  `-fsanitize=address`, `-fsanitize=undefined` and `-fno-sanitize-recover=all`;
+  `test_time` holds 826 sanitizer symbols; and planted faults stop as they
+  should -- the heap read with `AddressSanitizer: heap-buffer-overflow`, a
+  signed overflow with `runtime error: signed integer overflow`, a 64-byte
+  leak with `LeakSanitizer: detected memory leaks`.
+- `linux-gcc`: `g++-14` defines `__GNUC__ 14` and not `__clang__`, and the
+  tree's compile commands name `/usr/bin/gcc-14`.
+
+**The trees that had to be set up again.** `asan` was last built on
+2026-09-24, `windows-fuzz` on 2026-09-27 and `windows-msvc` on 2026-10-03;
+all three still named clang 23.1.0, which left the disk on 2026-10-03, and
+`asan` failed to configure for that reason. Each was deleted and set up
+again with 23.1.2 -- the recipe of section 8's "a clang upgrade leaves the old
+build trees pointing at the old clang". None of them overrode where its
+dependencies come from, so nothing was lost.
+
+### 11.2 What the gate changed in the code
+
+Each in a commit of its own, each test seen failing first, and every
+configuration in 11.1 run again afterwards (decision 415):
+
+- `d4b257b`, `b0b1244` -- **gcc-14's braces and `noexcept`** (decision 408).
+  The first was committed after the gcc run alone and failed `check`'s
+  clang-tidy, `readability-trailing-comma` on four multi-line arrays; the
+  second rewrote those four in the house style.
+- `d98e7b2` -- **an eye in the equatorial plane** in `horizonEyes()`, so
+  `leastAlignedAxis`'s third case runs (decision 413); its mutant is
+  caught by the `grid-400km` golden, not equivalent as 413 said (11.4,
+  decision 416).
+- `660f24c` -- **`--scene grid|none` and `orbsim_smoke_bare`**, with three
+  usage tests (decision 409).
+- `2c8a90c` -- **a verdict per graphics card in the mutation harness**, with
+  no default (decisions 410, 411).
+- `scripts/mutants/m1-23.json` -- **the gate's own mutants**, five, one
+  declared with its reason (decision 414); a second was declared too, and
+  `367d2ab` expects it caught instead, with the test comment that said
+  otherwise corrected (decision 416).
+- `367d2ab` -- a comment and an expectation only, so of 11.1's
+  configurations `check` ran on it, in both trees; the others ran at
+  `2c8a90c`.
+
+### 11.3 Fuzzing (decision 400)
+
+Each target for its budget from its committed corpus, in both builds at once,
+new inputs written to a scratch folder so that `tests/` stayed untouched
+during the mutation pass:
+
+| Target | Build | Runs | Seconds | Features, start -> end | Findings |
+|---|---|---|---|---|---|
+| `fuzz_orbit` | `windows-fuzz` | 11,557,790 | 241 | 410 -> 412 | none |
+| `fuzz_time` | `windows-fuzz` | 20,963,700 | 901 | 1,280 -> 1,280 | none |
+| `fuzz_orbit` | `linux-fuzz` | 20,828,675 | 241 | 413 -> 413 | none, and no leak |
+| `fuzz_time` | `linux-fuzz` | 19,974,844 | 901 | 1,320 -> 1,502 | none, and no leak |
+
+The new inputs were trimmed with the Windows binaries' `-merge=1` together
+with the committed corpus, `53d79a2`: `fuzz_orbit` 29 -> 30 inputs,
+`fuzz_time` 70 -> 84. Measured by the Windows binary, a run from the new
+corpora starts at **412 and 1,444 features**, where it started at 410 and
+1,280 -- most of `fuzz_time`'s gain from the inputs the Linux run found. The
+fuzzers were not run again after the gate's code changes, which reach
+nothing they link (decision 415).
+
+### 11.4 Coverage (decision 402)
+
+**How it was measured, and why not as rule 18's recipe has it.** Merging
+the raw profiles of many programs into one and reporting over all of them
+makes `llvm-cov` drop every function whose records differ between programs
+-- it says "2840 functions have mismatched data" and nothing else -- and a
+dropped function leaves the table altogether, covered lines and uncovered
+alike. Measured on the Linux tree: `core/Time.hpp` showed 5 unexecuted lines
+that way and 28 when each program was read alone; over the whole of `src/`
+the merged report claimed 93.30 % and the union 91.43 %. Exporting each
+program alone against the merged profile still drops them (the same 3,446
+lines executed, 72 unexecuted ones missing). **So each program is read with
+its own profile only, and the line hits are combined afterwards**, a line
+counting as executed if any program executed it. On Windows the
+application's profiles -- 44 runs of `orbsim.exe` during the probes and the
+script tests -- were picked out by the renderer functions they name.
+
+At `b0b1244`:
+
+| Directory | Linux, core-only tree | Windows, whole tree |
+|---|---|---|
+| `src/core/` | 978 of 1,099, 88.99 % | 979 of 1,099, 89.08 % |
+| `src/orbit/` | 542 of 554, 97.83 % | 542 of 554, 97.83 % |
+| `src/astro/` | 107 of 112, 95.54 % | 106 of 112, 94.64 % |
+| `src/view/` | 1,819 of 2,004, 90.77 % | 1,843 of 2,021, 91.19 % |
+| `src/render/` | -- | 2,156 of 2,323, 92.81 % |
+| `src/app/` | -- | 1,014 of 1,293, 78.42 % |
+| **all of `src/`** | 3,446 of 3,769, 91.43 % | 6,640 of 7,402, 89.71 % |
+
+The files the task names, from the Linux tree: `core/Time.hpp` 459 of 487
+(94.25 %); `astro/EarthOrientation.cpp` 45 of 45, `astro/Sun.cpp` 23 of 23,
+`astro/Sun.hpp` 11 of 12, `astro/Tdb.cpp` 28 of 32; `core/LeapSeconds.cpp`
+and `.hpp` every line.
+
+**What the unexecuted lines are**, read one by one rather than counted:
+
+- **Fallbacks after an exhaustive `switch`** -- every `return "unknown ...
+  error"`, `colourOf`'s last line, `render/Pipeline.cpp`'s five mappings'
+  last lines: unreachable by construction while the `enum class` is complete.
+- **`constexpr` functions checked by `static_assert`**, which run in the
+  compiler and so never at run time: every `describe()` in `src/view/`,
+  `isUniform`, `roundedQuotient`'s negative branch (`-7/2` is `-4`, asserted
+  in `core/Time.hpp`), `FrameTag`'s `==` and `dualOf`, `isProbeName`,
+  `probeNamesAreUnique`, and most of `core/Scalar.hpp` and `core/Units.hpp`.
+- **Comment lines after a guard** (`ORBSIM_EXPECTS` or an early `return`) in
+  `core/Time.hpp`, `core/Math.hpp` and `core/DoubleDouble.hpp`: the coverage
+  tool maps the gap after a branch onto them; every code line around them ran.
+- **Paths a Debug build cannot take**: `astro/Tdb.cpp`'s not-an-instant
+  results, behind an assertion of the same condition, for a Release build
+  only.
+- **Failure reports nothing in the suites provokes**: `orbit/Orbit.cpp`'s six
+  "did not converge" and "not finite" reports, which the safeguarded solvers
+  do not reach and the fuzzers exercise; the renderer's failures of a device,
+  a layer, a swapchain or a minimised window; the application's usage and
+  start-up errors.
+- **What the suites do not drive by design**: the interactive window's mouse
+  and wheel (flown by the owner, decision 362); `--help` and
+  `--list-probes`; and `acceptGolden`, which decision 233 forbids any test to
+  run -- its two rules are tested on their own since M1-108.
+- **Code nothing uses yet**: `integrateAngularVelocity` (the 6-DOF work),
+  `PolygonMode::Line` and `CullMode::Front`, `RenderQuality`'s presets on
+  Linux, and a handful of accessors -- `GpuClock::validBits` and
+  `nanosecondsPerTick`, `GoldenImage::valueCount`, `Mat4::corner`,
+  `PushConstantRange::wholeBlock`, `ScenePipelines::bodies`,
+  `VulkanContext::physicalDevice` and `allocator`.
+- **One real gap, closed**: `leastAlignedAxis`'s third case in
+  `view/PlanetaryGrid.cpp`, z least aligned, which no eye reached. An eye in
+  the equatorial plane now runs it (`d98e7b2`, decision 413). 413 called it
+  impossible to judge, since any axis not parallel to the eye gives the same
+  circle -- returning x there passed every horizon case. **That was wrong**,
+  and the mutation pass showed it (11.5, decision 416): the axis also
+  chooses where the horizon's 720 segments start, and the `grid-400km`
+  probe, whose eye takes this case, draws a few pixels differently, which
+  its golden catches. `m1-23.json` now expects it caught.
+
+### 11.5 The mutation pass (decision 276)
+
+**Two passes, and the second is the one recorded.**
+
+**The first ran at `b0b1244`**, 2026-10-06 22:03 to 02:12: every file
+`scripts/mutants-due.py` listed, 23 of 35, holding 331 mutants -- 310 caught
+and 21 survived. 21 files matched their expectations; two did not, and those
+two are what changed the code (11.2):
+
+- `m1-15.json`'s "the exposure is never pushed" **survived where it is
+  expected caught** -- blind since M1-21, and now judged by
+  `orbsim_smoke_bare` (decision 409);
+- `m1-19.json`'s "line lists are drawn without Bresenham's rule" **was caught
+  where it is declared to survive** -- by the A2000's golden, as decision 306
+  predicted; now a verdict per card (decisions 410, 411).
+
+**The second ran every file**, as decision 415 rules for a change to the
+harness: **36 files, 400 mutants, 378 caught and 22 survived, every survivor
+declared**, 32 files recorded at `2c8a90c` and four at `367d2ab` (below).
+Claude Code's memory guard stopped it after 13 files, leaving `m1-110`'s
+mutant in `src/app/main.cpp`; the file was restored from git and the debug
+`orbsim` rebuilt, and the remaining 23 ran one file at a time, on the owner's
+word. Three things the per-card verdict and the new smoke test were for
+were seen working: "the exposure is never pushed" caught by
+`orbsim_smoke_bare`, Bresenham's mutant caught on this card through the map,
+and `mutate_self_test` catching both of `m1-23.json`'s harness mutants.
+
+**One expectation of the gate's own was wrong**: `m1-23.json`'s
+"`leastAlignedAxis`'s third case returns x", declared equivalent by decisions
+413 and 414, **was caught by the `grid-400km` golden**. Any axis not parallel
+to the eye gives the same circle, which is all `test_planetary_grid` checks,
+but the axis also chooses where the horizon's 720 segments start. The
+probe's eye, 400 km above 6 degrees south, takes the case; returning x moves
+the start 83.87 degrees round the circle, 0.74 of a segment off the original
+vertices, and a few pixels of the horizon move (largest 53/255, mean
+0.00019/255). Corrected in `367d2ab` -- the mutant expected caught, the
+test's comment, decision 416 -- with `m1-23.json` run again there. The
+comment changed `test_planetary_grid.cpp`'s text, which made `m1-20`,
+`m1-90` and `m1-95` due once more, and they ran again at `367d2ab`, as
+expected. The RX 7900 XTX has not run that mutant; its own golden judges it
+at its next pass.
+
+### 11.6 The model errors now standing
+
+What the code deliberately does not model, with the sizes its headers state
+(ADR 0016 for nutation and the solar formula, which are ERFA's):
+
+| What | Size | Where it is stated |
+|---|---|---|
+| ΔUT1 unmodelled (UT1 taken as UTC) | ≤ 0.9 s; ≤ 13.5″ of Earth rotation, about 420 m at the equator | `core/Time.hpp`, `astro/EarthOrientation.hpp` |
+| Polar motion omitted | ≤ 0.6″, about 19 m on the ground (the largest excursion in IERS EOP 20 C04, 1962-2025) | `astro/EarthOrientation.hpp` |
+| Both together | ≤ 14.1″, about 440 m | `astro/EarthOrientation.hpp` |
+| Past the leap-second table's expiry, a held ΔT | its drift, at worst 1.15 s in a year on record (17.3″ of rotation a year) | `core/Time.hpp`, `astro/EarthOrientation.hpp` |
+| The Sun from `eraEpv00` | ERFA claims 3.7 km RMS and 11.2 km worst against DE405 over 1900-2100 (0.016″, 7.5e-8 AU); **asserted** within 0.02″ and 5e-8 AU of Horizons (DE441) over 2000-2050, measured 0.0085″ and 2.14e-8 AU | `astro/Sun.hpp` |
+| TDB - TT from `eraDtdb` | ERFA claims better than 3 ns against an ephemeris on DE405, 1950-2050; **asserted** within 20 µs of USNO Circular 179's series, measured 7.89 µs | `astro/Tdb.hpp` |
+| The Earth's rotation, as code | **asserted** within 0.1 mas of Skyfield over 1900-2100, measured 53.6 µas | `astro/EarthOrientation.hpp` |
+| The Sun as geometric, not apparent | no light-time or aberration: a caller wanting the apparent Sun adds both | `astro/Sun.hpp` |
+
+### 11.7 The golden images now committed
+
+| Card | Probe | Approved by the owner | Record |
+|---|---|---|---|
+| RTX A2000 (`10de-25ba`) | `clear` | 2026-09-29 | decision 241; moved under the card's folder by M1-110 |
+| RTX A2000 | `lines` | 2026-10-05 | decision 391, `335f4be` |
+| RTX A2000 | `grid-400km` | 2026-10-05 | decision 391, `335f4be` |
+| RX 7900 XTX (`1002-744c`) | `clear` | 2026-10-03 | decision 300 |
+| RX 7900 XTX | `lines` | 2026-10-04 | decision 315 |
+| RX 7900 XTX | `grid-400km` | 2026-10-04 | M1-20, decisions 338 and 339 |
+
+### 11.8 The RTX A2000's benchmark, and why its CPU figures move
+
+Section 10 holds the three runs. **The GPU settles within half a second; the
+processor never does**, and the warm-up is not the reason (decisions 403,
+412). In the three baseline runs the CPU-side half-second medians swung by up
+to 40 % through the whole 5 s warm-up, and the measured frames' median
+interval came out 0.40, 0.53 and 0.62 ms. M1-22's own recipe, a 30 s warm-up
+three times, then showed the same swing at the end as at the start -- the
+frame interval's half-second medians between -44.4 % and +16.7 % of the
+median over 15 to 30 s, and every five seconds from 0 to 30 reaching at
+least -28 % -- while **the medians over 15 to 30 s
+agree across runs**: 0.542 to 0.557 ms for the interval, 0.131 to 0.132 ms of
+CPU work, 0.114 ms on the GPU. So the spread is this laptop processor's
+power management, and the cause of the baseline's disagreement is the length
+of what is measured: 600 frames at about 1,500 a second is 0.4 s, less than
+one of its swings. **On this machine a figure needs several seconds of
+frames**; whether the benchmark's default should change is put to the owner
+in [M1-47](plan/tasks/m1-47-frame-time-after-d.md), the next task that
+takes one. The runs' summaries and tables are in this machine's build tree
+and the gate's scratch folder, not committed, as decision 381 has it.

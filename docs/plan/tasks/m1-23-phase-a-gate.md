@@ -1,6 +1,6 @@
 # M1-23 — Phase A gate
 
-Phase: A | Status: not started
+Phase: A | Status: **done, 2026-10-07**
 Prerequisites: M1-03 … M1-22, **and M1-86** *(added 2026-09-21: M1-86 is a
 phase A task, split out of M1-07 on 2026-09-19 by decision 73 and numbered
 outside the range because task numbers are identifiers. The queue row for this
@@ -95,14 +95,26 @@ photograph, register decision 265 -- so Part 4 stays as it is.)*
 
 ## Done when
 
-- [ ] Every mutant file `python scripts/mutants-due.py build/relwithdebinfo`
+- [x] Every mutant file `python scripts/mutants-due.py build/relwithdebinfo`
       lists has run and matched its expectations, and its record is committed
       ([`VERIFICATION.md`](../../VERIFICATION.md) rule 19; register decision 276).
-- [ ] All six configurations pass, with matching assertion counts.
-- [ ] Both fuzzers — `fuzz_orbit` and `fuzz_time` — run clean for their budgets,
+      Every file, in the end, since the harness changed (decision 415): 36
+      files, 400 mutants, 378 caught and 22 survived, every survivor declared.
+      Three files did not match at first -- `m1-15`, a mutant blind since
+      M1-21; `m1-19`, one caught on this card only; `m1-23`, an equivalence
+      that was wrong -- and were answered by decisions 409, 411 and 416, with
+      the files run again.
+- [x] All six configurations pass, with matching assertion counts -- suite
+      by suite, at `2c8a90c` (decision 401; `PROJECT_STATE.md` section 11.1).
+- [x] Both fuzzers — `fuzz_orbit` and `fuzz_time` — run clean for their budgets,
       from their committed corpora ([`VERIFICATION.md`](../../VERIFICATION.md) rule 13; amended 2026-09-27, M1-93).
-- [ ] Coverage is measured and the uncovered lines have been read, not just
-      counted.
-- [ ] `PROJECT_STATE.md` describes the tree as it now is.
-- [ ] Nothing is carried into phase B on the understanding that it will be
-      fixed later. If something is, it is a task, and it goes in the queue.
+      In both builds (decision 400), and the corpora grew, `53d79a2`.
+- [x] Coverage is measured and the uncovered lines have been read, not just
+      counted -- 91.43 % on Linux and 89.71 % on Windows, at `b0b1244`
+      (decision 402; `PROJECT_STATE.md` section 11.4).
+- [x] `PROJECT_STATE.md` describes the tree as it now is -- section 11.
+- [x] Nothing is carried into phase B on the understanding that it will be
+      fixed later. If something is, it is a task, and it goes in the queue --
+      M1-111 to M1-114, and sentences in M1-47, M1-51 and M1-76 (decision
+      405); what stays open is recorded as such in `STATUS.md`, and the old
+      list is `HISTORY.md` section 6.

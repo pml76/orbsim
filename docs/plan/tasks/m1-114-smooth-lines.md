@@ -19,7 +19,11 @@ real fields.
 - Measure first what the candidate methods cost and look like on both cards:
   smooth lines through `VK_KHR_line_rasterization`'s smooth mode, multisampling
   of the line pass, and a wider line drawn as quads with a soft edge. Bring
-  the figures and the frames to the owner before choosing.
+  the figures and the frames to the owner before choosing. **And the cost of
+  Bresenham's rule itself**, against the default rule -- M1-19 left it
+  unmeasured because nothing then drew lines in a timed frame (register
+  decision 282), and the phase A gate handed it here, where line drawing is
+  measured anyway (2026-10-07).
 - The chosen method is a `RenderQuality` field. **It must not reach the
   simulation** (ADR 0007): the same scenario at every setting puts the vessel
   in the same place, bit for bit.
