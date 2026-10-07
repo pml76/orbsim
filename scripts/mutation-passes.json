@@ -1,8 +1,8 @@
 {
   "m1-08.json": {
-    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "program test_sun.exe": "0d2b5969adb31163",
       "program test_earth_orientation.exe": "649d3de254c46e72"
@@ -21,9 +21,9 @@
     }
   },
   "m1-09.json": {
-    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "program test_view_math.exe": "c948a0fd079408cd"
     },
@@ -36,9 +36,9 @@
     }
   },
   "m1-10.json": {
-    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "program test_projection.exe": "35bc4f69730d316a",
       "program test_view_math.exe": "c948a0fd079408cd"
@@ -57,9 +57,9 @@
     }
   },
   "m1-100.json": {
-    "commit": "9da2aee6866665121749240e0fb003437743a0c1",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "program build.ninja": "37a7e9d745359f4d",
       "ctest parallel_tests_self_test": "0f02c2e9dd6366f0",
@@ -84,9 +84,9 @@
     }
   },
   "m1-101.json": {
-    "commit": "9da2aee6866665121749240e0fb003437743a0c1",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "ctest memory_pool_self_test": "3fa23dab1b9c8685",
       "ctest memory_pool": "9cfa489bb3277bfa",
@@ -109,9 +109,9 @@
     }
   },
   "m1-102.json": {
-    "commit": "9da2aee6866665121749240e0fb003437743a0c1",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "program build.ninja": "37a7e9d745359f4d",
       "ctest parallel_tests": "3c727412b7a7b438",
@@ -136,9 +136,9 @@
     }
   },
   "m1-103.json": {
-    "commit": "9da2aee6866665121749240e0fb003437743a0c1",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "ctest mutants_due_self_test": "ae37f9d1ec876598",
       "ctest mutate_self_test": "236497c8cc8d2115"
@@ -153,9 +153,9 @@
     }
   },
   "m1-104.json": {
-    "commit": "9da2aee6866665121749240e0fb003437743a0c1",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "ctest mutate_self_test": "236497c8cc8d2115"
     },
@@ -166,9 +166,9 @@
     }
   },
   "m1-106.json": {
-    "commit": "9da2aee6866665121749240e0fb003437743a0c1",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "ctest mutants_due_self_test": "ae37f9d1ec876598"
     },
@@ -179,9 +179,9 @@
     }
   },
   "m1-107.json": {
-    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "program orbsim.exe": "d2c9a6c34e8322d2",
       "ctest orbsim_smoke": "9d267bba1a136951",
@@ -209,9 +209,9 @@
     }
   },
   "m1-108.json": {
-    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/debug",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "program orbsim.exe": "d2008a1a63b48b4c",
       "program test_file_replace.exe": "27f33f6ae8de0cd1"
@@ -230,9 +230,9 @@
     }
   },
   "m1-109.json": {
-    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/debug",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "program orbsim.exe": "d2008a1a63b48b4c",
       "program test_probe_sidecar.exe": "11f95e92e9375e36",
@@ -386,9 +386,9 @@
     }
   },
   "m1-11.json": {
-    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "program test_camera.exe": "035f23870271af7e",
       "program test_math.exe": "9c9328cff383c7ee"
@@ -407,9 +407,9 @@
     }
   },
   "m1-110.json": {
-    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/debug",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "program test_golden_path.exe": "3ba88be84293c285",
       "program orbsim.exe": "d2008a1a63b48b4c",
@@ -488,9 +488,9 @@
     }
   },
   "m1-12-release.json": {
-    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "program test_render_quality.exe": "4054ab9fb91bf3df"
     },
@@ -503,9 +503,9 @@
     }
   },
   "m1-12.json": {
-    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/debug",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "program test_render_quality.exe": "449f53ea68418dd9",
       "program count_wraparound_subtraction.exe": "4ee3e801a56ffb91",
@@ -548,9 +548,9 @@
     }
   },
   "m1-13.json": {
-    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/debug",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "program test_pipeline_inputs.exe": "68b3f6a717304c9d",
       "program orbsim.exe": "d2008a1a63b48b4c",
@@ -622,9 +622,9 @@
     }
   },
   "m1-14.json": {
-    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/debug",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "program test_srgb.exe": "c5b732b484c88936",
       "program orbsim.exe": "d2008a1a63b48b4c",
@@ -691,28 +691,184 @@
     }
   },
   "m1-15.json": {
-    "commit": "87af0280cbfd2c352b20691a1e9c56732b64350c",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/debug",
-    "date": "2026-10-03",
+    "date": "2026-10-07",
     "judges": {
-      "program test_exposure.exe": "fe19703e23abab86",
-      "program test_tonemap.exe": "2cefd17acc18ee65",
-      "program orbsim.exe": "2cd8b455969f5f28",
-      "ctest tonemap_constants": "81c20c6cac398455",
-      "ctest orbsim_smoke": "50442db549e7cc6b",
-      "ctest probe_clear": "9acad6acc0860410",
-      "program test_tonemap_port.exe": "e3130dbc4a8cfac7",
-      "ctest probe_tonemap-port": "34f399a8c20377a3",
-      "ctest the tonemap-port frame holds the light the clamps act on": "9603496a51b4753d",
-      "ctest the port check holds on tonemap-port's picture, to 1/255 and to 2/65535": "13a19bb8f96102e2",
-      "ctest the port check holds on clear's picture, to 1/255 and to 2/65535": "e8d697d3720113b4",
-      "program orbsim_view_header_selfcheck": "66e0e2ec5587d398"
+      "program test_exposure.exe": "d8f6351a725a247f",
+      "program test_tonemap.exe": "0ebf8c810906771c",
+      "program orbsim.exe": "d2008a1a63b48b4c",
+      "program test_tonemap_port.exe": "af60cfd94a6bded5",
+      "program orbsim_view_header_selfcheck": "644201f041e6a2a1",
+      "ctest tonemap_constants": "13f2d6cad5812f0b",
+      "ctest orbsim_smoke": "9d267bba1a136951",
+      "ctest probe_clear": "b921e53d5e35793c",
+      "ctest probe_clear_golden": "a13081551330ff2d",
+      "ctest probe_tonemap-port": "99d50752d82519db",
+      "ctest the tonemap-port frame holds the light the clamps act on": "1dd71d351cc092e9",
+      "ctest the port check holds on tonemap-port's picture, to 1/255 and to 2/65535": "494b571c65c5873c",
+      "ctest the port check holds on clear's picture, to 1/255 and to 2/65535": "388b1a6bcd43ce46",
+      "ctest orbsim_smoke_bare": "1ff23f7e531c492f",
+      "ctest probe_lambert": "6c211f05b3a2a15d",
+      "ctest probe_lambert-half-au": "7bd274eb995ebf64",
+      "ctest probe_lambert-two-au": "c7e979ac2b2602c4",
+      "ctest probe_lambert-tilted-60": "b7502e7e414682c1",
+      "ctest probe_lambert-exposure": "319f27f50e714eeb",
+      "ctest probe_lambert-backlit": "7e45b05c927b0ea1",
+      "ctest probe_lines": "f491003feb3a65da",
+      "ctest probe_grid-400km": "c7be9d36c404886e",
+      "ctest probe_grid-jitter-0": "a84203519e57ce9d",
+      "ctest probe_grid-jitter-1": "a1043e93fd13e088",
+      "ctest probe_grid-jitter-2": "7613982ef4934b25",
+      "ctest probe_grid-jitter-3": "0011339cd51fda25",
+      "ctest probe_grid-jitter-4": "a17ad633edd2d549",
+      "ctest probe_grid-jitter-1km-0": "4790cd8f6a2ce7f1",
+      "ctest probe_grid-jitter-1km-1": "ba24a7885b922478",
+      "ctest probe_grid-jitter-1km-2": "0a58159bcc6d2046",
+      "ctest probe_grid-jitter-1km-3": "e08e3996378c09bb",
+      "ctest probe_grid-jitter-1km-4": "b35c2f9e1c066243"
+    },
+    "judge_parts": {
+      "program test_exposure.exe": {
+        "commands": "627c1b824ce6c2d6",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program test_tonemap.exe": {
+        "commands": "49a6bacff56913a0",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program orbsim.exe": {
+        "commands": "25a05b514896c5fc",
+        "build-tree files": "8ffce229ed7b3a21",
+        "other files": "62d30c40b8cdb17a"
+      },
+      "program test_tonemap_port.exe": {
+        "commands": "f89945a8c60d4890",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program orbsim_view_header_selfcheck": {
+        "commands": "40ffab21cdb49a1e",
+        "build-tree files": "f0bed7b8d8bb98b3",
+        "other files": "466e78b7bfa83bfb"
+      },
+      "ctest tonemap_constants": {
+        "definition": "a18a03375e0a6465"
+      },
+      "ctest orbsim_smoke": {
+        "definition": "50442db549e7cc6b",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_clear": {
+        "definition": "8547cc2a6e626026",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_clear_golden": {
+        "definition": "f159551a191ed09e",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_tonemap-port": {
+        "definition": "e3205febcc389813",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest the tonemap-port frame holds the light the clamps act on": {
+        "definition": "1b939bd5f92073fd"
+      },
+      "ctest the port check holds on tonemap-port's picture, to 1/255 and to 2/65535": {
+        "definition": "837a79da365a03b2"
+      },
+      "ctest the port check holds on clear's picture, to 1/255 and to 2/65535": {
+        "definition": "47770ce929f26593"
+      },
+      "ctest orbsim_smoke_bare": {
+        "definition": "a83d3d6f9aaed8fe",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lambert": {
+        "definition": "f0bd3cacd4097efd",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lambert-half-au": {
+        "definition": "2e2703dbaec9bc73",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lambert-two-au": {
+        "definition": "27bcd3f885d7212a",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lambert-tilted-60": {
+        "definition": "411c87ea6ae918ca",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lambert-exposure": {
+        "definition": "0dfbfcc65a8973a7",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lambert-backlit": {
+        "definition": "9120869959d38312",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lines": {
+        "definition": "d1f15ef8634d4a9d",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-400km": {
+        "definition": "feb66c547b5a8ea7",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-0": {
+        "definition": "8ba08f521bfe7801",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-1": {
+        "definition": "a3491e712b2a08d6",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-2": {
+        "definition": "d7a05b0375db7959",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-3": {
+        "definition": "9c56126dbea15633",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-4": {
+        "definition": "873aa7dddc20139b",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-1km-0": {
+        "definition": "566a93e818f23558",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-1km-1": {
+        "definition": "aab0f181a121e34c",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-1km-2": {
+        "definition": "b168a3b899bb9ead",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-1km-3": {
+        "definition": "686bf7f6c6537382",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-1km-4": {
+        "definition": "24d279bfd2eaee0e",
+        "shader builds": "9fc433a89cda9002"
+      }
+    },
+    "gpu": {
+      "card": "0x10de 0x25ba",
+      "driver": "582.53 0x918d4000",
+      "validation layer": "1.4.357 (variant 0), implementation 1"
     }
   },
   "m1-16.json": {
-    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/debug",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "program test_half.exe": "6a89a622f9915e4e",
       "program test_hdr_dump.exe": "ae80207320279a28",
@@ -787,9 +943,9 @@
     }
   },
   "m1-17.json": {
-    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/debug",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "program test_image_compare.exe": "4c34ec1fec9d3802",
       "program test_image_files.exe": "274ba03ff51fc692",
@@ -873,7 +1029,7 @@
     }
   },
   "m1-18.json": {
-    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/debug",
     "date": "2026-10-07",
     "judges": {
@@ -1061,25 +1217,171 @@
     }
   },
   "m1-19.json": {
-    "commit": "2cbecedbd5c79fa6f4440abecd19d5ef5a0f4e85",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/debug",
-    "date": "2026-10-04",
+    "date": "2026-10-07",
     "judges": {
-      "program test_line_batch.exe": "9b53792c50c055d4",
-      "program orbsim.exe": "8e0ec059125575c4",
-      "program test_probe_lines.exe": "b3ef3a9d9ac6f0c8",
-      "program test_tonemap_port.exe": "e71207364d73e3cc",
-      "ctest orbsim_smoke": "50442db549e7cc6b",
-      "ctest probe_lines": "4a81e119c2d07d94",
-      "ctest probe_lines_golden": "a4ee220e44bb6a59",
-      "ctest each axis lands where the pinhole camera puts it, in its own colour": "c3ebebe33de77879",
-      "ctest the square's corners and sides land where the pinhole camera puts them, in white": "1e235af7abfdac26",
-      "ctest the search finds nothing where nothing is drawn, so it can fail": "738ffc28814b080f",
-      "ctest the port check holds on lines' picture, to 1/255 and to 2/65535": "412eb1f9d505efb3"
+      "program test_line_batch.exe": "2192cb1a80dec220",
+      "program orbsim.exe": "d2008a1a63b48b4c",
+      "program test_probe_lines.exe": "0f4705256480eee2",
+      "program test_tonemap_port.exe": "af60cfd94a6bded5",
+      "ctest orbsim_smoke": "9d267bba1a136951",
+      "ctest probe_lines": "f491003feb3a65da",
+      "ctest probe_lines_golden": "01da095fdd592e1d",
+      "ctest each axis lands where the pinhole camera puts it, in its own colour": "6b02dc09c1c313d9",
+      "ctest the square's corners and sides land where the pinhole camera puts them, in white": "52da21969abc0443",
+      "ctest the search finds nothing where nothing is drawn, so it can fail": "556eede854df66be",
+      "ctest the port check holds on lines' picture, to 1/255 and to 2/65535": "e2378d6e6e9ac224",
+      "ctest probe_clear": "b921e53d5e35793c",
+      "ctest probe_lambert": "6c211f05b3a2a15d",
+      "ctest probe_lambert-half-au": "7bd274eb995ebf64",
+      "ctest probe_lambert-two-au": "c7e979ac2b2602c4",
+      "ctest probe_lambert-tilted-60": "b7502e7e414682c1",
+      "ctest probe_lambert-exposure": "319f27f50e714eeb",
+      "ctest probe_lambert-backlit": "7e45b05c927b0ea1",
+      "ctest probe_tonemap-port": "99d50752d82519db",
+      "ctest probe_grid-400km": "c7be9d36c404886e",
+      "ctest probe_grid-jitter-0": "a84203519e57ce9d",
+      "ctest probe_grid-jitter-1": "a1043e93fd13e088",
+      "ctest probe_grid-jitter-2": "7613982ef4934b25",
+      "ctest probe_grid-jitter-3": "0011339cd51fda25",
+      "ctest probe_grid-jitter-4": "a17ad633edd2d549",
+      "ctest probe_grid-jitter-1km-0": "4790cd8f6a2ce7f1",
+      "ctest probe_grid-jitter-1km-1": "ba24a7885b922478",
+      "ctest probe_grid-jitter-1km-2": "0a58159bcc6d2046",
+      "ctest probe_grid-jitter-1km-3": "e08e3996378c09bb",
+      "ctest probe_grid-jitter-1km-4": "b35c2f9e1c066243"
+    },
+    "judge_parts": {
+      "program test_line_batch.exe": {
+        "commands": "b1befa33ebc87523",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program orbsim.exe": {
+        "commands": "25a05b514896c5fc",
+        "build-tree files": "8ffce229ed7b3a21",
+        "other files": "62d30c40b8cdb17a"
+      },
+      "program test_probe_lines.exe": {
+        "commands": "7bb6a3cd0a432b44",
+        "build-tree files": "bbd0b9f6e0bd965a",
+        "other files": "c47a5897841d1333"
+      },
+      "program test_tonemap_port.exe": {
+        "commands": "f89945a8c60d4890",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "ctest orbsim_smoke": {
+        "definition": "50442db549e7cc6b",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lines": {
+        "definition": "d1f15ef8634d4a9d",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lines_golden": {
+        "definition": "9613b2bca50dae05",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest each axis lands where the pinhole camera puts it, in its own colour": {
+        "definition": "4ef2ed14a4bacc76"
+      },
+      "ctest the square's corners and sides land where the pinhole camera puts them, in white": {
+        "definition": "6fd9374d89dae29b"
+      },
+      "ctest the search finds nothing where nothing is drawn, so it can fail": {
+        "definition": "6c54e544ee2c7bad"
+      },
+      "ctest the port check holds on lines' picture, to 1/255 and to 2/65535": {
+        "definition": "741b42e24f90a9c4"
+      },
+      "ctest probe_clear": {
+        "definition": "8547cc2a6e626026",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lambert": {
+        "definition": "f0bd3cacd4097efd",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lambert-half-au": {
+        "definition": "2e2703dbaec9bc73",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lambert-two-au": {
+        "definition": "27bcd3f885d7212a",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lambert-tilted-60": {
+        "definition": "411c87ea6ae918ca",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lambert-exposure": {
+        "definition": "0dfbfcc65a8973a7",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lambert-backlit": {
+        "definition": "9120869959d38312",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_tonemap-port": {
+        "definition": "e3205febcc389813",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-400km": {
+        "definition": "feb66c547b5a8ea7",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-0": {
+        "definition": "8ba08f521bfe7801",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-1": {
+        "definition": "a3491e712b2a08d6",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-2": {
+        "definition": "d7a05b0375db7959",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-3": {
+        "definition": "9c56126dbea15633",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-4": {
+        "definition": "873aa7dddc20139b",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-1km-0": {
+        "definition": "566a93e818f23558",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-1km-1": {
+        "definition": "aab0f181a121e34c",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-1km-2": {
+        "definition": "b168a3b899bb9ead",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-1km-3": {
+        "definition": "686bf7f6c6537382",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-1km-4": {
+        "definition": "24d279bfd2eaee0e",
+        "shader builds": "9fc433a89cda9002"
+      }
+    },
+    "gpu": {
+      "card": "0x10de 0x25ba",
+      "driver": "582.53 0x918d4000",
+      "validation layer": "1.4.357 (variant 0), implementation 1"
     }
   },
   "m1-20.json": {
-    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
+    "commit": "367d2ab8bdc2e7e3f9ed45977fcbee89b11c3967",
     "tree": "build/debug",
     "date": "2026-10-07",
     "judges": {
@@ -1256,7 +1558,7 @@
     }
   },
   "m1-21.json": {
-    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/debug",
     "date": "2026-10-07",
     "judges": {
@@ -1283,7 +1585,7 @@
     }
   },
   "m1-22.json": {
-    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/debug",
     "date": "2026-10-07",
     "judges": {
@@ -1325,8 +1627,68 @@
       "validation layer": "1.4.357 (variant 0), implementation 1"
     }
   },
+  "m1-23.json": {
+    "commit": "367d2ab8bdc2e7e3f9ed45977fcbee89b11c3967",
+    "tree": "build/debug",
+    "date": "2026-10-07",
+    "judges": {
+      "program orbsim.exe": "d2008a1a63b48b4c",
+      "program test_planetary_grid.exe": "1904a982d4b7a59b",
+      "ctest usage_scene_with_probe": "5dc4c5755fb1766d",
+      "ctest usage_scene_with_bench": "190c3dc10fd8b195",
+      "ctest orbsim_smoke_bare": "1ff23f7e531c492f",
+      "ctest usage_scene_unknown": "ac76fc1460d7c3a0",
+      "ctest probe_grid-400km": "c7be9d36c404886e",
+      "ctest probe_grid-400km_golden": "5b400d593353046d",
+      "ctest mutate_self_test": "236497c8cc8d2115"
+    },
+    "judge_parts": {
+      "program orbsim.exe": {
+        "commands": "25a05b514896c5fc",
+        "build-tree files": "8ffce229ed7b3a21",
+        "other files": "62d30c40b8cdb17a"
+      },
+      "program test_planetary_grid.exe": {
+        "commands": "167c6f7a1d97d9a6",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "ctest usage_scene_with_probe": {
+        "definition": "2589a2cdfa3c0677",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest usage_scene_with_bench": {
+        "definition": "96dd4c09a3fdf9c9",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest orbsim_smoke_bare": {
+        "definition": "a83d3d6f9aaed8fe",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest usage_scene_unknown": {
+        "definition": "eb11f8f7ce0867c2",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-400km": {
+        "definition": "feb66c547b5a8ea7",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-400km_golden": {
+        "definition": "7d59c35927665f78",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest mutate_self_test": {
+        "definition": "2e907c7dd50344c3"
+      }
+    },
+    "gpu": {
+      "card": "0x10de 0x25ba",
+      "driver": "582.53 0x918d4000",
+      "validation layer": "1.4.357 (variant 0), implementation 1"
+    }
+  },
   "m1-87.json": {
-    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/relwithdebinfo",
     "date": "2026-10-07",
     "judges": {
@@ -1359,9 +1721,9 @@
     }
   },
   "m1-88.json": {
-    "commit": "9da2aee6866665121749240e0fb003437743a0c1",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "program build.ninja": "37a7e9d745359f4d",
       "ctest memory_pool": "9cfa489bb3277bfa",
@@ -1382,9 +1744,9 @@
     }
   },
   "m1-89.json": {
-    "commit": "9da2aee6866665121749240e0fb003437743a0c1",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "ctest lint_deps_self_test": "14f184c45e97dcca",
       "ctest lint_deps": "44d5a0ad07cfed8c"
@@ -1399,7 +1761,7 @@
     }
   },
   "m1-90.json": {
-    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
+    "commit": "367d2ab8bdc2e7e3f9ed45977fcbee89b11c3967",
     "tree": "build/relwithdebinfo",
     "date": "2026-10-07",
     "judges": {
@@ -1650,9 +2012,9 @@
     }
   },
   "m1-92.json": {
-    "commit": "9da2aee6866665121749240e0fb003437743a0c1",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "ctest mutants_due_self_test": "ae37f9d1ec876598",
       "ctest mutants_due": "c03a4208625fe518",
@@ -1679,7 +2041,7 @@
     }
   },
   "m1-95.json": {
-    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
+    "commit": "367d2ab8bdc2e7e3f9ed45977fcbee89b11c3967",
     "tree": "build/relwithdebinfo",
     "date": "2026-10-07",
     "judges": {
@@ -1926,9 +2288,9 @@
     }
   },
   "m1-96.json": {
-    "commit": "9da2aee6866665121749240e0fb003437743a0c1",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "program build.ninja": "37a7e9d745359f4d",
       "ctest memory_pool_self_test": "3fa23dab1b9c8685",
@@ -1949,9 +2311,9 @@
     }
   },
   "m1-97.json": {
-    "commit": "9da2aee6866665121749240e0fb003437743a0c1",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "ctest mutate_self_test": "236497c8cc8d2115"
     },
@@ -1962,9 +2324,9 @@
     }
   },
   "m1-98.json": {
-    "commit": "9da2aee6866665121749240e0fb003437743a0c1",
+    "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "program build.ninja": "37a7e9d745359f4d",
       "ctest configure_current_self_test": "984376a2c4b5967b",
