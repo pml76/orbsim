@@ -49,8 +49,8 @@
         "probe_grid-400km",
         "probe_grid-400km_golden"
       ],
-      "expect": "survives",
-      "why": "Equivalent, measured (decision 413): the case is taken only when the eye's z is the smallest of its three, and then any axis not parallel to the eye gives the same horizon, because crossing a direction with a coordinate axis is exact and length() is exact at every scale. Returning x there passed every horizon case, from the equatorial eye that now runs it and from one 1e-8 off the x axis. Declared by decision 414, 2026-10-07."
+      "expect": "caught",
+      "why": "Caught by the grid-400km golden, measured 2026-10-07 on the RTX A2000 (decision 416), which corrects decision 413: the probe's eye is 400 km above 6 degrees south, so z is its least-aligned axis and the case is taken. Any axis not parallel to the eye gives the same circle -- returning x passed every horizon case in test_planetary_grid, which checks that the points lie on it -- but not the same drawn line: the axis chooses where the 720 segments start, and x moves that start 83.87 degrees round the circle, 0.74 of a 0.5-degree segment off the original vertices, so a few pixels of the horizon move (largest 53/255, mean 0.00019/255). Not yet run on the RX 7900 XTX, whose own golden judges it at its next pass."
     },
     {
       "name": "a per-card verdict is the map's first, not the card's own",

@@ -571,11 +571,11 @@ namespace {
 // probes' 1 km, and 1 AU away, where the horizon is nearly a great circle.
 // The last, in the equatorial plane between x and y, is leastAlignedAxis's
 // third case, z least aligned, which no eye reached until the phase A gate
-// read the coverage (register decision 413). It runs that line; it cannot
-// judge it, and nothing can: crossing a direction with a coordinate axis is
-// exact, and length() is exact at every scale, so any axis not parallel to
-// the eye gives the same horizon -- measured, returning x there instead
-// passes every case here, and scripts/mutants/m1-23.json declares it so.
+// read the coverage (register decision 413). It runs that line, but nothing
+// here can judge it: any axis not parallel to the eye gives the same circle,
+// which is all these cases check. The axis also chooses where the circle's
+// segments start, and that the grid-400km golden does judge -- its eye takes
+// this case (decision 416, scripts/mutants/m1-23.json).
 [[nodiscard]] std::vector<Position> horizonEyes() {
     const f64 up = kRadius + 400e3;
     const f64 oblique = up * std::numbers::inv_sqrt3;
