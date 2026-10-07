@@ -51,6 +51,30 @@
       ],
       "expect": "survives",
       "why": "Equivalent, measured (decision 413): the case is taken only when the eye's z is the smallest of its three, and then any axis not parallel to the eye gives the same horizon, because crossing a direction with a coordinate axis is exact and length() is exact at every scale. Returning x there passed every horizon case, from the equatorial eye that now runs it and from one 1e-8 off the x axis. Declared by decision 414, 2026-10-07."
+    },
+    {
+      "name": "a per-card verdict is the map's first, not the card's own",
+      "file": "scripts/mutate.py",
+      "find": "    return expect[card], None",
+      "replace": "    return next(iter(expect.values())), None",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "a card the per-card verdict does not name is judged caught",
+      "file": "scripts/mutate.py",
+      "find": "        return None, (f\"its verdict names {', '.join(sorted(expect))} and not this card, \"",
+      "replace": "        return \"caught\", None\n        return None, (f\"its verdict names {', '.join(sorted(expect))} and not this card, \"",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ],
+      "expect": "caught"
     }
   ]
 }

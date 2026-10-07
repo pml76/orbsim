@@ -264,8 +264,11 @@
         "the search finds nothing where nothing is drawn, so it can fail",
         "the port check holds on lines' picture, to 1/255 and to 2/65535"
       ],
-      "expect": "survives",
-      "why": "On the RX 7900 XTX the default rule and Bresenham's light the same pixels, bit for bit (register decision 278's measurement), so nothing on this machine can see the rule dropped. The RTX A2000 draws other pixels without it, so its own golden, probe_lines_golden on the first machine, catches it there. Accepted by the owner in advance, 2026-10-04 (question 5 of M1-19)."
+      "expect": {
+        "10de-25ba": "caught",
+        "1002-744c": "survives"
+      },
+      "why": "Caught on the RTX A2000, by probe_lines_golden, and surviving on the RX 7900 XTX, where the default rule and Bresenham's light the same pixels, bit for bit (register decision 278's measurement). The survivor was accepted by the owner in advance, 2026-10-04 (question 5 of M1-19), with the A2000's golden named as what catches it there (decision 306); the phase A gate saw it caught there, 2026-10-07, and gave the verdict per card (decisions 410 and 411)."
     }
   ]
 }

@@ -57,6 +57,18 @@ The mutant file is JSON:
 it must be *declared*, so that a mutant which starts surviving after a change
 is a failure rather than a line nobody reads. A declared survivor carries a
 "why" field saying who accepted it and when.
+
+Where the verdict depends on the graphics card, `expect` is a map from card
+to verdict, the card named as the goldens' folders are -- `<vendor>-<device>`
+in hexadecimal (M1-110) -- with no default (the phase A gate, register
+decision 410):
+
+        "expect": {"10de-25ba": "caught", "1002-744c": "survives"}
+
+The card is read before any mutant runs, from a clear probe as a pass records
+it (decision 397), and a pass on a card the map does not name, or where the
+card cannot be read, does not start: a new card is a decision, not an
+inheritance.
 """
 
 import argparse
@@ -253,6 +265,9 @@ def verify(root: Path, given: Path) -> int:
             problem = build_problem(mutant)
             if problem:
                 problems.append(f"{path.name}: {mutant['name']}: {problem}")
+            problem = expectation_problem(mutant.get("expect", "caught"))
+            if problem:
+                problems.append(f"{path.name}: {mutant['name']}: {problem}")
     for problem in problems:
         print(problem, file=sys.stderr)
     print(f"mutant-anchors: {len(files)} tasks, {anchors} anchors, "
@@ -297,6 +312,21 @@ def main(argv: list) -> int:
             print(f"  {name}", file=sys.stderr)
         return 2
 
+    # Every mutant's verdict on this card, before anything runs (register
+    # decision 410): a pass that could not judge its last mutant should not
+    # spend an hour on the others first.
+    card = None
+    if any(isinstance(m.get("expect"), dict) for m in mutants):
+        card, why = card_here(root, tree)
+        print(f"graphics card: {card}" if card else f"graphics card unknown: {why}")
+    expected = [expected_on(m, card) for m in mutants]
+    unjudged = [(m, problem) for m, (_, problem) in zip(mutants, expected) if problem]
+    if unjudged:
+        print("refusing to run: these mutants have no verdict on this card:", file=sys.stderr)
+        for mutant, problem in unjudged:
+            print(f"  {mutant['name']}: {problem}", file=sys.stderr)
+        return 2
+
     results = []
     try:
         for mutant, rebuild in zip(mutants, rebuild_plan(mutants)):
@@ -316,13 +346,12 @@ def main(argv: list) -> int:
 
     print(f"\n==== {spec['task']}: {len(results)} mutants ====")
     bad = 0
-    for mutant, verdict, detail in results:
-        expected = mutant.get("expect", "caught")
-        ok = (expected == "caught" and verdict.startswith("CAUGHT")) or (
-            expected == "survives" and verdict == "SURVIVED")
+    for (mutant, verdict, detail), (wanted, _) in zip(results, expected):
+        ok = (wanted == "caught" and verdict.startswith("CAUGHT")) or (
+            wanted == "survives" and verdict == "SURVIVED")
         if not ok:
             bad += 1
-            print(f"  UNEXPECTED {verdict} (expected {expected}): {mutant['name']}")
+            print(f"  UNEXPECTED {verdict} (expected {wanted}): {mutant['name']}")
     caught = sum(1 for _, v, _ in results if v.startswith("CAUGHT"))
     survived = sum(1 for _, v, _ in results if v == "SURVIVED")
     invalid = sum(1 for _, v, _ in results if v == "INVALID")
@@ -337,6 +366,71 @@ def main(argv: list) -> int:
         return 1
     record_pass(root, given, tree, spec)
     return 0
+
+
+# A mutant's verdicts, and a card as the goldens' folders name it (M1-110).
+EXPECTATIONS = ("caught", "survives")
+CARD_KEY = re.compile(r"[0-9a-f]{4}-[0-9a-f]{4}")
+
+
+def card_key(identity):
+    """'10de-25ba' from a recorded identity's card, '0x10de 0x25ba' -- the
+    name of the card's goldens folder -- or None where it is not in that form."""
+    words = (identity or {}).get("card", "").split()
+    if len(words) != 2:
+        return None
+    try:
+        vendor, device = (int(word, 16) for word in words)
+    except ValueError:
+        return None
+    return f"{vendor:04x}-{device:04x}"
+
+
+def expectation_problem(expect):
+    """Why a mutant's `expect` is malformed, or None: a verdict, or a map from
+    card to verdict naming at least one card (register decision 410)."""
+    if isinstance(expect, str):
+        return None if expect in EXPECTATIONS else f"expect '{expect}' is neither caught nor survives"
+    if not isinstance(expect, dict):
+        return "expect is neither a verdict nor a map from card to verdict"
+    if not expect:
+        return "expect's map names no card"
+    for card, verdict in expect.items():
+        if not CARD_KEY.fullmatch(card):
+            return f"'{card}' is not a card: <vendor>-<device>, four lower-case hex digits each"
+        if verdict not in EXPECTATIONS:
+            return f"expect '{verdict}' for {card} is neither caught nor survives"
+    return None
+
+
+def expected_on(mutant: dict, card):
+    """(verdict, None) for this mutant on this card, or (None, why): a map
+    with no entry for the card, or a card that could not be read, has no
+    verdict -- there is no default (register decision 410)."""
+    expect = mutant.get("expect", "caught")
+    if isinstance(expect, str):
+        return expect, None
+    if card is None:
+        return None, "its verdict depends on the graphics card, which could not be read here"
+    if card not in expect:
+        return None, (f"its verdict names {', '.join(sorted(expect))} and not this card, "
+                      f"{card}: say what it is on this card first (register decision 410)")
+    return expect[card], None
+
+
+def card_here(root: Path, tree: str):
+    """(card, why): this tree's graphics card as card_key names it, read the
+    way a pass records it -- mutants-due.py's own gpu_identity, from a clear
+    probe -- or None and why."""
+    sys.dont_write_bytecode = True  # no __pycache__ in scripts/
+    loader = importlib.util.spec_from_file_location("mutants_due", root / "scripts" / "mutants-due.py")
+    module = importlib.util.module_from_spec(loader)
+    loader.loader.exec_module(module)
+    identity, why = module.gpu_identity((root / tree).resolve())
+    if identity is None:
+        return None, why
+    found = card_key(identity)
+    return (found, "") if found else (None, f"the card reads '{identity.get('card')}'")
 
 
 def build_problem(mutant: dict):
@@ -458,6 +552,30 @@ def self_test() -> int:
         dict(script, file="CMakeLists.txt", targets=["build.ninja"])) is None
     record_cases["a mutant that builds nothing rebuilds nothing after it"] = rebuild_plan(
         [m(), m(targets=["a"])]) == [[], []]
+    # An expectation that differs by graphics card (the phase A gate, register
+    # decision 410): a map from card to verdict, with no default.
+    per_card = {"expect": {"1002-744c": "survives", "10de-25ba": "caught"}}
+    record_cases["a card is named as the goldens' folders are"] = (
+        card_key({"card": "0x10de 0x25ba"}) == "10de-25ba"
+        and card_key({"card": "0x1002 0x744c"}) == "1002-744c")
+    record_cases["a card in another form is no card"] = (
+        card_key({"card": "NVIDIA"}) is None and card_key(None) is None)
+    record_cases["a word is the expectation on every card"] = (
+        expected_on({"expect": "survives"}, None) == ("survives", None)
+        and expected_on({}, "10de-25ba") == ("caught", None))
+    record_cases["a map gives the card's own expectation, not its first"] = (
+        expected_on(per_card, "10de-25ba") == ("caught", None)
+        and expected_on(per_card, "1002-744c") == ("survives", None))
+    record_cases["a card the map does not name is refused"] = (
+        expected_on(per_card, "8086-4626")[0] is None
+        and expected_on(per_card, "8086-4626")[1] is not None)
+    record_cases["a map where the card cannot be read is refused"] = (
+        expected_on(per_card, None)[0] is None and expected_on(per_card, None)[1] is not None)
+    record_cases["--verify accepts both forms"] = (
+        expectation_problem("caught") is None and expectation_problem(per_card["expect"]) is None)
+    record_cases["--verify refuses a malformed expectation"] = all(
+        expectation_problem(bad) is not None
+        for bad in ("kills", {}, {"10DE-25BA": "caught"}, {"10de-25ba": "kills"}, ["caught"]))
     for name, ok in record_cases.items():
         failures += not ok
         print(f"self-test: {name}: {'ok' if ok else 'WRONG'}")
