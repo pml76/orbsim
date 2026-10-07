@@ -1,28 +1,59 @@
 {
   "m1-08.json": {
-    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
+    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
     "tree": "build/relwithdebinfo",
-    "date": "2026-09-30",
+    "date": "2026-10-06",
     "judges": {
-      "program test_sun.exe": "8ff766578b8539f1",
-      "program test_earth_orientation.exe": "abd3d07e03ad12b8"
+      "program test_sun.exe": "0d2b5969adb31163",
+      "program test_earth_orientation.exe": "649d3de254c46e72"
+    },
+    "judge_parts": {
+      "program test_sun.exe": {
+        "commands": "18016590d739f141",
+        "build-tree files": "bbd0b9f6e0bd965a",
+        "other files": "c47a5897841d1333"
+      },
+      "program test_earth_orientation.exe": {
+        "commands": "064dff2701b95b06",
+        "build-tree files": "bbd0b9f6e0bd965a",
+        "other files": "c47a5897841d1333"
+      }
     }
   },
   "m1-09.json": {
-    "commit": "ca25281f5bdd04189f41f303601b1b285e20d4a6",
+    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-03",
+    "date": "2026-10-06",
     "judges": {
-      "program test_view_math.exe": "ff670ddab32b870d"
+      "program test_view_math.exe": "c948a0fd079408cd"
+    },
+    "judge_parts": {
+      "program test_view_math.exe": {
+        "commands": "c2962d3aebd38654",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      }
     }
   },
   "m1-10.json": {
-    "commit": "ca25281f5bdd04189f41f303601b1b285e20d4a6",
+    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-03",
+    "date": "2026-10-06",
     "judges": {
-      "program test_projection.exe": "a2733f641bba2dec",
-      "program test_view_math.exe": "ff670ddab32b870d"
+      "program test_projection.exe": "35bc4f69730d316a",
+      "program test_view_math.exe": "c948a0fd079408cd"
+    },
+    "judge_parts": {
+      "program test_projection.exe": {
+        "commands": "af06219b940c1255",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program test_view_math.exe": {
+        "commands": "c2962d3aebd38654",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      }
     }
   },
   "m1-100.json": {
@@ -148,26 +179,58 @@
     }
   },
   "m1-107.json": {
-    "commit": "faa05e0546abfbf1a51436558c2e4224f5484743",
+    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-04",
+    "date": "2026-10-06",
     "judges": {
-      "program orbsim.exe": "7761a5512a9eadf9",
-      "ctest orbsim_smoke": "50442db549e7cc6b",
-      "ctest probe_clear": "e5b9395131c74935"
+      "program orbsim.exe": "d2c9a6c34e8322d2",
+      "ctest orbsim_smoke": "9d267bba1a136951",
+      "ctest probe_clear": "b921e53d5e35793c"
+    },
+    "judge_parts": {
+      "program orbsim.exe": {
+        "commands": "6b7938c24c12250a",
+        "build-tree files": "1179777b6678b00f",
+        "other files": "62d30c40b8cdb17a"
+      },
+      "ctest orbsim_smoke": {
+        "definition": "50442db549e7cc6b",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_clear": {
+        "definition": "8547cc2a6e626026",
+        "shader builds": "9fc433a89cda9002"
+      }
+    },
+    "gpu": {
+      "card": "0x10de 0x25ba",
+      "driver": "582.53 0x918d4000",
+      "validation layer": "1.4.357 (variant 0), implementation 1"
     }
   },
   "m1-108.json": {
-    "commit": "67c6df22b0db56a52a8429143582005efa51965b",
+    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
     "tree": "build/debug",
-    "date": "2026-10-05",
+    "date": "2026-10-06",
     "judges": {
-      "program orbsim.exe": "1abd0f84dc210548",
-      "program test_file_replace.exe": "18783f280402044d"
+      "program orbsim.exe": "d2008a1a63b48b4c",
+      "program test_file_replace.exe": "27f33f6ae8de0cd1"
+    },
+    "judge_parts": {
+      "program orbsim.exe": {
+        "commands": "25a05b514896c5fc",
+        "build-tree files": "8ffce229ed7b3a21",
+        "other files": "62d30c40b8cdb17a"
+      },
+      "program test_file_replace.exe": {
+        "commands": "09fdb8ce703469a1",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      }
     }
   },
   "m1-109.json": {
-    "commit": "9da2aee6866665121749240e0fb003437743a0c1",
+    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
     "tree": "build/debug",
     "date": "2026-10-06",
     "judges": {
@@ -323,16 +386,28 @@
     }
   },
   "m1-11.json": {
-    "commit": "ca25281f5bdd04189f41f303601b1b285e20d4a6",
+    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-03",
+    "date": "2026-10-06",
     "judges": {
-      "program test_camera.exe": "707ad8e248da3003",
-      "program test_math.exe": "b8f21ffb641a23a5"
+      "program test_camera.exe": "035f23870271af7e",
+      "program test_math.exe": "9c9328cff383c7ee"
+    },
+    "judge_parts": {
+      "program test_camera.exe": {
+        "commands": "452c5e625ee10747",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program test_math.exe": {
+        "commands": "a0fcb65d46dcba7d",
+        "build-tree files": "bbd0b9f6e0bd965a",
+        "other files": "c47a5897841d1333"
+      }
     }
   },
   "m1-110.json": {
-    "commit": "9da2aee6866665121749240e0fb003437743a0c1",
+    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
     "tree": "build/debug",
     "date": "2026-10-06",
     "judges": {
@@ -413,59 +488,206 @@
     }
   },
   "m1-12-release.json": {
-    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
+    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
     "tree": "build/relwithdebinfo",
-    "date": "2026-09-30",
+    "date": "2026-10-06",
     "judges": {
-      "program test_render_quality.exe": "a63ccf8aa1d27927"
+      "program test_render_quality.exe": "4054ab9fb91bf3df"
+    },
+    "judge_parts": {
+      "program test_render_quality.exe": {
+        "commands": "44eee1e852db9186",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      }
     }
   },
   "m1-12.json": {
-    "commit": "87af0280cbfd2c352b20691a1e9c56732b64350c",
+    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
     "tree": "build/debug",
-    "date": "2026-10-03",
+    "date": "2026-10-06",
     "judges": {
-      "program test_render_quality.exe": "cc4445a1a62cde62",
-      "program count_wraparound_subtraction.exe": "3d3a93913ad89092",
-      "ctest count_wraparound_subtraction_aborts": "d87b5ed773b32791",
-      "program count_wraparound_addition.exe": "8068356df1cfd614",
-      "ctest count_wraparound_addition_aborts": "e013d23698f2ea7d",
-      "program count_wraparound_multiplication.exe": "d2819fbc3cdc3ecf",
-      "ctest count_wraparound_multiplication_aborts": "91ac8bbc787e3176"
+      "program test_render_quality.exe": "449f53ea68418dd9",
+      "program count_wraparound_subtraction.exe": "4ee3e801a56ffb91",
+      "program count_wraparound_addition.exe": "6586ecc0a5e544bf",
+      "program count_wraparound_multiplication.exe": "2084eec033ac7fd0",
+      "ctest count_wraparound_subtraction_aborts": "8e6064d27b74ccb1",
+      "ctest count_wraparound_addition_aborts": "17295bc9bc69b52b",
+      "ctest count_wraparound_multiplication_aborts": "d262fa35cfff8fb7"
+    },
+    "judge_parts": {
+      "program test_render_quality.exe": {
+        "commands": "41fa405786a927d3",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program count_wraparound_subtraction.exe": {
+        "commands": "49a6ef5a09c51443",
+        "build-tree files": "b8650c843b3f1a4e",
+        "other files": "c394f920b30a856a"
+      },
+      "program count_wraparound_addition.exe": {
+        "commands": "0199c948eb20db43",
+        "build-tree files": "b8650c843b3f1a4e",
+        "other files": "c394f920b30a856a"
+      },
+      "program count_wraparound_multiplication.exe": {
+        "commands": "b966cbbf1ec6c75e",
+        "build-tree files": "b8650c843b3f1a4e",
+        "other files": "c394f920b30a856a"
+      },
+      "ctest count_wraparound_subtraction_aborts": {
+        "definition": "ed60c2f20ac28452"
+      },
+      "ctest count_wraparound_addition_aborts": {
+        "definition": "746dd37dcc2105c1"
+      },
+      "ctest count_wraparound_multiplication_aborts": {
+        "definition": "43aa91a711fae31e"
+      }
     }
   },
   "m1-13.json": {
-    "commit": "87af0280cbfd2c352b20691a1e9c56732b64350c",
+    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
     "tree": "build/debug",
-    "date": "2026-10-03",
+    "date": "2026-10-06",
     "judges": {
-      "program test_pipeline_inputs.exe": "f0a340e59a1b7187",
-      "program orbsim.exe": "2cd8b455969f5f28",
-      "ctest orbsim_smoke": "50442db549e7cc6b",
-      "ctest shader_missing_is_reported": "6f675244889217ba",
-      "program test_probe_clear.exe": "8642849137ac4d33",
-      "ctest probe_clear": "9acad6acc0860410",
-      "ctest every band carries the ramp's radiance, to within one binary16 step": "841800cd0cb33aab",
-      "ctest the grey band's three channels are the same number": "eec08cd9ca57f761",
-      "ctest below the bands nothing is drawn, and every pixel is opaque": "7ab0e73987e5b549"
+      "program test_pipeline_inputs.exe": "68b3f6a717304c9d",
+      "program orbsim.exe": "d2008a1a63b48b4c",
+      "program test_probe_clear.exe": "96a41c2cc5ec4c5f",
+      "ctest orbsim_smoke": "9d267bba1a136951",
+      "ctest shader_missing_is_reported": "71d8de932bf252ad",
+      "ctest probe_clear": "b921e53d5e35793c",
+      "ctest probe_clear_golden": "a13081551330ff2d",
+      "ctest every band carries the ramp's radiance, to within one binary16 step": "b0fc414569318c16",
+      "ctest the grey band's three channels are the same number": "7d3f2ca640dc5973",
+      "ctest below the bands nothing is drawn, and every pixel is opaque": "913ff6db2e59d316",
+      "ctest probe_lines": "f491003feb3a65da",
+      "ctest probe_lines_golden": "01da095fdd592e1d"
+    },
+    "judge_parts": {
+      "program test_pipeline_inputs.exe": {
+        "commands": "c0f5b90c50adc59a",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program orbsim.exe": {
+        "commands": "25a05b514896c5fc",
+        "build-tree files": "8ffce229ed7b3a21",
+        "other files": "62d30c40b8cdb17a"
+      },
+      "program test_probe_clear.exe": {
+        "commands": "51581408fffcc56f",
+        "build-tree files": "bbd0b9f6e0bd965a",
+        "other files": "c47a5897841d1333"
+      },
+      "ctest orbsim_smoke": {
+        "definition": "50442db549e7cc6b",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest shader_missing_is_reported": {
+        "definition": "196220ec2782b8ac",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_clear": {
+        "definition": "8547cc2a6e626026",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_clear_golden": {
+        "definition": "f159551a191ed09e",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest every band carries the ramp's radiance, to within one binary16 step": {
+        "definition": "841800cd0cb33aab"
+      },
+      "ctest the grey band's three channels are the same number": {
+        "definition": "eec08cd9ca57f761"
+      },
+      "ctest below the bands nothing is drawn, and every pixel is opaque": {
+        "definition": "7ab0e73987e5b549"
+      },
+      "ctest probe_lines": {
+        "definition": "d1f15ef8634d4a9d",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lines_golden": {
+        "definition": "9613b2bca50dae05",
+        "shader builds": "9fc433a89cda9002"
+      }
+    },
+    "gpu": {
+      "card": "0x10de 0x25ba",
+      "driver": "582.53 0x918d4000",
+      "validation layer": "1.4.357 (variant 0), implementation 1"
     }
   },
   "m1-14.json": {
-    "commit": "67c6df22b0db56a52a8429143582005efa51965b",
+    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
     "tree": "build/debug",
-    "date": "2026-10-05",
+    "date": "2026-10-06",
     "judges": {
-      "program test_srgb.exe": "32479687d9b10f03",
-      "program orbsim.exe": "1abd0f84dc210548",
-      "ctest orbsim_smoke": "50442db549e7cc6b",
-      "ctest probe_clear": "8547cc2a6e626026",
-      "ctest probe_clear_golden": "362c647c3fa4d983",
-      "ctest probe_lines": "d1f15ef8634d4a9d",
-      "ctest probe_lines_golden": "9613b2bca50dae05",
-      "program test_probe_clear.exe": "173654db863bec34",
-      "ctest every band carries the ramp's radiance, to within one binary16 step": "841800cd0cb33aab",
-      "ctest the grey band's three channels are the same number": "eec08cd9ca57f761",
-      "ctest below the bands nothing is drawn, and every pixel is opaque": "7ab0e73987e5b549"
+      "program test_srgb.exe": "c5b732b484c88936",
+      "program orbsim.exe": "d2008a1a63b48b4c",
+      "program test_probe_clear.exe": "96a41c2cc5ec4c5f",
+      "ctest orbsim_smoke": "9d267bba1a136951",
+      "ctest probe_clear": "b921e53d5e35793c",
+      "ctest probe_clear_golden": "a13081551330ff2d",
+      "ctest probe_lines": "f491003feb3a65da",
+      "ctest probe_lines_golden": "01da095fdd592e1d",
+      "ctest every band carries the ramp's radiance, to within one binary16 step": "b0fc414569318c16",
+      "ctest the grey band's three channels are the same number": "7d3f2ca640dc5973",
+      "ctest below the bands nothing is drawn, and every pixel is opaque": "913ff6db2e59d316"
+    },
+    "judge_parts": {
+      "program test_srgb.exe": {
+        "commands": "3b11be46756444df",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program orbsim.exe": {
+        "commands": "25a05b514896c5fc",
+        "build-tree files": "8ffce229ed7b3a21",
+        "other files": "62d30c40b8cdb17a"
+      },
+      "program test_probe_clear.exe": {
+        "commands": "51581408fffcc56f",
+        "build-tree files": "bbd0b9f6e0bd965a",
+        "other files": "c47a5897841d1333"
+      },
+      "ctest orbsim_smoke": {
+        "definition": "50442db549e7cc6b",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_clear": {
+        "definition": "8547cc2a6e626026",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_clear_golden": {
+        "definition": "f159551a191ed09e",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lines": {
+        "definition": "d1f15ef8634d4a9d",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lines_golden": {
+        "definition": "9613b2bca50dae05",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest every band carries the ramp's radiance, to within one binary16 step": {
+        "definition": "841800cd0cb33aab"
+      },
+      "ctest the grey band's three channels are the same number": {
+        "definition": "eec08cd9ca57f761"
+      },
+      "ctest below the bands nothing is drawn, and every pixel is opaque": {
+        "definition": "7ab0e73987e5b549"
+      }
+    },
+    "gpu": {
+      "card": "0x10de 0x25ba",
+      "driver": "582.53 0x918d4000",
+      "validation layer": "1.4.357 (variant 0), implementation 1"
     }
   },
   "m1-15.json": {
@@ -488,25 +710,84 @@
     }
   },
   "m1-16.json": {
-    "commit": "87af0280cbfd2c352b20691a1e9c56732b64350c",
+    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
     "tree": "build/debug",
-    "date": "2026-10-03",
+    "date": "2026-10-06",
     "judges": {
-      "program test_half.exe": "4f59672c05cc6b4c",
-      "program test_hdr_dump.exe": "a568b8a3100587d9",
-      "program test_image_files.exe": "a92bd9de55821673",
-      "program test_probe_sidecar.exe": "b32747fae83e4a9d",
-      "program orbsim.exe": "2cd8b455969f5f28",
-      "program test_probe_clear.exe": "8642849137ac4d33",
-      "ctest probe_clear": "9acad6acc0860410",
-      "ctest every band carries the ramp's radiance, to within one binary16 step": "841800cd0cb33aab",
-      "ctest the grey band's three channels are the same number": "eec08cd9ca57f761",
-      "ctest below the bands nothing is drawn, and every pixel is opaque": "7ab0e73987e5b549",
-      "ctest probe_clear_determinism": "070c61f8b9a0e0df"
+      "program test_half.exe": "6a89a622f9915e4e",
+      "program test_hdr_dump.exe": "ae80207320279a28",
+      "program test_image_files.exe": "274ba03ff51fc692",
+      "program test_probe_sidecar.exe": "11f95e92e9375e36",
+      "program orbsim.exe": "d2008a1a63b48b4c",
+      "program test_probe_clear.exe": "96a41c2cc5ec4c5f",
+      "ctest probe_clear": "b921e53d5e35793c",
+      "ctest probe_clear_golden": "a13081551330ff2d",
+      "ctest every band carries the ramp's radiance, to within one binary16 step": "b0fc414569318c16",
+      "ctest the grey band's three channels are the same number": "7d3f2ca640dc5973",
+      "ctest below the bands nothing is drawn, and every pixel is opaque": "913ff6db2e59d316",
+      "ctest probe_clear_determinism": "d01b6ecff4cf1143"
+    },
+    "judge_parts": {
+      "program test_half.exe": {
+        "commands": "f56116ef1b30a1a2",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program test_hdr_dump.exe": {
+        "commands": "36e4f46bcf9e0773",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program test_image_files.exe": {
+        "commands": "d7011c077b3ceb63",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program test_probe_sidecar.exe": {
+        "commands": "a9928ce559cf6978",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program orbsim.exe": {
+        "commands": "25a05b514896c5fc",
+        "build-tree files": "8ffce229ed7b3a21",
+        "other files": "62d30c40b8cdb17a"
+      },
+      "program test_probe_clear.exe": {
+        "commands": "51581408fffcc56f",
+        "build-tree files": "bbd0b9f6e0bd965a",
+        "other files": "c47a5897841d1333"
+      },
+      "ctest probe_clear": {
+        "definition": "8547cc2a6e626026",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_clear_golden": {
+        "definition": "f159551a191ed09e",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest every band carries the ramp's radiance, to within one binary16 step": {
+        "definition": "841800cd0cb33aab"
+      },
+      "ctest the grey band's three channels are the same number": {
+        "definition": "eec08cd9ca57f761"
+      },
+      "ctest below the bands nothing is drawn, and every pixel is opaque": {
+        "definition": "7ab0e73987e5b549"
+      },
+      "ctest probe_clear_determinism": {
+        "definition": "12398a25f037987e",
+        "shader builds": "9fc433a89cda9002"
+      }
+    },
+    "gpu": {
+      "card": "0x10de 0x25ba",
+      "driver": "582.53 0x918d4000",
+      "validation layer": "1.4.357 (variant 0), implementation 1"
     }
   },
   "m1-17.json": {
-    "commit": "9da2aee6866665121749240e0fb003437743a0c1",
+    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
     "tree": "build/debug",
     "date": "2026-10-06",
     "judges": {
@@ -592,32 +873,191 @@
     }
   },
   "m1-18.json": {
-    "commit": "87af0280cbfd2c352b20691a1e9c56732b64350c",
+    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
     "tree": "build/debug",
-    "date": "2026-10-03",
+    "date": "2026-10-07",
     "judges": {
-      "program test_lambert.exe": "d97ad861871cf034",
-      "program test_probe_sidecar.exe": "b32747fae83e4a9d",
-      "program test_camera.exe": "330b35a90970388a",
-      "program test_image_files.exe": "a92bd9de55821673",
-      "program orbsim.exe": "2cd8b455969f5f28",
-      "program test_radiometry.exe": "92dc9e9fda75e3bb",
-      "ctest probe_lambert": "a6292f56a3762a91",
-      "ctest probe_lambert-half-au": "866e06ba1254eb29",
-      "ctest probe_lambert-two-au": "1c16ca2eaddda6e6",
-      "ctest probe_lambert-tilted-60": "0773e0aec4c3a602",
-      "ctest probe_lambert-exposure": "533ca817d4b9f04f",
-      "ctest the patch at 1 AU reads back 0.3 x 1361 / pi, within 0.5 %, at every pixel": "d80be67b61b8fb6d",
-      "ctest the quantisation floor is the format's, five times inside the budget": "9b505f8e746aecca",
-      "ctest the inverse-square law holds on the GPU path: 4x at 0.5 AU, 1/4 at 2 AU": "9c26ab63c2e51dbc",
-      "ctest the patch tilted 60 degrees from the Sun reads back half the radiance": "e2762ecd0112acb1",
-      "ctest exposure does not touch the HDR frame, and only the picture differs": "0355daaad1d598f8",
-      "ctest probe_lambert-backlit": "a2b682ed69012e50",
-      "ctest the patch lit from behind reads back no light at all, and is drawn": "23462208a6d2284e",
-      "program test_tonemap_port.exe": "e3130dbc4a8cfac7",
-      "ctest probe_tonemap-port": "34f399a8c20377a3",
-      "ctest the tonemap-port frame holds the light the clamps act on": "9603496a51b4753d",
-      "ctest the port check holds on tonemap-port's picture, to 1/255 and to 2/65535": "13a19bb8f96102e2"
+      "program test_lambert.exe": "ab03ba639b41e565",
+      "program test_probe_sidecar.exe": "11f95e92e9375e36",
+      "program test_camera.exe": "9797e2e976ce4f4e",
+      "program test_image_files.exe": "274ba03ff51fc692",
+      "program orbsim.exe": "d2008a1a63b48b4c",
+      "program test_radiometry.exe": "ce31459b4be751cb",
+      "program test_tonemap_port.exe": "af60cfd94a6bded5",
+      "ctest probe_lambert": "6c211f05b3a2a15d",
+      "ctest probe_lambert-half-au": "7bd274eb995ebf64",
+      "ctest probe_lambert-two-au": "c7e979ac2b2602c4",
+      "ctest probe_lambert-tilted-60": "b7502e7e414682c1",
+      "ctest probe_lambert-exposure": "319f27f50e714eeb",
+      "ctest the patch at 1 AU reads back 0.3 x 1361 / pi, within 0.5 %, at every pixel": "0078ae9d42812a1f",
+      "ctest the quantisation floor is the format's, five times inside the budget": "f5b15a8586fc0266",
+      "ctest the inverse-square law holds on the GPU path: 4x at 0.5 AU, 1/4 at 2 AU": "6a5c7f3a349f20f8",
+      "ctest the patch tilted 60 degrees from the Sun reads back half the radiance": "f04951302134f997",
+      "ctest exposure does not touch the HDR frame, and only the picture differs": "adec3e1e2098654c",
+      "ctest probe_lambert-backlit": "7e45b05c927b0ea1",
+      "ctest the patch lit from behind reads back no light at all, and is drawn": "7bdd598d0d3c89bf",
+      "ctest probe_tonemap-port": "99d50752d82519db",
+      "ctest the tonemap-port frame holds the light the clamps act on": "1dd71d351cc092e9",
+      "ctest the port check holds on tonemap-port's picture, to 1/255 and to 2/65535": "494b571c65c5873c",
+      "ctest probe_clear": "b921e53d5e35793c",
+      "ctest probe_lines": "f491003feb3a65da",
+      "ctest probe_grid-400km": "c7be9d36c404886e",
+      "ctest probe_grid-jitter-0": "a84203519e57ce9d",
+      "ctest probe_grid-jitter-1": "a1043e93fd13e088",
+      "ctest probe_grid-jitter-2": "7613982ef4934b25",
+      "ctest probe_grid-jitter-3": "0011339cd51fda25",
+      "ctest probe_grid-jitter-4": "a17ad633edd2d549",
+      "ctest probe_grid-jitter-1km-0": "4790cd8f6a2ce7f1",
+      "ctest probe_grid-jitter-1km-1": "ba24a7885b922478",
+      "ctest probe_grid-jitter-1km-2": "0a58159bcc6d2046",
+      "ctest probe_grid-jitter-1km-3": "e08e3996378c09bb",
+      "ctest probe_grid-jitter-1km-4": "b35c2f9e1c066243"
+    },
+    "judge_parts": {
+      "program test_lambert.exe": {
+        "commands": "69ef34eb8bcca47f",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program test_probe_sidecar.exe": {
+        "commands": "a9928ce559cf6978",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program test_camera.exe": {
+        "commands": "69dde345e6db7d4d",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program test_image_files.exe": {
+        "commands": "d7011c077b3ceb63",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program orbsim.exe": {
+        "commands": "25a05b514896c5fc",
+        "build-tree files": "8ffce229ed7b3a21",
+        "other files": "62d30c40b8cdb17a"
+      },
+      "program test_radiometry.exe": {
+        "commands": "83cb9f4fd30c25f5",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program test_tonemap_port.exe": {
+        "commands": "f89945a8c60d4890",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "ctest probe_lambert": {
+        "definition": "f0bd3cacd4097efd",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lambert-half-au": {
+        "definition": "2e2703dbaec9bc73",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lambert-two-au": {
+        "definition": "27bcd3f885d7212a",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lambert-tilted-60": {
+        "definition": "411c87ea6ae918ca",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lambert-exposure": {
+        "definition": "0dfbfcc65a8973a7",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest the patch at 1 AU reads back 0.3 x 1361 / pi, within 0.5 %, at every pixel": {
+        "definition": "064cf4b61d34f4cb"
+      },
+      "ctest the quantisation floor is the format's, five times inside the budget": {
+        "definition": "3ef7228c81e97bde"
+      },
+      "ctest the inverse-square law holds on the GPU path: 4x at 0.5 AU, 1/4 at 2 AU": {
+        "definition": "9c72b874e3c751b4"
+      },
+      "ctest the patch tilted 60 degrees from the Sun reads back half the radiance": {
+        "definition": "afc22e0196825fd4"
+      },
+      "ctest exposure does not touch the HDR frame, and only the picture differs": {
+        "definition": "0b1c3053132c109c"
+      },
+      "ctest probe_lambert-backlit": {
+        "definition": "9120869959d38312",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest the patch lit from behind reads back no light at all, and is drawn": {
+        "definition": "7158ecff14ad1396"
+      },
+      "ctest probe_tonemap-port": {
+        "definition": "e3205febcc389813",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest the tonemap-port frame holds the light the clamps act on": {
+        "definition": "1b939bd5f92073fd"
+      },
+      "ctest the port check holds on tonemap-port's picture, to 1/255 and to 2/65535": {
+        "definition": "837a79da365a03b2"
+      },
+      "ctest probe_clear": {
+        "definition": "8547cc2a6e626026",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lines": {
+        "definition": "d1f15ef8634d4a9d",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-400km": {
+        "definition": "feb66c547b5a8ea7",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-0": {
+        "definition": "8ba08f521bfe7801",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-1": {
+        "definition": "a3491e712b2a08d6",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-2": {
+        "definition": "d7a05b0375db7959",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-3": {
+        "definition": "9c56126dbea15633",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-4": {
+        "definition": "873aa7dddc20139b",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-1km-0": {
+        "definition": "566a93e818f23558",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-1km-1": {
+        "definition": "aab0f181a121e34c",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-1km-2": {
+        "definition": "b168a3b899bb9ead",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-1km-3": {
+        "definition": "686bf7f6c6537382",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-1km-4": {
+        "definition": "24d279bfd2eaee0e",
+        "shader builds": "9fc433a89cda9002"
+      }
+    },
+    "gpu": {
+      "card": "0x10de 0x25ba",
+      "driver": "582.53 0x918d4000",
+      "validation layer": "1.4.357 (variant 0), implementation 1"
     }
   },
   "m1-19.json": {
@@ -639,56 +1079,283 @@
     }
   },
   "m1-20.json": {
-    "commit": "c1776a57570300b6c5659ad0ee222318f26339cf",
+    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
     "tree": "build/debug",
-    "date": "2026-10-04",
+    "date": "2026-10-07",
     "judges": {
-      "program test_planetary_grid.exe": "a40e98f584d91a6c",
-      "program orbsim.exe": "2fec0eabbeb2bdd8",
-      "program test_probe_grid.exe": "a7c9c600443bbad9",
-      "program test_tonemap_port.exe": "61b2ed313d818451",
-      "ctest probe_grid-400km_golden": "1c3e2cfe2460c4f4",
-      "ctest grid-400km: the equator, the prime meridian and the grid land where Skyfield puts them": "6db218ab1cf40d69",
-      "ctest grid-400km: the horizon lands where the sphere's limb is, in blue": "694b6ede606237d0",
-      "ctest grid-400km: the search finds nothing where the colours would be swapped": "501398fbcee0068c",
-      "ctest from 400 km the crossing moves between frames as the pinhole camera predicts": "74e6cd30b88d3e49",
-      "ctest from 1 km the crossing moves between frames as the pinhole camera predicts": "c87c9a8cd2094971",
-      "ctest the port check holds on grid-400km's picture, to 1/255 and to 2/65535": "f8a27dceff1df31d",
-      "ctest the port check holds on grid-jitter-1km-0's picture, to 1/255 and to 2/65535": "2594392675a58d37",
-      "program test_camera.exe": "8710163477fea6ad"
+      "program test_planetary_grid.exe": "1904a982d4b7a59b",
+      "program orbsim.exe": "d2008a1a63b48b4c",
+      "program test_probe_grid.exe": "40e51a8d2b944a27",
+      "program test_tonemap_port.exe": "af60cfd94a6bded5",
+      "program test_camera.exe": "9797e2e976ce4f4e",
+      "ctest probe_grid-400km_golden": "5b400d593353046d",
+      "ctest grid-400km: the equator, the prime meridian and the grid land where Skyfield puts them": "a6734df268337229",
+      "ctest grid-400km: the horizon lands where the sphere's limb is, in blue": "a261a6195c650896",
+      "ctest grid-400km: the search finds nothing where the colours would be swapped": "c3243663781a39a2",
+      "ctest from 400 km the crossing moves between frames as the pinhole camera predicts": "aa3c9d9bb9aaef57",
+      "ctest from 1 km the crossing moves between frames as the pinhole camera predicts": "27cc3f8dae3f91cd",
+      "ctest the port check holds on grid-400km's picture, to 1/255 and to 2/65535": "7da039bc497e4714",
+      "ctest the port check holds on grid-jitter-1km-0's picture, to 1/255 and to 2/65535": "cc2bd08a67da0af8",
+      "ctest probe_clear": "b921e53d5e35793c",
+      "ctest probe_lambert": "6c211f05b3a2a15d",
+      "ctest probe_lambert-half-au": "7bd274eb995ebf64",
+      "ctest probe_lambert-two-au": "c7e979ac2b2602c4",
+      "ctest probe_lambert-tilted-60": "b7502e7e414682c1",
+      "ctest probe_lambert-exposure": "319f27f50e714eeb",
+      "ctest probe_lambert-backlit": "7e45b05c927b0ea1",
+      "ctest probe_tonemap-port": "99d50752d82519db",
+      "ctest probe_lines": "f491003feb3a65da",
+      "ctest probe_grid-400km": "c7be9d36c404886e",
+      "ctest probe_grid-jitter-0": "a84203519e57ce9d",
+      "ctest probe_grid-jitter-1": "a1043e93fd13e088",
+      "ctest probe_grid-jitter-2": "7613982ef4934b25",
+      "ctest probe_grid-jitter-3": "0011339cd51fda25",
+      "ctest probe_grid-jitter-4": "a17ad633edd2d549",
+      "ctest probe_grid-jitter-1km-0": "4790cd8f6a2ce7f1",
+      "ctest probe_grid-jitter-1km-1": "ba24a7885b922478",
+      "ctest probe_grid-jitter-1km-2": "0a58159bcc6d2046",
+      "ctest probe_grid-jitter-1km-3": "e08e3996378c09bb",
+      "ctest probe_grid-jitter-1km-4": "b35c2f9e1c066243"
+    },
+    "judge_parts": {
+      "program test_planetary_grid.exe": {
+        "commands": "167c6f7a1d97d9a6",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program orbsim.exe": {
+        "commands": "25a05b514896c5fc",
+        "build-tree files": "8ffce229ed7b3a21",
+        "other files": "62d30c40b8cdb17a"
+      },
+      "program test_probe_grid.exe": {
+        "commands": "8f78c48e7cb5a1eb",
+        "build-tree files": "bbd0b9f6e0bd965a",
+        "other files": "c47a5897841d1333"
+      },
+      "program test_tonemap_port.exe": {
+        "commands": "f89945a8c60d4890",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program test_camera.exe": {
+        "commands": "69dde345e6db7d4d",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "ctest probe_grid-400km_golden": {
+        "definition": "7d59c35927665f78",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest grid-400km: the equator, the prime meridian and the grid land where Skyfield puts them": {
+        "definition": "6db218ab1cf40d69"
+      },
+      "ctest grid-400km: the horizon lands where the sphere's limb is, in blue": {
+        "definition": "694b6ede606237d0"
+      },
+      "ctest grid-400km: the search finds nothing where the colours would be swapped": {
+        "definition": "501398fbcee0068c"
+      },
+      "ctest from 400 km the crossing moves between frames as the pinhole camera predicts": {
+        "definition": "74e6cd30b88d3e49"
+      },
+      "ctest from 1 km the crossing moves between frames as the pinhole camera predicts": {
+        "definition": "c87c9a8cd2094971"
+      },
+      "ctest the port check holds on grid-400km's picture, to 1/255 and to 2/65535": {
+        "definition": "f8a27dceff1df31d"
+      },
+      "ctest the port check holds on grid-jitter-1km-0's picture, to 1/255 and to 2/65535": {
+        "definition": "2594392675a58d37"
+      },
+      "ctest probe_clear": {
+        "definition": "8547cc2a6e626026",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lambert": {
+        "definition": "f0bd3cacd4097efd",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lambert-half-au": {
+        "definition": "2e2703dbaec9bc73",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lambert-two-au": {
+        "definition": "27bcd3f885d7212a",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lambert-tilted-60": {
+        "definition": "411c87ea6ae918ca",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lambert-exposure": {
+        "definition": "0dfbfcc65a8973a7",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lambert-backlit": {
+        "definition": "9120869959d38312",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_tonemap-port": {
+        "definition": "e3205febcc389813",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_lines": {
+        "definition": "d1f15ef8634d4a9d",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-400km": {
+        "definition": "feb66c547b5a8ea7",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-0": {
+        "definition": "8ba08f521bfe7801",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-1": {
+        "definition": "a3491e712b2a08d6",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-2": {
+        "definition": "d7a05b0375db7959",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-3": {
+        "definition": "9c56126dbea15633",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-4": {
+        "definition": "873aa7dddc20139b",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-1km-0": {
+        "definition": "566a93e818f23558",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-1km-1": {
+        "definition": "aab0f181a121e34c",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-1km-2": {
+        "definition": "b168a3b899bb9ead",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-1km-3": {
+        "definition": "686bf7f6c6537382",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_grid-jitter-1km-4": {
+        "definition": "24d279bfd2eaee0e",
+        "shader builds": "9fc433a89cda9002"
+      }
+    },
+    "gpu": {
+      "card": "0x10de 0x25ba",
+      "driver": "582.53 0x918d4000",
+      "validation layer": "1.4.357 (variant 0), implementation 1"
     }
   },
   "m1-21.json": {
-    "commit": "79adb0487a9a5807e5fd7dfc05058f45bd9418a5",
+    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
     "tree": "build/debug",
-    "date": "2026-10-04",
+    "date": "2026-10-07",
     "judges": {
-      "program test_camera_controller.exe": "1257272d5e6773b5",
-      "program test_math.exe": "1d854e828fdad491",
-      "program test_camera_path.exe": "ae80d5929e806f43"
+      "program test_camera_controller.exe": "15139954ab8a8c4f",
+      "program test_math.exe": "846e694c90e04437",
+      "program test_camera_path.exe": "bb8862950268ed1a"
+    },
+    "judge_parts": {
+      "program test_camera_controller.exe": {
+        "commands": "2e9c9d0ae0d467d8",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program test_math.exe": {
+        "commands": "19c9c3b330c560b0",
+        "build-tree files": "bbd0b9f6e0bd965a",
+        "other files": "c47a5897841d1333"
+      },
+      "program test_camera_path.exe": {
+        "commands": "dd06db8032c167aa",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      }
     }
   },
   "m1-22.json": {
-    "commit": "1401cc8d4594cb0a85c38a5fafba0be9a34eff56",
+    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
     "tree": "build/debug",
-    "date": "2026-10-04",
+    "date": "2026-10-07",
     "judges": {
-      "program test_statistics.exe": "c630fe707b5cbf9e",
-      "program test_gpu_clock.exe": "4918f7f9eff5fe90",
-      "program test_benchmark_path.exe": "7916d77a5baf869b",
-      "program orbsim.exe": "f6a5c6c7716e4f34",
-      "ctest orbsim_bench_smoke": "044aeb3999b45cfa"
+      "program test_statistics.exe": "089e98759e449d06",
+      "program test_gpu_clock.exe": "42bb7826bf9a2e35",
+      "program test_benchmark_path.exe": "5a13a4f315ce1442",
+      "program orbsim.exe": "d2008a1a63b48b4c",
+      "ctest orbsim_bench_smoke": "c292b84ee58cfc23"
+    },
+    "judge_parts": {
+      "program test_statistics.exe": {
+        "commands": "e0bb507d492bb6d0",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program test_gpu_clock.exe": {
+        "commands": "bff95f2091c8acf3",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program test_benchmark_path.exe": {
+        "commands": "a26a24339dbb626f",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program orbsim.exe": {
+        "commands": "25a05b514896c5fc",
+        "build-tree files": "8ffce229ed7b3a21",
+        "other files": "62d30c40b8cdb17a"
+      },
+      "ctest orbsim_bench_smoke": {
+        "definition": "96556a42bb1965cc",
+        "shader builds": "9fc433a89cda9002"
+      }
+    },
+    "gpu": {
+      "card": "0x10de 0x25ba",
+      "driver": "582.53 0x918d4000",
+      "validation layer": "1.4.357 (variant 0), implementation 1"
     }
   },
   "m1-87.json": {
-    "commit": "7655041bdc256bd0474f34acac906d6859179f07",
+    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
     "tree": "build/relwithdebinfo",
-    "date": "2026-09-30",
+    "date": "2026-10-07",
     "judges": {
-      "program test_units_validated.exe": "dd8de14ccaf9d6db",
-      "program test_orbit.exe": "267f974221efd2b0",
-      "program test_orbit_scales.exe": "ef17cc2e3833b8eb",
-      "program test_orbit_elements.exe": "a26eb122d9db9286"
+      "program test_units_validated.exe": "8fbed1e836d69b34",
+      "program test_orbit.exe": "f8fa10a7addfcce4",
+      "program test_orbit_scales.exe": "20a0fbaeb673fede",
+      "program test_orbit_elements.exe": "70a489ca2f62cdcf"
+    },
+    "judge_parts": {
+      "program test_units_validated.exe": {
+        "commands": "29498c8284943954",
+        "build-tree files": "bbd0b9f6e0bd965a",
+        "other files": "c47a5897841d1333"
+      },
+      "program test_orbit.exe": {
+        "commands": "68606493cc3617f9",
+        "build-tree files": "bbd0b9f6e0bd965a",
+        "other files": "c47a5897841d1333"
+      },
+      "program test_orbit_scales.exe": {
+        "commands": "a7e24dccad34722e",
+        "build-tree files": "bbd0b9f6e0bd965a",
+        "other files": "c47a5897841d1333"
+      },
+      "program test_orbit_elements.exe": {
+        "commands": "8d34e949eda7e77e",
+        "build-tree files": "bbd0b9f6e0bd965a",
+        "other files": "c47a5897841d1333"
+      }
     }
   },
   "m1-88.json": {
@@ -732,9 +1399,9 @@
     }
   },
   "m1-90.json": {
-    "commit": "9da2aee6866665121749240e0fb003437743a0c1",
+    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "program test_math.exe": "9c9328cff383c7ee",
       "program test_orbit.exe": "f8fa10a7addfcce4",
@@ -1012,9 +1679,9 @@
     }
   },
   "m1-95.json": {
-    "commit": "9da2aee6866665121749240e0fb003437743a0c1",
+    "commit": "b0b124417dcadf4ec9cadf029274803b039e99d9",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-06",
+    "date": "2026-10-07",
     "judges": {
       "program test_math.exe": "9c9328cff383c7ee",
       "ctest abort_listener": "b6bb739405df39be",
