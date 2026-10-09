@@ -56,9 +56,14 @@ Three rules keep the path scan honest, and each costs some coverage on purpose:
   * **Only paths with a file extension are checked**, so `src/view/` is not an
     error before that directory exists. A deleted directory is loud; a deleted
     file is not, and it is the one this check is for.
-  * **Only paths whose first segment is a real top-level directory** are read
-    as claims about this repository. `vk_mem_alloc.h` and `elv_io.cpp` live in
-    a dependency and in a reference clone, and are nobody's promise.
+  * **Only paths whose first segment is a real directory of ours** are read
+    as claims about this repository: a top-level one, or -- since M1-115 -- one
+    beside the document, above it, or in a `src/` there, so `core/Units.hpp`
+    and a measurement's `m1-111-bench-bytes/compare.py` are checked too.
+    `vk_mem_alloc.h` and `framework/quantity.h` live in dependencies, and are
+    nobody's promise. Until M1-115 only top-level folders counted, and 495
+    paths -- all of them right on the day they were counted -- were never
+    checked; a wrong one planted by hand passed.
   * **Task documents under `docs/plan/tasks/` are exempt**, because naming a
     file the task will create is their entire job. Everything that describes
     the project as it *is* -- the router, the guidelines, the ADRs, the
@@ -74,6 +79,7 @@ import glob
 import os
 import re
 import sys
+import tempfile
 
 # Directories that are not ours: build output, fetched dependencies, git.
 SKIP_DIRS = {".git", ".idea", "_deps", "node_modules"}
@@ -112,12 +118,19 @@ FORWARD_LOOKING = ("docs/plan/tasks/",)
 
 # Paths a document names on purpose although they are not there, each with the
 # reason. The list is meant to shrink, and an entry exempts the path only in
-# the document named -- the same name anywhere else is still an error.
+# the document named -- the same name anywhere else is still an error. Since
+# M1-115 an entry is itself reported once the file exists or the document no
+# longer names it, so the list shrinks without anyone remembering to.
 ABSENT_ON_PURPOSE = {
     # Names the deleted hand-rolled harness in order to say that it is gone.
     (".claude/rules/physics-tests.md", "tests/TestHarness.hpp"),
     # History: what M1-01 deleted, recorded as history.
     ("docs/HISTORY.md", "tests/TestHarness.hpp"),
+    # Register decision 90 names the layer-wide header it chose not to write.
+    ("docs/plan/milestone-1-decisions.md", "astro/AstroError.hpp"),
+    # Register decision 329 names the header M1-49 will create; this entry is
+    # reported as no longer needed once it exists.
+    ("docs/plan/milestone-1-decisions.md", "view/Ellipsoid.hpp"),
 }
 
 # `file:line` citations a document makes on purpose, each with its reason. The
@@ -230,6 +243,16 @@ def search_bases(root: str, path: str) -> list[str]:
         current = parent
 
 
+def path_bases(root: str, path: str) -> list[str]:
+    """Where a backticked path in this document may be written from: the
+    document's own folder and every ancestor (search_bases), and the `src/`
+    folder of each, since `core/Units.hpp` is how the tree names
+    `src/core/Units.hpp` (M1-115). Until then only a path starting at a
+    top-level folder was checked, and 495 that start elsewhere were not."""
+    bases = search_bases(root, path)
+    return bases + [os.path.join(b, "src") for b in bases if os.path.isdir(os.path.join(b, "src"))]
+
+
 def line_count(path: str) -> int:
     with open(path, encoding="utf-8", errors="replace") as handle:
         return sum(1 for _ in handle)
@@ -301,7 +324,14 @@ def check_code_line_refs(root: str, rel: str, lines: list[str]) -> list[str]:
     return problems
 
 
-def check_code_paths(root: str, path: str, lines: list[str], roots: set[str]) -> list[str]:
+def check_code_paths(
+    root: str,
+    path: str,
+    lines: list[str],
+    roots: set[str],
+    absent: set[tuple[str, str]],
+    used: set[tuple[str, str]],
+) -> list[str]:
     """A backticked path naming a file in this repository must resolve."""
     rel = os.path.relpath(path, root).replace("\\", "/")
     # Line citations are checked everywhere, task documents included. The
@@ -322,26 +352,34 @@ def check_code_paths(root: str, path: str, lines: list[str], roots: set[str]) ->
             continue
         if not CODE_PATH.match(target):
             continue
-        if target.split("/")[0] not in roots:
-            continue
-        if (rel, target) in ABSENT_ON_PURPOSE:
+        # A claim about this repository when its first folder is a top-level
+        # one, or a folder beside the document, above it, or in a `src/` there;
+        # otherwise a dependency's or a build's, and nobody's promise.
+        bases = path_bases(root, path)
+        first = target.split("/")[0]
+        if first not in roots and not any(os.path.isdir(os.path.join(b, first)) for b in bases):
             continue
         native = target.replace("/", os.sep)
-        if not any(os.path.exists(os.path.join(b, native)) for b in search_bases(root, path)):
+        exists = any(os.path.exists(os.path.join(b, native)) for b in bases)
+        if (rel, target) in absent:
+            used.add((rel, target))
+            if exists:
+                problems.append(f"{rel}:{number}: {target} exists now; remove its ABSENT_ON_PURPOSE entry")
+            continue
+        if not exists:
             problems.append(f"{rel}:{number}: no such file: {target}")
     return problems
 
 
-def main(argv: list[str]) -> int:
-    if len(argv) > 2:
-        print(__doc__.strip().splitlines()[-3], file=sys.stderr)
-        return 2
-    root = os.path.abspath(argv[1] if len(argv) == 2 else ".")
-
+def scan(root: str, absent: set[tuple[str, str]]) -> tuple[int, list[str]]:
+    """Every document under `root`, checked: how many there were, and what is
+    broken. `absent` is ABSENT_ON_PURPOSE, a parameter so the self-test can
+    hand in its own."""
     files = [f for f in markdown_files(root) if is_ours(root, f)]
     roots = top_level_dirs(root)
     cache: dict[str, set[str]] = {}
     problems: list[str] = []
+    used: set[tuple[str, str]] = set()
 
     for path in files:
         with open(path, encoding="utf-8", errors="replace") as handle:
@@ -352,7 +390,7 @@ def main(argv: list[str]) -> int:
         with open(path, encoding="utf-8", errors="replace") as handle:
             raw = handle.read().split("\n")
         here = os.path.dirname(path)
-        problems.extend(check_code_paths(root, path, raw, roots))
+        problems.extend(check_code_paths(root, path, raw, roots, absent, used))
         for number, line in enumerate(strip_code(raw), start=1):
             for target in LINK.findall(line):
                 if target.startswith(("http://", "https://", "mailto:", "<")):
@@ -379,10 +417,66 @@ def main(argv: list[str]) -> int:
                         f"no such heading: #{anchor}"
                     )
 
+    # An exception nobody needs any more is reported, so the list shrinks by
+    # itself, as its comment asks (M1-115).
+    for document, target in sorted(absent - used):
+        problems.append(f"{document}: no longer names {target}; remove its ABSENT_ON_PURPOSE entry")
+    return len(files), problems
+
+
+def self_test() -> int:
+    """Each rule shown passing and failing, on a small repository of its own in
+    a temporary folder (M1-115, register decision 426): until then this script
+    had no test, and its blind spot was found only by planting a wrong path by
+    hand (M1-111)."""
+    # One document, docs/guide.md, in a repository holding src/core/A.hpp and
+    # docs/m/compare.py. Each case: its text, its exceptions, and how many
+    # problems it must produce.
+    cases = {
+        "a path from the root that exists passes": ("`src/core/A.hpp`", set(), 0),
+        "a path from the root that does not exist is reported": ("`src/core/B.hpp`", set(), 1),
+        "a path from src/ that exists passes": ("`core/A.hpp`", set(), 0),
+        "a path from src/ that does not exist is reported": ("`core/B.hpp`", set(), 1),
+        "a path from the document's folder that exists passes": ("`m/compare.py`", set(), 0),
+        "a path from the document's folder that does not exist is reported (M1-111's)":
+            ("`m/compare2.py`", set(), 1),
+        "a path into a dependency is nobody's promise": ("`framework/quantity.h`", set(), 0),
+        "a path named absent on purpose passes":
+            ("`core/B.hpp`", {("docs/guide.md", "core/B.hpp")}, 0),
+        "an exception for a file that now exists is reported":
+            ("`core/A.hpp`", {("docs/guide.md", "core/A.hpp")}, 1),
+        "an exception the document no longer names is reported":
+            ("nothing", {("docs/guide.md", "core/B.hpp")}, 1),
+        "a link to a file that does not exist is reported": ("[x](nothere.md)", set(), 1),
+    }
+    failures = 0
+    for name, (text, absent, want) in cases.items():
+        with tempfile.TemporaryDirectory() as scratch:
+            for made in ("src/core/A.hpp", "docs/m/compare.py"):
+                os.makedirs(os.path.dirname(os.path.join(scratch, made)), exist_ok=True)
+                with open(os.path.join(scratch, made), "w", encoding="utf-8") as handle:
+                    handle.write("\n")
+            with open(os.path.join(scratch, "docs", "guide.md"), "w", encoding="utf-8") as handle:
+                handle.write(f"# Guide\n\nSee {text}.\n")
+            _, problems = scan(scratch, absent)
+        ok = len(problems) == want
+        failures += not ok
+        print(f"self-test: {name}: {'ok' if ok else f'WRONG, got {problems}'}")
+    return 1 if failures else 0
+
+
+def main(argv: list[str]) -> int:
+    if argv[1:] == ["--self-test"]:
+        return self_test()
+    if len(argv) > 2:
+        print(__doc__.strip().splitlines()[-3], file=sys.stderr)
+        return 2
+    root = os.path.abspath(argv[1] if len(argv) == 2 else ".")
+    count, problems = scan(root, ABSENT_ON_PURPOSE)
     for problem in sorted(problems):
         print(problem, file=sys.stderr)
     print(
-        f"doc-links: {len(files)} documents, {len(problems)} broken",
+        f"doc-links: {count} documents, {len(problems)} broken",
         file=sys.stderr if problems else sys.stdout,
     )
     return 1 if problems else 0

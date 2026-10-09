@@ -1,0 +1,79 @@
+{
+  "task": "M1-115",
+  "tree": "build/debug",
+  "note": "Two checking tools that missed things (register decisions 423-426). The harness's reading of Catch2's output is judged by mutate_self_test, on Catch2's real output; the link checker's wider rule and its exceptions by doc_links_self_test, each rule on a small repository of its own. Both are scripts, so no mutant builds anything (decision 392). The running harness has mutate.py loaded already, so a mutant of it changes only the self-test that judges it. No survivor is declared.",
+  "mutants": [
+    {
+      "name": "a skipped block counts as a failed one",
+      "file": "scripts/mutate.py",
+      "find": "        if not any(\"FAILED:\" in line for line in body):",
+      "replace": "        if not body:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ]
+    },
+    {
+      "name": "any line of dashes passes for Catch2's separator",
+      "file": "scripts/mutate.py",
+      "find": "    starts = [i for i, line in enumerate(lines) if line.rstrip() == CATCH2_SEPARATOR]",
+      "replace": "    starts = [i for i, line in enumerate(lines) if set(line.strip()) == {\"-\"}]",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ]
+    },
+    {
+      "name": "a path written from src/ is not resolved there",
+      "file": "scripts/check-doc-links.py",
+      "find": "    return bases + [os.path.join(b, \"src\") for b in bases if os.path.isdir(os.path.join(b, \"src\"))]",
+      "replace": "    return bases",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "doc_links_self_test"
+      ]
+    },
+    {
+      "name": "only a top-level folder makes a path a claim, as before M1-115",
+      "file": "scripts/check-doc-links.py",
+      "find": "        if first not in roots and not any(os.path.isdir(os.path.join(b, first)) for b in bases):",
+      "replace": "        if first not in roots:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "doc_links_self_test"
+      ]
+    },
+    {
+      "name": "an exception for a file that now exists is not reported",
+      "file": "scripts/check-doc-links.py",
+      "find": "            if exists:\n                problems.append(",
+      "replace": "            if exists and not used:\n                problems.append(",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "doc_links_self_test"
+      ]
+    },
+    {
+      "name": "an exception the documents no longer name is not reported",
+      "file": "scripts/check-doc-links.py",
+      "find": "    for document, target in sorted(absent - used):",
+      "replace": "    for document, target in sorted(absent - used - absent):",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "doc_links_self_test"
+      ]
+    }
+  ]
+}

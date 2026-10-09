@@ -159,12 +159,90 @@ def static_assert_message(text: str) -> str:
     return ""
 
 
+CATCH2_SEPARATOR = "-" * 79
+
+# What Catch2 3.16 prints, for the self-test of failing_cases (M1-115). A skip,
+# from test_file_replace on Windows, 2026-10-09:
+CATCH2_SKIPPED = """\
+Randomness seeded to: 2036146725
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+test_file_replace.exe is a Catch2 v3.16.0 host application.
+Run with -? for options
+
+-------------------------------------------------------------------------------
+a write the disk refuses only when the file is closed is reported
+-------------------------------------------------------------------------------
+C:/orbsim/tests/test_file_replace.cpp(124)
+...............................................................................
+
+C:/orbsim/tests/test_file_replace.cpp(128): SKIPPED:
+explicitly with message:
+  this platform has no /dev/full, the device that refuses every write as a full
+  disk would, so a refusal at close cannot be produced here
+
+===============================================================================
+test cases: 10 |  9 passed | 1 skipped
+assertions: 42 | 42 passed
+"""
+# A failed case with a section, a skipped case and a passing one, from a
+# three-case program built with gcc 14 under WSL, 2026-10-09:
+CATCH2_MIXED = """\
+Randomness seeded to: 2245458000
+
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+t is a Catch2 v3.16.0 host application.
+Run with -? for options
+
+-------------------------------------------------------------------------------
+a case
+  a section
+-------------------------------------------------------------------------------
+/tmp/m/t.cpp:3
+...............................................................................
+
+/tmp/m/t.cpp:3: FAILED:
+  CHECK( 1 == 2 )
+
+-------------------------------------------------------------------------------
+a skipped case
+-------------------------------------------------------------------------------
+/tmp/m/t.cpp:5
+...............................................................................
+
+/tmp/m/t.cpp:5: SKIPPED:
+explicitly with message:
+  not here
+
+===============================================================================
+test cases: 3 | 1 passed | 1 failed | 1 skipped
+assertions: 2 | 1 passed | 1 failed
+"""
+
+
 def failing_cases(stdout: str) -> list:
-    """The Catch2 test-case names that failed, so a kill can be read."""
+    """The Catch2 test-case names that failed, each followed by its location, so
+    a kill can be read.
+
+    Catch2 prints a block for every case that did not simply pass: the case's
+    name between two dashed lines, then its location, then what happened. A
+    skipped case gets one too, so a block counts only if what happened says
+    FAILED: -- Catch2's word for a failed check, an unexpected exception and a
+    fatal error alike (M1-115). Until then a skip was named among the cases
+    that caught a mutant, though the verdict, from the exit code, was right."""
     names, lines = [], stdout.splitlines()
-    for i, line in enumerate(lines):
-        if set(line.strip()) == {"-"} and i + 1 < len(lines):
-            candidate = lines[i + 1].strip()
+    # Catch2's separator is 79 dashes, whatever the console's width; asking for
+    # exactly that keeps a test's own line of dashes from passing for one.
+    starts = [i for i, line in enumerate(lines) if line.rstrip() == CATCH2_SEPARATOR]
+    # Dashed lines come in pairs around a heading; a block runs from its
+    # heading to the next heading, or to the end.
+    for k in range(0, len(starts) - 1, 2):
+        opening, closing = starts[k], starts[k + 1]
+        end = starts[k + 2] if k + 2 < len(starts) else len(lines)
+        body = lines[closing + 1:end]
+        if not any("FAILED:" in line for line in body):
+            continue
+        for candidate in (lines[opening + 1].strip(), body[0].strip() if body else ""):
             if candidate and not set(candidate) <= {"-", "."} and candidate not in names:
                 names.append(candidate)
     return names
@@ -576,6 +654,18 @@ def self_test() -> int:
     record_cases["--verify refuses a malformed expectation"] = all(
         expectation_problem(bad) is not None
         for bad in ("kills", {}, {"10DE-25BA": "caught"}, {"10de-25ba": "kills"}, ["caught"]))
+    # The cases a kill names (M1-115): Catch2 prints a heading for a skipped
+    # case as well as for a failed one, and only a failed one caught anything.
+    # Both texts are Catch2 3.16's own output, the paths shortened.
+    record_cases["a skipped case is not named"] = failing_cases(CATCH2_SKIPPED) == []
+    record_cases["a failed case is named by its case and its location, a skipped one beside it not"] = (
+        failing_cases(CATCH2_MIXED) == ["a case", "/tmp/m/t.cpp:3"])
+    record_cases["a run that passed names nothing"] = (
+        failing_cases(CATCH2_SKIPPED.split(CATCH2_SEPARATOR)[0]) == [])
+    record_cases["a test's own shorter line of dashes is not a heading"] = (
+        failing_cases(CATCH2_MIXED.replace("Run with -? for options\n",
+                                           "Run with -? for options\n" + "-" * 40 + "\n"))
+        == ["a case", "/tmp/m/t.cpp:3"])
     for name, ok in record_cases.items():
         failures += not ok
         print(f"self-test: {name}: {'ok' if ok else 'WRONG'}")

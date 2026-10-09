@@ -21,6 +21,19 @@ else()
 endif()
 set_tests_properties(mutate_self_test PROPERTIES LABELS fixtures)
 
+# The link checker's rules, each shown passing and failing on a small
+# repository of its own (M1-115, register decision 426): which backticked
+# paths are claims about this repository, and an exception reported once it
+# is no longer needed.
+if(ORBSIM_PYTHON)
+    add_test(NAME doc_links_self_test
+            COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-doc-links.py --self-test
+    )
+else()
+    add_test(NAME doc_links_self_test COMMAND ${CMAKE_COMMAND} -E false)
+endif()
+set_tests_properties(doc_links_self_test PROPERTIES LABELS fixtures)
+
 # A tree set up from text no longer on disk is refused (M1-98, register
 # decision 225). The configure fingerprints what it reads and fails if any of
 # it changed before the end (cmake/ConfigureInputs.cmake); `configure-current`

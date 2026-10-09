@@ -1,6 +1,6 @@
 # Milestone 1 — the task queue
 
-Status: **planned 2026-09-08.** 114 tasks, in one order. (84 until 2026-09-13,
+Status: **planned 2026-09-08.** 116 tasks, in one order. (84 until 2026-09-13,
 when an audit found phase F had no gate although the rule below says every
 phase ends with one. The new task is **M1-85**, sitting between 77 and 78:
 renumbering seven tasks to make it "78" would have broken the identifiers that
@@ -34,7 +34,10 @@ decision 277. 109 until later that day, when **M1-110** was added, to run
 before M1-19: one golden per graphics card -- decisions 287 and 288. 110 until
 2026-10-06, when the phase A gate turned four open items into tasks rather
 than carry them into phase B: **M1-111 to M1-113** at the start of phase B,
-and **M1-114**, smoother lines, after M1-76 -- decision 405.)
+and **M1-114**, smoother lines, after M1-76 -- decision 405. 114 until
+2026-10-09, when **M1-115** was added after M1-111, two checking tools that
+missed things, and **M1-116** after it, a review of the whole project --
+decisions 423-433.)
 Which of them are done is in [`../STATUS.md`](../STATUS.md), not here.
 
 This is the working document for [milestone 1](milestone-1-earth.md): Earth, an
@@ -256,6 +259,8 @@ compilers' included -- passing.
 | # | Task | Prerequisites | Ends with |
 |---|---|---|---|
 | [111](tasks/m1-111-one-write-file.md) | The benchmark writes its files through `writeFile` | 108 | One `writeFile`, tested |
+| [115](tasks/m1-115-checking-tools.md) | Two checking tools that missed things | 111 | A skip not named as a catch; 495 paths checked |
+| [116](tasks/m1-116-review.md) | A review of the whole project, documents and code | 115 | Findings, verified and ruled |
 | [112](tasks/m1-112-probe-format-rule.md) | The probe display format's rule made reachable | 108 | A rule a `static_assert` can see |
 | [113](tasks/m1-113-main-debug-dialog.md) | The application stops, rather than waits, on a debug-library check | 21 | A message and an exit, not a dialog |
 | [24](tasks/m1-24-tile-identity.md) | `TileId` and the tile scheme | 09 | Orbiter's own indexing, tested |
