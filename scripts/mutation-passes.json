@@ -523,6 +523,23 @@
       "validation layer": "1.4.357 (variant 0), implementation 1"
     }
   },
+  "m1-115.json": {
+    "commit": "626c1ad7f1c331f9ecbf77a63d2d90c48c634013",
+    "tree": "build/debug",
+    "date": "2026-10-09",
+    "judges": {
+      "ctest mutate_self_test": "236497c8cc8d2115",
+      "ctest doc_links_self_test": "b23814fecb16a4cd"
+    },
+    "judge_parts": {
+      "ctest mutate_self_test": {
+        "definition": "2e907c7dd50344c3"
+      },
+      "ctest doc_links_self_test": {
+        "definition": "7f374b81e5056833"
+      }
+    }
+  },
   "m1-12-release.json": {
     "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/relwithdebinfo",

@@ -69,5 +69,9 @@ to**, both found while doing M1-111:
       and an exception nobody needs is reported.
 - [x] `check` passes in both trees -- 531 of 531 in each, 2026-10-09, on the
       RTX A2000 machine; the new test is `doc_links_self_test`.
-- [ ] The task's mutant file has run after the commit and its record is
-      committed.
+- [x] The task's mutant file has run after the commit and its record is
+      committed. Run at `626c1ad`, in `build/debug`: **`m1-115.json` 6 of 6
+      caught**, none surviving, invalid or hung -- the two harness mutants by
+      `mutate_self_test`, the four link-checker mutants by
+      `doc_links_self_test`. That commit also carried two Python cache files
+      by mistake, removed in `7490f40`.
