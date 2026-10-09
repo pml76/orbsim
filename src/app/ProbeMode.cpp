@@ -64,13 +64,6 @@ constexpr std::string_view kCompilerName = "gcc " __VERSION__;
     return std::format("{:%Y-%m-%dT%H:%M:%SZ}", now);
 }
 
-[[nodiscard]] std::expected<void, std::string> writeText(const std::filesystem::path& path,
-                                                         std::string_view text) {
-    std::vector<std::byte> bytes(text.size());
-    std::ranges::transform(text, bytes.begin(), [](char c) { return static_cast<std::byte>(c); });
-    return view::writeFile(path, bytes);
-}
-
 // A file's bytes, or why they could not be read -- the other direction of
 // view::writeFile, through std::filesystem::path for the same reason (M1-17).
 [[nodiscard]] std::expected<std::vector<std::byte>, std::string>
@@ -194,7 +187,7 @@ lambertSceneOf(const gfx::ProbeConditions& conditions) {
         .shaders = shaders,
         .validationLayer = layerOf(run),
     });
-    return writeText(run.outDirectory / run.files.sidecar, text);
+    return view::writeText(run.outDirectory / run.files.sidecar, text);
 }
 
 // A run that stopped before it had a frame: the sidecar alone, carrying why.

@@ -1,6 +1,7 @@
 //
 // Tests for view/FileWrite.hpp: writing a file, and replacing one without
-// ever leaving half of it (M1-108; register decisions 232, 387 and 388).
+// ever leaving half of it (M1-108; register decisions 232, 387 and 388), and
+// writing text, with a refusal at close reported (M1-111).
 //
 // **Never through --accept-golden**, which no test may run (decision 233):
 // replaceFile is the rule that option relies on, moved where a test can reach
@@ -100,6 +101,37 @@ TEST_CASE("writeFile replaces a longer file rather than writing into it") {
     CHECK(contentsOf(file) == bytesOf("short"));
 
     std::filesystem::remove_all(folder);
+}
+
+// Line endings among them: in text mode on Windows, "\n" would come back as
+// "\r\n" and the length would differ (M1-111).
+TEST_CASE("writeText writes the text's characters as they are") {
+    const std::filesystem::path folder = scratchFolder("write_text");
+    const std::filesystem::path file = folder / "report.csv";
+    constexpr std::string_view kText = "frame,phase\n0,warm-up\r\n1,measured\n\x1A tail";
+
+    REQUIRE(writeText(file, kText));
+    CHECK(contentsOf(file) == bytesOf(kText));
+
+    std::filesystem::remove_all(folder);
+}
+
+// A few bytes stay in the stream's buffer until the file is closed, so a disk
+// that refuses them refuses only then -- and a write that checked before the
+// close reported success (M1-111, measured with this very case). /dev/full
+// refuses every write as a full disk would; Windows has no such device, so
+// there the case reports itself skipped rather than passing.
+TEST_CASE("a write the disk refuses only when the file is closed is reported") {
+    const std::filesystem::path full{"/dev/full"};
+    if (!std::filesystem::exists(full)) {
+        SKIP("this platform has no /dev/full, the device that refuses every write as a "
+             "full disk would, so a refusal at close cannot be produced here");
+    }
+
+    const auto written = writeFile(full, bytesOf("short"));
+    REQUIRE_FALSE(written);
+    // Named by the file it could not write.
+    CHECK(written.error().contains("/dev/full"));
 }
 
 TEST_CASE("replaceFile puts a file in place where there was none, and nothing beside it") {

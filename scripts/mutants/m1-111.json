@@ -1,0 +1,93 @@
+{
+  "task": "M1-111",
+  "tree": "build/debug",
+  "note": "One way to write a file (register decisions 418-422): view/FileWrite.cpp's writeChars, behind writeFile and writeText, judged by test_file_replace; the benchmark's report judged by orbsim_bench_smoke and the probe's sidecar by probe_golden_no_card, which reads the card's numbers from it. **Two declared survivors, each a blind spot written down rather than closed.** The close left to the destructor is caught only where /dev/full exists: seen caught on Linux in build/linux-sanitize during the task, where the case failed with the close absent, and skipped in this Windows tree, which has no such device (decision 418). And a refusal of the benchmark's report going unreported: no test can make the disk refuse the benchmark's write, so nothing reaches that branch (decision 420).",
+  "mutants": [
+    {
+      "name": "the file is left for its destructor to close, so a refusal at close goes unreported",
+      "file": "src/view/FileWrite.cpp",
+      "find": "    file.close();",
+      "replace": "    // closed by the destructor",
+      "suites": [
+        "test_file_replace"
+      ],
+      "expect": "survives"
+    },
+    {
+      "name": "the file is opened in text mode",
+      "file": "src/view/FileWrite.cpp",
+      "find": "    std::ofstream file(path, std::ios::binary);",
+      "replace": "    std::ofstream file(path);",
+      "suites": [
+        "test_file_replace"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "writeText writes half of the text",
+      "file": "src/view/FileWrite.cpp",
+      "find": "    return writeChars(path, text);",
+      "replace": "    return writeChars(path, text.substr(0, text.size() / 2));",
+      "suites": [
+        "test_file_replace"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the benchmark's summary is written under the table's name",
+      "file": "src/app/BenchMode.cpp",
+      "find": "            view::writeText(std::filesystem::path(base).replace_extension(\".txt\"), texts.summary);",
+      "replace": "            view::writeText(std::filesystem::path(base).replace_extension(\".csv\"), texts.summary);",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "ctest": [
+        "orbsim_bench_smoke"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the benchmark's table file holds the summary",
+      "file": "src/app/BenchMode.cpp",
+      "find": "            view::writeText(std::filesystem::path(base).replace_extension(\".csv\"), texts.table);",
+      "replace": "            view::writeText(std::filesystem::path(base).replace_extension(\".csv\"), texts.summary);",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "ctest": [
+        "orbsim_bench_smoke"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "a refused write of the benchmark's summary is not reported",
+      "file": "src/app/BenchMode.cpp",
+      "find": "            view::writeText(std::filesystem::path(base).replace_extension(\".txt\"), texts.summary);\n        !ok) {\n        return fail(std::move(ok.error()));\n    }",
+      "replace": "            view::writeText(std::filesystem::path(base).replace_extension(\".txt\"), texts.summary);\n        !ok) {\n    }",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "ctest": [
+        "orbsim_bench_smoke"
+      ],
+      "expect": "survives"
+    },
+    {
+      "name": "the probe's sidecar is written empty",
+      "file": "src/app/ProbeMode.cpp",
+      "find": "    return view::writeText(run.outDirectory / run.files.sidecar, text);",
+      "replace": "    return view::writeText(run.outDirectory / run.files.sidecar, text.substr(text.size()));",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "ctest": [
+        "probe_golden_no_card"
+      ],
+      "expect": "caught"
+    }
+  ]
+}

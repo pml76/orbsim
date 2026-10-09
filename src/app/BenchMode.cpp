@@ -12,6 +12,7 @@
 #include "view/BenchmarkPath.hpp"
 #include "view/CameraPath.hpp"
 #include "view/Exposure.hpp"
+#include "view/FileWrite.hpp"
 #include "view/FrameStatistics.hpp"
 #include "view/GpuClock.hpp"
 #include "view/RenderQuality.hpp"
@@ -32,8 +33,6 @@
 #include <expected>
 #include <filesystem>
 #include <format>
-#include <fstream>
-#include <ios>
 #include <optional>
 #include <print>
 #include <span>
@@ -433,15 +432,6 @@ statisticsLine(std::string_view name, std::span<const Seconds> sample) {
     return text;
 }
 
-[[nodiscard]] std::expected<void, BenchError> writeFile(const std::filesystem::path& file,
-                                                        std::string_view text) {
-    std::ofstream out(file, std::ios::binary);
-    out << text;
-    out.close();
-    if (!out) return fail("cannot write " + file.string());
-    return {};
-}
-
 // The report's two texts, by name, so they cannot be handed over the wrong
 // way round (non-negotiable 1).
 struct ReportTexts {
@@ -462,13 +452,16 @@ writeReport(const BenchRequest& request, const ReportTexts& texts) {
     std::filesystem::path base =
         request.outDirectory / std::format("{}-{:%Y%m%dT%H%M%SZ}", request.path, now);
     base.make_preferred();
-    if (auto ok = writeFile(std::filesystem::path(base).replace_extension(".txt"), texts.summary);
+    // view::writeText's reason names the file, so it is carried on as it is.
+    if (auto ok =
+            view::writeText(std::filesystem::path(base).replace_extension(".txt"), texts.summary);
         !ok) {
-        return std::unexpected(ok.error());
+        return fail(std::move(ok.error()));
     }
-    if (auto ok = writeFile(std::filesystem::path(base).replace_extension(".csv"), texts.table);
+    if (auto ok =
+            view::writeText(std::filesystem::path(base).replace_extension(".csv"), texts.table);
         !ok) {
-        return std::unexpected(ok.error());
+        return fail(std::move(ok.error()));
     }
     return base;
 }
