@@ -487,6 +487,42 @@
       "validation layer": "1.4.357 (variant 0), implementation 1"
     }
   },
+  "m1-111.json": {
+    "commit": "4b07c2be56ab690018d42a74d095fc353c1a7139",
+    "tree": "build/debug",
+    "date": "2026-10-09",
+    "judges": {
+      "program test_file_replace.exe": "27f33f6ae8de0cd1",
+      "program orbsim.exe": "d2008a1a63b48b4c",
+      "ctest orbsim_bench_smoke": "c292b84ee58cfc23",
+      "ctest probe_golden_no_card": "c53df804eda08dec"
+    },
+    "judge_parts": {
+      "program test_file_replace.exe": {
+        "commands": "09fdb8ce703469a1",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program orbsim.exe": {
+        "commands": "25a05b514896c5fc",
+        "build-tree files": "8ffce229ed7b3a21",
+        "other files": "62d30c40b8cdb17a"
+      },
+      "ctest orbsim_bench_smoke": {
+        "definition": "96556a42bb1965cc",
+        "shader builds": "9fc433a89cda9002"
+      },
+      "ctest probe_golden_no_card": {
+        "definition": "6b6f759e3fab1ef5",
+        "shader builds": "9fc433a89cda9002"
+      }
+    },
+    "gpu": {
+      "card": "0x10de 0x25ba",
+      "driver": "582.53 0x918d4000",
+      "validation layer": "1.4.357 (variant 0), implementation 1"
+    }
+  },
   "m1-12-release.json": {
     "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/relwithdebinfo",

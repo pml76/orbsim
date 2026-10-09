@@ -74,5 +74,14 @@ beyond its task. Two functions that do one job drift apart: the one in
 - [x] One `writeFile` in the project, in `src/view/FileWrite.hpp`.
 - [x] `check` passes in both trees -- 530 of 530 in each, 2026-10-09, on the
       RTX A2000 machine, the `/dev/full` case reported skipped.
-- [ ] The task's mutant file has run after the commit and its record is
-      committed.
+- [x] The task's mutant file has run after the commit and its record is
+      committed. Run at `4b07c2b`, in `build/debug`: **`m1-111.json` 5 of 7
+      caught, its 2 declared survivors surviving**, none invalid or hung --
+      text mode and the halved text by `test_file_replace`, the two report
+      mutants by `orbsim_bench_smoke`, the empty sidecar by
+      `probe_golden_no_card`. About two minutes. The harness listed the
+      skipped `/dev/full` case among the cases that caught the halved text:
+      it takes every heading Catch2 prints, and Catch2 prints one for a
+      skip. The verdict is the exit code's, and the close mutant, run
+      against the same suite with the same skip, survived; the case that
+      caught it is `writeText`'s. Recorded in `STATUS.md` as open.
