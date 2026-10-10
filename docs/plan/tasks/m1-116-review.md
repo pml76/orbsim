@@ -1,10 +1,12 @@
 # M1-116 — A review of the whole project, documents and code
 
-Phase: B | Status: **planned and approved, 2026-10-10; not started**
+Phase: B | Status: **started 2026-10-10**; the findings are in
+[`docs/review/m1-116-findings.md`](../../review/m1-116-findings.md)
 Prerequisites: M1-115
-Decided by: register decisions 427-433, ruled 2026-10-09, and 435, which
+Decided by: register decisions 427-433, ruled 2026-10-09; 435, which
 approved this plan and answered the three points under "Before it starts" on
-2026-10-10
+2026-10-10; and 436-439, the same day, which moved the two tools to Windows and
+settled how the reading is done
 
 ## Purpose
 

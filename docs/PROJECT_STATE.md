@@ -76,6 +76,65 @@ has the exact URLs to fetch them again.
 Git remote: `git@github.com:pml76/orbsim.git`. The repository is **public**,
 which is why commit messages carry co-authorship but never a session URL.
 
+### cppcheck and include-what-you-use, built on Windows (M1-116)
+
+Run once each by the review, as a measurement and not as part of `check`
+(register decisions 436-438). **On Windows only, built from source with this
+project's own toolchain** -- the owner keeps tooling on other platforms to a
+minimum. Versions are in [`STATUS.md`](STATUS.md). Sources and build folders
+go in `C:\GitHub\tools-src`, outside the repository; every command below runs
+from a shell where `clang`, `clang++` and `ninja` are the ones `STATUS.md`
+names, with `cmake` meaning CLion's.
+
+**cppcheck**, from its release tag, without the graphical interface:
+
+```
+git clone --depth 1 --branch 2.22.0 https://github.com/danmar/cppcheck.git cppcheck-2.22.0
+cmake -S cppcheck-2.22.0 -B build-cppcheck -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release -DBUILD_GUI=OFF -DBUILD_TESTS=OFF -DHAVE_RULES=OFF -DUSE_MATCHCOMPILER=ON -DCMAKE_INSTALL_PREFIX=C:/GitHub/cppcheck-2.22.0
+cmake --build build-cppcheck && cmake --install build-cppcheck
+```
+
+Its help text lists C++ standards only to C++20, but `--std=c++23` is
+accepted -- measured against `--std=c++99`, which is refused. Run it on the
+Debug tree's compile database with `--file-filter` for `src` and `tests`;
+the whole project takes about 13 seconds.
+
+**include-what-you-use** must match the clang it is built against: its tag
+0.27 is the head of its `clang_23` branch (its README's table stops at 22).
+**Three things LLVM's Windows release needs and does not say**, each found by
+a failed configure:
+
+1. **The DIA SDK** (Microsoft's debug-symbol library), which ships with Visual
+   Studio: pass `-DMSVC_DIA_SDK_DIR="C:/Program Files/Microsoft Visual
+   Studio/18/Insiders/DIA SDK"`.
+2. **zlib and zstd**, which LLVM's libraries link but the release does not
+   ship. Build both static from their release tags (zlib v1.3.2, zstd v1.5.7)
+   into a prefix of their own, and pass the libraries by name -- otherwise
+   CMake finds whatever else is on the machine (here, PostgreSQL's zstd).
+3. **The static C runtime, everywhere**: LLVM's libraries use it. zstd's
+   CMake ignores `CMAKE_MSVC_RUNTIME_LIBRARY` unless
+   `-DCMAKE_POLICY_DEFAULT_CMP0091=NEW` is given too; without it the link
+   warns "locally defined symbol imported". Check the build files for
+   `--dependent-lib=libcmt` and no `msvcrt`.
+
+```
+set P=C:/GitHub/tools-src/deps-install
+set L=C:/GitHub/clang+llvm-23.1.2-x86_64-pc-windows-msvc
+cmake -S zlib-1.3.2 -B build-zlib -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=Release -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DCMAKE_INSTALL_PREFIX=%P% -DZLIB_BUILD_SHARED=OFF -DZLIB_BUILD_TESTING=OFF
+cmake --build build-zlib --target install
+cmake -S zstd-1.5.7/build/cmake -B build-zstd -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_DEFAULT_CMP0091=NEW -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded -DCMAKE_INSTALL_PREFIX=%P% -DZSTD_BUILD_SHARED=OFF -DZSTD_BUILD_PROGRAMS=OFF -DZSTD_BUILD_TESTS=OFF -DZSTD_MULTITHREAD_SUPPORT=OFF
+cmake --build build-zstd --target install
+cmake -S iwyu-0.27 -B build-iwyu -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_BUILD_TYPE=Release -DLLVM_DIR=%L%/lib/cmake/llvm -DClang_DIR=%L%/lib/cmake/clang -DMSVC_DIA_SDK_DIR="C:/Program Files/Microsoft Visual Studio/18/Insiders/DIA SDK" -DZLIB_LIBRARY=%P%/lib/zs.lib -DZLIB_INCLUDE_DIR=%P%/include -Dzstd_LIBRARY=%P%/lib/zstd_static.lib -Dzstd_STATIC_LIBRARY=%P%/lib/zstd_static.lib -Dzstd_INCLUDE_DIR=%P%/include -DCMAKE_INSTALL_PREFIX=C:/GitHub/iwyu-0.27
+cmake --build build-iwyu && cmake --install build-iwyu
+```
+
+Its own unit tests (`iwyu-unittests.exe`) pass 89 of 89. **It ships no
+mapping for Microsoft's standard library**, so a third of its advice on
+standard headers names internal ones (`<corecrt_math.h>` for `<cmath>`); the
+review wrote a mapping file for the run (decision 437), which is a measuring
+aid, not part of the project. Run it as `iwyu_tool.py -p build\debug <files>
+-- -Xiwyu --mapping_file=<that file>`; 82 files take about three minutes.
+
 ### Starting on a new machine
 
 ```
