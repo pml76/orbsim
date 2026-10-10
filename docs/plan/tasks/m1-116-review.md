@@ -1,9 +1,10 @@
 # M1-116 — A review of the whole project, documents and code
 
-Phase: B | Status: **planned, awaiting the owner's approval of this plan**
+Phase: B | Status: **planned and approved, 2026-10-10; not started**
 Prerequisites: M1-115
-Decided by: register decisions 427-433, ruled 2026-10-09; the three points
-under "Before it starts" are still the owner's
+Decided by: register decisions 427-433, ruled 2026-10-09, and 435, which
+approved this plan and answered the three points under "Before it starts" on
+2026-10-10
 
 ## Purpose
 
@@ -114,8 +115,8 @@ than estimated now.
 ## Before it starts
 
 Three points the plan raises that the questions put on 2026-10-09 did not
-cover. Each has a recommendation; the review starts when the owner has
-answered them and approved this plan.
+cover. **Answered 2026-10-10: every recommendation taken, and the plan
+approved** (decision 435).
 
 1. **Where the findings live.** (a) *Recommended:* a document of their own,
    `docs/review/m1-116-findings.md`, linked from this task -- the list may be

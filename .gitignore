@@ -29,6 +29,10 @@ CMakeFiles/
 # committed before anyone noticed.
 *.spv
 *.obj
+# The same for Python's compiled modules: scripts/__pycache__/ appeared when a
+# measurement loaded two of the scripts, and was committed in 626c1ad before
+# anyone noticed (M1-115, register decision 434).
+__pycache__/
 
 # Profiling and sanitizer output
 *.prof
