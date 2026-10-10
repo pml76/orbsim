@@ -1,12 +1,13 @@
 # M1-116 — A review of the whole project, documents and code
 
-Phase: B | Status: **started 2026-10-10**; the findings are in
+Phase: B | Status: **done 2026-10-10**: the findings are in
 [`docs/review/m1-116-findings.md`](../../review/m1-116-findings.md)
 Prerequisites: M1-115
 Decided by: register decisions 427-433, ruled 2026-10-09; 435, which
 approved this plan and answered the three points under "Before it starts" on
 2026-10-10; and 436-439, the same day, which moved the two tools to Windows and
-settled how the reading is done
+settled how the reading is done; and 440-450, the owner's rulings on the
+findings, which queued M1-117 to M1-127
 
 ## Purpose
 
@@ -136,8 +137,8 @@ approved** (decision 435).
 
 ## Done when
 
-- [ ] Every area read, every lead verified or dropped with the reason.
-- [ ] Both tools run, and their findings verified the same way.
-- [ ] The findings list handed to the owner, and every finding ruled.
-- [ ] The rulings recorded in the register, and the fixes added to the queue.
-- [ ] What the review cost, recorded.
+- [x] Every area read, every lead verified or dropped with the reason.
+- [x] Both tools run, and their findings verified the same way.
+- [x] The findings list handed to the owner, and every finding ruled.
+- [x] The rulings recorded in the register, and the fixes added to the queue.
+- [x] What the review cost, recorded.

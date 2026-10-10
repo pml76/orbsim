@@ -37,6 +37,7 @@ tree (decision 439), and the worktree was deleted afterwards.
 - [The two analysis tools](#the-two-analysis-tools)
 - [Leads dropped, and why](#leads-dropped-and-why)
 - [What the review cost](#what-the-review-cost)
+- [The rulings](#the-rulings)
 
 ---
 
@@ -917,3 +918,23 @@ can be fixed once; include-what-you-use waits on the question above.
   prediction that a test could not catch something it does catch.
 - **Planted faults:** 13 runs in the worktree -- 11 on the CPU suites, 2 on
   the GPU.
+
+---
+
+## The rulings
+
+Given by the owner on 2026-10-10, recorded as register decisions 440-450, and
+queued as M1-117 to M1-127 ([the queue](../plan/milestone-1-tasks.md)).
+
+| Group | Ruling | Task |
+|---|---|---|
+| 1, the simulation core | every finding fixed; the anomaly converters report through `std::expected` (decision 440) | [M1-118](../plan/tasks/m1-118-core-fixes.md) |
+| 2, the application and the renderer | every finding fixed; the narrowing functions return `std::expected`; the swapchain extension used where offered (decision 441) | [M1-120](../plan/tasks/m1-120-app-renderer-fixes.md) |
+| 3, tests | every finding fixed; the back-lit patch drawn smaller than the frame; the samplers read their engine directly (decision 442) | [M1-118](../plan/tasks/m1-118-core-fixes.md) for 3.1 and 3.12, [M1-119](../plan/tasks/m1-119-tests-that-can-fail.md) for the rest |
+| 4, tools and the build | every finding fixed; the mp-units fault reported and the warning switched back on (decision 443) | [M1-117](../plan/tasks/m1-117-float-equal-restored.md) for 4.1, [M1-121](../plan/tasks/m1-121-tools-build-fixes.md) for the rest |
+| 5, the survivors | every record fixed and every catchable survivor caught (decision 444) | [M1-122](../plan/tasks/m1-122-survivors-tightened.md) |
+| 6, the worked example | brought up to the project's rulings (decision 445) | [M1-123](../plan/tasks/m1-123-example-brought-up.md) |
+| 7, documents | every finding fixed; `prompts.txt` given a header (decision 446) | [M1-125](../plan/tasks/m1-125-documents.md) |
+| 8, the open items | each fixed: (b) kept and renamed, (c) a fixed seed and a growing corpus (decision 447) | [M1-124](../plan/tasks/m1-124-open-items.md); (e) is [M1-126](../plan/tasks/m1-126-rx7900-gate-pass.md), on the second machine |
+| The two tools | neither joins `check`; "include what you use" not a rule now (decision 448) | -- |
+| `PROJECT_STATE.md` 6.3 and 6.4 | reopened (decision 449) | [M1-127](../plan/tasks/m1-127-asan-and-refactors.md) |

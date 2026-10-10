@@ -1,6 +1,6 @@
 # Milestone 1 — the task queue
 
-Status: **planned 2026-09-08.** 116 tasks, in one order. (84 until 2026-09-13,
+Status: **planned 2026-09-08.** 127 tasks, in one order. (84 until 2026-09-13,
 when an audit found phase F had no gate although the rule below says every
 phase ends with one. The new task is **M1-85**, sitting between 77 and 78:
 renumbering seven tasks to make it "78" would have broken the identifiers that
@@ -37,7 +37,8 @@ than carry them into phase B: **M1-111 to M1-113** at the start of phase B,
 and **M1-114**, smoother lines, after M1-76 -- decision 405. 114 until
 2026-10-09, when **M1-115** was added after M1-111, two checking tools that
 missed things, and **M1-116** after it, a review of the whole project --
-decisions 423-433.)
+decisions 423-433. 116 until 2026-10-10, when the review's rulings added
+**M1-117 to M1-127** after it, before M1-112 -- decisions 440-450.)
 Which of them are done is in [`../STATUS.md`](../STATUS.md), not here.
 
 This is the working document for [milestone 1](milestone-1-earth.md): Earth, an
@@ -261,6 +262,17 @@ compilers' included -- passing.
 | [111](tasks/m1-111-one-write-file.md) | The benchmark writes its files through `writeFile` | 108 | One `writeFile`, tested |
 | [115](tasks/m1-115-checking-tools.md) | Two checking tools that missed things | 111 | A skip not named as a catch; 495 paths checked |
 | [116](tasks/m1-116-review.md) | A review of the whole project, documents and code | 115 | Findings, verified and ruled |
+| [117](tasks/m1-117-float-equal-restored.md) | `-Wfloat-equal` back on, and the five comparisons it hid | 116 | A warning that fires again |
+| [118](tasks/m1-118-core-fixes.md) | The simulation core's review findings | 117 | Every promise kept, tested |
+| [119](tasks/m1-119-tests-that-can-fail.md) | Tests that can fail for what they claim | 118 | Each planted fault caught |
+| [120](tasks/m1-120-app-renderer-fixes.md) | The application's and the renderer's review findings | 119 | A window that can be minimised |
+| [121](tasks/m1-121-tools-build-fixes.md) | The checking tools' and the build's review findings | 120 | Tools seen failing |
+| [122](tasks/m1-122-survivors-tightened.md) | The declared survivors: records corrected, the catchable ones caught | 121 | Every catchable survivor caught |
+| [123](tasks/m1-123-example-brought-up.md) | The worked example brought up to the project's rulings | 122 | An example worth copying |
+| [124](tasks/m1-124-open-items.md) | `STATUS.md`'s open items (a) to (d) | 123 | Four items closed |
+| [127](tasks/m1-127-asan-and-refactors.md) | The `asan` preset and four unasked-for refactors, reviewed | 124 | Two open sections ruled |
+| [125](tasks/m1-125-documents.md) | The documents and comments the review found wrong | 127 | Documents that match the code |
+| [126](tasks/m1-126-rx7900-gate-pass.md) | The gate's pass on the RX 7900 XTX -- on the second machine, blocking nothing | 116 | Every file judged on both cards |
 | [112](tasks/m1-112-probe-format-rule.md) | The probe display format's rule made reachable | 108 | A rule a `static_assert` can see |
 | [113](tasks/m1-113-main-debug-dialog.md) | The application stops, rather than waits, on a debug-library check | 21 | A message and an exit, not a dialog |
 | [24](tasks/m1-24-tile-identity.md) | `TileId` and the tile scheme | 09 | Orbiter's own indexing, tested |
