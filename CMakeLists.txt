@@ -852,6 +852,34 @@ foreach(operation IN LISTS ORBSIM_COUNT_WRAPAROUND_OPERATIONS)
     )
 endforeach()
 
+# -Wfloat-equal is live after core/Units.hpp (M1-117, register decisions 451
+# and 454): mp-units v2.5.0 left it switched off there, and core/Units.hpp now
+# undoes that. tests/float_equal_guard.cpp must NOT compile, so it is a target
+# nothing builds -- here only so that the compile database carries its exact
+# command -- and it is not linted. The script compiles it from that command,
+# rather than building the target, because `check` runs CTest from inside
+# Ninja. clang and gcc only: Microsoft's compiler has no -Wfloat-equal, and
+# mp-units' slip changes nothing there.
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_library(float_equal_guard OBJECT EXCLUDE_FROM_ALL tests/float_equal_guard.cpp)
+    target_include_directories(float_equal_guard PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(float_equal_guard PRIVATE orbsim_core orbsim_warnings)
+    if(ORBSIM_PYTHON)
+        add_test(NAME float_equal_guard
+                COMMAND ${ORBSIM_PYTHON}
+                        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-float-equal-guard.py
+                        ${CMAKE_BINARY_DIR}
+        )
+        add_test(NAME float_equal_guard_self_test
+                COMMAND ${ORBSIM_PYTHON}
+                        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-float-equal-guard.py --self-test
+        )
+    else()
+        add_test(NAME float_equal_guard COMMAND ${CMAKE_COMMAND} -E false)
+        add_test(NAME float_equal_guard_self_test COMMAND ${CMAKE_COMMAND} -E false)
+    endif()
+endif()
+
 # The generated reference data is the data the error budgets were measured
 # against, or `check` says otherwise (M1-06, register decision 44). Horizons
 # output is not redistributed, so a fresh clone has none: the script then

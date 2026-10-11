@@ -40,6 +40,34 @@
 #include <mp-units/systems/angular.h>
 #include <mp-units/systems/si.h>
 
+// **Two `pop`s for mp-units' two stray `push`es** (M1-117, register decisions
+// 451-454). mp-units v2.5.0 opens `quantity`'s `operator==` with a diagnostic
+// push, switches -Wfloat-equal off, and closes with a second push where a pop
+// belongs -- and its "switch off" macro also switches off -Wunknown-pragmas and
+// -Wunknown-warning-option (under gcc, -Wunknown-pragmas and -Wpragmas). So
+// all three stayed off for the rest of every file that includes this header,
+// and eight floating-point `==` comparisons went unseen.
+//
+// Measured 2026-10-10 under clang and gcc, with the trees' own flags: one pop
+// is not enough; a push and pop around the includes changes nothing; and
+// `#pragma ... warning "-Wfloat-equal"` only warns, because -Werror does not
+// promote a warning a pragma switched on. Two pops restore the compiler's own
+// settings exactly, all three warnings included, as errors.
+//
+// **Remove these with the first mp-units release that contains commit
+// 0eea272e** (2026-03-08), which fixed it upstream; THIRD_PARTY.md has it.
+// clang says when: with no stray push left, a pop has nothing to undo and
+// fails the build as "no matching push". gcc accepts it silently.
+// tests/float_equal_guard.cpp is the check that this works.
+#ifdef __clang__
+#pragma clang diagnostic pop
+#pragma clang diagnostic pop
+#endif
+#if defined(__GNUC__) && !defined(__clang__)
+#pragma GCC diagnostic pop
+#pragma GCC diagnostic pop
+#endif
+
 namespace orb {
 
 // The references the types below are built on, named once. Deliberately *not*
@@ -731,7 +759,12 @@ static_assert(!addable<Irradiance, Metres>, "nor a flux density plus a length");
 // section 8 -- so a static_assert about a NaN is a claim about the evaluator
 // rather than about the value. The NotFinite refusals are tested at run time,
 // where every front end agrees.
-static_assert(Eccentricity{}.value() == 0.0, "a default eccentricity is a circle, not a surprise");
+//
+// The values are compared by their bits, which is the claim -- the value kept
+// exactly, and +0.0 rather than -0.0 -- and is the comparison -Wfloat-equal
+// allows (M1-117).
+static_assert(bitsOf(Eccentricity{}.value()) == bitsOf(0.0),
+              "a default eccentricity is a circle, not a surprise");
 static_assert(!std::is_constructible_v<Eccentricity, f64>,
               "the only door is from(), so a bad value has nowhere to live");
 static_assert(!std::is_default_constructible_v<GravParam>,
@@ -751,8 +784,8 @@ static_assert(GravParam::from(-1.0).error() == UnitError::NonPositiveGravity);
 // failure. `eccentricity(-0.5)` does not compile -- written once, watched
 // failing, and then removed, as this project does with every negative
 // assertion it cannot leave in the source.
-static_assert(eccentricity(0.7306).value() == 0.7306);
-static_assert(gravParam(3.986004418e14).value() == 3.986004418e14);
+static_assert(bitsOf(eccentricity(0.7306).value()) == bitsOf(0.7306));
+static_assert(bitsOf(gravParam(3.986004418e14).value()) == bitsOf(3.986004418e14));
 
 // Fraction (M1-21): both ends accepted, either side of them refused by name.
 // The non-finite refusals are tested at run time, for the reason above.
@@ -764,7 +797,7 @@ static_assert(!Fraction::from(-0.5).has_value() &&
 static_assert(!Fraction::from(1.5).has_value() &&
                   Fraction::from(1.5).error() == UnitError::OutsideZeroToOne,
               "and neither is past the end");
-static_assert(fraction(0.25).value() == 0.25);
+static_assert(bitsOf(fraction(0.25).value()) == bitsOf(0.25));
 static_assert(!std::is_default_constructible_v<Fraction>, "the call site says which end");
 static_assert(!std::is_constructible_v<Fraction, f64>, "and only the factory makes one");
 static_assert(sizeof(Fraction) == sizeof(f64));

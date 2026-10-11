@@ -226,10 +226,8 @@ struct ScreenPoint {
     REQUIRE(fixture.has_value());
     const auto tt = TtTime::fromJulianDate({.day = 2'460'886.5, .fraction = 0.2699127197265625});
     REQUIRE(tt.has_value());
-    const auto row = std::ranges::find_if(fixture->rows, [&](const RotationAtEpoch& r) {
-        return r.tt.modifiedJulianDay() == tt->modifiedJulianDay() &&
-               r.tt.picosecondOfDay() == tt->picosecondOfDay();
-    });
+    const auto row =
+        std::ranges::find_if(fixture->rows, [&](const RotationAtEpoch& r) { return r.tt == *tt; });
     REQUIRE(row != fixture->rows.end());
     return row->celestialToTerrestrial;
 }

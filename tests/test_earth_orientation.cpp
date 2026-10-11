@@ -430,7 +430,8 @@ TEST_CASE("the pole of date is the same with and without the Earth's rotation",
         const RotationMatrix intermediate = intermediateFromInertialMatrix(tt);
         for (std::size_t column = 0; column < 3; ++column) {
             CAPTURE(column);
-            REQUIRE(full.rows.at(2).at(column) == intermediate.rows.at(2).at(column));
+            REQUIRE(bitsOf(full.rows.at(2).at(column)) ==
+                    bitsOf(intermediate.rows.at(2).at(column)));
         }
         // And through the quaternions, where the two are no longer the same
         // arithmetic.

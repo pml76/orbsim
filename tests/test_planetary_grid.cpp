@@ -54,7 +54,7 @@ constexpr f64 kRadius = 6'378'137.0; // WGS-84 a, written out (register decision
 // Two neighbouring doubles at the Earth's radius are 2^-30 m apart: 6 378 137
 // lies in [2^22, 2^23), where a double's 52 fraction bits leave 2^(22-52).
 constexpr f64 kSpacingAtRadius = 9.313225746154785e-10;
-static_assert(kSpacingAtRadius == 1.0 / 1'073'741'824.0, "2^-30 exactly");
+static_assert(bitsOf(kSpacingAtRadius) == bitsOf(1.0 / 1'073'741'824.0), "2^-30 exactly");
 
 // **How far from the sphere a vertex may land, in those spacings** (register
 // decision 328). The task asked for 1e-9 m, about one spacing, which a double
@@ -121,10 +121,8 @@ constexpr JulianDate kEpochUt1{.day = 2'460'886.5, .fraction = 0.269111633300781
     REQUIRE(fixture.has_value());
     const auto tt = TtTime::fromJulianDate(kEpochTt);
     REQUIRE(tt.has_value());
-    const auto row = std::ranges::find_if(fixture->rows, [&](const RotationAtEpoch& r) noexcept {
-        return r.tt.modifiedJulianDay() == tt->modifiedJulianDay() &&
-               r.tt.picosecondOfDay() == tt->picosecondOfDay();
-    });
+    const auto row = std::ranges::find_if(
+        fixture->rows, [&](const RotationAtEpoch& r) noexcept { return r.tt == *tt; });
     REQUIRE(row != fixture->rows.end());
     return row->celestialToTerrestrial;
 }

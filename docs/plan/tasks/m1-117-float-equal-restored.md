@@ -1,6 +1,6 @@
 # M1-117 — `-Wfloat-equal` back on, and the eight comparisons it hid
 
-Phase: B | Status: not started
+Phase: B | Status: **done, 2026-10-11**
 Prerequisites: M1-116
 Decided by: register decisions 443 and 450, ruled 2026-10-10 on the review's
 finding 4.1 ([the findings](../../review/m1-116-findings.md)); refined by
@@ -70,16 +70,28 @@ replaced them.)*
 
 ## Mutants
 
-- Either `pop` removed: caught by the guard test.
-- Each of the eight sites put back as `==`: caught at compile time.
+[`m1-117.json`](../../../scripts/mutants/m1-117.json):
+
+- One `pop` removed, and both: caught by the guard test.
+- Each of the eight sites put back as `==`, judged by the warning itself --
+  a kind of kill `mutate.py` learnt for this task (decision 462). Five are
+  caught in the clang trees; the three against a literal clang holds exactly
+  are declared survivors, caught under gcc and measured there once
+  (decision 463).
+- The guard's verdict, and the harness's new kill, by their self-tests.
+
+**Raised during the work, and ruled the same day**: the harness counted a
+build that fails on a warning as INVALID, so it learnt to count one by name
+(decision 462); and three of the eight cannot fail under clang (decision
+463).
 
 ## Done when
 
-- [ ] The warning fires after `core/Units.hpp`, shown by a file that must not
+- [x] The warning fires after `core/Units.hpp`, shown by a file that must not
       build.
-- [ ] The eight comparisons fixed; `check` passes in both trees, and the
+- [x] The eight comparisons fixed; `check` passes in both trees, and the
       `linux-gcc` tree builds.
-- [ ] The upstream fix and the removal condition recorded in
+- [x] The upstream fix and the removal condition recorded in
       `THIRD_PARTY.md`.
 - [ ] The task's mutant file has run after the commit and its record is
       committed.

@@ -16,7 +16,11 @@ been walked into:
     five, where `if (false)` is a -Wunreachable-code error under -Werror -- so
     the mutants said nothing about the tests. This script separates a
     static_assert firing (a kill, and it names which assertion) from any other
-    compile error (an INVALID mutant, which fails the run);
+    compile error (an INVALID mutant, which fails the run). **One more kind
+    of compile-time kill since M1-117**: a mutant may name the compiler
+    warning it is caught by, as `"diagnostic": "float-equal"`, and then only
+    a build whose every error is that warning, in the mutated file, counts
+    (register decision 462);
   * **a kill can be for the wrong reason.** M1-08's date-shift mutant is
     caught only by the span cases, never by the accuracy budget it appears to
     test. The report names the failing test cases, so that a kill can be read
@@ -150,6 +154,41 @@ def first_error(text: str) -> str:
     return ""
 
 
+DIAGNOSTIC_NAME = re.compile(r"[a-z0-9][a-z0-9+-]*")
+
+
+def diagnostic_problem(diagnostic):
+    """Why a mutant's `diagnostic` cannot be judged, or None: the warning's own
+    name, as `-W<name>` spells it, without the `-W`."""
+    if diagnostic is None:
+        return None
+    if not isinstance(diagnostic, str) or not DIAGNOSTIC_NAME.fullmatch(diagnostic):
+        return f"diagnostic {diagnostic!r} is not a warning's name, such as \"float-equal\""
+    return None
+
+
+def diagnostic_kill(text: str, diagnostic: str, mutated: str) -> str:
+    """The first error line, when **every** error the build printed is the named
+    warning, raised as an error in the mutated file; "" otherwise (M1-117,
+    register decision 462).
+
+    For a mutant whose catch is a compiler warning rather than a static_assert:
+    `-Wfloat-equal` refusing a `==` put back. All of the errors, not one of
+    them, so that an unrelated error beside the right one is still INVALID;
+    and in the mutated file, so that the warning firing somewhere else says
+    nothing about this mutant. clang writes `[-Werror,-Wname]`, gcc
+    `[-Werror=name]`."""
+    reported = re.compile(r"\[-Werror(?:,-W|=)" + re.escape(diagnostic) + r"\]")
+    where = mutated.replace("\\", "/")
+    errors = [line for line in text.splitlines() if "error:" in line]
+    if not errors:
+        return ""
+    for line in errors:
+        if not reported.search(line) or where not in line.replace("\\", "/"):
+            return ""
+    return errors[0].strip()
+
+
 def static_assert_message(text: str) -> str:
     """The assertion that fired, not merely that something did not compile."""
     for line in text.splitlines():
@@ -270,6 +309,17 @@ def run_mutant(root: Path, cmake: str, tree: str, mutant: dict) -> tuple:
         return "HUNG", f"the build did not finish in {BUILD_TIMEOUT_SECONDS} s"
     if build is not None and build.returncode != 0:
         output = build.stdout + build.stderr
+        # A mutant that names the warning it is caught by is judged by that
+        # alone (M1-117, register decision 462). Not after the static_assert
+        # test below, which reads any line mentioning static_assert as a kill:
+        # the compiler quotes the mutated source line, and a `==` put back
+        # inside a static_assert would pass for an assertion firing.
+        if mutant.get("diagnostic"):
+            reported = diagnostic_kill(output, mutant["diagnostic"], mutant["file"])
+            if reported:
+                return f"CAUGHT (-W{mutant['diagnostic']})", reported[:160]
+            return "INVALID", f"does not compile, and not only for -W{mutant['diagnostic']}: " \
+                              f"{first_error(output)[:120]}"
         fired = static_assert_message(output)
         if fired:
             return "CAUGHT (static_assert)", fired[:160]
@@ -344,6 +394,9 @@ def verify(root: Path, given: Path) -> int:
             if problem:
                 problems.append(f"{path.name}: {mutant['name']}: {problem}")
             problem = expectation_problem(mutant.get("expect", "caught"))
+            if problem:
+                problems.append(f"{path.name}: {mutant['name']}: {problem}")
+            problem = diagnostic_problem(mutant.get("diagnostic"))
             if problem:
                 problems.append(f"{path.name}: {mutant['name']}: {problem}")
     for problem in problems:
@@ -666,6 +719,39 @@ def self_test() -> int:
         failing_cases(CATCH2_MIXED.replace("Run with -? for options\n",
                                            "Run with -? for options\n" + "-" * 40 + "\n"))
         == ["a case", "/tmp/m/t.cpp:3"])
+    # A kill by a named compiler warning (M1-117, register decision 462). The
+    # error lines are clang's and gcc's own, 2026-10-10, the paths shortened;
+    # clang's quotes the source, which is how a `==` put back inside a
+    # static_assert reads.
+    clang_kill = ("FAILED: [code=1] CMakeFiles/test_math.dir/tests/test_math.cpp.obj\n"
+                  "In file included from C:\\u\\tests\\test_math.cpp:20:\n"
+                  "C:/u/src\\core/Units.hpp:782:44: error: comparing floating point with == or != "
+                  "is unsafe [-Werror,-Wfloat-equal]\n"
+                  "  782 | static_assert(eccentricity(0.7306).value() == 0.7306);\n"
+                  "1 error generated.\n")
+    gcc_kill = ("/mnt/c/u/src/core/Units.hpp:734:38: error: comparing floating-point with "
+                "'==' or '!=' is unsafe [-Werror=float-equal]\n"
+                "cc1plus: all warnings being treated as errors\n")
+    elsewhere = clang_kill.replace("src\\core/Units.hpp", "tests/test_math.cpp")
+    beside = clang_kill + "C:/u/src\\core/Units.hpp:9:1: error: unknown type name 'x'\n"
+    other_warning = clang_kill.replace("-Wfloat-equal", "-Wshadow")
+    diagnostic_cases = {
+        "clang's warning in the mutated file is a kill":
+            diagnostic_kill(clang_kill, "float-equal", "src/core/Units.hpp") != "",
+        "gcc's warning in the mutated file is a kill":
+            diagnostic_kill(gcc_kill, "float-equal", "src/core/Units.hpp") != "",
+        "the warning in another file is not": diagnostic_kill(elsewhere, "float-equal", "src/core/Units.hpp") == "",
+        "another error beside it is not": diagnostic_kill(beside, "float-equal", "src/core/Units.hpp") == "",
+        "another warning is not": diagnostic_kill(other_warning, "float-equal", "src/core/Units.hpp") == "",
+        "a name the warning only begins with is not":
+            diagnostic_kill(clang_kill, "float", "src/core/Units.hpp") == "",
+        "a failed build with no error line is not": diagnostic_kill("FAILED: x\n", "float-equal", "x") == "",
+        "--verify accepts a warning's name, or none":
+            diagnostic_problem("float-equal") is None and diagnostic_problem(None) is None,
+        "--verify refuses a name spelt with -W, or not a name":
+            all(diagnostic_problem(bad) is not None for bad in ("-Wfloat-equal", "", 3, ["float-equal"])),
+    }
+    record_cases.update(diagnostic_cases)
     for name, ok in record_cases.items():
         failures += not ok
         print(f"self-test: {name}: {'ok' if ok else 'WRONG'}")

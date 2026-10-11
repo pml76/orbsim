@@ -1,0 +1,194 @@
+{
+  "task": "M1-117",
+  "tree": "build/debug",
+  "note": "-Wfloat-equal back on after core/Units.hpp (register decisions 451-454, 462, 463). The two pops are judged by float_equal_guard, which compiles a file that must fail on the warning; clang's pops only, since gcc's are not compiled in this tree. Each comparison the warning hid is put back as `==` and judged by the warning itself (decision 462): five are caught in this tree, and three, against literals clang holds exactly, are declared survivors that gcc catches (decision 463). The guard's verdict and the harness's new kind of kill are judged by their self-tests.",
+  "mutants": [
+    {
+      "name": "both pops removed: mp-units' pushes left in force",
+      "file": "src/core/Units.hpp",
+      "find": "#ifdef __clang__\n#pragma clang diagnostic pop\n#pragma clang diagnostic pop\n#endif",
+      "replace": "#ifdef __clang__\n#endif",
+      "suites": [],
+      "targets": [
+        "orbsim_header_selfcheck"
+      ],
+      "ctest": [
+        "float_equal_guard"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "one pop removed: the warning still off",
+      "file": "src/core/Units.hpp",
+      "find": "#ifdef __clang__\n#pragma clang diagnostic pop\n#pragma clang diagnostic pop\n#endif",
+      "replace": "#ifdef __clang__\n#pragma clang diagnostic pop\n#endif",
+      "suites": [],
+      "targets": [
+        "orbsim_header_selfcheck"
+      ],
+      "ctest": [
+        "float_equal_guard"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "eccentricity(0.7306) compared with ==",
+      "file": "src/core/Units.hpp",
+      "find": "static_assert(bitsOf(eccentricity(0.7306).value()) == bitsOf(0.7306));",
+      "replace": "static_assert(eccentricity(0.7306).value() == 0.7306);",
+      "diagnostic": "float-equal",
+      "suites": [],
+      "targets": [
+        "orbsim_header_selfcheck"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the default eccentricity compared with == 0.0",
+      "file": "src/core/Units.hpp",
+      "find": "static_assert(bitsOf(Eccentricity{}.value()) == bitsOf(0.0),",
+      "replace": "static_assert(Eccentricity{}.value() == 0.0,",
+      "diagnostic": "float-equal",
+      "suites": [],
+      "targets": [
+        "orbsim_header_selfcheck"
+      ],
+      "expect": "survives",
+      "why": "Accepted by the owner 2026-10-10 (register decision 463): clang exempts a comparison against a literal it holds exactly, so this compiles in the clang trees the pass runs in. Measured under gcc the same day, against a scratch copy of src/core/: the build fails on -Wfloat-equal at this line. If clang ever reports it, the pass says so."
+    },
+    {
+      "name": "gravParam(3.986004418e14) compared with ==",
+      "file": "src/core/Units.hpp",
+      "find": "static_assert(bitsOf(gravParam(3.986004418e14).value()) == bitsOf(3.986004418e14));",
+      "replace": "static_assert(gravParam(3.986004418e14).value() == 3.986004418e14);",
+      "diagnostic": "float-equal",
+      "suites": [],
+      "targets": [
+        "orbsim_header_selfcheck"
+      ],
+      "expect": "survives",
+      "why": "Accepted by the owner 2026-10-10 (register decision 463): clang exempts a comparison against a literal it holds exactly, so this compiles in the clang trees the pass runs in. Measured under gcc the same day, against a scratch copy of src/core/: the build fails on -Wfloat-equal at this line. If clang ever reports it, the pass says so."
+    },
+    {
+      "name": "fraction(0.25) compared with ==",
+      "file": "src/core/Units.hpp",
+      "find": "static_assert(bitsOf(fraction(0.25).value()) == bitsOf(0.25));",
+      "replace": "static_assert(fraction(0.25).value() == 0.25);",
+      "diagnostic": "float-equal",
+      "suites": [],
+      "targets": [
+        "orbsim_header_selfcheck"
+      ],
+      "expect": "survives",
+      "why": "Accepted by the owner 2026-10-10 (register decision 463): clang exempts a comparison against a literal it holds exactly, so this compiles in the clang trees the pass runs in. Measured under gcc the same day, against a scratch copy of src/core/: the build fails on -Wfloat-equal at this line. If clang ever reports it, the pass says so."
+    },
+    {
+      "name": "the pole of date's rows compared with ==",
+      "file": "tests/test_earth_orientation.cpp",
+      "find": "            REQUIRE(bitsOf(full.rows.at(2).at(column)) ==\n                    bitsOf(intermediate.rows.at(2).at(column)));",
+      "replace": "            REQUIRE(full.rows.at(2).at(column) == intermediate.rows.at(2).at(column));",
+      "diagnostic": "float-equal",
+      "suites": [],
+      "targets": [
+        "test_earth_orientation"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the spacing at the radius compared with ==",
+      "file": "tests/test_planetary_grid.cpp",
+      "find": "static_assert(bitsOf(kSpacingAtRadius) == bitsOf(1.0 / 1'073'741'824.0), \"2^-30 exactly\");",
+      "replace": "static_assert(kSpacingAtRadius == 1.0 / 1'073'741'824.0, \"2^-30 exactly\");",
+      "diagnostic": "float-equal",
+      "suites": [],
+      "targets": [
+        "test_planetary_grid"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "fixtureMatrixAtEpoch finds its row by comparing days with ==",
+      "file": "tests/test_planetary_grid.cpp",
+      "find": "{ return r.tt == *tt; }",
+      "replace": "{ return r.tt.modifiedJulianDay() == tt->modifiedJulianDay() && r.tt.picosecondOfDay() == tt->picosecondOfDay(); }",
+      "diagnostic": "float-equal",
+      "suites": [],
+      "targets": [
+        "test_planetary_grid"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "fixtureMatrix finds its row by comparing days with ==",
+      "file": "tests/test_probe_grid.cpp",
+      "find": "{ return r.tt == *tt; }",
+      "replace": "{ return r.tt.modifiedJulianDay() == tt->modifiedJulianDay() && r.tt.picosecondOfDay() == tt->picosecondOfDay(); }",
+      "diagnostic": "float-equal",
+      "suites": [],
+      "targets": [
+        "test_probe_grid"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "a guard that compiles is accepted",
+      "file": "scripts/check-float-equal-guard.py",
+      "find": "    if guard_rc == 0:",
+      "replace": "    if guard_rc < 0:",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "float_equal_guard_self_test"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the guard's error may be anywhere",
+      "file": "scripts/check-float-equal-guard.py",
+      "find": "        if \"float_equal_guard.cpp\" not in line.replace(\"\\\\\", \"/\") or \"float-equal\" not in line:",
+      "replace": "        if \"float-equal\" not in line:",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "float_equal_guard_self_test"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "the control need not compile clean",
+      "file": "scripts/check-float-equal-guard.py",
+      "find": "    if control_rc != 0 or error_lines(control_out):",
+      "replace": "    if control_rc < 0:",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "float_equal_guard_self_test"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "a named warning kills wherever it fires",
+      "file": "scripts/mutate.py",
+      "find": "        if not reported.search(line) or where not in line.replace(\"\\\\\", \"/\"):",
+      "replace": "        if not reported.search(line):",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ],
+      "expect": "caught"
+    },
+    {
+      "name": "one right error is enough beside others",
+      "file": "scripts/mutate.py",
+      "find": "        if not reported.search(line) or where not in line.replace(\"\\\\\", \"/\"):\n            return \"\"",
+      "replace": "        if reported.search(line) and where in line.replace(\"\\\\\", \"/\"):\n            return line.strip()",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ],
+      "expect": "caught"
+    }
+  ]
+}
