@@ -42,9 +42,11 @@
 // where the fuzzer itself is not built.
 //
 #include "core/Math.hpp"
+#include "core/Scalar.hpp"
 #include "core/Units.hpp"
 #include "orbit/Orbit.hpp"
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
@@ -55,6 +57,7 @@
 
 namespace {
 
+using orb::Eccentricity;
 using orb::Elements;
 using orb::GravParam;
 using orb::OrbitInfo;
@@ -87,6 +90,17 @@ void checkElements(const Elements& el, GravParam mu) {
         require(!std::isnan(value));
     }
 
+    // And the ranges they promise, which a check for NaN alone could not see:
+    // a true anomaly of exactly 2 pi passed it (M1-118, finding 1.1).
+    require(el.inc.value() >= 0.0 && el.inc.value() <= orb::kPi);
+    for (const double angle : std::to_array<double>({
+             el.lan.value(),
+             el.aop.value(),
+             el.tra.value(),
+         })) {
+        require(angle >= 0.0 && angle < orb::kTau);
+    }
+
     // The reverse conversion, over exactly the element sets the forward one
     // produces. Free to add and it would have caught the defect of 2026-09-13
     // straight away: stateFromElements returned a NaN position for 1.7% of
@@ -112,9 +126,169 @@ void checkElements(const Elements& el, GravParam mu) {
     }
 }
 
+// The mean motion and the period must be doubles wherever the true values
+// are, comfortably: an estimate from logarithms decides it, with 22 binades of
+// margin either side for the estimate's own rounding (M1-118, finding 1.2).
+[[nodiscard]] bool wellInsideTheRange(double log2Value) {
+    constexpr double kMargin = 1000.0; // binades; a double reaches -1074 to 1024
+    return log2Value > -kMargin && log2Value < kMargin;
+}
+
+// orbitInfo makes no promise about an element set that describes nothing, so
+// on an arbitrary one only what finding 1.2 promises is checked: a closed orbit
+// has a mean motion and a period, both positive, and both finite wherever they
+// are doubles.
+void checkMeanMotion(const Elements& el, GravParam mu) {
+    const OrbitInfo info = orbitInfo(el, mu);
+    const double a = el.sma.value();
+    require(info.closed == (std::isfinite(a) && a > 0.0));
+    if (!info.closed) return;
+    // Never negative and never NaN; zero or infinite only where the true value
+    // is beyond a double, which is what the estimate below rules out.
+    require(info.meanMotion.value() >= 0.0 && info.period.value() >= 0.0);
+    const double log2MeanMotion = (0.5 * std::log2(mu.value())) - (1.5 * std::log2(a));
+    if (wellInsideTheRange(log2MeanMotion)) {
+        require(std::isfinite(info.meanMotion.value()) && info.meanMotion.value() > 0.0);
+    }
+    if (wellInsideTheRange(std::log2(orb::kTau) - log2MeanMotion)) {
+        require(std::isfinite(info.period.value()) && info.period.value() > 0.0);
+    }
+}
+
+// The three entry points that take elements, on element sets nobody derived
+// from a state (M1-118, finding 3.12, register decision 471). Until then they
+// saw only what elementsFromState produced, and propagateElements nothing at
+// all.
+void checkArbitraryElements(const Elements& el, GravParam mu, Seconds dt) {
+    // stateFromElements checks its own result before returning it.
+    if (const auto state = stateFromElements(el, mu)) {
+        require(orb::isFinite(state->pos.x.value()) && orb::isFinite(state->pos.y.value()) &&
+                orb::isFinite(state->pos.z.value()));
+        require(orb::isFinite(state->vel.x.value()) && orb::isFinite(state->vel.y.value()) &&
+                orb::isFinite(state->vel.z.value()));
+    }
+
+    // propagateElements moves the anomaly and nothing else, and the anomaly
+    // lands in [0, 2 pi) -- finding 1.1's range.
+    if (const auto moved = propagateElements(el, mu, dt)) {
+        require(moved->tra.value() >= 0.0 && moved->tra.value() < orb::kTau);
+        require(orb::bitsOf(moved->sma.value()) == orb::bitsOf(el.sma.value()));
+        require(orb::bitsOf(moved->ecc.value()) == orb::bitsOf(el.ecc.value()));
+        require(orb::bitsOf(moved->slr.value()) == orb::bitsOf(el.slr.value()));
+        require(orb::bitsOf(moved->inc.value()) == orb::bitsOf(el.inc.value()));
+        require(orb::bitsOf(moved->lan.value()) == orb::bitsOf(el.lan.value()));
+        require(orb::bitsOf(moved->aop.value()) == orb::bitsOf(el.aop.value()));
+    }
+
+    checkMeanMotion(el, mu);
+}
+
+// The nine optional words, named: nine adjacent doubles transpose in silence,
+// which bugprone-easily-swappable-parameters reports.
+struct ElementWords {
+    double sma{};
+    double ecc{};
+    double inc{};
+    double lan{};
+    double aop{};
+    double tra{};
+    double slr{};
+    double mu{};
+    double dt{};
+};
+
+// Split out of the entry point, which the size limit asked for.
+void fuzzArbitraryElements(const ElementWords& words) {
+    // The eccentricity and mu factories are fuzzed as mu's is above: whatever
+    // they accept is in range, and what they refuse is folded to a magnitude
+    // they take, so the rest of the case is not thrown away.
+    if (const auto rawEcc = Eccentricity::from(words.ecc)) {
+        require(std::isfinite(rawEcc->value()) && rawEcc->value() >= 0.0);
+    }
+    const auto ecc = Eccentricity::from(std::fabs(words.ecc));
+    const auto elementMu =
+        GravParam::from(std::fabs(words.mu) + std::numeric_limits<double>::denorm_min());
+    if (!ecc || !elementMu) return;
+
+    const Elements el{
+        .sma = orb::Metres{words.sma},
+        .ecc = *ecc,
+        .inc = orb::Radians{words.inc},
+        .lan = orb::Radians{words.lan},
+        .aop = orb::Radians{words.aop},
+        .tra = orb::Radians{words.tra},
+        .slr = orb::Metres{words.slr},
+    };
+    checkArbitraryElements(el, *elementMu, Seconds{words.dt});
+}
+
 // Seven doubles: position, velocity, and mu. Anything shorter is not a case.
 constexpr std::size_t kDoublesNeeded = 7;
 constexpr std::size_t kBytesNeeded = kDoublesNeeded * sizeof(double);
+
+// Nine optional doubles after them, read only when the input has them: an
+// element set, its mu and a time step. **Optional, and after the seven**,
+// because every input in the committed corpus is exactly 56 bytes, and a
+// longer fixed layout would have skipped the whole corpus (register decision
+// 471).
+constexpr std::size_t kElementDoubles = 9;
+constexpr std::size_t kAllDoubles = kDoublesNeeded + kElementDoubles;
+
+// What one input holds: the seven words every case reads, and the nine an
+// element-set case reads when the input is long enough to have them.
+struct Input {
+    std::array<double, kDoublesNeeded> state{};
+    ElementWords elements{};
+    bool hasElements{};
+};
+
+// Split out of the entry point, which the size limit asked for. The caller
+// has checked that there are at least kBytesNeeded bytes.
+[[nodiscard]] Input readInput(const std::uint8_t* data, std::size_t size) {
+    // memcpy rather than a cast: the bytes are not aligned for a double, and
+    // type-punning through a reinterpret_cast is undefined -- which UBSan would
+    // rightly report as a bug in this harness rather than in the code under it.
+    // libFuzzer hands the input over as a pointer and a size, and the size is
+    // checked by the caller; a C library copy from a bare pointer is what
+    // clang's -Wunsafe-buffer-usage-in-libc-call reports, and it is off for
+    // this one (ADR 0017) -- for clang alone, since gcc has no such warning and
+    // reports a pragma it does not recognise.
+    std::array<double, kAllDoubles> raw{};
+    const std::size_t copied = std::min(size, sizeof(raw));
+#ifdef __clang__
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-libc-call"
+#endif
+    std::memcpy(raw.data(), data, copied);
+#ifdef __clang__
+#pragma clang diagnostic pop
+#endif
+    return Input{
+        .state =
+            {
+                std::get<0>(raw),
+                std::get<1>(raw),
+                std::get<2>(raw),
+                std::get<3>(raw),
+                std::get<4>(raw),
+                std::get<5>(raw),
+                std::get<6>(raw),
+            },
+        .elements =
+            {
+                .sma = std::get<7>(raw),
+                .ecc = std::get<8>(raw),
+                .inc = std::get<9>(raw),
+                .lan = std::get<10>(raw),
+                .aop = std::get<11>(raw),
+                .tra = std::get<12>(raw),
+                .slr = std::get<13>(raw),
+                .mu = std::get<14>(raw),
+                .dt = std::get<15>(raw),
+            },
+        .hasElements = copied == sizeof(raw),
+    };
+}
 
 } // namespace
 
@@ -131,28 +305,12 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size) {
     if (size < kBytesNeeded) return 0;
 
-    // memcpy rather than a cast: the bytes are not aligned for a double, and
-    // type-punning through a reinterpret_cast is undefined -- which UBSan would
-    // rightly report as a bug in this harness rather than in the code under it.
-    // libFuzzer hands the input over as a pointer and a size, and the size is
-    // checked above; a C library copy from a bare pointer is what clang's
-    // -Wunsafe-buffer-usage-in-libc-call reports, and it is off for this one
-    // (ADR 0017) -- for clang alone, since gcc has no such warning and reports
-    // a pragma it does not recognise.
-    std::array<double, kDoublesNeeded> raw{};
-#ifdef __clang__
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-libc-call"
-#endif
-    std::memcpy(raw.data(), data, kBytesNeeded);
-#ifdef __clang__
-#pragma clang diagnostic pop
-#endif
+    const Input input = readInput(data, size);
 
     // Named rather than indexed: the binding has exactly as many names as the
     // array has elements, which the compiler checks, so no read can fall
     // outside it.
-    const auto [posX, posY, posZ, velX, velY, velZ, muValue] = raw;
+    const auto [posX, posY, posZ, velX, velY, velZ, muValue] = input.state;
     const StateVector sv{.pos = {posX, posY, posZ}, .vel = {velX, velY, velZ}};
 
     // **The factory is fuzzed, and the case is not thrown away for failing it.**
@@ -192,6 +350,8 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
         requireNoNaN(moved->pos);
         requireNoNaN(moved->vel);
     }
+
+    if (input.hasElements) fuzzArbitraryElements(input.elements);
 
     return 0;
 }

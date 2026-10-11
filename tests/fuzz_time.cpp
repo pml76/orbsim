@@ -53,6 +53,8 @@
 #include "core/Time.hpp"
 #include "core/Units.hpp"
 
+#include <algorithm>
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -89,8 +91,10 @@ void require(bool held) {
 template <TimeScale Scale> void requireNormalised(const TimePoint<Scale>& t) {
     const f64 mjd = t.modifiedJulianDay();
     require(orb::isFinite(mjd));
-    require(
-        orb::nearlyEqual(mjd, static_cast<f64>(static_cast<std::int64_t>(mjd)), Tolerance{0.0}));
+    // trunc rather than a round trip through int64, which is undefined beyond
+    // about 9.2e18 days -- an instant the arithmetic below can reach, and did
+    // on M1-118's first run, at 1.8e77 days (register decision 480).
+    require(orb::nearlyEqual(mjd, std::trunc(mjd), Tolerance{0.0}));
     require(t.picosecondOfDay() >= 0);
     const std::int64_t longest = Scale == TimeScale::Utc
                                      ? orb::kPicosecondsPerDay + orb::kPicosecondsPerSecond
@@ -256,6 +260,44 @@ struct RawInput {
 static_assert(std::is_trivially_copyable_v<RawInput>,
               "the input is filled by one memcpy, so it must be copyable that way");
 
+// A duration after it, read only when the input has one (M1-118, finding 3.12,
+// register decision 471). **Optional, and after the fixed part**, because every
+// input in the committed corpus is exactly the fixed part's 64 bytes, and a
+// longer fixed layout would have skipped the whole corpus.
+struct InputWithDuration {
+    RawInput fixed;
+    double duration;
+};
+static_assert(std::is_trivially_copyable_v<InputWithDuration>);
+static_assert(sizeof(InputWithDuration) == sizeof(RawInput) + sizeof(double),
+              "no padding, so the duration is the eight bytes after the fixed part");
+
+// Below this, adding a duration and taking it away again is exact to the
+// picosecond, and the span between the two instants is within one unit of
+// the larger of a picosecond and the duration's own spacing. Measured
+// 2026-10-11 over 2,000,000 durations from 1e-15 s to 1e20 s: no failure, and
+// a worst span error of 1 unit; the first round trip that failed was at
+// 7.8e20 s, where advance()'s days are rounded, as its comment says.
+constexpr double kExactDurationSeconds = 1e20;
+
+// TimePoint arithmetic, which nothing fuzzed until M1-118: whatever finite
+// duration is added, the result is a normalised instant, and inside the exact
+// range the arithmetic undoes itself bit for bit.
+void requireArithmetic(const TaiTime& start, Seconds duration) {
+    // A finite duration is operator+'s precondition: every duration in the
+    // project is a validated step or a difference of instants.
+    if (!orb::isFinite(duration.value())) return;
+    const TaiTime moved = start + duration;
+    requireNormalised(moved);
+    if (!(std::fabs(duration.value()) <= kExactDurationSeconds)) return;
+    require(moved - duration == start);
+    const double span = (moved - start).value();
+    const double spacing =
+        std::nextafter(std::fabs(duration.value()), kExactDurationSeconds * 2.0) -
+        std::fabs(duration.value());
+    require(std::fabs(span - duration.value()) <= std::max(1e-12, spacing));
+}
+
 } // namespace
 
 // The entry point, declared as libFuzzer's own driver declares it. libFuzzer
@@ -269,6 +311,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
 
 extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size) {
     if (size < sizeof(RawInput)) return 0;
+    const bool hasDuration = size >= sizeof(InputWithDuration);
 
     // memcpy rather than a cast: the bytes are not aligned for a double, and
     // type-punning through a reinterpret_cast is undefined -- which UBSan would
@@ -278,15 +321,16 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     // -Wunsafe-buffer-usage-in-libc-call reports, and it is off for this one
     // call (ADR 0017) -- for clang alone, since gcc has no such warning and
     // would report a pragma it does not recognise.
-    RawInput raw{};
+    InputWithDuration input{};
 #ifdef __clang__
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wunsafe-buffer-usage-in-libc-call"
 #endif
-    std::memcpy(&raw, data, sizeof(RawInput));
+    std::memcpy(&input, data, std::min(size, sizeof(InputWithDuration)));
 #ifdef __clang__
 #pragma clang diagnostic pop
 #endif
+    const RawInput& raw = input.fixed;
 
     const CalendarDate date{
         .year = raw.year,
@@ -316,6 +360,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
             requireNormalised(*utc);
             requireRoundTrip(*utc);
         }
+        if (hasDuration) requireArithmetic(*tai, Seconds{input.duration});
     }
 
     // A Julian date split any way at all -- ERFA's convention, and the one

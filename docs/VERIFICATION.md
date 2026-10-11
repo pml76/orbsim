@@ -304,6 +304,12 @@ paragraph is the one place the budgets live; everywhere else points here.
 
   Each target added later gets a 30-minute run from empty, and its budget is
   written here from that curve.
+  **Both targets changed with M1-118 (2026-10-11)**, `fuzz_orbit` gaining
+  arbitrary element sets and `fuzz_time` time-point arithmetic, and both
+  budgets were kept on their curves from the committed corpus: `fuzz_orbit`
+  found its last new coverage at run 96,346 of 11,966,492, about 2 s into
+  241 s, and `fuzz_time` at run 203,986 of 17,688,648, about 10 s into 901 s
+  (register decision 481).
 - **The command** is
   `fuzz_<target>.exe tests/corpus/<target> -max_total_time=<budget>`. New
   inputs land in the corpus directory, and are committed after
