@@ -83,7 +83,9 @@ replaced them.)*
 **Raised during the work, and ruled the same day**: the harness counted a
 build that fails on a warning as INVALID, so it learnt to count one by name
 (decision 462); and three of the eight cannot fail under clang (decision
-463).
+463). The first mutation pass then found the guard script's self-test
+blind to a wrong diagnosis, and it now checks each refusal's reason
+(decision 464).
 
 ## Done when
 

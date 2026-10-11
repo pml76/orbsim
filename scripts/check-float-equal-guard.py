@@ -29,7 +29,7 @@ tree at the same time is not safe.
 
 Proven able to fail before it was trusted: --self-test feeds the verdict each
 of the outcomes it exists to refuse, and exits non-zero unless every one is
-refused and the good outcome accepted.
+refused, for its own reason, and the good outcome accepted.
 """
 
 import json
@@ -130,29 +130,39 @@ def self_test() -> int:
     gcc_error = ("/x/tests/float_equal_guard.cpp:40:14: error: comparing floating-point with "
                  "'==' or '!=' is unsafe [-Werror=float-equal]\n"
                  "cc1plus: all warnings being treated as errors")
+    # Each case names the reason it must be refused for, not only that it is:
+    # a refusal for the wrong reason is a wrong diagnosis, and M1-117's pass
+    # found one that the verdict alone could not show (register decision 464).
+    # None means the outcome must be accepted.
+    compiled = "the guard compiled"
+    other = "a reason other than -Wfloat-equal"
+    control = "the control did not compile clean"
     cases = [
-        ("clang reports the comparison, the control is clean", (1, good_error, 0, ""), True),
-        ("gcc reports the comparison, the control is clean", (1, gcc_error, 0, ""), True),
-        ("the guard compiles", (0, "", 0, ""), False),
+        ("clang reports the comparison, the control is clean", (1, good_error, 0, ""), None),
+        ("gcc reports the comparison, the control is clean", (1, gcc_error, 0, ""), None),
+        ("the guard compiles", (0, "", 0, ""), compiled),
         ("the guard compiles with a warning only", (0, good_error.replace("error:", "warning:"),
-                                                    0, ""), False),
+                                                    0, ""), compiled),
         ("the guard fails for another reason", (1, "x/tests/float_equal_guard.cpp:3:10: error: "
                                                    "'core/Units.hpp' file not found", 0, ""),
-         False),
+         other),
         ("the comparison is reported in another file", (1, good_error.replace(
-            "float_equal_guard.cpp", "Units.hpp"), 0, ""), False),
+            "float_equal_guard.cpp", "Units.hpp"), 0, ""), other),
         ("a second error beside the right one", (1, good_error + "\nx/tests/float_equal_guard.cpp"
-                                                 ":9:1: error: unknown type name", 0, ""), False),
-        ("the guard fails with no error line", (1, "clang: crashed", 0, ""), False),
-        ("the control fails", (1, good_error, 1, good_error), False),
-        ("the control prints an error", (1, good_error, 0, good_error), False),
+                                                 ":9:1: error: unknown type name", 0, ""), other),
+        ("the guard fails with no error line", (1, "clang: crashed", 0, ""), "without an error line"),
+        ("the control fails", (1, good_error, 1, good_error), control),
+        ("the control prints an error", (1, good_error, 0, good_error), control),
     ]
     failures = 0
-    for name, outcome, should_pass in cases:
-        passed = not verdict(*outcome)
-        if passed != should_pass:
+    for name, outcome, reason in cases:
+        problems = verdict(*outcome)
+        if reason is None and problems:
             failures += 1
-            print(f"self-test FAILED: {name}: verdict {'accepted' if passed else 'refused'} it")
+            print(f"self-test FAILED: {name}: refused it: {problems}")
+        elif reason is not None and not any(reason in problem for problem in problems):
+            failures += 1
+            print(f"self-test FAILED: {name}: expected a refusal saying '{reason}', got {problems}")
     print(f"check-float-equal-guard self-test: {len(cases) - failures} of {len(cases)} cases")
     return 1 if failures else 0
 
