@@ -241,21 +241,53 @@ static_assert(!isFinite(absOf(-std::numeric_limits<f64>::infinity())),
 // where unwrapping to f64 once at the top of a function is clearer than
 // wrapping every intermediate". That was a rationale nothing exercised, checked
 // on 2026-09-13: every call site in `src/orbit/` and `tests/` takes the
-// `Radians` overload, and the only callers of these two are `wrapPi` itself and
-// the pair in Units.hpp. Prefer the typed overload; reach for these only if you
-// are writing the typed one.
+// `Radians` overload, and the only callers of these two are the pair in
+// Units.hpp. (`wrapPi` called `wrapTau` too, until 2026-10-11.) Prefer the
+// typed overload; reach for these only if you are writing the typed one.
+
+// What each wrap does after `std::fmod`, split out so that it can be proved at
+// compile time: `std::fmod` cannot be evaluated there under clang, on Windows
+// or under WSL (measured 2026-10-11; gcc accepts it), and this step is where
+// both defects were (M1-118, finding 1.1, register decision 465). The
+// remainder is exact and lies in (-tau, tau); a NaN passes through unchanged.
+//
+// Into [0, tau). A negative remainder is lifted by tau, and below about 3.3e-16
+// in magnitude that sum rounds to tau itself -- outside the range, and what
+// `wrapTau(-1e-20)` returned until 2026-10-11, bit for bit. The angle it
+// stands for is a hair below a whole turn, and the nearest angle in range is 0.
+[[nodiscard]] constexpr f64 foldRemainderIntoTau(f64 remainder) noexcept {
+    if (!(remainder < 0.0)) return remainder;
+    const f64 lifted = remainder + kTau;
+    return lifted < kTau ? lifted : 0.0;
+}
+
+// Into (-pi, pi], straight from the remainder. This went through [0, tau)
+// first until 2026-10-11, which added tau and took it away again: every
+// negative angle lost its low bits on the way, and one below about 3.3e-16
+// came back as 0. An angle already in range is now returned unchanged.
+[[nodiscard]] constexpr f64 foldRemainderIntoPi(f64 remainder) noexcept {
+    if (remainder > kPi) return remainder - kTau;
+    if (remainder <= -kPi) return remainder + kTau;
+    return remainder;
+}
+
+static_assert(bitsOf(foldRemainderIntoTau(-1e-20)) == bitsOf(0.0),
+              "a tiny negative angle wraps to 0, never to tau");
+static_assert(foldRemainderIntoTau(-1.0) < kTau && foldRemainderIntoTau(-1.0) > 0.0);
+static_assert(bitsOf(foldRemainderIntoTau(1.0)) == bitsOf(1.0), "a remainder in range is kept");
+static_assert(bitsOf(foldRemainderIntoPi(-1e-20)) == bitsOf(-1e-20),
+              "a small negative angle is kept, not rounded through tau");
+static_assert(bitsOf(foldRemainderIntoPi(-kPi)) == bitsOf(kPi), "-pi is outside (-pi, pi]");
+static_assert(bitsOf(foldRemainderIntoPi(kPi)) == bitsOf(kPi));
+static_assert(foldRemainderIntoPi(4.0) < 0.0 && foldRemainderIntoPi(-4.0) > 0.0);
 
 // Wrap an angle into [0, tau).
 [[nodiscard]] inline f64 wrapTau(f64 a) noexcept {
-    a = std::fmod(a, kTau);
-    return a < 0.0 ? a + kTau : a;
+    return foldRemainderIntoTau(std::fmod(a, kTau));
 }
 
 // Wrap an angle into (-pi, pi].
-[[nodiscard]] inline f64 wrapPi(f64 a) noexcept {
-    a = wrapTau(a);
-    return a > kPi ? a - kTau : a;
-}
+[[nodiscard]] inline f64 wrapPi(f64 a) noexcept { return foldRemainderIntoPi(std::fmod(a, kTau)); }
 
 // --- counts: the integral sibling of Quantity (M1-12) -----------------------
 //

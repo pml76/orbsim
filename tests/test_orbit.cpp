@@ -481,3 +481,23 @@ TEST_CASE("failures are reported, not approximated", "[orbit]") {
     REQUIRE(!describe(OrbitError::SolverDidNotConverge).empty());
     REQUIRE(!describe(OrbitError::DegenerateState).empty());
 }
+
+// M1-118, finding 1.1: an orbit a hair before periapsis came back with a true
+// anomaly of exactly 2 pi, outside the [0, 2 pi) the elements promise. The
+// review's state: e = 0.1, at periapsis 7000 km out, and falling inward at
+// 1e-13 m/s, so the anomaly is a negative angle far below a double's
+// resolution of 2 pi. The nearest angle in range is 0.
+TEST_CASE("an anomaly just before periapsis is not 2 pi", "[orbit][regression]") {
+    constexpr f64 kPeriapsis = 7000e3;
+    constexpr f64 kEcc = 0.1;
+    const f64 periapsisSpeed = std::sqrt(kMuEarth.value() * (1.0 + kEcc) / kPeriapsis);
+    const StateVector sv{.pos = {kPeriapsis, 0.0, 0.0}, .vel = {-1e-13, periapsisSpeed, 0.0}};
+
+    const auto el = elementsFromState(sv, kMuEarth);
+    REQUIRE(el.has_value());
+    CAPTURE(el->tra.value());
+    REQUIRE(el->tra.value() >= 0.0);
+    REQUIRE(el->tra.value() < kTau);
+    INFO("and it is the angle just before periapsis, not one a turn away");
+    REQUIRE(std::min(el->tra.value(), kTau - el->tra.value()) < 1e-15);
+}

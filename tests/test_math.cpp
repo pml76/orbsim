@@ -605,3 +605,59 @@ TEST_CASE("a tiny arc is interpolated, not rounded away", "[math][slerp]") {
         REQUIRE(std::abs((midpoint.x / want.x) - 1.0) <= 1e-12);
     }
 }
+
+// --- angle wrapping (M1-118, finding 1.1 and register decision 465) ----------
+//
+// `wrapTau` promises [0, 2 pi) and `wrapPi` (-pi, pi]. Neither was tested
+// directly until the review found `wrapTau(-1e-20)` returning 2 pi exactly:
+// the remainder is the angle itself, and adding 2 pi rounds to 2 pi. Below
+// about 3.3e-16 every negative angle did that, and `elementsFromState` handed
+// it on as a true anomaly of 2 pi (tests/test_orbit.cpp has that case).
+//
+// The claims are checked against things the code does not compute: the range
+// itself, and for `wrapPi` the identity on its own range -- `std::fmod` is
+// exact, so an angle already in (-pi, pi] must come back bit for bit.
+
+TEST_CASE("wrapTau never returns 2 pi for a tiny negative angle", "[math][wrap]") {
+    INFO("the review's case: -1e-20 is 2 pi less 1e-20, and the nearest angle in range is 0");
+    REQUIRE(bitsOf(wrapTau(-1e-20)) == bitsOf(0.0));
+
+    // Every negative power of two down to the smallest subnormal: the band
+    // that rounded to 2 pi is the top of this ladder's lower half.
+    for (int k = 1; k <= 1074; ++k) {
+        const f64 angle = -std::ldexp(1.0, -k);
+        const f64 wrapped = wrapTau(angle);
+        CAPTURE(k, angle, wrapped);
+        REQUIRE(wrapped >= 0.0);
+        REQUIRE(wrapped < kTau);
+    }
+}
+
+TEST_CASE("wrapTau and wrapPi land in their ranges at every magnitude", "[math][wrap]") {
+    for (const f64 angle : std::to_array<f64>(
+             {0.0, 1.0, -1.0, kPi, -kPi, kTau, -kTau, 7.0, -7.0, 1e10, -1e10, 1e300, -1e300})) {
+        CAPTURE(angle);
+        REQUIRE(wrapTau(angle) >= 0.0);
+        REQUIRE(wrapTau(angle) < kTau);
+        REQUIRE(wrapPi(angle) > -kPi);
+        REQUIRE(wrapPi(angle) <= kPi);
+    }
+}
+
+TEST_CASE("wrapPi returns an angle already in range unchanged", "[math][wrap]") {
+    INFO("a small negative angle used to come back as 0, by way of 2 pi and back");
+    REQUIRE(bitsOf(wrapPi(-1e-20)) == bitsOf(-1e-20));
+    REQUIRE(bitsOf(wrapPi(kPi)) == bitsOf(kPi));
+    INFO("-pi is outside (-pi, pi], and the same angle inside it is pi");
+    REQUIRE(bitsOf(wrapPi(-kPi)) == bitsOf(kPi));
+
+    // Both signs, at every binary scale from pi down to the subnormals.
+    Sampler sampler;
+    for (std::size_t i = 0; i < kSweepCases; ++i) {
+        const int scale = static_cast<int>(i % 1075U);
+        const f64 magnitude = std::ldexp(sampler.unit() * kPi, -scale);
+        const f64 angle = (i % 2U == 0U) ? magnitude : -magnitude;
+        CAPTURE(kSweepSeed, i, angle);
+        REQUIRE(bitsOf(wrapPi(angle)) == bitsOf(angle));
+    }
+}
