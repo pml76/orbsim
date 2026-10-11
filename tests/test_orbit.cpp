@@ -846,3 +846,39 @@ TEST_CASE("Weber's hyperbolic worked example", "[orbit][anomaly][published]") {
     const Radians nu2 = requireAnomaly(eccentricToTrueAnomaly(*f2, e));
     REQUIRE_THAT(toDegrees(nu2).value(), WithinAbsOf(107.78, kTwoDecimals));
 }
+
+// Register decision 478: an element set with no positive, finite semi-latus
+// rectum is something a scenario file can hold, so stateFromElements reports it
+// as propagateElements does, rather than asserting. The assertion aborted a
+// Debug build; a release build reached the same NotFinite by way of a NaN.
+TEST_CASE("an element set with no usable shape is reported, not asserted", "[orbit][regression]") {
+    constexpr f64 kNaN = std::numeric_limits<f64>::quiet_NaN();
+    struct Shape {
+        const char* name{};
+        f64 sma{};
+        f64 slr{};
+    };
+    for (const Shape& s : std::to_array<Shape>({
+             {.name = "negative: a hyperbola's sma with an ellipse's e", .sma = -1e7, .slr = -1.0},
+             {.name = "zero", .sma = 0.0, .slr = 0.0},
+             {.name = "NaN", .sma = kNaN, .slr = kNaN},
+         })) {
+        const Elements el{
+            .sma = Metres{s.sma},
+            .ecc = eccentricity(0.5),
+            .inc = Radians{0.3},
+            .lan = Radians{1.0},
+            .aop = Radians{2.0},
+            .tra = Radians{0.5},
+            .slr = Metres{s.slr},
+        };
+        CAPTURE(s.name);
+        const auto state = stateFromElements(el, kMuEarth);
+        REQUIRE(!state.has_value());
+        REQUIRE(state.error() == OrbitError::NotFinite);
+        INFO("and propagateElements says the same");
+        const auto moved = propagateElements(el, kMuEarth, Seconds{60.0});
+        REQUIRE(!moved.has_value());
+        REQUIRE(moved.error() == OrbitError::NotFinite);
+    }
+}

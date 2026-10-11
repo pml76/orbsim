@@ -1120,7 +1120,12 @@ std::expected<StateVector, OrbitError> stateFromElements(const Elements& el, Gra
     // stays finite on a parabolic orbit.
     const f64 e = el.ecc.value();
     const f64 p = (el.slr.value() > 0.0) ? el.slr.value() : el.sma.value() * (1.0 - (e * e));
-    ORBSIM_EXPECTS(p > 0.0);
+    // Reported, as propagateElements reports the same condition: a scenario
+    // file can hold an element set with no positive, finite semi-latus rectum
+    // (rule 3). This was an assertion until M1-118 (register decision 478), so
+    // a Debug build aborted where a release one reached NotFinite by way of a
+    // NaN -- the split M1-87 closed for mu.
+    if (!(p > 0.0) || !std::isfinite(p)) return std::unexpected(OrbitError::NotFinite);
 
     // Both of these sums cancel, and both have a cancellation-free form above
     // that this used to ignore while orbitInfo and propagateElements both used

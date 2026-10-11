@@ -244,8 +244,10 @@ static_assert(
 // asymptote is at acos(-1/e), and past it 1 + e cos v is negative, so there is
 // no point to return. `elementsFromState` never produces such an element set; a
 // caller writing one down can. `NotFinite` for an element set describing a point
-// beyond what a double holds. On success neither vector holds a NaN, which is
-// checked before returning.
+// beyond what a double holds, and -- as `propagateElements` reports it -- for
+// one with no positive, finite semi-latus rectum, which was an assertion until
+// M1-118 (register decision 478). On success neither vector holds a NaN, which
+// is checked before returning.
 //
 // `slr` and `sma` are authoritative for the shape, not `ecc`: e - 1 comes from
 // e^2 - 1 = -p/a, which keeps it to full relative precision where `ecc` stores 1
