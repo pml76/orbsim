@@ -1,14 +1,17 @@
 {
   "task": "M1-118",
   "tree": "build/debug",
-  "note": "The simulation core's review findings (register decisions 440, 442, 465-479). The review's own planted faults are kept, as the task asks: wrapTau without its fix, the cube in orbitInfo, the backward-rotation comparison, and the swapped square roots in both elliptic converters -- the last two passed every suite before finding 3.1. Beside them, one mutant per fix and per refusal: the period's old forms (decision 475), double-double's scaling and its scale-back (467), each of the converters' refusals and the tanh form (468, 469), angleBetween's assertion, judged by its abort probe (472), and stateFromElements' assertion put back where it now reports (478). Run in the Debug tree, where the assertions the probe and the last mutant need are live. Not mutated: split's new precondition, which nothing reaches by design (decision 467), and the test harnesses themselves -- the samplers and the fuzzers -- which no suite judges.",
+  "note": "The simulation core's review findings (register decisions 440, 442, 465-479). The review's own planted faults are kept, as the task asks: wrapTau without its fix, the cube in orbitInfo, the backward-rotation comparison, and the swapped square roots in both elliptic converters -- the last two passed every suite before finding 3.1. Beside them, one mutant per fix and per refusal: the period's old forms (decision 475), double-double's scaling and its scale-back (467), each of the converters' refusals and the tanh form (468, 469), angleBetween's assertion, judged by its abort probe (472), and stateFromElements' assertion put back where it now reports (478). Run in the Debug tree, where the assertions the probe and the last mutant need are live. Not mutated: split's new precondition, which nothing reaches by design (decision 467), and the test harnesses themselves -- the samplers and the fuzzers -- which no suite judges. Two mutants were rewritten after the first pass, 2026-10-11 (register decision 482): raising the scaling threshold from 2^996 to 2^1023 survived because it is equivalent -- below 2^1023 no split half and no partial product can overflow, and over 3.9 million products near the top of the range both thresholds gave no wrong error term -- so it was replaced by twoProduct never scaling at all; and dropping the scale-back left kScaleUp unused, a compile error rather than a kill, so it scales back by half instead.",
   "mutants": [
     {
       "name": "wrapTau without its fix: a tiny negative angle wraps to 2 pi",
       "file": "src/core/Scalar.hpp",
       "find": "    return lifted < kTau ? lifted : 0.0;",
       "replace": "    return lifted;",
-      "suites": ["test_math", "test_orbit"],
+      "suites": [
+        "test_math",
+        "test_orbit"
+      ],
       "targets": [],
       "expect": "caught"
     },
@@ -17,7 +20,9 @@
       "file": "src/core/Scalar.hpp",
       "find": "    if (remainder <= -kPi) return remainder + kTau;",
       "replace": "    if (remainder < 0.0) return remainder + kTau;",
-      "suites": ["test_math"],
+      "suites": [
+        "test_math"
+      ],
       "targets": [],
       "expect": "caught"
     },
@@ -26,7 +31,9 @@
       "file": "src/orbit/Orbit.cpp",
       "find": "        info.meanMotion = RadiansPerSecond{std::sqrt(m) / std::sqrt(a) / a};",
       "replace": "        info.meanMotion = RadiansPerSecond{std::sqrt(m / (a * a * a))};",
-      "suites": ["test_orbit_scales"],
+      "suites": [
+        "test_orbit_scales"
+      ],
       "targets": [],
       "expect": "caught"
     },
@@ -35,7 +42,9 @@
       "file": "src/orbit/Orbit.cpp",
       "find": "        info.meanMotion = RadiansPerSecond{std::sqrt(m) / std::sqrt(a) / a};",
       "replace": "        info.meanMotion = RadiansPerSecond{std::sqrt(m / a) / a};",
-      "suites": ["test_orbit_scales"],
+      "suites": [
+        "test_orbit_scales"
+      ],
       "targets": [],
       "expect": "caught"
     },
@@ -44,7 +53,9 @@
       "file": "src/orbit/Orbit.cpp",
       "find": "        info.period = periodOf(el.sma, mu);",
       "replace": "        info.period = Seconds{kTau / info.meanMotion.value()};",
-      "suites": ["test_orbit_scales"],
+      "suites": [
+        "test_orbit_scales"
+      ],
       "targets": [],
       "expect": "caught"
     },
@@ -53,7 +64,9 @@
       "file": "src/orbit/Orbit.cpp",
       "find": "        const f64 period = periodOf(el.sma, mu).value();",
       "replace": "        const f64 period = kTau / (sqrtMu * alpha * std::sqrt(alpha));",
-      "suites": ["test_orbit_scales"],
+      "suites": [
+        "test_orbit_scales"
+      ],
       "targets": [],
       "expect": "caught"
     },
@@ -62,25 +75,31 @@
       "file": "src/orbit/Orbit.cpp",
       "find": "    // (M1-118, finding 1.4).\n    const f64 factor = onePlusECosTrueAnomaly(el);\n    if (!(factor > 0.0)) return std::unexpected(OrbitError::UnreachableAnomaly);\n",
       "replace": "    // (M1-118, finding 1.4).\n    const f64 factor = onePlusECosTrueAnomaly(el);\n",
-      "suites": ["test_orbit"],
+      "suites": [
+        "test_orbit"
+      ],
       "targets": [],
       "expect": "caught"
     },
     {
-      "name": "double-double scales only at the very top, as split did",
+      "name": "double-double never scales, as before M1-118",
       "file": "src/core/DoubleDouble.hpp",
       "find": "    constexpr f64 kScaleAbove = 0x1p996;",
-      "replace": "    constexpr f64 kScaleAbove = 0x1p1023;",
-      "suites": ["test_double_double"],
+      "replace": "    constexpr f64 kScaleAbove = std::numeric_limits<f64>::infinity();",
+      "suites": [
+        "test_double_double"
+      ],
       "targets": [],
       "expect": "caught"
     },
     {
-      "name": "double-double does not scale its error term back",
+      "name": "double-double scales its error term back by half the factor",
       "file": "src/core/DoubleDouble.hpp",
       "find": "    return {.hi = product, .lo = productErrorInRange(scaled) * kScaleUp};",
-      "replace": "    return {.hi = product, .lo = productErrorInRange(scaled)};",
-      "suites": ["test_double_double"],
+      "replace": "    return {.hi = product, .lo = productErrorInRange(scaled) * (kScaleUp / 2.0)};",
+      "suites": [
+        "test_double_double"
+      ],
       "targets": [],
       "expect": "caught"
     },
@@ -89,7 +108,9 @@
       "file": "src/core/Math.hpp",
       "find": "    if (Radians{absOf(theta.value())} < kNegligibleRotation) return q;",
       "replace": "    if (theta < kNegligibleRotation) return q;",
-      "suites": ["test_math"],
+      "suites": [
+        "test_math"
+      ],
       "targets": [],
       "expect": "caught"
     },
@@ -98,7 +119,9 @@
       "file": "src/orbit/Orbit.cpp",
       "find": "std::sqrt(1.0 - e) * std::sin(trueAnomaly.value() * 0.5),\n                                        std::sqrt(1.0 + e) * std::cos(trueAnomaly.value() * 0.5)",
       "replace": "std::sqrt(1.0 + e) * std::sin(trueAnomaly.value() * 0.5),\n                                        std::sqrt(1.0 - e) * std::cos(trueAnomaly.value() * 0.5)",
-      "suites": ["test_orbit"],
+      "suites": [
+        "test_orbit"
+      ],
       "targets": [],
       "expect": "caught"
     },
@@ -107,7 +130,9 @@
       "file": "src/orbit/Orbit.cpp",
       "find": "std::sqrt(1.0 + e) * std::sin(eccAnomaly.value() * 0.5),\n                                     std::sqrt(1.0 - e) * std::cos(eccAnomaly.value() * 0.5)",
       "replace": "std::sqrt(1.0 - e) * std::sin(eccAnomaly.value() * 0.5),\n                                     std::sqrt(1.0 + e) * std::cos(eccAnomaly.value() * 0.5)",
-      "suites": ["test_orbit"],
+      "suites": [
+        "test_orbit"
+      ],
       "targets": [],
       "expect": "caught"
     },
@@ -116,7 +141,9 @@
       "file": "src/orbit/Orbit.cpp",
       "find": "    if (!isFinite(trueAnomaly.value())) return std::unexpected(OrbitError::NotFinite);\n    const f64 e = ecc.value();\n    if (isParabolic(e)) return std::unexpected(OrbitError::NoEccentricAnomaly);\n",
       "replace": "    if (!isFinite(trueAnomaly.value())) return std::unexpected(OrbitError::NotFinite);\n    const f64 e = ecc.value();\n",
-      "suites": ["test_orbit"],
+      "suites": [
+        "test_orbit"
+      ],
       "targets": [],
       "expect": "caught"
     },
@@ -125,7 +152,9 @@
       "file": "src/orbit/Orbit.cpp",
       "find": "    // below would find an H anyway (register decision 468).\n    if (isParabolic(e)) return std::unexpected(OrbitError::NoEccentricAnomaly);\n",
       "replace": "    // below would find an H anyway (register decision 468).\n",
-      "suites": ["test_orbit"],
+      "suites": [
+        "test_orbit"
+      ],
       "targets": [],
       "expect": "caught"
     },
@@ -134,7 +163,9 @@
       "file": "src/orbit/Orbit.cpp",
       "find": "    if (!(onePlusECosNu > 0.0)) return std::unexpected(OrbitError::UnreachableAnomaly);\n",
       "replace": "",
-      "suites": ["test_orbit"],
+      "suites": [
+        "test_orbit"
+      ],
       "targets": [],
       "expect": "caught"
     },
@@ -143,7 +174,9 @@
       "file": "src/orbit/Orbit.cpp",
       "find": "    if (!isFinite(trueAnomaly.value())) return std::unexpected(OrbitError::NotFinite);\n",
       "replace": "",
-      "suites": ["test_orbit"],
+      "suites": [
+        "test_orbit"
+      ],
       "targets": [],
       "expect": "caught"
     },
@@ -152,7 +185,9 @@
       "file": "src/orbit/Orbit.cpp",
       "find": "    return Radians{\n        2.0 * std::atan(std::sqrt((e + 1.0) / (e - 1.0)) * std::tanh(eccAnomaly.value() * 0.5))};",
       "replace": "    return Radians{2.0 * std::atan2(std::sqrt(e + 1.0) * std::sinh(eccAnomaly.value() * 0.5),\n                                    std::sqrt(e - 1.0) * std::cosh(eccAnomaly.value() * 0.5))};",
-      "suites": ["test_orbit"],
+      "suites": [
+        "test_orbit"
+      ],
       "targets": [],
       "expect": "caught"
     },
@@ -161,7 +196,9 @@
       "file": "src/orbit/Orbit.cpp",
       "find": "    if (!isFinite(mean)) return std::unexpected(OrbitError::NotFinite);\n",
       "replace": "",
-      "suites": ["test_orbit"],
+      "suites": [
+        "test_orbit"
+      ],
       "targets": [],
       "expect": "caught"
     },
@@ -171,8 +208,12 @@
       "find": "    ORBSIM_EXPECTS(!(length(a).value() <= 0.0) && !(length(b).value() <= 0.0));\n",
       "replace": "",
       "suites": [],
-      "targets": ["angle_between_zero_probe"],
-      "ctest": ["angle_between_zero_aborts"],
+      "targets": [
+        "angle_between_zero_probe"
+      ],
+      "ctest": [
+        "angle_between_zero_aborts"
+      ],
       "expect": "caught"
     },
     {
@@ -180,7 +221,9 @@
       "file": "src/orbit/Orbit.cpp",
       "find": "    if (!(p > 0.0) || !std::isfinite(p)) return std::unexpected(OrbitError::NotFinite);",
       "replace": "    ORBSIM_EXPECTS(p > 0.0);",
-      "suites": ["test_orbit"],
+      "suites": [
+        "test_orbit"
+      ],
       "targets": [],
       "expect": "caught"
     }
