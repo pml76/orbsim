@@ -139,6 +139,11 @@ enum class OrbitError : std::uint8_t {
     // produces one -- but a scenario file can, which is why this reports rather
     // than asserting (rule 3).
     UnreachableAnomaly,
+    // e = 1 exactly: a parabola, which has no eccentric anomaly -- neither the
+    // elliptic E nor the hyperbolic H is defined there, and the converters
+    // answered 0 or pi (M1-118, finding 1.6, register decision 468). Reachable
+    // from any caller holding elements with e = 1, so reported (rule 3).
+    NoEccentricAnomaly,
     SolverDidNotConverge, // Newton reached its iteration cap
 };
 
@@ -152,6 +157,8 @@ enum class OrbitError : std::uint8_t {
         return "velocity is parallel to position; a radial trajectory has no orbital plane";
     case OrbitError::UnreachableAnomaly:
         return "the conic never reaches this true anomaly; 1 + e cos v is not positive";
+    case OrbitError::NoEccentricAnomaly:
+        return "a parabola (e = 1) has no eccentric anomaly";
     case OrbitError::SolverDidNotConverge:
         return "Kepler solver reached its iteration limit without converging";
     }
@@ -171,16 +178,17 @@ static_assert(!describe(OrbitError::NotFinite).empty() &&
                   !describe(OrbitError::DegenerateState).empty() &&
                   !describe(OrbitError::RectilinearOrbit).empty() &&
                   !describe(OrbitError::UnreachableAnomaly).empty() &&
+                  !describe(OrbitError::NoEccentricAnomaly).empty() &&
                   !describe(OrbitError::SolverDidNotConverge).empty(),
               "every OrbitError describes itself");
 
-static_assert(describe(OrbitError::NotFinite) != describe(OrbitError::DegenerateState) &&
-                  describe(OrbitError::DegenerateState) != describe(OrbitError::RectilinearOrbit) &&
-                  describe(OrbitError::RectilinearOrbit) !=
-                      describe(OrbitError::UnreachableAnomaly) &&
-                  describe(OrbitError::UnreachableAnomaly) !=
-                      describe(OrbitError::SolverDidNotConverge),
-              "and no two of them the same thing");
+static_assert(
+    describe(OrbitError::NotFinite) != describe(OrbitError::DegenerateState) &&
+        describe(OrbitError::DegenerateState) != describe(OrbitError::RectilinearOrbit) &&
+        describe(OrbitError::RectilinearOrbit) != describe(OrbitError::UnreachableAnomaly) &&
+        describe(OrbitError::UnreachableAnomaly) != describe(OrbitError::NoEccentricAnomaly) &&
+        describe(OrbitError::NoEccentricAnomaly) != describe(OrbitError::SolverDidNotConverge),
+    "and no two of them the same thing");
 
 // --- conversions -----------------------------------------------------------
 
@@ -303,9 +311,24 @@ static_assert(describe(OrbitError::NotFinite) != describe(OrbitError::Degenerate
 
 // Elliptic orbits use eccentric anomaly E, hyperbolic orbits use H; each pair
 // is selected on `ecc` so callers can work in mean anomaly regardless of conic.
-[[nodiscard]] Radians trueToEccentricAnomaly(Radians trueAnomaly, Eccentricity ecc);
-[[nodiscard]] Radians eccentricToTrueAnomaly(Radians eccAnomaly, Eccentricity ecc);
-[[nodiscard]] Radians eccentricToMeanAnomaly(Radians eccAnomaly, Eccentricity ecc);
+//
+// They report, since M1-118 (register decisions 440, 468 and 469), where they
+// used to return a number that answered nothing:
+//   - `NoEccentricAnomaly` at e = 1 exactly, a parabola, where they returned
+//     0 or pi;
+//   - `UnreachableAnomaly` from `trueToEccentricAnomaly`, for a hyperbola's
+//     anomaly past its asymptote: it returned a finite H of the wrong sign,
+//     -1.45 for v = 2.6 at e = 1.5;
+//   - `NotFinite` for an anomaly that is not finite, and from
+//     `eccentricToMeanAnomaly` where M is beyond a double, |H| above about 710.
+// On success the anomaly is finite. `eccentricToTrueAnomaly` returns an
+// elliptic anomaly in [0, 2 pi) and a hyperbolic one inside the asymptotes.
+[[nodiscard]] std::expected<Radians, OrbitError> trueToEccentricAnomaly(Radians trueAnomaly,
+                                                                        Eccentricity ecc);
+[[nodiscard]] std::expected<Radians, OrbitError> eccentricToTrueAnomaly(Radians eccAnomaly,
+                                                                        Eccentricity ecc);
+[[nodiscard]] std::expected<Radians, OrbitError> eccentricToMeanAnomaly(Radians eccAnomaly,
+                                                                        Eccentricity ecc);
 
 // Solves Kepler's equation for the eccentric (or hyperbolic) anomaly.
 //
@@ -325,6 +348,9 @@ static_assert(describe(OrbitError::NotFinite) != describe(OrbitError::Degenerate
 // failure (rule 5). The difference is that the report is now unreachable: a
 // silent wrong answer here becomes a spacecraft in the wrong place twenty
 // minutes later, and so does a refusal to answer at all.
+//
+// Reports `NoEccentricAnomaly` at e = 1 exactly, as its three siblings above
+// do (register decision 468): a parabola has neither E nor H to solve for.
 [[nodiscard]] std::expected<Radians, OrbitError> meanToEccentricAnomaly(Radians meanAnomaly,
                                                                         Eccentricity ecc);
 

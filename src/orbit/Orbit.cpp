@@ -143,6 +143,16 @@ constexpr f64 kParabolicAlphaTol = 1e-12;
 // with a period of 2061 s (2026-09-11).
 enum class Conic : std::uint8_t { Ellipse, Parabola, Hyperbola };
 
+// e = 1 exactly, for the anomaly converters: a parabola has no eccentric
+// anomaly. A test on the eccentricity, not on the energy as conicOf below is:
+// those functions are handed an eccentricity and nothing else, and they refuse
+// only the one value at which E and H are both undefined. Two comparisons,
+// because `==` on a double does not survive -Wfloat-equal.
+[[nodiscard]] constexpr bool isParabolic(f64 e) noexcept { return !(e < 1.0) && !(e > 1.0); }
+
+static_assert(isParabolic(1.0) && !isParabolic(1.0 - 0x1p-53) && !isParabolic(1.0 + 0x1p-52),
+              "only e = 1 itself, not its neighbours");
+
 [[nodiscard]] constexpr Conic conicOf(f64 alphaTimesRadius) noexcept {
     if (alphaTimesRadius > kParabolicAlphaTol) return Conic::Ellipse;
     if (alphaTimesRadius < -kParabolicAlphaTol) return Conic::Hyperbola;
@@ -1200,8 +1210,14 @@ OrbitInfo orbitInfo(const Elements& el, GravParam mu) {
 
 // --- anomaly conversions ---------------------------------------------------
 
-Radians trueToEccentricAnomaly(Radians trueAnomaly, Eccentricity ecc) {
+// The refusals are the header's (M1-118, finding 1.6, register decisions 440,
+// 468 and 469); every one of them used to be a number. Each function checks
+// its input first, so that a NaN is reported as what it is rather than as
+// whichever refusal it happens to fall into.
+std::expected<Radians, OrbitError> trueToEccentricAnomaly(Radians trueAnomaly, Eccentricity ecc) {
+    if (!isFinite(trueAnomaly.value())) return std::unexpected(OrbitError::NotFinite);
     const f64 e = ecc.value();
+    if (isParabolic(e)) return std::unexpected(OrbitError::NoEccentricAnomaly);
     if (e < 1.0) {
         return Radians{2.0 * std::atan2(std::sqrt(1.0 - e) * std::sin(trueAnomaly.value() * 0.5),
                                         std::sqrt(1.0 + e) * std::cos(trueAnomaly.value() * 0.5))};
@@ -1209,25 +1225,44 @@ Radians trueToEccentricAnomaly(Radians trueAnomaly, Eccentricity ecc) {
     // Hyperbolic: build sinh(H) directly instead of going through tan(nu/2),
     // which is unbounded as the true anomaly approaches the asymptote.
     const f64 nu = wrapPi(trueAnomaly).value();
-    const f64 sinhH = std::sqrt((e * e) - 1.0) * std::sin(nu) / (1.0 + (e * std::cos(nu)));
+    // Past the asymptote, at acos(-1/e), this is not positive and the anomaly is
+    // off the end of the trajectory: the formula below went on to return a
+    // finite H of the wrong sign. stateFromElements refuses the same anomaly.
+    const f64 onePlusECosNu = 1.0 + (e * std::cos(nu));
+    if (!(onePlusECosNu > 0.0)) return std::unexpected(OrbitError::UnreachableAnomaly);
+    const f64 sinhH = std::sqrt((e * e) - 1.0) * std::sin(nu) / onePlusECosNu;
     return Radians{std::asinh(sinhH)};
 }
 
-Radians eccentricToTrueAnomaly(Radians eccAnomaly, Eccentricity ecc) {
+std::expected<Radians, OrbitError> eccentricToTrueAnomaly(Radians eccAnomaly, Eccentricity ecc) {
+    if (!isFinite(eccAnomaly.value())) return std::unexpected(OrbitError::NotFinite);
     const f64 e = ecc.value();
+    if (isParabolic(e)) return std::unexpected(OrbitError::NoEccentricAnomaly);
     if (e < 1.0) {
         return wrapTau(
             Radians{2.0 * std::atan2(std::sqrt(1.0 + e) * std::sin(eccAnomaly.value() * 0.5),
                                      std::sqrt(1.0 - e) * std::cos(eccAnomaly.value() * 0.5))});
     }
-    return Radians{2.0 * std::atan2(std::sqrt(e + 1.0) * std::sinh(eccAnomaly.value() * 0.5),
-                                    std::sqrt(e - 1.0) * std::cosh(eccAnomaly.value() * 0.5))};
+    // tanh(H/2) rather than sinh and cosh, which overflow past |H| of about 710:
+    // from about 1,420 at e = 2 the old form was atan2(inf, inf) and returned
+    // pi/2 for an anomaly just short of the asymptote at 2.0944. Measured
+    // against 50-digit references over 40,000 cases, e from 1 + 1e-12 to 101
+    // and |H| to 63 (2026-10-11, register decision 469): worst 2.54 ulp under
+    // the UCRT and 3.93 under glibc, against 4.00 for the old form on both.
+    return Radians{
+        2.0 * std::atan(std::sqrt((e + 1.0) / (e - 1.0)) * std::tanh(eccAnomaly.value() * 0.5))};
 }
 
-Radians eccentricToMeanAnomaly(Radians eccAnomaly, Eccentricity ecc) {
+std::expected<Radians, OrbitError> eccentricToMeanAnomaly(Radians eccAnomaly, Eccentricity ecc) {
+    if (!isFinite(eccAnomaly.value())) return std::unexpected(OrbitError::NotFinite);
     const f64 e = ecc.value();
+    if (isParabolic(e)) return std::unexpected(OrbitError::NoEccentricAnomaly);
     if (e < 1.0) return Radians{eccAnomaly.value() - (e * std::sin(eccAnomaly.value()))};
-    return Radians{(e * std::sinh(eccAnomaly.value())) - eccAnomaly.value()};
+    // e sinh(H) passes the largest double near |H| = 710, and the mean anomaly
+    // is then not a double at all: an infinity here is not an answer.
+    const f64 mean = (e * std::sinh(eccAnomaly.value())) - eccAnomaly.value();
+    if (!isFinite(mean)) return std::unexpected(OrbitError::NotFinite);
+    return Radians{mean};
 }
 
 // The three starting-guess constants below, and what each is actually worth.
@@ -1269,6 +1304,9 @@ std::expected<Radians, OrbitError> meanToEccentricAnomaly(Radians meanAnomaly, E
     // is also what closed the hole in this function's three siblings, who
     // guarded nothing at all and returned a plausible wrong answer.
     const f64 e = ecc.value();
+    // A parabola has no eccentric anomaly to solve for; the hyperbolic branch
+    // below would find an H anyway (register decision 468).
+    if (isParabolic(e)) return std::unexpected(OrbitError::NoEccentricAnomaly);
 
     if (e < 1.0) {
         // Solving M = E - e*sin(E) for E. dM/dE = 1 - e*cos(E) >= 1 - e > 0,

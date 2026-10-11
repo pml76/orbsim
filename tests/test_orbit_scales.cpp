@@ -1103,6 +1103,23 @@ void checkConserved(const PropagationPair& states, f64 e) {
                  WithinRelVec(specificAngularMomentum(before), momentumBudget));
 }
 
+// The Kepler solver on its own, at the eccentricity that breaks the naive
+// starting guess. Split out of checkOneEccentricity when the converters began
+// to report (M1-118), which took that function past its size limit.
+void requireKeplerSolverRoundTrip(const Elements& el) {
+    const auto ecc = trueToEccentricAnomaly(el.tra, el.ecc);
+    INFO("true to eccentric -> " << errorName(ecc));
+    REQUIRE(ecc.has_value());
+    const auto mean = eccentricToMeanAnomaly(*ecc, el.ecc);
+    INFO("eccentric to mean -> " << errorName(mean));
+    REQUIRE(mean.has_value());
+    const auto solved = meanToEccentricAnomaly(*mean, el.ecc);
+    INFO("Kepler solver converges -> " << errorName(solved));
+    REQUIRE(solved.has_value());
+    INFO("solver round trip");
+    REQUIRE_THAT(wrapPi(*solved - *ecc).value(), WithinAbsOf(0.0, Tolerance{1e-9}));
+}
+
 void checkOneEccentricity(f64 e) {
     CAPTURE(e);
     constexpr Metres kSemiMajor{2.0e7};
@@ -1158,15 +1175,7 @@ void checkOneEccentricity(f64 e) {
     INFO("round trip");
     REQUIRE_THAT(back->pos, WithinRelVec(sv.pos, roundTrip));
 
-    // The Kepler solver on its own, at the eccentricity that breaks the
-    // naive starting guess.
-    const Radians ecc = trueToEccentricAnomaly(el.tra, el.ecc);
-    const Radians mean = eccentricToMeanAnomaly(ecc, el.ecc);
-    const auto solved = meanToEccentricAnomaly(mean, el.ecc);
-    INFO("Kepler solver converges -> " << errorName(solved));
-    REQUIRE(solved.has_value());
-    INFO("solver round trip");
-    REQUIRE_THAT(wrapPi(*solved - ecc).value(), WithinAbsOf(0.0, Tolerance{1e-9}));
+    requireKeplerSolverRoundTrip(el);
 }
 
 } // namespace

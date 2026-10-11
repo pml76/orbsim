@@ -19,6 +19,8 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <expected>
+#include <limits>
 
 using namespace orb;
 using namespace orb::literals;
@@ -405,8 +407,12 @@ TEST_CASE("Kepler equation solver", "[orbit]") {
                 allSolved = false;
                 break;
             }
-            const Radians backAgain = eccentricToMeanAnomaly(*solved, eccentricityOf(ecc));
-            worst = std::max(worst, std::abs(wrapPi(backAgain - meanAnomaly).value()));
+            const auto backAgain = eccentricToMeanAnomaly(*solved, eccentricityOf(ecc));
+            if (!backAgain) {
+                allSolved = false;
+                break;
+            }
+            worst = std::max(worst, std::abs(wrapPi(*backAgain - meanAnomaly).value()));
         }
 
         INFO("every mean anomaly solved");
@@ -420,11 +426,12 @@ TEST_CASE("Kepler equation solver", "[orbit]") {
         for (int i = 0; i < 360; i += 7) {
             CAPTURE(ecc, i);
             const Radians nu = toRadians(Degrees{static_cast<f64>(i)});
-            const Radians eccAnomaly = trueToEccentricAnomaly(nu, eccentricityOf(ecc));
+            const auto eccAnomaly = trueToEccentricAnomaly(nu, eccentricityOf(ecc));
+            REQUIRE(eccAnomaly.has_value());
+            const auto back = eccentricToTrueAnomaly(*eccAnomaly, eccentricityOf(ecc));
+            REQUIRE(back.has_value());
             INFO("true <-> eccentric (elliptic)");
-            REQUIRE_THAT(
-                wrapPi(eccentricToTrueAnomaly(eccAnomaly, eccentricityOf(ecc)) - nu).value(),
-                WithinAbsOf(0.0, Tolerance{1e-10}));
+            REQUIRE_THAT(wrapPi(*back - nu).value(), WithinAbsOf(0.0, Tolerance{1e-10}));
         }
     }
 
@@ -434,18 +441,20 @@ TEST_CASE("Kepler equation solver", "[orbit]") {
         for (int i = -20; i <= 20; ++i) {
             CAPTURE(ecc, i);
             const Radians nu{nuMax * static_cast<f64>(i) / 20.0};
-            const Radians hyperbolic = trueToEccentricAnomaly(nu, eccentricityOf(ecc));
+            const auto hyperbolic = trueToEccentricAnomaly(nu, eccentricityOf(ecc));
+            REQUIRE(hyperbolic.has_value());
+            const auto back = eccentricToTrueAnomaly(*hyperbolic, eccentricityOf(ecc));
+            REQUIRE(back.has_value());
             INFO("true <-> eccentric (hyperbolic)");
-            REQUIRE_THAT(
-                wrapPi(eccentricToTrueAnomaly(hyperbolic, eccentricityOf(ecc)) - nu).value(),
-                WithinAbsOf(0.0, Tolerance{1e-9}));
+            REQUIRE_THAT(wrapPi(*back - nu).value(), WithinAbsOf(0.0, Tolerance{1e-9}));
 
-            const Radians meanAnomaly = eccentricToMeanAnomaly(hyperbolic, eccentricityOf(ecc));
-            const auto solved = meanToEccentricAnomaly(meanAnomaly, eccentricityOf(ecc));
+            const auto meanAnomaly = eccentricToMeanAnomaly(*hyperbolic, eccentricityOf(ecc));
+            REQUIRE(meanAnomaly.has_value());
+            const auto solved = meanToEccentricAnomaly(*meanAnomaly, eccentricityOf(ecc));
             INFO(errorName(solved));
             REQUIRE(solved.has_value());
             INFO("hyperbolic Kepler round trip");
-            REQUIRE_THAT(solved->value(), WithinAbsOf(hyperbolic.value(), Tolerance{1e-9}));
+            REQUIRE_THAT(solved->value(), WithinAbsOf(hyperbolic->value(), Tolerance{1e-9}));
         }
     }
 }
@@ -552,4 +561,288 @@ TEST_CASE("an anomaly past the asymptote is refused by name when propagated",
             requireUnreachableWhenPropagated(hyperbolaAt(ecc, Radians{kTau - beyond}));
         }
     }
+}
+
+// --- the anomaly converters (M1-118, findings 1.6 and 3.1) -------------------
+//
+// Finding 1.6: they answered questions that have no answer -- 0 or pi for a
+// parabola, a finite H of the wrong sign for an anomaly past the asymptote --
+// and register decision 440 made them report instead. Finding 3.1: they were
+// tested only against each other, so swapping sqrt(1 - e) and sqrt(1 + e) in
+// both passed every suite. They are now checked against the half-angle formula
+// and against published worked examples, neither of which is this code.
+namespace {
+
+// The converters against the textbook half-angle formula, both in doubles:
+// twice the worst difference measured on 2026-10-11 on correct code, over the
+// grids below. The review's swapped square roots are 3.05 rad out.
+constexpr Tolerance kEllipticTrueToEccentric{1.4e-15};   // rad; measured 6.7e-16
+constexpr Tolerance kEllipticEccentricToTrue{9e-16};     // rad; measured 4.4e-16
+constexpr Tolerance kHyperbolicTrueToEccentric{5.2e-14}; // relative to max(1, |H|); 2.6e-14
+constexpr Tolerance kHyperbolicEccentricToTrue{6.2e-12}; // in cos v; measured 3.1e-12
+
+// What a printed value is worth: half a unit in its last printed digit.
+constexpr Tolerance kFiveDecimals{5e-6};
+constexpr Tolerance kTwoDecimals{5e-3};
+constexpr Tolerance kOneDecimalInTheFourth{5e-5};
+
+[[nodiscard]] Eccentricity eccentricityOrFail(f64 e) {
+    const auto ecc = Eccentricity::from(e);
+    REQUIRE(ecc.has_value());
+    return *ecc;
+}
+
+// The error a result carries, read only after asserting there is one: error()
+// on a value is undefined behaviour, and the debug library stops the suite on
+// it rather than letting the case fail (review finding 6.1's trap).
+[[nodiscard]] OrbitError requireRefusal(const std::expected<Radians, OrbitError>& result) {
+    CAPTURE(result.has_value() ? result->value() : 0.0);
+    REQUIRE(!result.has_value());
+    return result.error();
+}
+
+[[nodiscard]] Radians requireAnomaly(const std::expected<Radians, OrbitError>& result) {
+    INFO(errorName(result));
+    REQUIRE(result.has_value());
+    return *result;
+}
+
+// An eccentricity and an anomaly, named: two adjacent doubles transpose in
+// silence, which bugprone-easily-swappable-parameters reports.
+struct AnomalyCase {
+    f64 ecc{};
+    f64 anomaly{};
+};
+
+void requireParabolaRefused(Radians anomaly) {
+    const Eccentricity parabola = eccentricity(1.0);
+    CAPTURE(anomaly.value());
+    REQUIRE(requireRefusal(trueToEccentricAnomaly(anomaly, parabola)) ==
+            OrbitError::NoEccentricAnomaly);
+    REQUIRE(requireRefusal(eccentricToTrueAnomaly(anomaly, parabola)) ==
+            OrbitError::NoEccentricAnomaly);
+    REQUIRE(requireRefusal(eccentricToMeanAnomaly(anomaly, parabola)) ==
+            OrbitError::NoEccentricAnomaly);
+    REQUIRE(requireRefusal(meanToEccentricAnomaly(anomaly, parabola)) ==
+            OrbitError::NoEccentricAnomaly);
+}
+
+void requireNotFiniteRefused(const AnomalyCase& c) {
+    CAPTURE(c.ecc, c.anomaly);
+    const Eccentricity e = eccentricityOrFail(c.ecc);
+    REQUIRE(requireRefusal(trueToEccentricAnomaly(Radians{c.anomaly}, e)) == OrbitError::NotFinite);
+    REQUIRE(requireRefusal(eccentricToTrueAnomaly(Radians{c.anomaly}, e)) == OrbitError::NotFinite);
+    REQUIRE(requireRefusal(eccentricToMeanAnomaly(Radians{c.anomaly}, e)) == OrbitError::NotFinite);
+}
+
+// Past the reach of cosh the answer is just inside the asymptote, on the side
+// of H's sign.
+void requireJustInsideTheAsymptote(const AnomalyCase& c) {
+    const f64 asymptote = std::acos(-1.0 / c.ecc);
+    const Radians nu =
+        requireAnomaly(eccentricToTrueAnomaly(Radians{c.anomaly}, eccentricityOrFail(c.ecc)));
+    CAPTURE(c.ecc, c.anomaly, nu.value(), asymptote);
+    REQUIRE(std::abs(nu.value()) <= asymptote);
+    REQUIRE(asymptote - std::abs(nu.value()) < 1e-15);
+    REQUIRE((nu.value() > 0.0) == (c.anomaly > 0.0));
+}
+
+// tan(E/2) = sqrt((1 - e)/(1 + e)) tan(v/2), written out here and not taken
+// from the code under test; `anomaly` is used as v one way and as E the other.
+void requireEllipticHalfAngle(const AnomalyCase& c) {
+    const Eccentricity e = eccentricityOrFail(c.ecc);
+    const f64 shrink = std::sqrt((1.0 - c.ecc) / (1.0 + c.ecc));
+    CAPTURE(c.ecc, c.anomaly);
+    const Radians eccentric = requireAnomaly(trueToEccentricAnomaly(Radians{c.anomaly}, e));
+    const f64 eccentricWant = 2.0 * std::atan(shrink * std::tan(c.anomaly / 2.0));
+    REQUIRE(std::abs(wrapPi(eccentric - Radians{eccentricWant}).value()) <=
+            kEllipticTrueToEccentric.value());
+    const Radians trueAnomaly = requireAnomaly(eccentricToTrueAnomaly(Radians{c.anomaly}, e));
+    const f64 trueWant = 2.0 * std::atan(std::tan(c.anomaly / 2.0) / shrink);
+    REQUIRE(std::abs(wrapPi(trueAnomaly - Radians{trueWant}).value()) <=
+            kEllipticEccentricToTrue.value());
+}
+
+// tanh(H/2) = sqrt((e - 1)/(e + 1)) tan(v/2), and cos v = (e - cosh H) /
+// (e cosh H - 1): the second checks eccentricToTrueAnomaly without the tanh
+// form it is now written in.
+void requireHyperbolicClosedForms(const AnomalyCase& c) {
+    const Eccentricity e = eccentricityOrFail(c.ecc);
+    CAPTURE(c.ecc, c.anomaly);
+    const Radians h = requireAnomaly(trueToEccentricAnomaly(Radians{c.anomaly}, e));
+    const f64 hWant =
+        2.0 * std::atanh(std::sqrt((c.ecc - 1.0) / (c.ecc + 1.0)) * std::tan(c.anomaly / 2.0));
+    REQUIRE(std::abs(h.value() - hWant) / std::max(1.0, std::abs(hWant)) <=
+            kHyperbolicTrueToEccentric.value());
+    const Radians back = requireAnomaly(eccentricToTrueAnomaly(h, e));
+    const f64 coshH = std::cosh(h.value());
+    const f64 cosWant = (c.ecc - coshH) / ((c.ecc * coshH) - 1.0);
+    REQUIRE(std::abs(std::cos(back.value()) - cosWant) <= kHyperbolicEccentricToTrue.value());
+    REQUIRE((back.value() < 0.0) == (h.value() < 0.0));
+}
+
+} // namespace
+
+TEST_CASE("every anomaly converter refuses a parabola by name", "[orbit][anomaly][regression]") {
+    for (const f64 anomaly : std::to_array<f64>({0.0, 0.3, 1.0, -2.0})) {
+        requireParabolaRefused(Radians{anomaly});
+    }
+    INFO("and its neighbours either side are an ellipse and a hyperbola, and answer");
+    REQUIRE(trueToEccentricAnomaly(Radians{0.3}, eccentricityOrFail(1.0 - 0x1p-53)).has_value());
+    REQUIRE(trueToEccentricAnomaly(Radians{0.3}, eccentricityOrFail(1.0 + 0x1p-52)).has_value());
+}
+
+TEST_CASE("an anomaly past the asymptote has no eccentric anomaly",
+          "[orbit][anomaly][regression]") {
+    INFO("the review's case: v = 2.6 at e = 1.5 used to give H = -1.45");
+    REQUIRE(requireRefusal(trueToEccentricAnomaly(Radians{2.6}, eccentricity(1.5))) ==
+            OrbitError::UnreachableAnomaly);
+    for (const f64 ecc : std::to_array<f64>({1.01, 2.0, 50.0})) {
+        const f64 asymptote = std::acos(-1.0 / ecc);
+        // Just past the asymptote, midway to the half turn, and the same on the
+        // other side of periapsis.
+        const f64 midway = (asymptote + kPi) / 2.0;
+        for (const f64 beyond : std::to_array<f64>({asymptote + 1e-6, midway, kTau - midway})) {
+            CAPTURE(ecc, beyond);
+            const auto result = trueToEccentricAnomaly(Radians{beyond}, eccentricityOrFail(ecc));
+            REQUIRE(requireRefusal(result) == OrbitError::UnreachableAnomaly);
+        }
+    }
+}
+
+TEST_CASE("a hyperbolic anomaly beyond cosh's range converts to just inside the asymptote",
+          "[orbit][anomaly][regression]") {
+    // The old form overflowed sinh and cosh and returned pi/2 from about
+    // H = 1,420 at e = 2, where the answer is just short of 2.0944.
+    for (const f64 ecc : std::to_array<f64>({1.01, 2.0, 50.0})) {
+        for (const f64 h : std::to_array<f64>({700.0, 1421.0, 2000.0, 1e6, -2000.0})) {
+            requireJustInsideTheAsymptote({.ecc = ecc, .anomaly = h});
+        }
+    }
+}
+
+TEST_CASE("a mean anomaly beyond a double is reported, not infinite", "[orbit][anomaly]") {
+    INFO("e sinh(H) passes the largest double near H = 710");
+    REQUIRE(eccentricToMeanAnomaly(Radians{700.0}, eccentricity(2.0)).has_value());
+    REQUIRE(requireRefusal(eccentricToMeanAnomaly(Radians{800.0}, eccentricity(2.0))) ==
+            OrbitError::NotFinite);
+    REQUIRE(requireRefusal(eccentricToMeanAnomaly(Radians{-800.0}, eccentricity(2.0))) ==
+            OrbitError::NotFinite);
+}
+
+TEST_CASE("a non-finite anomaly is reported as not finite", "[orbit][anomaly]") {
+    constexpr f64 kNaN = std::numeric_limits<f64>::quiet_NaN();
+    constexpr f64 kInfinity = std::numeric_limits<f64>::infinity();
+    for (const f64 ecc : std::to_array<f64>({0.0, 0.5, 2.0})) {
+        for (const f64 bad : std::to_array<f64>({kNaN, kInfinity, -kInfinity})) {
+            requireNotFiniteRefused({.ecc = ecc, .anomaly = bad});
+        }
+    }
+}
+
+TEST_CASE("the elliptic converters agree with the half-angle formula", "[orbit][anomaly]") {
+    for (const f64 ecc : std::to_array<f64>({0.0, 1e-9, 0.1, 0.3, 0.5, 0.85, 0.99, 0.999})) {
+        for (int i = 0; i <= 720; ++i) {
+            const f64 angle = -kPi + (kTau * static_cast<f64>(i) / 720.0);
+            requireEllipticHalfAngle({.ecc = ecc, .anomaly = angle});
+        }
+    }
+}
+
+TEST_CASE("the hyperbolic converters agree with the closed forms", "[orbit][anomaly]") {
+    // Out to 0.95 of the asymptote.
+    for (const f64 ecc : std::to_array<f64>({1.0001, 1.01, 1.2, 2.0, 5.0, 50.0})) {
+        const f64 reach = 0.95 * std::acos(-1.0 / ecc);
+        for (int i = -200; i <= 200; ++i) {
+            const f64 nu = reach * static_cast<f64>(i) / 200.0;
+            requireHyperbolicClosedForms({.ecc = ecc, .anomaly = nu});
+        }
+    }
+}
+
+// Braeunig, *Rocket and Space Technology*, "Orbital Mechanics" problems 4.13
+// and 4.14 (http://www.braeunig.us/space/problem.htm, read 2026-10-11): a = 7500
+// km, e = 0.1. Printed to five decimals; every number recomputed before it was
+// written here (register decision 470).
+TEST_CASE("Braeunig's elliptic worked example", "[orbit][anomaly][published]") {
+    const Eccentricity e = eccentricity(0.1);
+    struct Printed {
+        f64 trueDegrees{};
+        f64 eccentric{};
+        f64 mean{};
+    };
+    for (const Printed& p : std::to_array<Printed>({
+             {.trueDegrees = 30.0, .eccentric = 0.47557, .mean = 0.42978},
+             {.trueDegrees = 90.0, .eccentric = 1.47063, .mean = 1.37113},
+         })) {
+        CAPTURE(p.trueDegrees);
+        const Radians eccentric =
+            requireAnomaly(trueToEccentricAnomaly(toRadians(Degrees{p.trueDegrees}), e));
+        REQUIRE_THAT(eccentric.value(), WithinAbsOf(p.eccentric, kFiveDecimals));
+        const Radians mean = requireAnomaly(eccentricToMeanAnomaly(eccentric, e));
+        REQUIRE_THAT(mean.value(), WithinAbsOf(p.mean, kFiveDecimals));
+    }
+
+    INFO("problem 4.14: M = 2.53755 solves to E = 2.58996, which is v = 2.64034");
+    const auto solved = meanToEccentricAnomaly(Radians{2.53755}, e);
+    REQUIRE(solved.has_value());
+    REQUIRE_THAT(solved->value(), WithinAbsOf(2.58996, kFiveDecimals));
+    const Radians later = requireAnomaly(eccentricToTrueAnomaly(Radians{2.58996}, e));
+    REQUIRE_THAT(later.value(), WithinAbsOf(2.64034, kFiveDecimals));
+}
+
+// Bryan Weber, *Orbital Mechanics & Astrodynamics*, "Example: Elliptical Orbit"
+// and "Example: Hyperbolic Trajectory" (https://orbital-mechanics.space,
+// time-since-periapsis-and-keplers-equation/, read 2026-10-11) -- Curtis's
+// Examples 3.1/3.2 and 3.5, with the page's own inputs. In kilometres and
+// seconds, as the page has them; the numbers only are used (decision 470).
+constexpr f64 kWeberMu = 3.986004418e5; // km^3/s^2, the page's value
+
+TEST_CASE("Weber's elliptic worked example", "[orbit][anomaly][published]") {
+    constexpr f64 kPerigee = 9600.0; // km
+    constexpr f64 kApogee = 21000.0; // km
+    const f64 ecc = (kApogee - kPerigee) / (kApogee + kPerigee);
+    REQUIRE_THAT(ecc, WithinAbsOf(0.3725, kOneDecimalInTheFourth));
+    const Eccentricity e = eccentricityOrFail(ecc);
+
+    const Radians eccentric = requireAnomaly(trueToEccentricAnomaly(toRadians(Degrees{120.0}), e));
+    REQUIRE_THAT(eccentric.value(), WithinAbsOf(1.73, kTwoDecimals));
+    const Radians mean = requireAnomaly(eccentricToMeanAnomaly(eccentric, e));
+    REQUIRE_THAT(mean.value(), WithinAbsOf(1.36, kTwoDecimals));
+
+    INFO("three hours after perigee: M = 3.60, E = 3.48, v = 193.16 degrees");
+    const f64 sma = (kApogee + kPerigee) / 2.0;
+    const f64 period = kTau / std::sqrt(kWeberMu) * std::pow(sma, 1.5);
+    const f64 meanLater = kTau * 3.0 * 3600.0 / period;
+    REQUIRE_THAT(meanLater, WithinAbsOf(3.60, kTwoDecimals));
+    const auto solved = meanToEccentricAnomaly(Radians{meanLater}, e);
+    REQUIRE(solved.has_value());
+    REQUIRE_THAT(wrapTau(*solved).value(), WithinAbsOf(3.48, kTwoDecimals));
+    const Radians later = requireAnomaly(eccentricToTrueAnomaly(*solved, e));
+    REQUIRE_THAT(toDegrees(later).value(), WithinAbsOf(193.16, kTwoDecimals));
+}
+
+TEST_CASE("Weber's hyperbolic worked example", "[orbit][anomaly][published]") {
+    constexpr f64 kPerigee = 300.0 + 6378.1; // km
+    constexpr f64 kPerigeeSpeed = 15.0;      // km/s
+    const f64 h = kPerigee * kPerigeeSpeed;  // km^2/s
+    const f64 ecc = (h * h / (kPerigee * kWeberMu)) - 1.0;
+    REQUIRE_THAT(ecc, WithinAbsOf(2.7696, kOneDecimalInTheFourth));
+    REQUIRE_THAT(toDegrees(Radians{std::acos(-1.0 / ecc)}).value(),
+                 WithinAbsOf(111.17, kTwoDecimals));
+    const Eccentricity e = eccentricityOrFail(ecc);
+    // Mean anomaly per second: mu^2 / h^3 (e^2 - 1)^(3/2), the page's Eq. (225).
+    const f64 meanRate = kWeberMu * kWeberMu / (h * h * h) * std::pow((ecc * ecc) - 1.0, 1.5);
+
+    INFO("from perigee to 100 degrees takes 1.15 h");
+    const Radians f1 = requireAnomaly(trueToEccentricAnomaly(toRadians(Degrees{100.0}), e));
+    const Radians m1 = requireAnomaly(eccentricToMeanAnomaly(f1, e));
+    const f64 t1 = m1.value() / meanRate;
+    REQUIRE_THAT(t1 / 3600.0, WithinAbsOf(1.15, kTwoDecimals));
+
+    INFO("three hours later the true anomaly is 107.78 degrees");
+    const auto f2 = meanToEccentricAnomaly(Radians{meanRate * (t1 + (3.0 * 3600.0))}, e);
+    REQUIRE(f2.has_value());
+    const Radians nu2 = requireAnomaly(eccentricToTrueAnomaly(*f2, e));
+    REQUIRE_THAT(toDegrees(nu2).value(), WithinAbsOf(107.78, kTwoDecimals));
 }
