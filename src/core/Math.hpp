@@ -255,8 +255,17 @@ template <auto R>
 // precision catastrophically. The two may carry different units -- the angle
 // between a position and a velocity is an ordinary thing to want, and it is
 // dimensionless however either is measured.
+//
+// Neither vector may be zero, which has no direction: directionOf returns the
+// zero vector for one, and the angle then came out as pi/2 with no report
+// (M1-118, finding 1.7). A precondition rather than a report, since no caller
+// can reach it -- elementsFromState refuses a zero radius before it asks -- and
+// `tests/angle_between_zero_probe.cpp` proves the assertion fires. Written so
+// that a NaN vector passes and comes back NaN, as the rest of this code
+// expects of a NaN (ADR 0002).
 template <auto R1, auto R2>
 [[nodiscard]] inline Radians angleBetween(const Vec3<R1>& a, const Vec3<R2>& b) noexcept {
+    ORBSIM_EXPECTS(!(length(a).value() <= 0.0) && !(length(b).value() <= 0.0));
     const Direction na = directionOf(a);
     const Direction nb = directionOf(b);
     return Radians{2.0 * std::atan2(length(na - nb).value(), length(na + nb).value())};

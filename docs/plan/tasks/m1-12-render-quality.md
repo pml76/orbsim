@@ -236,7 +236,7 @@ of them in `tests/`.)*
       It was written from reasoning rather than from a run. Measured 2026-09-24
       by applying the survivor to the tree by hand: the probe detected the
       wraparound correctly and returned **1**, and
-      `cmake/VerifyCountWraparound.cmake` failed only on exit **0** -- so the
+      `cmake/VerifyAssertionProbe.cmake` (`VerifyCountWraparound.cmake` until M1-118) failed only on exit **0** -- so the
       test whose entire purpose is to close this survivor reported **green
       against a tree carrying it**. The script reads the probe's own verdict
       now, and all three outcomes were run rather than argued: a healthy Debug

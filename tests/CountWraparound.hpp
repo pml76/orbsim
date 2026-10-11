@@ -17,7 +17,7 @@
 // half, because a case that provoked it would abort and take the reporter,
 // the counts and every case that had not run yet with it. So the claim is
 // made by programs whose **failure is the pass**, and
-// `cmake/VerifyCountWraparound.cmake` decides which way round that is.
+// `cmake/VerifyAssertionProbe.cmake` decides which way round that is.
 //
 // **Why all three, and not just the subtraction.** There was one of these for
 // one day, and it covered the subtraction only. Deleting the run-time guard
@@ -32,17 +32,9 @@
 
 #ifndef NDEBUG
 #include "core/Scalar.hpp"
+#include "tests/AbortProbe.hpp"
 
 #include <print>
-
-// _set_abort_behavior and its two flags are declared in the Windows C
-// runtime's <stdlib.h> itself; <cstdlib> reaches them only through it. The
-// same one-line suppression src/app/main.cpp carries, for the same reason
-// (register decisions 155 and 156).
-#ifdef _WIN32
-// NOLINTNEXTLINE(modernize-deprecated-headers)
-#include <stdlib.h>
-#endif
 #endif
 
 namespace orb::probe {
@@ -67,23 +59,16 @@ enum class Operation : std::uint8_t {
                                 "the run-time half of the guard does not exist here"));
     return 0;
 #else
-#ifdef _WIN32
-    // **Without this the program does not die, it waits.** Under the debug
-    // runtime this tree links, `_WRITE_ABORT_MSG` makes abort's own message a
-    // modal box rather than a line in the log, and the process sits there
-    // alive. Measured 2026-09-24, after it hung a mutation pass twice in one
-    // run. Three other controls were tried and none of them governs this one:
-    // `_set_error_mode`, `_CrtSetReportMode`, and clearing only
-    // `_CALL_REPORTFAULT`.
-    static_cast<void>(_set_abort_behavior(0, _CALL_REPORTFAULT | _WRITE_ABORT_MSG));
-#endif
+    // Without this the program does not die, it waits; tests/AbortProbe.hpp
+    // has the measurement.
+    abortWithoutWaiting();
 
     const auto small = static_cast<std::uint32_t>(seed);
     const std::uint32_t larger = small + 1U;
 
     // Inside a try, because std::println can throw -- a failed write, or no
     // memory -- and this function promises not to. What the catch returns is
-    // an ordinary failure, not an abort, and VerifyCountWraparound.cmake only
+    // an ordinary failure, not an abort, and VerifyAssertionProbe.cmake only
     // accepts an abort that carries the assertion's own message, so a
     // printing failure can never pass for the guard firing.
     try {
@@ -119,7 +104,7 @@ enum class Operation : std::uint8_t {
 
     // Only reached if the assertion did not fire, which is the failure these
     // programs exist to report. The value is printed above because it is the
-    // evidence, and `VerifyCountWraparound.cmake` reads that line rather than
+    // evidence, and `VerifyAssertionProbe.cmake` reads that line rather than
     // trusting this exit code alone -- it trusted the code alone for a day,
     // and passed a tree whose guard was gone.
     return 1;

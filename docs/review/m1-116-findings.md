@@ -660,7 +660,7 @@ the real suite**: exit 0 means the suite did not notice.
 | `CMakePresets.json` | `windows-msvc` says `/W4 /WX`, the build uses `/Wall`; minimum CMake 3.24 against `CMakeLists.txt`'s 3.28 |
 | `CMakeLists.txt`, above the definition of done | "every header is a dependency of every stamp" -- not since M1-89 |
 | `cmake/ScriptTests.cmake`; `cmake/VerifyMissingShader.cmake` | "the four that read the tree" (eight now); `kExitFailure` "in `src/app/main.cpp`" (it is in `app/ExitCodes.hpp`) |
-| `cmake/VerifyCountWraparound.cmake`; `tests/AbortBehaviour.cpp` | describe one subtraction probe, now three; point at a probe file that no longer exists |
+| `cmake/VerifyAssertionProbe.cmake` (`VerifyCountWraparound.cmake` until M1-118); `tests/AbortBehaviour.cpp` | describe one subtraction probe, now three; point at a probe file that no longer exists |
 | `scripts/check-tonemap-constants.py`, `numbers()` | "strip the float suffix" -- it strips nothing |
 | `.claude/rules/cpp-style.md`, the narrowing audit | `grep static_cast<f32>` cannot see `static_cast<float>`, which `render/VulkanContext.cpp`'s `setFullViewport` uses (integer to float, harmless) -- the instrument has a blind spot. Measured: 14 casts on 19 lines, as stated |
 

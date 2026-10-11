@@ -824,7 +824,7 @@ target_link_libraries(test_image_files PRIVATE orbsim_view OpenEXR::OpenEXRCore)
 # assertion that fires calls abort -- which Catch2 cannot survive, taking the
 # reporter and every case that had not run yet with it. The script decides which
 # way round the exit code means, and reports SKIPPED rather than passing in a
-# tree where assertions are not live. See cmake/VerifyCountWraparound.cmake.
+# tree where assertions are not live. See cmake/VerifyAssertionProbe.cmake.
 #
 # **One per operation**, because a program can only abort once. There was a
 # single probe for one day and it covered the subtraction only; deleting the
@@ -845,12 +845,34 @@ foreach(operation IN LISTS ORBSIM_COUNT_WRAPAROUND_OPERATIONS)
     add_test(NAME count_wraparound_${operation}_aborts
             COMMAND ${CMAKE_COMMAND}
                     -DPROBE=$<TARGET_FILE:count_wraparound_${operation}>
-                    -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/VerifyCountWraparound.cmake
+                    "-DCLAIM=the count's wraparound guard on ${operation}"
+                    -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/VerifyAssertionProbe.cmake
     )
     set_tests_properties(count_wraparound_${operation}_aborts PROPERTIES
             SKIP_REGULAR_EXPRESSION "SKIPPED:"
     )
 endforeach()
+
+# angleBetween's precondition, that neither vector is zero (M1-118, finding 1.7,
+# register decisions 472 and 476): a program that must abort, judged by the same
+# script, for the reason the comment above gives.
+add_executable(angle_between_zero_probe tests/angle_between_zero_probe.cpp)
+# The repository root, for `#include "tests/AbortProbe.hpp"`.
+target_include_directories(angle_between_zero_probe PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(angle_between_zero_probe PRIVATE
+        orbsim_core
+        orbsim_warnings
+        orbsim_sanitizers
+)
+add_test(NAME angle_between_zero_aborts
+        COMMAND ${CMAKE_COMMAND}
+                -DPROBE=$<TARGET_FILE:angle_between_zero_probe>
+                "-DCLAIM=angleBetween's refusal of a zero vector"
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/VerifyAssertionProbe.cmake
+)
+set_tests_properties(angle_between_zero_aborts PROPERTIES
+        SKIP_REGULAR_EXPRESSION "SKIPPED:"
+)
 
 # -Wfloat-equal is live after core/Units.hpp (M1-117, register decisions 451
 # and 454): mp-units v2.5.0 left it switched off there, and core/Units.hpp now
@@ -1606,6 +1628,7 @@ orbsim_add_header_selfcheck(orbsim_view_header_selfcheck orbsim_view
         view/VertexLayout.hpp
 )
 orbsim_add_header_selfcheck(orbsim_test_header_selfcheck orbsim_test_support
+        tests/AbortProbe.hpp
         tests/CountWraparound.hpp
         tests/FixtureFile.hpp
         tests/HdrDumpFile.hpp
@@ -1692,6 +1715,7 @@ list(APPEND ORBSIM_LINT_SOURCES ${ORBSIM_VIEW_SOURCES} ${ORBSIM_STB_IMAGE_SOURCE
 foreach(operation IN LISTS ORBSIM_COUNT_WRAPAROUND_OPERATIONS)
     list(APPEND ORBSIM_LINT_SOURCES tests/count_wraparound_${operation}.cpp)
 endforeach()
+list(APPEND ORBSIM_LINT_SOURCES tests/angle_between_zero_probe.cpp)
 if(ORBSIM_BUILD_APP)
     list(APPEND ORBSIM_LINT_SOURCES ${ORBSIM_APP_SOURCES} tests/test_probe_clear.cpp
             tests/test_radiometry.cpp tests/test_tonemap_port.cpp tests/make_broken_goldens.cpp
@@ -1815,6 +1839,7 @@ add_dependencies(check
         count_wraparound_subtraction
         count_wraparound_addition
         count_wraparound_multiplication
+        angle_between_zero_probe
         t_erfa_c
         t_erfa_c_extra
         orbsim_header_selfcheck
