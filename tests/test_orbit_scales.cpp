@@ -1274,3 +1274,91 @@ TEST_CASE("randomised sweep across bodies, shapes and time steps", "[orbit][scal
     sweepClosedOrbits(sampler);
     sweepHyperbolicOrbits(sampler);
 }
+
+// M1-118, finding 1.2: the mean motion was sqrt(mu / a^3), and a^3 leaves the
+// range of a double long before the mean motion does. a = 1e110 m about
+// mu = 1e300 gave n = 0 and an infinite period on an orbit marked closed; the
+// true n is 1e-15. The formula is now sqrt(mu) / sqrt(a) / a (register decision
+// 466), measured within 2.57 ulp of 60-digit references across the whole range
+// of a double, so the budget is 5 ulp. The ulp here is the spacing of doubles at
+// the answer: the smallest error a double can have.
+namespace {
+
+// How many ulp of `want` lie between the two. Interchangeable for the reason
+// core/Scalar.hpp gives on nearlyEqual: |got - want| is symmetric, and the ulp is
+// taken at the reference so that the measure is the same whichever is wrong.
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+[[nodiscard]] f64 ulpsApart(f64 got, f64 want) {
+    const f64 spacing = std::nextafter(std::abs(want), kInf) - std::abs(want);
+    return std::abs(got - want) / spacing;
+}
+
+constexpr f64 kMeanMotionBudgetUlps = 5.0;
+
+struct MeanMotionCase {
+    const char* name{};
+    f64 mu{};
+    f64 sma{};
+    f64 meanMotion{};
+};
+
+[[nodiscard]] OrbitInfo circularOrbitInfo(const MeanMotionCase& c) {
+    const auto mu = GravParam::from(c.mu);
+    REQUIRE(mu.has_value());
+    const Elements el{
+        .sma = Metres{c.sma},
+        .ecc = eccentricity(0.0),
+        .inc = Radians{0.0},
+        .lan = Radians{0.0},
+        .aop = Radians{0.0},
+        .tra = Radians{0.0},
+        .slr = Metres{c.sma},
+    };
+    return orbitInfo(el, *mu);
+}
+
+// sqrt of an even power of two is exact, and so is every step after it, so
+// the answer is bit for bit.
+void requireExactMeanMotion(const MeanMotionCase& c) {
+    const OrbitInfo info = circularOrbitInfo(c);
+    CAPTURE(c.name, info.meanMotion.value(), info.period.value());
+    REQUIRE(info.closed);
+    REQUIRE(bitsOf(info.meanMotion.value()) == bitsOf(c.meanMotion));
+    REQUIRE(bitsOf(info.period.value()) == bitsOf(kTau / c.meanMotion));
+}
+
+// The analytic answer is a power of ten; the doubles nearest the inputs move
+// the exact answer by at most 0.52 ulp from it (measured in 60-digit
+// arithmetic, 2026-10-11), which the budget covers.
+void requireMeanMotionWithinBudget(const MeanMotionCase& c) {
+    const OrbitInfo info = circularOrbitInfo(c);
+    CAPTURE(c.name, info.meanMotion.value(), info.period.value());
+    REQUIRE(info.closed);
+    REQUIRE(ulpsApart(info.meanMotion.value(), c.meanMotion) <= kMeanMotionBudgetUlps);
+    REQUIRE(std::isfinite(info.period.value()));
+    REQUIRE(info.period.value() > 0.0);
+}
+
+} // namespace
+
+// a^3 overflows in the first case, underflows in the second, and mu / a
+// overflows in the third.
+TEST_CASE("the mean motion is exact at powers of two far beyond a^3's range",
+          "[orbit][scale][regression]") {
+    requireExactMeanMotion(
+        {.name = "2^366 m about 2^996", .mu = 0x1p996, .sma = 0x1p366, .meanMotion = 0x1p-51});
+    requireExactMeanMotion(
+        {.name = "2^-366 m about 2^-996", .mu = 0x1p-996, .sma = 0x1p-366, .meanMotion = 0x1p51});
+    requireExactMeanMotion(
+        {.name = "2^-34 m about 2^996", .mu = 0x1p996, .sma = 0x1p-34, .meanMotion = 0x1p549});
+}
+
+TEST_CASE("the mean motion is within its budget at the review's scales",
+          "[orbit][scale][regression]") {
+    requireMeanMotionWithinBudget(
+        {.name = "1e110 m about 1e300", .mu = 1e300, .sma = 1e110, .meanMotion = 1e-15});
+    requireMeanMotionWithinBudget(
+        {.name = "1e-110 m about 1e-300", .mu = 1e-300, .sma = 1e-110, .meanMotion = 1e15});
+    requireMeanMotionWithinBudget(
+        {.name = "1e-10 m about 1e300", .mu = 1e300, .sma = 1e-10, .meanMotion = 1e165});
+}

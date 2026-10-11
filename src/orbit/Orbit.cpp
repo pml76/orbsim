@@ -1178,7 +1178,15 @@ OrbitInfo orbitInfo(const Elements& el, GravParam mu) {
 
     if (info.closed) {
         const f64 a = el.sma.value();
-        info.meanMotion = RadiansPerSecond{std::sqrt(m / (a * a * a))};
+        // sqrt(mu) / sqrt(a) / a, not sqrt(mu / a^3): a^3 overflows and
+        // underflows long before the mean motion does, and so does mu / a.
+        // a = 1e110 m about mu = 1e300 gave n = 0 and an infinite period on
+        // an orbit marked closed, where n is 1e-15 (M1-118, finding 1.2).
+        // Measured against 60-digit references (2026-10-11, register decision
+        // 466): within 2.57 ulp at every scale a double holds, against 1.44 for
+        // the cube at ordinary scales -- and the cube was 0 or infinite on 4,189
+        // of 6,807 whole-range cases, sqrt(mu / a) / a on 353, this on none.
+        info.meanMotion = RadiansPerSecond{std::sqrt(m) / std::sqrt(a) / a};
         info.period = Seconds{kTau / info.meanMotion.value()};
         info.energy = SpecificEnergy{-m / (2.0 * a)};
     } else {
