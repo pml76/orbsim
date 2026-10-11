@@ -3,7 +3,9 @@
 Phase: B | Status: not started
 Prerequisites: M1-117
 Decided by: register decisions 440, 442 and 450, ruled 2026-10-10 on the
-review's findings 1.1-1.7, 3.1 and 3.12 ([the findings](../../review/m1-116-findings.md))
+review's findings 1.1-1.7, 3.1 and 3.12 ([the findings](../../review/m1-116-findings.md));
+refined by decisions 465-473, ruled 2026-10-11 on the questions put at the
+task's start, each measured first
 
 ## Purpose
 
@@ -13,12 +15,16 @@ two of its tests unable to fail. Each fix starts from a test that fails.
 ## What to do
 
 - **1.1** `wrapTau` returns 2π exactly for a tiny negative angle, so
-  `elementsFromState` can return a true anomaly of 2π: map it to 0; a
-  compile-time case at -1e-20 and an element case just before periapsis.
-- **1.2** `orbitInfo`'s mean motion overflows `a³`: `sqrt(mu / a) / a`, and
-  cases at a = 1e110 m and 1e-110 m.
-- **1.3** double-double near the largest double: scale in `twoProduct`, or
-  fall back when the error term is not finite; and `test_double_double`'s
+  `elementsFromState` can return a true anomaly of 2π: map it to 0; an
+  element case just before periapsis. *(Decision 465: the compile-time case
+  is on a `constexpr` helper, since `std::fmod` cannot run at compile time
+  under clang; and `wrapPi` stops losing small negative angles.)*
+- **1.2** `orbitInfo`'s mean motion overflows `a³`: ~~`sqrt(mu / a) / a`~~
+  `sqrt(mu) / sqrt(a) / a` (decision 466: the first still fails on 353 of
+  6,807 whole-range cases), and cases at a = 1e110 m and 1e-110 m, and at
+  mu = 1e300 with a = 1e-10 m.
+- **1.3** double-double near the largest double: scale in `twoProduct`
+  (decision 467), with `split`'s domain an asserted precondition; and `test_double_double`'s
   sampler draws the whole [1, 2) mantissa and its highest exponent, from the
   engine directly (finding 3.8's rule).
 - **1.4** `propagateElements` reports `UnreachableAnomaly` by a test of
@@ -26,15 +32,23 @@ two of its tests unable to fail. Each fix starts from a test that fails.
 - **1.5** `integrateAngularVelocity` turns for a negative step; its first
   test.
 - **1.6** the anomaly converters return `std::expected` -- `UnreachableAnomaly`
-  and a parabolic refusal -- and their callers handle it (decision 440).
-- **1.7** `angleBetween` asserts that neither vector is zero.
+  and a parabolic refusal -- and their callers handle it (decision 440). The
+  refusal is `NoEccentricAnomaly`, and `meanToEccentricAnomaly` gives it too
+  (decision 468); `eccentricToTrueAnomaly` takes the `tanh` form, which does
+  not overflow, if it measures as accurate, and `eccentricToMeanAnomaly`
+  reports a mean anomaly beyond a double as `NotFinite` (decision 469).
+- **1.7** `angleBetween` asserts that neither vector is zero, proved by a
+  program that must abort (decision 472).
 - **3.1** the anomaly converters checked against the half-angle formula and a
   published worked example, elliptic and hyperbolic -- not only against each
-  other.
+  other. The examples are Braeunig's problems 4.13 and 4.14 and Weber's
+  hyperbolic trajectory, Curtis's Example 3.5 (decision 470).
 - **3.12** `fuzz_time` adds and subtracts fuzzed durations; `fuzz_orbit`
   feeds arbitrary element sets to `stateFromElements`, `propagateElements`
   and `orbitInfo`, and checks the ranges 1.1 and 1.2 promise, not only NaN.
   Each fuzzer run for its budget from its corpus (VERIFICATION.md rule 13).
+  The new checks read optional words after today's input layout, so the
+  committed corpus stays in use (decision 471).
 
 ## Mutants
 
