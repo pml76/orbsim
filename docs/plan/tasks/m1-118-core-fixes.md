@@ -1,6 +1,6 @@
 # M1-118 — The simulation core's review findings
 
-Phase: B | Status: not started
+Phase: B | Status: **done, 2026-10-11**
 Prerequisites: M1-117
 Decided by: register decisions 440, 442 and 450, ruled 2026-10-10 on the
 review's findings 1.1-1.7, 3.1 and 3.12 ([the findings](../../review/m1-116-findings.md));
@@ -58,8 +58,8 @@ backward-rotation comparison; each caught by the new tests.
 
 ## Done when
 
-- [ ] Every finding above fixed, each with a test seen failing first.
-- [ ] Both fuzzers run for their budget from their corpus.
-- [ ] `check` passes in both trees.
-- [ ] The task's mutant file has run after the commit and its record is
+- [x] Every finding above fixed, each with a test seen failing first.
+- [x] Both fuzzers run for their budget from their corpus.
+- [x] `check` passes in both trees.
+- [x] The task's mutant file has run after the commit and its record is
       committed.

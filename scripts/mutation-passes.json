@@ -585,6 +585,49 @@
       }
     }
   },
+  "m1-118.json": {
+    "commit": "3479028291b9c0916ac3260260d2401e78ca8ef0",
+    "tree": "build/debug",
+    "date": "2026-10-11",
+    "judges": {
+      "program test_math.exe": "846e694c90e04437",
+      "program test_orbit.exe": "f6d399d2af79f2e6",
+      "program test_orbit_scales.exe": "f8da4c774690c893",
+      "program test_double_double.exe": "90c4540c641adaf1",
+      "program angle_between_zero_probe.exe": "416613cb28e380ab",
+      "ctest angle_between_zero_aborts": "5bdd4b78666dda02"
+    },
+    "judge_parts": {
+      "program test_math.exe": {
+        "commands": "19c9c3b330c560b0",
+        "build-tree files": "bbd0b9f6e0bd965a",
+        "other files": "c47a5897841d1333"
+      },
+      "program test_orbit.exe": {
+        "commands": "d66610d626b7c69a",
+        "build-tree files": "bbd0b9f6e0bd965a",
+        "other files": "c47a5897841d1333"
+      },
+      "program test_orbit_scales.exe": {
+        "commands": "331592aa3d343125",
+        "build-tree files": "bbd0b9f6e0bd965a",
+        "other files": "c47a5897841d1333"
+      },
+      "program test_double_double.exe": {
+        "commands": "7540de648b8f114f",
+        "build-tree files": "bbd0b9f6e0bd965a",
+        "other files": "c47a5897841d1333"
+      },
+      "program angle_between_zero_probe.exe": {
+        "commands": "f4fe83364f24417e",
+        "build-tree files": "b8650c843b3f1a4e",
+        "other files": "c394f920b30a856a"
+      },
+      "ctest angle_between_zero_aborts": {
+        "definition": "cedb8be6608c190a"
+      }
+    }
+  },
   "m1-12-release.json": {
     "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/relwithdebinfo",
