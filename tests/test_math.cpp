@@ -661,3 +661,67 @@ TEST_CASE("wrapPi returns an angle already in range unchanged", "[math][wrap]") 
         REQUIRE(bitsOf(wrapPi(angle)) == bitsOf(angle));
     }
 }
+
+// --- integrating an angular velocity (M1-118, finding 1.5) -------------------
+//
+// The first tests of `integrateAngularVelocity`, which has no caller until
+// attitude arrives. A backward step did not turn at all: the angle |omega| dt is
+// negative for dt < 0, so it was always "below the negligible rotation". The
+// expected quaternions are written out from cos and sin of half the angle, not
+// built with fromAxisAngle, so they do not share the code under test.
+
+namespace {
+
+// Twice the worst measured on 2026-10-11, as the project sets a budget: one
+// step against the analytic quaternion 1.1e-16, and a step and its reverse
+// 3.3e-16 over 200,000 random orientations, spins and steps.
+constexpr Tolerance kOneStepTurn{2.3e-16};
+constexpr Tolerance kStepAndReverse{7e-16};
+
+} // namespace
+
+TEST_CASE("a backward step turns the other way", "[math][attitude][regression]") {
+    const AngularVelocity spin{0.0, 0.0, 1.0}; // 1 rad/s about +z
+    for (const f64 dt : std::to_array<f64>({1.0, -1.0, 0.25, -0.25})) {
+        const Quat turned = integrateAngularVelocity(Quat{}, spin, Seconds{dt});
+        // dt radians about +z: (cos(dt/2), 0, 0, sin(dt/2)).
+        const Quat want{std::cos(dt / 2.0), 0.0, 0.0, std::sin(dt / 2.0)};
+        CAPTURE(dt, turned.w, turned.x, turned.y, turned.z);
+        REQUIRE(worstComponent({.from = turned, .to = want}) <= kOneStepTurn.value());
+    }
+}
+
+TEST_CASE("a step and its reverse come back to the start", "[math][attitude]") {
+    Sampler sampler;
+    for (std::size_t i = 0; i < 1000; ++i) {
+        const Quat start = sampler.rotation();
+        // At least 0.36 rad/s for at least 0.1 s, so that every step turns by
+        // an amount the comparison below can see.
+        const AngularVelocity spin{
+            0.3 + sampler.unit(), -0.2 - sampler.unit(), (2.0 * sampler.unit()) - 1.0};
+        const Seconds dt{0.1 + (0.9 * sampler.unit())};
+        const Quat there = integrateAngularVelocity(start, spin, dt);
+        const Quat back = integrateAngularVelocity(there, spin, -dt);
+        CAPTURE(kSweepSeed, i, dt.value());
+        INFO("the forward step turns, so the test is not passing on two no-ops");
+        REQUIRE(worstComponent({.from = there, .to = start}) > 1e-6);
+        REQUIRE(worstComponent({.from = back, .to = start}) <= kStepAndReverse.value());
+    }
+}
+
+TEST_CASE("a rotation below the negligible one leaves the orientation bit for bit",
+          "[math][attitude]") {
+    // What kNegligibleRotation exists for, and what its comment asks the first
+    // test to assert: an idle body's orientation does not drift by a rounding
+    // per frame -- in either direction of time.
+    const Quat start = Quat::fromAxisAngle(Direction{0.48, 0.6, 0.64}, Radians{0.7});
+    const AngularVelocity slow{0.0, 0.0, 1e-13}; // rad/s: 1e-13 rad per second
+    for (const f64 dt : std::to_array<f64>({1.0, -1.0})) {
+        const Quat after = integrateAngularVelocity(start, slow, Seconds{dt});
+        CAPTURE(dt);
+        REQUIRE(bitsOf(after.w) == bitsOf(start.w));
+        REQUIRE(bitsOf(after.x) == bitsOf(start.x));
+        REQUIRE(bitsOf(after.y) == bitsOf(start.y));
+        REQUIRE(bitsOf(after.z) == bitsOf(start.z));
+    }
+}

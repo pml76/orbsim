@@ -615,9 +615,10 @@ namespace detail {
 // threshold there would not buy the bit-stability above. Corrected 2026-09-13;
 // the number did not move, because the number was never what was wrong.
 //
-// Nothing exercises this yet: integrateAngularVelocity has no caller (6-DOF is
-// docs/plan/realism.md section 1.4), so the first test of it should assert the
-// bit-stability this constant exists for.
+// integrateAngularVelocity has no caller yet (6-DOF is docs/plan/realism.md
+// section 1.4). Its first tests arrived with M1-118, 2026-10-11, in
+// tests/test_math.cpp, and one of them asserts the bit-stability this constant
+// exists for, in both directions of time.
 inline constexpr Radians kNegligibleRotation{1e-12};
 
 // Integrate an orientation by an angular-velocity vector (world frame, rad/s)
@@ -629,7 +630,10 @@ integrateAngularVelocity(const Quat& q, const AngularVelocity& omega, Seconds dt
     // taking it on trust: before ADR 0019 this line multiplied two bare
     // doubles and named the result Radians.
     const Radians theta = length(omega) * dt;
-    if (theta < kNegligibleRotation) return q;
+    // The magnitude, since theta is negative for a backward step. Compared
+    // signed, every backward step was "negligible" and the orientation came
+    // back unchanged (M1-118, finding 1.5).
+    if (Radians{absOf(theta.value())} < kNegligibleRotation) return q;
     return normalize(Quat::fromAxisAngle(omega, theta) * q);
 }
 
