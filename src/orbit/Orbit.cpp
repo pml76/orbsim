@@ -1006,6 +1006,24 @@ void assignConic(Elements& el, const ExactState& state) {
     return eMinusOne + (2.0 * halfCos * halfCos);
 }
 
+// The period of a closed orbit, 2 pi a^(3/2) / sqrt(mu), in the one order that
+// keeps every intermediate in range wherever the period itself is a double
+// (register decision 475): sqrt(a) / sqrt(mu) cannot overflow unless the
+// period does, nor fall into the subnormals unless the period does.
+// orbitInfo and propagateElements both take it from here, so the two cannot
+// drift apart. What they had, 2 pi / n and 2 pi / (sqrt(mu) alpha
+// sqrt(alpha)), was 0 or infinite on 171 of 6,978 whole-range orbits whose
+// period is a double -- where the period is tiny, the mean motion is beyond a
+// double -- and this is on 3, all subnormal, measured against 60-digit
+// references on 2026-10-11; worst 3.05 ulp at ordinary scales. A period of 0
+// was worse than wrong in propagateElements: fmod(dt, 0) is a NaN, and an
+// orbit it could propagate was refused. propagate() keeps its own form, for
+// the reason given there (register decision 477).
+[[nodiscard]] Seconds periodOf(Metres sma, GravParam mu) noexcept {
+    const f64 a = sma.value();
+    return Seconds{kTau * ((std::sqrt(a) / std::sqrt(mu.value())) * a)};
+}
+
 } // namespace
 
 // --- state <-> elements ----------------------------------------------------
@@ -1197,7 +1215,7 @@ OrbitInfo orbitInfo(const Elements& el, GravParam mu) {
         // the cube at ordinary scales -- and the cube was 0 or infinite on 4,189
         // of 6,807 whole-range cases, sqrt(mu / a) / a on 353, this on none.
         info.meanMotion = RadiansPerSecond{std::sqrt(m) / std::sqrt(a) / a};
-        info.period = Seconds{kTau / info.meanMotion.value()};
+        info.period = periodOf(el.sma, mu);
         info.energy = SpecificEnergy{-m / (2.0 * a)};
     } else {
         info.meanMotion = RadiansPerSecond{0.0};
@@ -1471,6 +1489,11 @@ std::expected<StateVector, OrbitError> propagate(const StateVector& sv, GravPara
     // the universal anomaly small, which is what keeps Newton convergent when
     // the sim runs at 100000x and a single dt spans months.
     if (conicOf(alpha * r0) == Conic::Ellipse) {
+        // Not periodOf above, deliberately (register decision 477): this form
+        // overflows only where the mean motion passes 2^1024, and every state
+        // found there is refused before this line -- a circular orbit cannot
+        // have both r^2 and v^2 in range at that scale, and the nearly radial
+        // ones tried could not be built at all.
         const f64 period = kTau / (sqrtMu * alpha * std::sqrt(alpha));
         seconds = std::fmod(seconds, period);
     }
@@ -1556,7 +1579,7 @@ propagateElements(const Elements& el, GravParam mu, Seconds dt) {
     f64 seconds = dt.value();
     // Whole revolutions of a closed orbit are a no-op, as in propagate().
     if (alpha > 0.0) {
-        const f64 period = kTau / (sqrtMu * alpha * std::sqrt(alpha));
+        const f64 period = periodOf(el.sma, mu).value();
         seconds = std::fmod(seconds, period);
     }
 

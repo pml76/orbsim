@@ -1371,3 +1371,47 @@ TEST_CASE("the mean motion is within its budget at the review's scales",
     requireMeanMotionWithinBudget(
         {.name = "1e-10 m about 1e300", .mu = 1e300, .sma = 1e-10, .meanMotion = 1e165});
 }
+
+// Register decision 475: the period where the mean motion is beyond a double.
+// a = 2^-600 m about mu = 2^248 has a mean motion of exactly 2^1024 rad/s, one
+// binade past the largest double, and a period of 2 pi 2^-1024 s -- a normal
+// double, and exact, since it is tau scaled by a power of two. 2 pi / n gave 0
+// in orbitInfo, and in propagateElements a period of 0 made fmod(dt, 0) a NaN
+// and the propagation `NotFinite`.
+namespace {
+
+constexpr f64 kTinyOrbitMu = 0x1p248;
+constexpr f64 kTinyOrbitSma = 0x1p-600;
+
+[[nodiscard]] Elements tinyCircularOrbit() {
+    return Elements{
+        .sma = Metres{kTinyOrbitSma},
+        .ecc = eccentricity(0.0),
+        .inc = Radians{0.0},
+        .lan = Radians{0.0},
+        .aop = Radians{0.0},
+        .tra = Radians{0.0},
+        .slr = Metres{kTinyOrbitSma},
+    };
+}
+
+} // namespace
+
+TEST_CASE("the period is a double wherever it is one, even past the mean motion's range",
+          "[orbit][scale][regression]") {
+    const auto mu = GravParam::from(kTinyOrbitMu);
+    REQUIRE(mu.has_value());
+    const f64 period = std::ldexp(kTau, -1024);
+
+    const OrbitInfo info = orbitInfo(tinyCircularOrbit(), *mu);
+    CAPTURE(info.period.value(), period);
+    REQUIRE(info.closed);
+    REQUIRE(bitsOf(info.period.value()) == bitsOf(period));
+
+    INFO("a quarter of the period on, a circular orbit is a quarter turn round");
+    const auto moved = propagateElements(tinyCircularOrbit(), *mu, Seconds{period / 4.0});
+    INFO(errorName(moved));
+    REQUIRE(moved.has_value());
+    CAPTURE(moved->tra.value());
+    REQUIRE_THAT(moved->tra.value(), WithinAbsOf(kPi / 2.0, Tolerance{1e-12}));
+}
