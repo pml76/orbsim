@@ -41,6 +41,11 @@
 //     being corrected can still be finite, and what comes back is a correct hi
 //     with a NaN error term. A state whose r v^2 / mu is 1.6e305, a perfectly
 //     ordinary double, reached this and returned a NaN eccentricity.
+//     **Scaling inside `split` was not the whole answer** (M1-118, finding
+//     1.3): within 2^-26 of the top of the range the split's high half itself
+//     rounds to 2^1024, and a finite product near the largest double overflows
+//     in its partial products. `twoProduct` now scales one operand before it
+//     splits anything, and is exact up to the largest double.
 //   * An intermediate that legitimately overflows must not become a NaN. Every
 //     operation below falls back to the plain double result the moment its own
 //     output stops being finite, instead of computing a correction term out of
@@ -160,7 +165,18 @@ struct OrderedPair {
 // Above 2^996 the split is taken on a copy scaled down by 2^28 and the halves
 // scaled back, both exact, because 2^27 * a would otherwise overflow. See the
 // note at the top of this file: the failure without this is silent.
+//
+// **Its domain stops short of the largest double**, at (2 - 2^-26) 2^1023,
+// 0x1.ffffffcp+1023: from there up the high half rounds to 2^1024, which no
+// double holds, and the split comes back infinite. Measured exactly on
+// 2026-10-11 -- the double just below it splits, it does not. Asserted rather
+// than handled (register decision 467), because nothing here reaches it:
+// `twoProduct` scales before it splits. A NaN passes, as everywhere in this
+// header (ADR 0002).
+inline constexpr f64 kSplitLimit = 0x1.ffffffcp+1023;
+
 [[nodiscard]] constexpr DoubleDouble split(f64 a) noexcept {
+    ORBSIM_EXPECTS(!(absOf(a) >= kSplitLimit));
     constexpr f64 kSplitConstant = 134217729.0; // 2^27 + 1
     constexpr f64 kSplitCeiling = 0x1p996;
     constexpr f64 kSplitDown = 0x1p-28;
@@ -176,9 +192,29 @@ struct OrderedPair {
     return {.hi = hi, .lo = a - hi};
 }
 
+// The rounding error of a product, from the four partial products of the
+// split halves: exact while neither factor nor the product passes 2^996, so
+// that no split needs scaling and no partial product can overflow.
+// `twoProduct` below sees to that. The pair is OrderedPair only for its two
+// names; the order does not matter here.
+[[nodiscard]] constexpr f64 productErrorInRange(const OrderedPair& factors) noexcept {
+    const f64 product = factors.larger * factors.smaller;
+    const DoubleDouble x = split(factors.larger);
+    const DoubleDouble y = split(factors.smaller);
+    return (((x.hi * y.hi) - product) + (x.hi * y.lo) + (x.lo * y.hi)) + (x.lo * y.lo);
+}
+
 // The exact product of two doubles: hi is their rounded product and lo is
-// exactly the rounding error, reconstructed from the four partial products of
-// the split halves.
+// exactly the rounding error.
+//
+// **Up to the largest double** (M1-118, finding 1.3, register decision 467).
+// Where a factor or the product passes 2^996 the larger factor is scaled down
+// by 2^28 first and the error scaled back up: both exact, since the scaled
+// product is at least 2^-106 and so far from the subnormals, and the error is
+// then computed where nothing can overflow. Before this, twoProduct(DBL_MAX,
+// 0.5) had a NaN error term and exact(DBL_MAX) / exact(2.0) came out as minus
+// infinity. Measured on 2026-10-11 against fma over 3.9 million products near
+// the top of the range: 330,702 wrong before, none after.
 //
 // Interchangeable, for the same reason as twoSum above: multiplication is
 // commutative and so is the error term.
@@ -186,10 +222,16 @@ struct OrderedPair {
 [[nodiscard]] constexpr DoubleDouble twoProduct(f64 a, f64 b) noexcept {
     const f64 product = a * b;
     if (!isFinite(product)) return {.hi = product, .lo = 0.0};
-    const DoubleDouble x = split(a);
-    const DoubleDouble y = split(b);
-    const f64 error = (((x.hi * y.hi) - product) + (x.hi * y.lo) + (x.lo * y.hi)) + (x.lo * y.lo);
-    return {.hi = product, .lo = error};
+    constexpr f64 kScaleAbove = 0x1p996;
+    constexpr f64 kScaleDown = 0x1p-28;
+    constexpr f64 kScaleUp = 0x1p28;
+    const OrderedPair factors = absOf(a) >= absOf(b) ? OrderedPair{.larger = a, .smaller = b}
+                                                     : OrderedPair{.larger = b, .smaller = a};
+    if (absOf(factors.larger) <= kScaleAbove && absOf(product) <= kScaleAbove) {
+        return {.hi = product, .lo = productErrorInRange(factors)};
+    }
+    const OrderedPair scaled{.larger = factors.larger * kScaleDown, .smaller = factors.smaller};
+    return {.hi = product, .lo = productErrorInRange(scaled) * kScaleUp};
 }
 
 [[nodiscard]] constexpr DoubleDouble operator-(DoubleDouble a) noexcept {
@@ -293,6 +335,12 @@ static_assert(nearlyEqual(split(-0x1.8p1020).hi + split(-0x1.8p1020).lo,
 // A product big enough to overflow the split, small enough to be a double.
 // Without the ceiling in split() the error term here is a NaN.
 static_assert(isFinite(twoProduct(0x1p1000, 0x1p-100).lo));
+// And the top of the range, where the split's own scaling was not enough: the
+// largest double halved is exact, so its error term is zero (M1-118).
+static_assert(nearlyEqual(twoProduct(0x1.fffffffffffffp+1023, 0.5).lo, 0.0, Tolerance{0.0}));
+static_assert(nearlyEqual(toDouble(exact(0x1.fffffffffffffp+1023) / exact(2.0)),
+                          0x1.fffffffffffffp+1022,
+                          Tolerance{0.0}));
 
 // The sum that cancels: (1 + 2^-60) - 1 is 2^-60 exactly, which a double alone
 // cannot say at all.

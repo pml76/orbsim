@@ -87,26 +87,34 @@ struct ExponentRange {
     int highest{};
 };
 
+// The engine, read directly rather than through a std:: distribution, for the
+// reason tests/TimeTestSupport.hpp gives: the distributions' algorithms differ
+// between standard libraries, so a seed drew different cases under each
+// toolchain (M1-118, review finding 3.8, register decision 442).
 class Sampler {
 public:
-    // A double with a uniformly random 52-bit mantissa and an exponent drawn
-    // uniformly from a range, which is what covers "every scale" rather than
-    // "every value between 0 and 1".
+    // A double with a uniformly random 52-bit mantissa -- the whole of [1, 2) --
+    // and an exponent drawn uniformly from a range, both ends included, which
+    // is what covers "every scale" rather than "every value between 0 and 1".
+    //
+    // **It drew from [1, 1.5) until 2026-10-11**, and never the top exponent of
+    // its range, so the top of every binade went untested; the review's
+    // finding 1.3 lived there (M1-118). The modulo below favours the lowest
+    // exponents by at most a range's width over 2^64, about 1e-17.
     [[nodiscard]] f64 atExponent(const ExponentRange& range) {
-        const f64 mantissa = 1.0 + (unit_(rng_) * 0.5);
-        const int exponent =
-            range.lowest +
-            static_cast<int>(unit_(rng_) * static_cast<f64>(range.highest - range.lowest));
-        const f64 sign = (unit_(rng_) < 0.5) ? -1.0 : 1.0;
+        const f64 mantissa = 1.0 + (static_cast<f64>(rng_() >> 12U) * 0x1p-52);
+        const auto width = static_cast<std::uint64_t>(range.highest - range.lowest) + 1U;
+        const int exponent = range.lowest + static_cast<int>(rng_() % width);
+        const f64 sign = ((rng_() & 1U) == 0U) ? 1.0 : -1.0;
         return sign * std::scalbn(mantissa, exponent);
     }
 
-    [[nodiscard]] f64 unit() { return unit_(rng_); }
+    // A double in [0, 1), from the engine's top 53 bits.
+    [[nodiscard]] f64 unit() { return static_cast<f64>(rng_() >> 11U) * 0x1p-53; }
 
 private:
     // NOLINTNEXTLINE(cert-msc32-c,cert-msc51-cpp,bugprone-random-generator-seed)
     std::mt19937_64 rng_{kSeed};
-    std::uniform_real_distribution<f64> unit_{0.0, 1.0};
 };
 
 } // namespace
@@ -152,6 +160,10 @@ TEST_CASE("splitting survives the top of the range", "[core][dd]") {
         const f64 small = sampler.atExponent({.lowest = -200, .highest = -20});
         const f64 product = big * small;
         if (!isFinite(product) || std::abs(product) < 0x1p-900) continue;
+        // split's domain ends just short of the largest double (its
+        // precondition); twoProduct below is checked past it, in the case after
+        // this one.
+        if (std::abs(big) >= orb::kSplitLimit) continue;
 
         const DoubleDouble halves = split(big);
         CAPTURE(kSeed, i, big, small);
@@ -166,6 +178,54 @@ TEST_CASE("splitting survives the top of the range", "[core][dd]") {
         REQUIRE(isFinite(got.lo));
         REQUIRE(identical(got.lo, std::fma(big, small, -product)));
     }
+}
+
+namespace {
+
+// The sweep half of the case below, a function of its own for the size limit.
+void requireExactNearTheTop() {
+    Sampler sampler;
+    for (int i = 0; i < kSplitCases; ++i) {
+        // The top of a binade: 2 less up to 2^25 units of the last place.
+        const auto nearTwo = [&sampler] {
+            return 2.0 - (std::trunc(sampler.unit() * 0x1p25) * 0x1p-52);
+        };
+        const f64 big = std::ldexp(nearTwo(), 1022 + (i % 2));
+        // Either a small factor, or a second one near the top of its own binade
+        // that keeps the product just inside the range.
+        const f64 other = (i % 3 == 0) ? sampler.atExponent({.lowest = -60, .highest = 0})
+                                       : std::ldexp(nearTwo(), -1 - (i % 3));
+        const f64 product = big * other;
+        if (!isFinite(product)) continue;
+
+        const DoubleDouble got = twoProduct(big, other);
+        const f64 wantError = std::fma(big, other, -product);
+        CAPTURE(kSeed, i, big, other);
+        INFO(std::format(
+            "product {:.17g}, error {:.17g}, fma says {:.17g}", product, got.lo, wantError));
+        REQUIRE(identical(got.hi, product));
+        REQUIRE(identical(got.lo, wantError));
+    }
+}
+
+} // namespace
+
+// The top of the range, which the split's own scaling did not reach (M1-118,
+// finding 1.3): within 2^-26 of the top of a binade the split's high half
+// rounds up a power of two, so near the largest double it is 2^1024, and a
+// finite product near the largest double overflows in its partial products.
+// twoProduct(DBL_MAX, 0.5) had a NaN error term. Uniform draws almost never
+// land there -- 0 wrong in 3.9 million when measured -- so these are aimed at
+// it: a mantissa within 2^-25 of 2.
+TEST_CASE("the error term of a product is exact up to the largest double", "[core][dd]") {
+    SECTION("the review's cases") {
+        constexpr f64 kLargest = std::numeric_limits<f64>::max();
+        REQUIRE(identical(twoProduct(kLargest, 0.5).lo, 0.0));
+        REQUIRE(identical(toDouble(exact(kLargest) * exact(0.5)), kLargest / 2.0));
+        REQUIRE(identical(toDouble(exact(kLargest) / exact(2.0)), kLargest / 2.0));
+    }
+
+    SECTION("drawn from the top of a binade") { requireExactNearTheTop(); }
 }
 
 // The sum, against integer arithmetic. Operands are integers of up to 62 bits
