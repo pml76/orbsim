@@ -540,6 +540,51 @@
       }
     }
   },
+  "m1-117.json": {
+    "commit": "24e545091dd711ba8a334f936a2e90e498ac1d66",
+    "tree": "build/debug",
+    "date": "2026-10-11",
+    "judges": {
+      "program orbsim_header_selfcheck": "35ba9d9080f6b72a",
+      "program test_earth_orientation.exe": "32424571a6df90e9",
+      "program test_planetary_grid.exe": "1904a982d4b7a59b",
+      "program test_probe_grid.exe": "40e51a8d2b944a27",
+      "ctest float_equal_guard": "73ee82148871c9fb",
+      "ctest float_equal_guard_self_test": "25423805883fa5c3",
+      "ctest mutate_self_test": "236497c8cc8d2115"
+    },
+    "judge_parts": {
+      "program orbsim_header_selfcheck": {
+        "commands": "c2956f2359d139f5",
+        "build-tree files": "36d3bc451764523c",
+        "other files": "6ccb550d50a9ed5a"
+      },
+      "program test_earth_orientation.exe": {
+        "commands": "fd2f1649bfc6e1a4",
+        "build-tree files": "bbd0b9f6e0bd965a",
+        "other files": "c47a5897841d1333"
+      },
+      "program test_planetary_grid.exe": {
+        "commands": "167c6f7a1d97d9a6",
+        "build-tree files": "b7ab6be0a2e63dfa",
+        "other files": "8c66f7e1138b869c"
+      },
+      "program test_probe_grid.exe": {
+        "commands": "8f78c48e7cb5a1eb",
+        "build-tree files": "bbd0b9f6e0bd965a",
+        "other files": "c47a5897841d1333"
+      },
+      "ctest float_equal_guard": {
+        "definition": "0aa42388442eb58b"
+      },
+      "ctest float_equal_guard_self_test": {
+        "definition": "425d01a5c6687b4f"
+      },
+      "ctest mutate_self_test": {
+        "definition": "2e907c7dd50344c3"
+      }
+    }
+  },
   "m1-12-release.json": {
     "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/relwithdebinfo",

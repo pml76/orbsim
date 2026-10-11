@@ -95,5 +95,5 @@ blind to a wrong diagnosis, and it now checks each refusal's reason
       `linux-gcc` tree builds.
 - [x] The upstream fix and the removal condition recorded in
       `THIRD_PARTY.md`.
-- [ ] The task's mutant file has run after the commit and its record is
+- [x] The task's mutant file has run after the commit and its record is
       committed.
