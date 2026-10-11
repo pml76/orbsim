@@ -361,6 +361,8 @@ propagate(const StateVector& sv, GravParam mu, Seconds dt);
 // Reports `NotFinite` for a non-finite time step or element set. `mu` cannot
 // be either, since M1-87. `slr` must be positive and finite: it is the
 // one shape parameter every conic has, and the anomaly is read back through it.
+// Reports `UnreachableAnomaly` for an anomaly past a hyperbola's asymptote, as
+// `stateFromElements` does: there is no point on the trajectory to start from.
 [[nodiscard]] std::expected<Elements, OrbitError>
 propagateElements(const Elements& el, GravParam mu, Seconds dt);
 

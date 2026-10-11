@@ -501,3 +501,55 @@ TEST_CASE("an anomaly just before periapsis is not 2 pi", "[orbit][regression]")
     INFO("and it is the angle just before periapsis, not one a turn away");
     REQUIRE(std::min(el->tra.value(), kTau - el->tra.value()) < 1e-15);
 }
+
+// M1-118, finding 1.4: an element set whose anomaly is past a hyperbola's
+// asymptote describes no point on the trajectory, and stateFromElements refuses
+// it as `UnreachableAnomaly`. propagateElements refused it too, but as
+// `NotFinite`, and only because the negative radius led to a NaN that happened
+// to spread there: the review measured 6,000 such element sets, all reported
+// `NotFinite`, none by name.
+namespace {
+
+[[nodiscard]] Elements hyperbolaAt(f64 ecc, Radians anomaly) {
+    constexpr f64 kSemiMajorAxis = -1e7; // m, negative on a hyperbola
+    return Elements{
+        .sma = Metres{kSemiMajorAxis},
+        .ecc = Eccentricity::from(ecc).value(),
+        .inc = Radians{0.3},
+        .lan = Radians{1.0},
+        .aop = Radians{2.0},
+        .tra = anomaly,
+        .slr = Metres{kSemiMajorAxis * (1.0 - (ecc * ecc))},
+    };
+}
+
+// Time steps of zero, either sign, and several hours.
+void requireUnreachableWhenPropagated(const Elements& el) {
+    INFO("stateFromElements refuses the same set, so the two agree");
+    const auto state = stateFromElements(el, kMuEarth);
+    REQUIRE(!state.has_value());
+    REQUIRE(state.error() == OrbitError::UnreachableAnomaly);
+    for (const f64 dt : std::to_array<f64>({0.0, 60.0, -60.0, 1e4})) {
+        const auto moved = propagateElements(el, kMuEarth, Seconds{dt});
+        CAPTURE(el.ecc.value(), el.tra.value(), dt);
+        REQUIRE(!moved.has_value());
+        CAPTURE(describe(moved.error()));
+        REQUIRE(moved.error() == OrbitError::UnreachableAnomaly);
+    }
+}
+
+} // namespace
+
+TEST_CASE("an anomaly past the asymptote is refused by name when propagated",
+          "[orbit][regression]") {
+    // Eccentricities from just above 1 to 50, three anomalies between the
+    // asymptote and the half turn, and both sides of periapsis.
+    for (const f64 ecc : std::to_array<f64>({1.01, 1.5, 2.0, 10.0, 50.0})) {
+        const f64 asymptote = std::acos(-1.0 / ecc);
+        for (const f64 share : std::to_array<f64>({0.01, 0.5, 0.99})) {
+            const f64 beyond = asymptote + (share * (kPi - asymptote));
+            requireUnreachableWhenPropagated(hyperbolaAt(ecc, Radians{beyond}));
+            requireUnreachableWhenPropagated(hyperbolaAt(ecc, Radians{kTau - beyond}));
+        }
+    }
+}

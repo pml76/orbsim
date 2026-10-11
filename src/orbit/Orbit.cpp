@@ -1498,9 +1498,19 @@ propagateElements(const Elements& el, GravParam mu, Seconds dt) {
     const f64 sqrtMu = std::sqrt(m);
     const f64 p = el.slr.value();
     const f64 e = el.ecc.value();
+    // The anomaly has to be one the conic reaches, as stateFromElements
+    // requires. Past a hyperbola's asymptote 1 + e cos v is not positive and
+    // the radius below comes out negative; that was reported as `NotFinite`
+    // only because the NaN that followed happened to spread there -- 6,000 of
+    // 6,000 such element sets, in the review -- and a zero time step was not
+    // refused at all, but returned the anomaly mirrored through the focus
+    // (M1-118, finding 1.4).
+    const f64 factor = onePlusECosTrueAnomaly(el);
+    if (!(factor > 0.0)) return std::unexpected(OrbitError::UnreachableAnomaly);
+
     // 1/a: zero on a parabola, which is exactly what an infinite sma means.
     const f64 alpha = std::isfinite(el.sma.value()) ? 1.0 / el.sma.value() : 0.0;
-    const f64 r0 = p / onePlusECosTrueAnomaly(el);
+    const f64 r0 = p / factor;
     // r . v = r sqrt(mu/p) e sin nu, with sqrt(mu)/sqrt(p) rather than
     // sqrt(mu/p) for the range, as orbitInfo does.
     const f64 rdotv = r0 * e * std::sin(el.tra.value()) * (sqrtMu / std::sqrt(p));
