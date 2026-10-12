@@ -266,13 +266,15 @@ struct Input {
     return Input{
         .state =
             {
-                std::get<0>(raw),
-                std::get<1>(raw),
-                std::get<2>(raw),
-                std::get<3>(raw),
-                std::get<4>(raw),
-                std::get<5>(raw),
-                std::get<6>(raw),
+                {
+                    std::get<0>(raw),
+                    std::get<1>(raw),
+                    std::get<2>(raw),
+                    std::get<3>(raw),
+                    std::get<4>(raw),
+                    std::get<5>(raw),
+                    std::get<6>(raw),
+                },
             },
         .elements =
             {
