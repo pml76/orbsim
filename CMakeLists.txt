@@ -39,6 +39,15 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_CXX_SCAN_FOR_MODULES OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
+# Python, for the scripts that check this project and its build. Looked up
+# here, before anything uses it: until 2026-10-12 it was looked up beside
+# doc-links, eight hundred lines below the first test that runs a script, so a
+# tree's first configure registered float_equal_guard and its self-test as
+# `cmake -E false`, and every new tree failed its first `check` -- measured in
+# a fresh linux-gcc tree, both tests failing until a second configure found
+# the cached value. Every user tests it and fails loudly when it is empty.
+find_program(ORBSIM_PYTHON NAMES python3 python)
+
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
     set(CMAKE_BUILD_TYPE RelWithDebInfo CACHE STRING "" FORCE)
 endif()
@@ -1763,7 +1772,6 @@ endif()
 # words, and only following the link finds out. A survey of 118 repositories
 # put 59% of them in that state. The script proves it can fail before it is
 # trusted -- see its own docstring.
-find_program(ORBSIM_PYTHON NAMES python3 python)
 if(ORBSIM_PYTHON)
     add_custom_target(doc-links
             COMMAND ${ORBSIM_PYTHON}
