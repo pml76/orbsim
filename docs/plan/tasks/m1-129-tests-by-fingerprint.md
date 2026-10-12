@@ -2,7 +2,8 @@
 
 Phase: B | Status: not started
 Prerequisites: M1-118
-Decided by: register decisions 483-491 and 495-506, ruled 2026-10-12.
+Decided by: register decisions 483-491, 495-506 and 508-510, ruled
+2026-10-12.
 Continues [ADR 0024](../../adr/0024-verification-costs-what-changed.md); its
 sibling, the code as modules, is [M1-130](m1-130-code-as-modules.md).
 
@@ -33,6 +34,14 @@ changed, keeps a full run before every push, and removes two fixed costs every
 - **A mutation pass leaves a full rebuild behind**: `mutate.py` restores files
   with `git checkout`, which gives them a new time; the next `check` took 18
   minutes for both trees with no source change.
+- **What the tests open, recorded** with Process Monitor over a full Debug
+  run (2026-10-12, after the ruling): six programs read files under `data/`
+  and the application reads `tests/golden/`, none named on a command line;
+  five read images the probes write in the same run (decision 508); and the
+  results also rest on files outside the repository -- the Vulkan SDK's
+  validation layer, Windows' time-zone database, the Python, CMake and clang
+  installations (decision 509). Two more script tests read whole folders
+  (decision 510).
 
 ## What to do
 
