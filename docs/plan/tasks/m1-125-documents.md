@@ -1,7 +1,7 @@
 # M1-125 — The documents and comments the review found wrong
 
 Phase: B | Status: not started
-Prerequisites: M1-127
+Prerequisites: M1-124 -- still last of the review's tasks, by the order of register decision 495, ruled 2026-10-12: lower levels first
 Decided by: register decisions 446 and 450, ruled 2026-10-10 on the review's
 group 7 ([the findings](../../review/m1-116-findings.md))
 
@@ -20,7 +20,7 @@ outside `STATUS.md`, and documents that contradict each other.
   router's "the only place" says "toolchain versions and counts".
 - **7.3** every contradiction settled in one place: the presets "at every
   phase gate"; **every gate's prerequisites naming the tasks added since**
-  (M1-111 to M1-127 in phase B's, M1-114 in phase F's, all of them in the
+  (M1-111 to M1-130 in phase B's, M1-114 in phase F's, all of them in the
   milestone's); the phase B gate's licence list pointing at `THIRD_PARTY.md`;
   where the fuzzers run; the register's header and section 8; the finished
   task documents' stale status lines, with a dated note rather than a

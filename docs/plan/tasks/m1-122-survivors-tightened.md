@@ -1,7 +1,7 @@
 # M1-122 — The declared survivors: records corrected, the catchable ones caught
 
 Phase: B | Status: not started
-Prerequisites: M1-121
+Prerequisites: M1-128, by the order of register decision 495, ruled 2026-10-12: lower levels first
 Decided by: register decisions 444 and 450, ruled 2026-10-10 on the review's
 group 5 ([the findings](../../review/m1-116-findings.md))
 

@@ -1,7 +1,7 @@
 # M1-127 — The `asan` preset and four unasked-for refactors, reviewed
 
 Phase: B | Status: not started
-Prerequisites: M1-124
+Prerequisites: M1-129 -- moved up from after M1-124 by the order of register decision 495, ruled 2026-10-12: lower levels first, since its rulings on the `Quantity` base and the `Scalar.hpp` split shape the bottom level of [M1-130](m1-130-code-as-modules.md)'s structure (decision 492)
 Decided by: register decisions 449 and 450, ruled 2026-10-10
 
 ## Purpose

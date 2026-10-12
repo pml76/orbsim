@@ -1,7 +1,7 @@
 # M1-112 — The probe display format's rule made reachable
 
 Phase: B | Status: not started
-Prerequisites: M1-108
+Prerequisites: M1-108; in the queue after M1-120, by the order of register decision 495, ruled 2026-10-12: lower levels first
 Decided by: register decision 405 (b) -- carried out of the phase A gate as a
 task; the shape is M1-108's (register decisions 385-390)
 

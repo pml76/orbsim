@@ -1,7 +1,7 @@
 # M1-120 — The application's and the renderer's review findings
 
 Phase: B | Status: not started
-Prerequisites: M1-119
+Prerequisites: M1-121 -- the view, the renderer and the application after the tools, by the order of register decision 495, ruled 2026-10-12: lower levels first
 Decided by: register decisions 441 and 450, ruled 2026-10-10 on the review's
 findings 2.1-2.12 ([the findings](../../review/m1-116-findings.md))
 

@@ -1,7 +1,7 @@
 # M1-113 — The application stops, rather than waits, on a debug-library check
 
 Phase: B | Status: not started
-Prerequisites: M1-21
+Prerequisites: M1-21; in the queue after M1-112, by the order of register decision 495, ruled 2026-10-12: lower levels first
 Decided by: register decision 405 (c) -- carried out of the phase A gate as a
 task; register decision 363 fixed the same gap in the suites
 

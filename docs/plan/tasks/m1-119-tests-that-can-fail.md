@@ -1,7 +1,7 @@
 # M1-119 — Tests that can fail for what they claim
 
 Phase: B | Status: not started
-Prerequisites: M1-118
+Prerequisites: M1-130 -- after the code's new structure, by the order of register decision 495, ruled 2026-10-12: lower levels first; its test changes land in that structure
 Decided by: register decisions 442 and 450, ruled 2026-10-10 on the review's
 findings 3.2-3.11 ([the findings](../../review/m1-116-findings.md))
 

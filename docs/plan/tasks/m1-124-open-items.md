@@ -1,4 +1,6 @@
-# M1-124 — STATUS.md's open items (a) to (d)
+# M1-124 — STATUS.md's open items (b) to (d)
+
+*(Item (a) moved to M1-129 on 2026-10-12, register decision 495.)*
 
 Phase: B | Status: not started
 Prerequisites: M1-123
@@ -12,10 +14,9 @@ fixed. The owner ruled each fixed; item (e) is M1-126, on the second machine.
 
 ## What to do
 
-- **(a)** a test that starts the application without writing a sidecar --
-  the smoke tests, the benchmark, golden acceptance -- records the shader
-  files it read, so `mutants-due.py` stops counting every shader as read
-  (decision 394's gap).
+- ~~**(a)**~~ the shader files a test read: moved to
+  [M1-129](m1-129-tests-by-fingerprint.md), whose tests record every file
+  they read (decisions 489 and 495).
 - **(b)** the 400 km jitter sequence kept, and its name and comment say what
   it checks: that five frames from 400 km stay put. The narrowing defect is
   the 1 km sequence's to catch (decision 321), and physics keeps the 400 km

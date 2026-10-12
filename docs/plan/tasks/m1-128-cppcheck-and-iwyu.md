@@ -1,7 +1,7 @@
 # M1-128 — cppcheck and include-what-you-use in `check`
 
 Phase: B | Status: not started
-Prerequisites: M1-121
+Prerequisites: M1-113 -- after M1-130's decision point, by the order of register decision 495, ruled 2026-10-12: lower levels first; whether include-what-you-use becomes a rule is ruled there, with a measurement of what it still finds where `import` replaces `#include` (decision 494)
 Decided by: register decisions 455-461, ruled 2026-10-10 at the owner's
 request, reversing decisions 437 and 448
 

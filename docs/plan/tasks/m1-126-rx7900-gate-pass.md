@@ -21,6 +21,9 @@ On the second machine, from a clean `check` in both trees:
   run every listed file, one at a time (the "for whoever runs a long job"
   notes in `STATUS.md`).
 - Record each verdict per card, as the files already do for Bresenham's rule.
+- **If M1-130's modules are in by then**, build Microsoft's `std.ixx` there
+  too, and record that machine's Visual Studio and clang versions (decision
+  495).
 
 ## Done when
 
