@@ -26,6 +26,9 @@ reason each is fixed with a self-test that shows it failing.
 - **4.7** `doc-links` compares names in their real case, checks bare names
   against the repository's root, and its self-test covers anchors, ADR
   numbers, `file:line` citations and fenced blocks, with mutants for each.
+  And, handed over by decision 507: in a fresh clone with a `build/` folder,
+  six backticked paths into build trees are reported missing, so the first
+  `check` on a new machine fails.
 - ~~**4.8**~~ moved to [M1-129](m1-129-tests-by-fingerprint.md) (decision
   495).
 - **4.9** the link-graph check at the end of `CMakeLists.txt`, recursive,

@@ -2,9 +2,9 @@
 
 Phase: B | Status: not started
 Prerequisites: M1-118
-Decided by: register decisions 483-491 and 495, ruled 2026-10-12. Continues
-[ADR 0024](../../adr/0024-verification-costs-what-changed.md); its sibling,
-the code as modules, is [M1-130](m1-130-code-as-modules.md).
+Decided by: register decisions 483-491 and 495-506, ruled 2026-10-12.
+Continues [ADR 0024](../../adr/0024-verification-costs-what-changed.md); its
+sibling, the code as modules, is [M1-130](m1-130-code-as-modules.md).
 
 ## Purpose
 
@@ -55,8 +55,12 @@ changed, keeps a full run before every push, and removes two fixed costs every
    self-test that changes one file and requires exactly the expected tests to
    run, and one that requires the full run to skip nothing (VERIFICATION rule
    23).
-6. **`mutate.py` restores each file's time with its text**, so a pass leaves
-   no rebuild behind.
+6. **`mutate.py` restores the tree from a snapshot** (decision 506): the
+   build outputs and Ninja's record files copied at the start of a pass, and
+   after each mutant the outputs, then the file's text, then its time put
+   back, with everything the tests wrote; so a pass leaves no rebuild behind.
+   Restoring the text and the time alone was measured to leave outputs built
+   from mutated code.
 7. **The `mutants_due` tests read the build graph once** rather than eight
    times; and M1-121's findings **4.5** -- `--no-tests=error` on every CTest
    judge, `--verify` refusing a judge that does not exist and an empty mutant
@@ -80,8 +84,8 @@ push is enforced.
 
 At least: a fingerprint that ignores a file it should include; a skipped test
 that should have run; the full run before a push skipped; `mutate.py`
-restoring the text but not the time; a recorded read left out -- each caught by
-its self-test.
+restoring the text and the time but not the outputs; a recorded read left out
+-- each caught by its self-test.
 
 ## Done when
 
