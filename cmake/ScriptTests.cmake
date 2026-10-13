@@ -8,13 +8,15 @@
 # due again when this file changes, and not on every edit to CMakeLists.txt.
 # Registered with the configure guard (M1-98) before it is included.
 
-# The harness's rebuild plan (M1-97, register decision 224): after restoring a
-# mutant, rebuild what it built, less what the next mutant builds itself. The
-# rule is one function, proven by its self-test; the loop that uses it is
-# proven by the pass of scripts/mutants/m1-95.json.
+# The mutation harness's own rules. Since M1-129 (register decisions 506 and
+# 512-519) that is chiefly the snapshot a pass restores the build tree from,
+# shown on a scratch project this cmake configures and this ninja builds; the
+# loop that uses it is proven by the pass of scripts/mutants/m1-95.json. Until
+# then a pass rebuilt what each mutant had built (M1-97, decision 224).
 if(ORBSIM_PYTHON)
     add_test(NAME mutate_self_test
             COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutate.py --self-test
+                    ${CMAKE_COMMAND} ${CMAKE_MAKE_PROGRAM}
     )
 else()
     add_test(NAME mutate_self_test COMMAND ${CMAKE_COMMAND} -E false)
@@ -138,7 +140,8 @@ if(ORBSIM_PYTHON AND ORBSIM_BUILD_APP)
     # m1-18 due through those probes' sidecars, and m1-19 only through the
     # fixture its readers require (CTest runs every probe before them); it
     # must not make due m1-16, whose probe is `clear` and reads other shaders,
-    # nor m1-97, whose mutants are of a Python script and build nothing. The
+    # nor m1-104, whose mutants are of a Python script and build nothing (m1-97
+    # until M1-129 deleted it, register decision 516). The
     # sidecars must be this build's, so the probes run first: probe_data, and
     # the two reruns of clear that m1-16 judges by too, probe_clear_reruns --
     # without them a sidecar older than the application counts every shader,
@@ -148,7 +151,7 @@ if(ORBSIM_PYTHON AND ORBSIM_BUILD_APP)
             COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutants-due.py
                     ${CMAKE_BINARY_DIR} --assume-changed shaders/lambert.frag --only-assumed
                     --expect-due m1-18.json --expect-due m1-19.json
-                    --expect-current m1-16.json --expect-current m1-97.json
+                    --expect-current m1-16.json --expect-current m1-104.json
     )
     # And --expect-current must be able to fail: expecting a file current where
     # it is due must fail the run and say so, as for --expect-due.

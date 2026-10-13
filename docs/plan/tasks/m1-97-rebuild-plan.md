@@ -1,6 +1,9 @@
 # M1-97 — The harness rebuilds only what the next mutant does not
 
-Phase: A | Status: **done, 2026-09-28**
+Phase: A | Status: **done, 2026-09-28; superseded 2026-10-13** by M1-129's
+snapshot (register decisions 506 and 516), which puts the whole build tree
+back after each mutant: `rebuild_plan` and `scripts/mutants/m1-97.json` are
+deleted.
 Prerequisites: M1-95
 Decided by: [ADR 0024](../../adr/0024-verification-costs-what-changed.md); register decisions 224 and 226
 

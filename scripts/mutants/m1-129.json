@@ -1,0 +1,165 @@
+{
+  "task": "M1-129",
+  "tree": "build/relwithdebinfo",
+  "note": "The snapshot a pass restores the build tree from (register decisions 506 and 512-519). Each mutant takes away one part of the put-back -- the outputs, what the tests wrote, the second listing, the source's time, the check of git's bytes, the build's check, the second restore after it -- or one of the rules around it: a leftover snapshot, --restore, and the main loop putting the tree back after each mutant. All are judged by mutate.py's self-test, which runs the put-back on a tree of plain files and on a scratch project CMake configures and Ninja builds, and a whole two-mutant pass shaped as m1-95.json is. Two survive, declared: the order of the put-back's steps, and the check of the snapshot's copies.",
+  "mutants": [
+    {
+      "name": "the outputs are not put back",
+      "file": "scripts/mutate.py",
+      "find": "        shutil.copy2(place / SNAPSHOT_FILES / name, tree / name)",
+      "replace": "        pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ]
+    },
+    {
+      "name": "what a mutant's tests wrote is left in the tree",
+      "file": "scripts/mutate.py",
+      "find": "        (tree / name).unlink()",
+      "replace": "        pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ]
+    },
+    {
+      "name": "the tree is not listed again after the restore",
+      "file": "scripts/mutate.py",
+      "find": "    return (differences(wanted, after)",
+      "replace": "    return ([]",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ]
+    },
+    {
+      "name": "the source's time is left new",
+      "file": "scripts/mutate.py",
+      "find": "        os.utime(path, ns=(path.stat().st_atime_ns, modified))",
+      "replace": "        pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ]
+    },
+    {
+      "name": "other bytes from git get the old time",
+      "file": "scripts/mutate.py",
+      "find": "        if hashlib.sha256(path.read_bytes()).hexdigest() != digest:",
+      "replace": "        if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ]
+    },
+    {
+      "name": "the build's check accepts work left",
+      "file": "scripts/mutate.py",
+      "find": "    if build.returncode != 0 or NO_WORK not in output:",
+      "replace": "    if build.returncode != 0:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ]
+    },
+    {
+      "name": "the outputs are not put back after the build's check",
+      "file": "scripts/mutate.py",
+      "find": "        problems += restore_outputs(tree, place)",
+      "replace": "        pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ]
+    },
+    {
+      "name": "a leftover snapshot does not stop a pass",
+      "file": "scripts/mutate.py",
+      "find": "    if place.exists():\n        return (f\"a stopped pass",
+      "replace": "    if False:\n        return (f\"a stopped pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ]
+    },
+    {
+      "name": "--restore keeps the snapshot",
+      "file": "scripts/mutate.py",
+      "find": "    put_back(root, cmake, tree, place)\n    shutil.rmtree(place)",
+      "replace": "    put_back(root, cmake, tree, place)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ]
+    },
+    {
+      "name": "--restore keeps a snapshot that was never finished",
+      "file": "scripts/mutate.py",
+      "find": "        shutil.rmtree(place)\n        print(f\"the snapshot in {place} was never finished",
+      "replace": "        print(f\"the snapshot in {place} was never finished",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ]
+    },
+    {
+      "name": "the main loop does not put the tree back after each mutant",
+      "file": "scripts/mutate.py",
+      "find": "            put_back(root, args.cmake, root / tree, place)\n        finished = True",
+      "replace": "        finished = True",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ]
+    },
+    {
+      "name": "the text and the time are put back before the outputs",
+      "file": "scripts/mutate.py",
+      "find": "    problems = restore_outputs(tree, place)\n    problems += restore_sources(root, sources)",
+      "replace": "    problems = restore_sources(root, sources)\n    problems += restore_outputs(tree, place)",
+      "expect": "survives",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ],
+      "why": "Accepted by the owner, 2026-10-13 (register decision 519). The order matters only to a pass stopped between two steps, where it decides whether the next build repairs the tree; a put-back that runs to its end gives the same tree either way, and stopping one between two steps would take a hook in the harness's own code."
+    },
+    {
+      "name": "a copy that lost its size or time is accepted",
+      "file": "scripts/mutate.py",
+      "find": "    if wrong:\n        raise RuntimeError(f\"the snapshot's copies",
+      "replace": "    if False:\n        raise RuntimeError(f\"the snapshot's copies",
+      "expect": "survives",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ],
+      "why": "Accepted by the owner, 2026-10-13 (register decision 519). shutil.copy2 kept the time of 40 of 40 programs to the nanosecond, measured 2026-10-13, and a copy that loses one cannot be made without faking the copy itself."
+    }
+  ]
+}

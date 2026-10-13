@@ -584,9 +584,16 @@ into:
   of a surviving mutant, before believing the hole: *is the thing I just broke
   even present in the build I ran?*
 
-It restores the tree with `git checkout --` in a `finally`, and refuses to
+It restores the source with `git checkout --` in a `finally`, and refuses to
 start if any file it will touch is dirty -- so an exception or a Ctrl-C cannot
-leave a mutant in the working tree. A declared `"expect": "survives"` is how an
+leave a mutant in the working tree. **Since M1-129 it restores the build tree
+too** (register decisions 506 and 512-519): it builds the tree and copies it
+before the first mutant, and after each one puts back the outputs, then the
+file's text, then its time, and requires the build to have nothing to do. A
+pass therefore leaves nothing to rebuild; until then the next `check` rebuilt
+everything a restored file reached, 18 minutes for both trees. A pass stopped
+part-way keeps its copy, and the next refuses to start until
+`mutate.py --restore --tree <tree>` has used it. A declared `"expect": "survives"` is how an
 accepted survivor is recorded, as M1-09 has one -- the perspective divide
 multiplying by w, handed to M1-10 by name and killed there; an undeclared
 survivor fails the run, so a mutant that starts surviving after a change is a

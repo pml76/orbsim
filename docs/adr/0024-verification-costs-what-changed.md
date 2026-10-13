@@ -118,6 +118,9 @@ Two more tasks, M1-97 and M1-98 (register decisions 224 to 226).
   next mutant usually built the same ones again. `m1-09.json` took 801 s
   before and 332 s after, with every verdict the same. The rule is one
   function, `rebuild_plan` in `scripts/mutate.py`, with a self-test.
+  *(2026-10-13: replaced by M1-129's snapshot, register decisions 506 and
+  516. A pass now puts the whole build tree back after each mutant, so
+  nothing is left to rebuild, and the function and `m1-97.json` are gone.)*
 - **A build tree set up from text no longer on disk is refused** (M1-98).
   CMake reads `CMakeLists.txt` when a configure starts and writes the
   build plan when it ends. Ninja compares dates, so an edit in between left

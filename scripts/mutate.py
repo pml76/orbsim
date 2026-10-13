@@ -5,7 +5,8 @@
     mutate.py scripts/mutants/m1-08.json --verify        check the anchors only
     mutate.py scripts/mutants --verify                   every task's anchors
     mutate.py scripts/mutants/m1-08.json --tree build/debug
-    mutate.py --self-test                                prove the rebuild plan right
+    mutate.py --restore --tree build/debug               finish a stopped pass's restore
+    mutate.py --self-test [cmake ninja]                  prove the harness's own rules right
 
 Why this exists: VERIFICATION.md rule 19 calls mutation testing "an act, not a
 state", and it has been run by hand on M1-04, M1-05, M1-06, M1-07, M1-86 and
@@ -26,10 +27,19 @@ been walked into:
     test. The report names the failing test cases, so that a kill can be read
     rather than counted.
 
-**It restores the tree through git**, not through copies: it refuses to start
-unless every file it will touch is clean, and it restores with `git checkout
---` in a finally block, so an exception or a Ctrl-C cannot leave a mutant in
-the working tree. That is the one hazard a committed harness must not have.
+**It restores the source through git**: it refuses to start unless every file
+it will touch is clean, and it restores with `git checkout --` in a finally
+block, so an exception or a Ctrl-C cannot leave a mutant in the working tree.
+That is the one hazard a committed harness must not have.
+
+**And the build tree from a snapshot** (M1-129, register decisions 506 and
+512-519). Before the first mutant it builds the tree and copies it; after
+each mutant it puts back the outputs, then the source's text, then its time,
+and requires the build to have nothing to do. A pass therefore leaves no
+rebuild behind -- `git checkout` alone gives a file a new time, and the next
+`check` rebuilt everything that depended on it, 18 minutes for both trees.
+A pass stopped part-way keeps its snapshot, and the next pass refuses to
+start until `--restore` has used it.
 
 A full pass is deliberately **not** part of `check`: it builds the tree once
 per mutant and takes minutes, and rule 19 is periodic by design. **`--verify`
@@ -77,9 +87,12 @@ inheritance.
 
 import argparse
 import datetime
+import hashlib
 import importlib.util
 import json
+import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -145,6 +158,191 @@ def restore(root: Path, files: set) -> None:
         if problem:
             raise RuntimeError(f"the mutated files could not be put back ({problem}; {done.stderr.strip()}). "
                                "Stop, and restore them with `git checkout --` before anything else runs.")
+
+
+# The snapshot a pass restores the build tree from (M1-129, register decisions
+# 506 and 512-519). Everything in the tree is listed -- size and modification
+# time, which is what Ninja itself compares -- and everything is copied but the
+# dependencies' downloaded sources, `_deps/<name>-src/` (decision 513). That
+# takes in what Ninja does not track: the PDBs (562 MiB of the Debug tree), the
+# probes' images (283 MiB) and CTest's own files, which the tests write, and
+# what a configure writes -- for a CMake mutant that includes 236 files under
+# `_deps/`, every dependency's download build and generated scripts, measured
+# on m1-95.json's pass, 2026-10-13. Copying and deleting, measured the same
+# day: Debug 2,297 files, 1.38 GiB, 11.1 s and 4.1 s; RelWithDebInfo 5,150
+# files, 1.16 GiB, 22.8 s and 9.0 s. The sources would add 398 MiB in about
+# 7,000 small files, more than doubling the time, and 36 read-only git files;
+# no configure or build changed one of them. They are listed and not copied,
+# so a change there stops the pass rather than passing unseen.
+UNCOPIED = "_deps/*-src"
+SNAPSHOT_FILES = "files"
+SNAPSHOT_SOURCES = "sources.json"
+# Written last: a snapshot without it was never finished, and no mutant ran.
+SNAPSHOT_LISTING = "listing.json"
+# What Ninja prints when nothing is out of date. Its dry run (`-n`) cannot
+# say it here: it always counts the glob check's re-run of CMake as work
+# (measured 2026-10-13), so the check is a real build, 0.3-0.5 s.
+NO_WORK = "ninja: no work to do."
+
+
+def snapshot_place(root: Path, tree: str) -> Path:
+    """Beside the tree, never inside it, where neither Ninja nor CTest looks,
+    and on the same disk, which is what makes the copy fast (decision 515)."""
+    return root / "build" / f"mutate-snapshot-{Path(tree).name}"
+
+
+def list_tree(tree: Path) -> tuple:
+    """({file: [size, modification time in ns]}, {directory}), relative paths
+    with forward slashes. 8,691 files in 0.5 s, measured 2026-10-13."""
+    files, folders = {}, set()
+    for folder, subfolders, names in os.walk(tree):
+        here = Path(folder).relative_to(tree)
+        folders.update((here / name).as_posix() for name in subfolders)
+        for name in names:
+            stat = (Path(folder) / name).stat()
+            files[(here / name).as_posix()] = [stat.st_size, stat.st_mtime_ns]
+    return files, folders
+
+
+def uncopied(relative: str) -> bool:
+    """Under a dependency's downloaded sources, `_deps/<name>-src/`."""
+    parts = relative.split("/")
+    return len(parts) > 2 and parts[0] == "_deps" and parts[1].endswith("-src")
+
+
+def differences(wanted: dict, found: dict) -> list:
+    """Each file that is not as the snapshot listed it, by name."""
+    return ([f"{name}: not there" for name in sorted(set(wanted) - set(found))]
+            + [f"{name}: not in the snapshot" for name in sorted(set(found) - set(wanted))]
+            + [f"{name}: size and time {found[name]}, not {wanted[name]}"
+               for name in sorted(set(wanted) & set(found)) if wanted[name] != found[name]])
+
+
+def source_stamps(root: Path, files: set) -> dict:
+    """{source: [SHA-256 of its bytes, modification time in ns]} as the pass
+    finds them, clean in git, so that both can be put back."""
+    return {name: [hashlib.sha256((root / name).read_bytes()).hexdigest(),
+                   (root / name).stat().st_mtime_ns] for name in sorted(files)}
+
+
+def take_snapshot(tree: Path, place: Path, sources: dict) -> None:
+    """Copy the tree, then check every copy kept its size and time: a copy
+    that lost its time would put back a file Ninja reads as newer."""
+    files, folders = list_tree(tree)
+    for name in files:
+        if not uncopied(name):
+            copy = place / SNAPSHOT_FILES / name
+            copy.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(tree / name, copy)
+    copies, _ = list_tree(place / SNAPSHOT_FILES)
+    wrong = differences({name: stamp for name, stamp in files.items() if not uncopied(name)}, copies)
+    if wrong:
+        raise RuntimeError(f"the snapshot's copies are not the tree's files: {'; '.join(wrong[:5])}")
+    (place / SNAPSHOT_SOURCES).write_text(json.dumps(sources), encoding="utf-8")
+    (place / SNAPSHOT_LISTING).write_text(json.dumps({"files": files, "folders": sorted(folders)}),
+                                          encoding="utf-8")
+
+
+def restore_outputs(tree: Path, place: Path) -> list:
+    """Make the tree what the snapshot listed: what changed or went missing
+    copied back with its time, what is new deleted, files and then folders.
+    Returns what could not be put back, by name, checked by listing the tree
+    again -- an empty list is a tree identical in every size and time."""
+    listing = json.loads((place / SNAPSHOT_LISTING).read_text(encoding="utf-8"))
+    wanted, wanted_folders = listing["files"], set(listing["folders"])
+    found, found_folders = list_tree(tree)
+    for name in sorted(set(found) - set(wanted)):
+        (tree / name).unlink()
+    for name, stamp in sorted(wanted.items()):
+        # A file under _deps/ has no copy to put back: the listing below
+        # names it, as it names anything else this could not put right.
+        if found.get(name) == stamp or uncopied(name):
+            continue
+        (tree / name).parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(place / SNAPSHOT_FILES / name, tree / name)
+    # The deepest first, so that a folder is empty when its turn comes.
+    for name in sorted(found_folders - wanted_folders, key=lambda folder: folder.count("/"), reverse=True):
+        try:
+            (tree / name).rmdir()
+        except OSError:
+            pass  # not empty, so the listing below names it
+    after, after_folders = list_tree(tree)
+    return (differences(wanted, after)
+            + [f"{name}/: a folder not in the snapshot" for name in sorted(after_folders - wanted_folders)])
+
+
+def restore_sources(root: Path, sources: dict) -> list:
+    """The mutated files' text through git, then their times, but only where
+    git gave back the very bytes the pass started from: a different file with
+    the old time would be one Ninja never rebuilds from."""
+    restore(root, set(sources))
+    problems = []
+    for name, (digest, modified) in sorted(sources.items()):
+        path = root / name
+        if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
+            problems.append(f"{name}: git gave back other bytes than the pass started from, "
+                            "so its time is left new for the build to see")
+            continue
+        os.utime(path, ns=(path.stat().st_atime_ns, modified))
+    return problems
+
+
+def confirm_no_work(cmake: str, tree: Path):
+    """Why the build still had something to do, or None. A real build: what
+    it rebuilds is then built from the restored source, and the pass stops."""
+    build = subprocess.run([cmake, "--build", str(tree)], capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=BUILD_TIMEOUT_SECONDS, check=False)
+    output = build.stdout + build.stderr
+    if build.returncode != 0 or NO_WORK not in output:
+        return f"the restored tree was not up to date: {output.strip()[-600:]}"
+    return None
+
+
+def put_back(root: Path, cmake: str, tree: Path, place: Path) -> None:
+    """Everything a mutant changed, **in decision 506's order -- the outputs,
+    then the file's text, then its time** -- so that a pass stopped between
+    two steps leaves a source newer than its outputs, which the next build
+    repairs; the other way round would leave outputs built from a mutant
+    beside a source with its old time, which no build ever repairs. Then the
+    build must have nothing to do, and the outputs are put back once more,
+    since even a build with nothing to do rewrites `.ninja_log` (measured
+    2026-10-13). Raises if anything is not as the snapshot had it."""
+    sources = json.loads((place / SNAPSHOT_SOURCES).read_text(encoding="utf-8"))
+    problems = restore_outputs(tree, place)
+    problems += restore_sources(root, sources)
+    if not problems:
+        problem = confirm_no_work(cmake, tree)
+        problems += [problem] if problem else []
+        problems += restore_outputs(tree, place)
+    if problems:
+        raise RuntimeError(f"the build tree could not be put back as the snapshot has it: "
+                           f"{'; '.join(problems[:5])}")
+
+
+def leftover_problem(place: Path, tree: str):
+    """Why a pass must not start, or None: a stopped pass left its snapshot,
+    and starting another would copy over the one copy of the real tree
+    (decision 514)."""
+    if place.exists():
+        return (f"a stopped pass left its snapshot in {place}: put the tree back first, with "
+                f"`python scripts/mutate.py --restore --tree {tree}`")
+    return None
+
+
+def restore_command(root: Path, cmake: str, tree: Path, place: Path) -> int:
+    """`--restore`: finish what a stopped pass left (decision 514)."""
+    if not place.exists():
+        print(f"nothing to restore: there is no snapshot in {place}")
+        return 0
+    if not (place / SNAPSHOT_LISTING).exists():
+        # Taken before any mutant ran, so the tree is as the pass found it.
+        shutil.rmtree(place)
+        print(f"the snapshot in {place} was never finished, so no mutant ran on it; deleted")
+        return 0
+    put_back(root, cmake, tree, place)
+    shutil.rmtree(place)
+    print(f"the tree is as the stopped pass found it, and the snapshot in {place} is deleted")
+    return 0
 
 
 def first_error(text: str) -> str:
@@ -408,18 +606,26 @@ def verify(root: Path, given: Path) -> int:
 
 
 def main(argv: list) -> int:
-    if argv[1:] == ["--self-test"]:
-        return self_test()
+    if argv[1:2] == ["--self-test"]:
+        return self_test(argv[2:])
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("mutants",
+    parser.add_argument("mutants", nargs="?",
                         help="a JSON mutant file, or a directory of them with --verify")
     parser.add_argument("--tree", help="build tree; default is the file's")
     parser.add_argument("--cmake", default=DEFAULT_CMAKE)
     parser.add_argument("--verify", action="store_true",
                         help="only check that every anchor still matches once")
+    parser.add_argument("--restore", action="store_true",
+                        help="put the --tree back from the snapshot a stopped pass left")
     args = parser.parse_args(argv[1:])
 
     root = repo_root()
+    if args.restore:
+        if args.mutants or not args.tree:
+            parser.error("--restore takes --tree and no mutant file")
+        return restore_command(root, args.cmake, root / args.tree, snapshot_place(root, args.tree))
+    if not args.mutants:
+        parser.error("name a mutant file")
     given = Path(args.mutants)
 
     if args.verify:
@@ -458,22 +664,44 @@ def main(argv: list) -> int:
             print(f"  {mutant['name']}: {problem}", file=sys.stderr)
         return 2
 
+    place = snapshot_place(root, tree)
+    problem = leftover_problem(place, tree)
+    if problem:
+        print(f"refusing to run: {problem}", file=sys.stderr)
+        return 2
+    # Built before the snapshot, so that the snapshot is a finished tree and
+    # the check after each mutant has nothing to do (decision 517).
+    build = subprocess.run([args.cmake, "--build", tree], cwd=root, capture_output=True, text=True,
+                           encoding="utf-8", errors="replace", timeout=BUILD_TIMEOUT_SECONDS, check=False)
+    if build.returncode != 0:
+        print(f"refusing to run: {tree} does not build as it stands:\n"
+              f"{(build.stdout + build.stderr)[-2000:]}", file=sys.stderr)
+        return 2
+    take_snapshot(root / tree, place, source_stamps(root, files))
+
     results = []
+    finished = False
     try:
-        for mutant, rebuild in zip(mutants, rebuild_plan(mutants)):
-            restore(root, files)
-            # Rebuild what the previous mutant built, now that its file is back
-            # (M1-95, register decision 221), less what this mutant builds
-            # itself (M1-97, decision 224) -- see rebuild_plan.
-            rebuild_targets(root, args.cmake, tree, rebuild)
+        for mutant in mutants:
             verdict, detail = run_mutant(root, args.cmake, tree, mutant)
             results.append((mutant, verdict, detail))
             print(f"{verdict:24} {mutant['name']}"
                   + (f"\n{'':24} {detail}" if detail else ""), flush=True)
+            # Every program, image and record as it was before this mutant,
+            # so the next is judged on the real code (M1-95's lesson, register
+            # decision 221) and nothing is left to rebuild after the pass.
+            put_back(root, args.cmake, root / tree, place)
+        finished = True
     finally:
-        restore(root, files)
-        subprocess.run([args.cmake, "--build", tree], cwd=root,
-                       capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
+        if not finished:
+            try:
+                put_back(root, args.cmake, root / tree, place)
+            except (RuntimeError, OSError, subprocess.SubprocessError) as error:
+                print(f"the pass stopped, and putting the tree back failed: {error}\n"
+                      f"The snapshot is kept: {leftover_problem(place, tree)}", file=sys.stderr)
+                place = None
+        if place is not None:
+            shutil.rmtree(place)
 
     print(f"\n==== {spec['task']}: {len(results)} mutants ====")
     bad = 0
@@ -582,78 +810,200 @@ def built_by(mutant: dict) -> list:
     return list(mutant["suites"]) + list(mutant.get("targets", []))
 
 
-def rebuild_plan(mutants: list) -> list:
-    """For each mutant, the targets to rebuild after restoring the one before it.
-
-    Ninja notices a restored file but rebuilds only what it is asked to build,
-    and run_mutant asks only for its own mutant's targets -- so a program the
-    previous mutant rebuilt would otherwise be judged still built from the
-    mutated code. M1-90's first pass counted two kills that way, and since M1-95
-    (register decision 221) the harness rebuilds them.
-
-    Less what the mutant about to run builds itself (M1-97, decision 224): its
-    own build rebuilds those from the restored file anyway, so building them
-    first as well only doubled the work -- 191 of the 225 rebuilds M1-95 added
-    across the 17 files of 2026-09-28. Why nothing is left stale: before a
-    mutant's build, a program built from another mutant's code can only be one
-    the previous mutant asked for, because the step before rebuilt all the
-    rest. This step rebuilds those, except the ones this mutant asks for. Its
-    build then either succeeds, and every program it asked for is built from
-    this mutant, or fails, and nothing is judged. Either way, the programs
-    built from a mutant are again only ones this mutant asked for, which is
-    where the next step starts.
-    """
-    plan = [[]]
-    for previous, following in zip(mutants, mutants[1:]):
-        own = set(built_by(following))
-        plan.append([t for t in dict.fromkeys(built_by(previous)) if t not in own])
-    return plan[:len(mutants)]
+# The snapshot's scratch project: one output built from one committed source,
+# by CMake and Ninja as the real trees are built, and no compiler needed. The
+# glob checked at every build is there because the real trees have them, and
+# it is what makes a build with nothing to do still write `.ninja_log`
+# (measured 2026-10-13: 291 bytes before, 414 after); without it the second
+# put-back after the build's check was a mutant no case could catch.
+SCRATCH_PROJECT = """\
+cmake_minimum_required(VERSION 3.20)
+project(snapshot_self_test LANGUAGES NONE)
+file(GLOB listed CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/*.txt)
+add_custom_command(OUTPUT out.txt
+                   COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_SOURCE_DIR}/in.txt out.txt
+                   DEPENDS in.txt)
+add_custom_target(out ALL DEPENDS out.txt)
+"""
 
 
-def rebuild_targets(root: Path, cmake: str, tree: str, targets: list) -> None:
-    """Rebuild targets from the restored tree, or fail the pass loudly if that
-    fails: a program that could not be rebuilt from the real code would judge
-    the next mutant wrongly, and a pass must not continue on it."""
-    if not targets:
-        return
-    build = subprocess.run([cmake, "--build", tree, "--target", *targets], cwd=root,
-                           capture_output=True, text=True, encoding="utf-8", errors="replace",
-                           timeout=BUILD_TIMEOUT_SECONDS, check=False)
-    if build.returncode != 0:
-        raise RuntimeError(f"the restored tree does not build {', '.join(targets)} "
-                           f"again:\n{(build.stdout + build.stderr)[-2000:]}")
+def snapshot_cases(tools: list) -> dict:
+    """The snapshot's rules (M1-129, register decisions 506 and 512-519), on a
+    tree of plain files and then on a scratch project really built."""
+    cmake, ninja = tools if len(tools) == 2 else (DEFAULT_CMAKE, shutil.which("ninja") or "ninja")
+    cases = {}
+    with tempfile.TemporaryDirectory() as scratch:
+        tree, place = Path(scratch) / "plain", Path(scratch) / "plain-snapshot"
+        for name in ("a.txt", "sub/b.txt", "_deps/x-src/d.txt", "_deps/x-build/e.txt"):
+            (tree / name).parent.mkdir(parents=True, exist_ok=True)
+            (tree / name).write_text(name, encoding="utf-8")
+        cases["a pass may start where no snapshot is left"] = leftover_problem(place, "plain") is None
+        take_snapshot(tree, place, {})
+        cases["a pass does not start while a snapshot is left"] = leftover_problem(place, "plain") is not None
+        listed = list_tree(tree)
+        # What a mutant's build, its configure and its tests do: rewrite a
+        # file, one in a dependency's build among them, delete one, write new
+        # ones. The times are set, so the case does not rest on the clock.
+        for name in ("a.txt", "_deps/x-build/e.txt"):
+            (tree / name).write_text("mutated", encoding="utf-8")
+            os.utime(tree / name, ns=(1, 1))
+        (tree / "sub/b.txt").unlink()
+        (tree / "new/deeper").mkdir(parents=True)
+        (tree / "new/deeper/c.txt").write_text("c", encoding="utf-8")
+        problems = restore_outputs(tree, place)
+        cases["what a mutant changed is put back, and what it wrote is deleted"] = (
+            problems == [] and list_tree(tree) == listed
+            and (tree / "a.txt").read_text(encoding="utf-8") == "a.txt"
+            and (tree / "_deps/x-build/e.txt").read_text(encoding="utf-8") == "_deps/x-build/e.txt")
+        (tree / "_deps/x-src/d.txt").write_text("changed", encoding="utf-8")
+        cases[f"a change under {UNCOPIED}, which is not copied, is reported"] = (
+            restore_outputs(tree, place) != [])
+        cases.update(scratch_build_cases(Path(scratch), cmake, ninja))
+        cases.update(scratch_pass_cases(Path(scratch), cmake, ninja))
+    return cases
 
 
-def self_test() -> int:
-    """Prove rebuild_plan right before a pass trusts it (M1-97)."""
-    def m(suites=(), targets=()):
-        return {"suites": list(suites), "targets": list(targets)}
+# A whole pass on a scratch repository, shaped as m1-95.json is (register
+# decision 221): mutant A breaks the output a test compares, and mutant B
+# changes nothing that test reads and must survive. B is judged right after
+# A, so it is caught only if A's output was left in the tree -- the loop not
+# putting the tree back after each mutant (decision 519).
+SCRATCH_PASS_PROJECT = SCRATCH_PROJECT + """\
+enable_testing()
+add_test(NAME same COMMAND ${CMAKE_COMMAND} -E compare_files
+         ${CMAKE_CURRENT_BINARY_DIR}/out.txt ${CMAKE_CURRENT_SOURCE_DIR}/expected.txt)
+"""
 
-    cases = {
-        "a shared program is left to the next mutant's own build":
-            ([m(targets=["a", "b"]), m(targets=["b"])], [[], ["a"]]),
-        "a program the next mutant does not build is rebuilt (m1-95.json's shape)":
-            ([m(targets=["test_math"]), m(targets=["orbsim_shaders"])], [[], ["test_math"]]),
-        "the same programs are not rebuilt twice":
-            ([m(suites=["t"]), m(suites=["t"])], [[], []]),
-        "a previous suite counts as built by a following target":
-            ([m(suites=["t"]), m(targets=["t"])], [[], []]),
-        "a previous target counts as built by a following suite":
-            ([m(targets=["t"]), m(suites=["t"])], [[], []]),
-        "each step looks at its own neighbour, not the first mutant":
-            ([m(targets=["a"]), m(targets=["b"]), m(targets=["c"])], [[], ["a"], ["b"]]),
-        "the first mutant rebuilds nothing, and one plan entry per mutant":
-            ([m(targets=["a"])], [[]]),
-        "no mutants, no plan": ([], []),
-        "a target named twice is rebuilt once":
-            ([m(suites=["t"], targets=["t"]), m(targets=["x"])], [[], ["t"]]),
+
+def scratch_pass_cases(scratch: Path, cmake: str, ninja: str) -> dict:
+    repo = scratch / "pass"
+    for name, text in (("CMakeLists.txt", SCRATCH_PASS_PROJECT), ("in.txt", "real\n"),
+                       ("expected.txt", "real\n"), ("other.txt", "a comment\n"),
+                       ("scripts/mutation-passes.json", "{}\n")):
+        (repo / name).parent.mkdir(parents=True, exist_ok=True)
+        (repo / name).write_text(text, encoding="utf-8", newline="\n")
+
+    def git(*words):
+        subprocess.run(["git", *words], cwd=repo, check=True, capture_output=True)
+
+    git("init", "-q")
+    git("config", "core.autocrlf", "false")
+    git("add", ".")
+    git("-c", "user.name=self-test", "-c", "user.email=self-test@invalid", "commit", "-q", "-m", "scratch")
+    tree = repo / "build" / "b"
+    configure = subprocess.run([cmake, "-S", str(repo), "-B", str(tree), "-G", "Ninja",
+                                f"-DCMAKE_MAKE_PROGRAM={ninja}"], capture_output=True, text=True,
+                               encoding="utf-8", errors="replace", check=False)
+    if configure.returncode != 0:
+        print(configure.stdout + configure.stderr)
+        return {"the scratch pass's project configures": False}
+
+    def mutant(name, file, find, replace, expect):
+        return {"name": name, "file": file, "find": find, "replace": replace, "expect": expect,
+                "suites": [], "targets": ["out"], "ctest": ["same"]}
+
+    spec = scratch / "pass.json"
+    spec.write_text(json.dumps({"task": "self-test", "tree": "build/b", "mutants": [
+        mutant("A: the output is wrong", "in.txt", "real", "mutated", "caught"),
+        mutant("B: nothing the test reads", "other.txt", "a comment", "another comment", "survives"),
+    ]}), encoding="utf-8")
+    run = subprocess.run([sys.executable, __file__, str(spec), "--tree", "build/b", "--cmake", cmake],
+                         cwd=repo, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                         timeout=BUILD_TIMEOUT_SECONDS, check=False)
+    if run.returncode != 0:
+        print(run.stdout + run.stderr)
+    return {
+        "a pass judges each mutant on a tree put back after the one before":
+            run.returncode == 0 and (tree / "out.txt").read_text(encoding="utf-8") == "real\n",
+        "a pass leaves its tree with nothing to build, and no snapshot":
+            confirm_no_work(cmake, tree) is None and not snapshot_place(repo, "build/b").exists(),
     }
+
+
+def scratch_build_cases(scratch: Path, cmake: str, ninja: str) -> dict:
+    """The whole put-back on a project CMake configures and Ninja builds."""
+    repo, tree, place = scratch / "repo", scratch / "build", scratch / "snapshot"
+    repo.mkdir()
+    (repo / "CMakeLists.txt").write_text(SCRATCH_PROJECT, encoding="utf-8", newline="\n")
+    (repo / "in.txt").write_text("real\n", encoding="utf-8", newline="\n")
+
+    def git(*words):
+        subprocess.run(["git", *words], cwd=repo, check=True, capture_output=True)
+
+    def build():
+        return subprocess.run([cmake, "--build", str(tree)], capture_output=True, text=True,
+                              encoding="utf-8", errors="replace", check=False)
+
+    git("init", "-q")
+    git("config", "core.autocrlf", "false")
+    git("add", ".")
+    git("-c", "user.name=self-test", "-c", "user.email=self-test@invalid", "commit", "-q", "-m", "scratch")
+    configure = subprocess.run([cmake, "-S", str(repo), "-B", str(tree), "-G", "Ninja",
+                                f"-DCMAKE_MAKE_PROGRAM={ninja}"], capture_output=True, text=True,
+                               encoding="utf-8", errors="replace", check=False)
+    built = configure.returncode == 0 and build().returncode == 0
+    cases = {"the scratch project configures and builds": built}
+    if not built:
+        print(configure.stdout + configure.stderr)
+        return cases
+
+    sources = source_stamps(repo, {"in.txt"})
+    take_snapshot(tree, place, sources)
+    listed = list_tree(tree)
+    real_output = (tree / "out.txt").read_bytes()
+    real_time = (repo / "in.txt").stat().st_mtime_ns
+
+    def as_found():
+        return ((tree / "out.txt").read_bytes() == real_output
+                and (repo / "in.txt").stat().st_mtime_ns == real_time and list_tree(tree) == listed)
+
+    def attempt(step):
+        try:
+            step()
+            return ""
+        except RuntimeError as error:
+            print(error)
+            return str(error)
+
+    # A mutant, its build, and a file its test writes.
+    (repo / "in.txt").write_text("mutated\n", encoding="utf-8", newline="\n")
+    build()
+    (tree / "written-by-a-test.txt").write_text("x", encoding="utf-8")
+    failed = attempt(lambda: put_back(repo, cmake, tree, place))
+    cases["a mutant's outputs, then its text, then its time are put back"] = failed == "" and as_found()
+    cases["after that the build has nothing to do"] = confirm_no_work(cmake, tree) is None
+    # A source newer than its output: the check must see the work.
+    os.utime(repo / "in.txt")
+    cases["a tree with work left is refused"] = confirm_no_work(cmake, tree) is not None
+    # A pass stopped with its mutant in place, and its snapshot left.
+    (repo / "in.txt").write_text("mutated\n", encoding="utf-8", newline="\n")
+    build()
+    failed = attempt(lambda: restore_command(repo, cmake, tree, place))
+    cases["--restore puts a stopped pass's tree back and deletes the snapshot"] = (
+        failed == "" and as_found() and not place.exists())
+    unfinished = scratch / "unfinished"
+    (unfinished / SNAPSHOT_FILES).mkdir(parents=True)
+    restore_command(repo, cmake, tree, unfinished)
+    cases["--restore deletes a snapshot that was never finished"] = not unfinished.exists()
+    # Git giving back other bytes than the pass started from: this machine's
+    # own core.autocrlf, with no .gitattributes, writes CRLF. The old time on
+    # those bytes would hide them from Ninja, so the time is left new.
+    git("config", "core.autocrlf", "true")
+    (repo / "in.txt").write_text("mutated\n", encoding="utf-8", newline="\n")
+    problems = restore_sources(repo, sources)
+    cases["a source git gives back with other bytes keeps its new time"] = (
+        problems != [] and (repo / "in.txt").stat().st_mtime_ns != real_time)
+    return cases
+
+
+def self_test(tools: list) -> int:
+    """Prove the harness's own rules right before a pass trusts them. `tools`
+    is the cmake and the ninja to build a scratch project with, which CTest
+    passes; by hand, the defaults."""
     failures = 0
-    for name, (mutants, want) in cases.items():
-        got = rebuild_plan(mutants)
-        status = "ok" if got == want else f"WRONG, got {got}"
-        failures += got != want
-        print(f"self-test: {name}: {status}")
+    for name, ok in snapshot_cases(tools).items():
+        failures += not ok
+        print(f"self-test: {name}: {'ok' if ok else 'WRONG'}")
     # A pass records its judges' fingerprints (M1-103): without them the build
     # definition makes the file due again, whatever the change did.
     judges = {"ctest t": "0123456789abcdef"}
@@ -681,8 +1031,6 @@ def self_test() -> int:
         dict(script, file="cmake/ScriptTests.cmake")) is not None
     record_cases["a CMake mutant that builds build.ninja is accepted"] = build_problem(
         dict(script, file="CMakeLists.txt", targets=["build.ninja"])) is None
-    record_cases["a mutant that builds nothing rebuilds nothing after it"] = rebuild_plan(
-        [m(), m(targets=["a"])]) == [[], []]
     # An expectation that differs by graphics card (the phase A gate, register
     # decision 410): a map from card to verdict, with no default.
     per_card = {"expect": {"1002-744c": "survives", "10de-25ba": "caught"}}
