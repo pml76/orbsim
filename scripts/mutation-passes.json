@@ -2195,54 +2195,54 @@
     }
   },
   "m1-95.json": {
-    "commit": "367d2ab8bdc2e7e3f9ed45977fcbee89b11c3967",
+    "commit": "0a94b1b0342f2799ef6768a0b58f12f8f784bdc4",
     "tree": "build/relwithdebinfo",
-    "date": "2026-10-07",
+    "date": "2026-10-13",
     "judges": {
-      "program test_math.exe": "9c9328cff383c7ee",
+      "program test_math.exe": "d15991acaf6a9f4b",
       "ctest abort_listener": "b6bb739405df39be",
-      "program test_astro_time.exe": "6acca16d15722c7e",
-      "program test_benchmark_path.exe": "26ccf06d824df0ac",
-      "program test_camera.exe": "035f23870271af7e",
-      "program test_camera_controller.exe": "f230bc53da440683",
-      "program test_camera_path.exe": "2f73d54a05830e84",
-      "program test_double_double.exe": "41670a14cfa25c74",
-      "program test_earth_orientation.exe": "649d3de254c46e72",
-      "program test_exposure.exe": "3594f86374e11c56",
-      "program test_file_replace.exe": "10b8fea5770923d1",
-      "program test_fixture_file.exe": "1cd14ba3fd2acd22",
-      "program test_golden_path.exe": "156ec7d74825d4bd",
-      "program test_gpu_clock.exe": "3ec9eca1ab13af0d",
-      "program test_half.exe": "7d85b5510994af7c",
-      "program test_hdr_dump.exe": "98dc50fd377a8969",
-      "program test_image_compare.exe": "e4a6187361f70404",
-      "program test_image_files.exe": "dda6c7b5e19e731f",
-      "program test_lambert.exe": "36329d1b2c390c27",
-      "program test_line_batch.exe": "03b119b81f93d328",
-      "program test_orbit.exe": "f8fa10a7addfcce4",
-      "program test_orbit_elements.exe": "70a489ca2f62cdcf",
-      "program test_orbit_scales.exe": "20a0fbaeb673fede",
-      "program test_pipeline_inputs.exe": "d8ad505bd8f29be3",
-      "program test_planetary_grid.exe": "4a90814c9a3e6dc8",
-      "program test_probe_sidecar.exe": "297f8f01f70b978d",
-      "program test_projection.exe": "35bc4f69730d316a",
-      "program test_render_quality.exe": "4054ab9fb91bf3df",
-      "program test_srgb.exe": "931d6becbc6d336c",
-      "program test_statistics.exe": "832f89178d4a1de7",
-      "program test_sun.exe": "0d2b5969adb31163",
-      "program test_time.exe": "efe59a73b2dc228d",
-      "program test_time_leap.exe": "f1bab28e33e1d477",
-      "program test_time_ut1.exe": "a6f74809fedc9e5c",
-      "program test_tonemap.exe": "8211fd2b4cbf98e2",
-      "program test_units_validated.exe": "8fbed1e836d69b34",
-      "program test_view_math.exe": "c948a0fd079408cd",
-      "program test_probe_clear.exe": "0231593bc93475d3",
-      "program test_radiometry.exe": "04139b89f3d1a350",
-      "program test_tonemap_port.exe": "79325ee370b2d32c"
+      "program test_astro_time.exe": "2403d2bf3e040082",
+      "program test_benchmark_path.exe": "e34d60bc972ad4c9",
+      "program test_camera.exe": "33c847881e6cc585",
+      "program test_camera_controller.exe": "5b4cdf76d4a8260e",
+      "program test_camera_path.exe": "ab6b0b1ec6d7834c",
+      "program test_double_double.exe": "ca4f3096005f7068",
+      "program test_earth_orientation.exe": "d325a8c101a960dd",
+      "program test_exposure.exe": "34e125130d4d8716",
+      "program test_file_replace.exe": "71b536f8ab197218",
+      "program test_fixture_file.exe": "ea1c7e50f4bfdbaf",
+      "program test_golden_path.exe": "c56c8a82422c01db",
+      "program test_gpu_clock.exe": "34098bdbf2ecb798",
+      "program test_half.exe": "248c2c62ee192c1e",
+      "program test_hdr_dump.exe": "60780b5a8b9ecddd",
+      "program test_image_compare.exe": "bd23dfb71a4e74ac",
+      "program test_image_files.exe": "3efb59713e6e1edd",
+      "program test_lambert.exe": "2595ce71b92f2093",
+      "program test_line_batch.exe": "4f85f191827bf0ee",
+      "program test_orbit.exe": "9f054d96412368fe",
+      "program test_orbit_elements.exe": "dd8ca12ddef229a7",
+      "program test_orbit_scales.exe": "cd6df77f950e4579",
+      "program test_pipeline_inputs.exe": "a5289b8eba90afcf",
+      "program test_planetary_grid.exe": "dabfc7ef08d0c0c3",
+      "program test_probe_sidecar.exe": "a60c4db57d65455d",
+      "program test_projection.exe": "fdd5e998b776eac4",
+      "program test_render_quality.exe": "9be0db7e51bc630c",
+      "program test_srgb.exe": "3284985c00d3b597",
+      "program test_statistics.exe": "34a5803c8e0b61d9",
+      "program test_sun.exe": "665ba2927dfd18e7",
+      "program test_time.exe": "28bddb3142fa8b51",
+      "program test_time_leap.exe": "4fa96b7e0db7eace",
+      "program test_time_ut1.exe": "b0184c013092d5f8",
+      "program test_tonemap.exe": "ff2f1dc4800a6422",
+      "program test_units_validated.exe": "e71cae6f1f842825",
+      "program test_view_math.exe": "d114c0b33b782f33",
+      "program test_probe_clear.exe": "79fe048124dc0f64",
+      "program test_radiometry.exe": "c0057fed845b970a",
+      "program test_tonemap_port.exe": "62cfa990c694a985"
     },
     "judge_parts": {
       "program test_math.exe": {
-        "commands": "a0fcb65d46dcba7d",
+        "commands": "cbfec2f25af5a252",
         "build-tree files": "bbd0b9f6e0bd965a",
         "other files": "c47a5897841d1333"
       },
@@ -2250,192 +2250,192 @@
         "definition": "6434fb2d30159907"
       },
       "program test_astro_time.exe": {
-        "commands": "ad1b4cdef9181fb3",
+        "commands": "6a825f49c751b03e",
         "build-tree files": "bbd0b9f6e0bd965a",
         "other files": "c47a5897841d1333"
       },
       "program test_benchmark_path.exe": {
-        "commands": "af90002b49d2ad19",
+        "commands": "021d8700a71be592",
         "build-tree files": "b7ab6be0a2e63dfa",
         "other files": "8c66f7e1138b869c"
       },
       "program test_camera.exe": {
-        "commands": "452c5e625ee10747",
+        "commands": "73d4cba394d663d4",
         "build-tree files": "b7ab6be0a2e63dfa",
         "other files": "8c66f7e1138b869c"
       },
       "program test_camera_controller.exe": {
-        "commands": "7e9aeec457402222",
+        "commands": "e5cfc82f198b1ca5",
         "build-tree files": "b7ab6be0a2e63dfa",
         "other files": "8c66f7e1138b869c"
       },
       "program test_camera_path.exe": {
-        "commands": "b1eaedfd1bef6ba3",
+        "commands": "a271adcd6fad130b",
         "build-tree files": "b7ab6be0a2e63dfa",
         "other files": "8c66f7e1138b869c"
       },
       "program test_double_double.exe": {
-        "commands": "1e3bab5c311d4cde",
+        "commands": "e9c3432ffb023d32",
         "build-tree files": "bbd0b9f6e0bd965a",
         "other files": "c47a5897841d1333"
       },
       "program test_earth_orientation.exe": {
-        "commands": "064dff2701b95b06",
+        "commands": "340503166b70b38c",
         "build-tree files": "bbd0b9f6e0bd965a",
         "other files": "c47a5897841d1333"
       },
       "program test_exposure.exe": {
-        "commands": "2ec9a7569cc60a56",
+        "commands": "5a650adaff9dd9da",
         "build-tree files": "b7ab6be0a2e63dfa",
         "other files": "8c66f7e1138b869c"
       },
       "program test_file_replace.exe": {
-        "commands": "526277f85a180d70",
+        "commands": "b8a7f86f2bff6f5d",
         "build-tree files": "b7ab6be0a2e63dfa",
         "other files": "8c66f7e1138b869c"
       },
       "program test_fixture_file.exe": {
-        "commands": "4cd9f59064dfcaf2",
+        "commands": "4c495139a0a14795",
         "build-tree files": "bbd0b9f6e0bd965a",
         "other files": "c47a5897841d1333"
       },
       "program test_golden_path.exe": {
-        "commands": "5d630fc73450c0f8",
+        "commands": "e862cb2393c79024",
         "build-tree files": "b7ab6be0a2e63dfa",
         "other files": "8c66f7e1138b869c"
       },
       "program test_gpu_clock.exe": {
-        "commands": "cbd323a5dc269356",
+        "commands": "3d885f26e6a264e7",
         "build-tree files": "b7ab6be0a2e63dfa",
         "other files": "8c66f7e1138b869c"
       },
       "program test_half.exe": {
-        "commands": "6aee3e7e2d52e0e6",
+        "commands": "47a9bf8fd6599530",
         "build-tree files": "b7ab6be0a2e63dfa",
         "other files": "8c66f7e1138b869c"
       },
       "program test_hdr_dump.exe": {
-        "commands": "31aa7dfbbf7ccd98",
+        "commands": "eabd6392eba835f6",
         "build-tree files": "b7ab6be0a2e63dfa",
         "other files": "8c66f7e1138b869c"
       },
       "program test_image_compare.exe": {
-        "commands": "cd7644d8b51980c7",
+        "commands": "cb9ba46843376b94",
         "build-tree files": "b7ab6be0a2e63dfa",
         "other files": "8c66f7e1138b869c"
       },
       "program test_image_files.exe": {
-        "commands": "ab5987160906cc42",
+        "commands": "b257393d91632ee8",
         "build-tree files": "b7ab6be0a2e63dfa",
         "other files": "8c66f7e1138b869c"
       },
       "program test_lambert.exe": {
-        "commands": "1b02b599d7ea59bd",
+        "commands": "696912db9957e08c",
         "build-tree files": "b7ab6be0a2e63dfa",
         "other files": "8c66f7e1138b869c"
       },
       "program test_line_batch.exe": {
-        "commands": "450dc30b28ce3dc1",
+        "commands": "d36b4ab96dd1119f",
         "build-tree files": "b7ab6be0a2e63dfa",
         "other files": "8c66f7e1138b869c"
       },
       "program test_orbit.exe": {
-        "commands": "68606493cc3617f9",
+        "commands": "db8e02c7860d6f8b",
         "build-tree files": "bbd0b9f6e0bd965a",
         "other files": "c47a5897841d1333"
       },
       "program test_orbit_elements.exe": {
-        "commands": "8d34e949eda7e77e",
+        "commands": "5c3195c7effdf6c3",
         "build-tree files": "bbd0b9f6e0bd965a",
         "other files": "c47a5897841d1333"
       },
       "program test_orbit_scales.exe": {
-        "commands": "a7e24dccad34722e",
+        "commands": "5f5340a861936c13",
         "build-tree files": "bbd0b9f6e0bd965a",
         "other files": "c47a5897841d1333"
       },
       "program test_pipeline_inputs.exe": {
-        "commands": "591e9f9cb7be51d2",
+        "commands": "cb49a76df0b3e1f4",
         "build-tree files": "b7ab6be0a2e63dfa",
         "other files": "8c66f7e1138b869c"
       },
       "program test_planetary_grid.exe": {
-        "commands": "66a462c1ddb08554",
+        "commands": "6c0dfe64580b74bf",
         "build-tree files": "b7ab6be0a2e63dfa",
         "other files": "8c66f7e1138b869c"
       },
       "program test_probe_sidecar.exe": {
-        "commands": "11a53d772947e910",
+        "commands": "c9d60cbe2f0e8ea1",
         "build-tree files": "b7ab6be0a2e63dfa",
         "other files": "8c66f7e1138b869c"
       },
       "program test_projection.exe": {
-        "commands": "af06219b940c1255",
+        "commands": "baeee94abe19bb96",
         "build-tree files": "b7ab6be0a2e63dfa",
         "other files": "8c66f7e1138b869c"
       },
       "program test_render_quality.exe": {
-        "commands": "44eee1e852db9186",
+        "commands": "007ad51f4b44ab84",
         "build-tree files": "b7ab6be0a2e63dfa",
         "other files": "8c66f7e1138b869c"
       },
       "program test_srgb.exe": {
-        "commands": "0b4c2d6c3ae4ccd7",
+        "commands": "e0110bd681d4f6c8",
         "build-tree files": "b7ab6be0a2e63dfa",
         "other files": "8c66f7e1138b869c"
       },
       "program test_statistics.exe": {
-        "commands": "044a8d12db793b7e",
+        "commands": "c0061dcdf56069c7",
         "build-tree files": "b7ab6be0a2e63dfa",
         "other files": "8c66f7e1138b869c"
       },
       "program test_sun.exe": {
-        "commands": "18016590d739f141",
+        "commands": "7cbbe41b37b094c0",
         "build-tree files": "bbd0b9f6e0bd965a",
         "other files": "c47a5897841d1333"
       },
       "program test_time.exe": {
-        "commands": "32e317601c6ed6a2",
+        "commands": "cbadc58fde7b9a01",
         "build-tree files": "bbd0b9f6e0bd965a",
         "other files": "c47a5897841d1333"
       },
       "program test_time_leap.exe": {
-        "commands": "c8a2972a5bd96bd7",
+        "commands": "17b1423bb0b339f0",
         "build-tree files": "bbd0b9f6e0bd965a",
         "other files": "c47a5897841d1333"
       },
       "program test_time_ut1.exe": {
-        "commands": "1b4cecf37b450f21",
+        "commands": "ad64cd635d26b2e7",
         "build-tree files": "bbd0b9f6e0bd965a",
         "other files": "c47a5897841d1333"
       },
       "program test_tonemap.exe": {
-        "commands": "9a7aa0a8726c184b",
+        "commands": "3ef0cbb1f4b648f1",
         "build-tree files": "b7ab6be0a2e63dfa",
         "other files": "8c66f7e1138b869c"
       },
       "program test_units_validated.exe": {
-        "commands": "29498c8284943954",
+        "commands": "54f50a392a83b981",
         "build-tree files": "bbd0b9f6e0bd965a",
         "other files": "c47a5897841d1333"
       },
       "program test_view_math.exe": {
-        "commands": "c2962d3aebd38654",
+        "commands": "1a2b7d43eb1dc0d3",
         "build-tree files": "b7ab6be0a2e63dfa",
         "other files": "8c66f7e1138b869c"
       },
       "program test_probe_clear.exe": {
-        "commands": "af8117d4bbb8a99c",
+        "commands": "a787f58b4b2c8591",
         "build-tree files": "bbd0b9f6e0bd965a",
         "other files": "c47a5897841d1333"
       },
       "program test_radiometry.exe": {
-        "commands": "0196392944e28044",
+        "commands": "7b940ac2ea5403b4",
         "build-tree files": "b7ab6be0a2e63dfa",
         "other files": "8c66f7e1138b869c"
       },
       "program test_tonemap_port.exe": {
-        "commands": "89ea6b22d969712c",
+        "commands": "27af69ad88ee6fc5",
         "build-tree files": "b7ab6be0a2e63dfa",
         "other files": "8c66f7e1138b869c"
       }
