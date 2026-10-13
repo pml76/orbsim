@@ -112,7 +112,7 @@ if(ORBSIM_CLANG_TIDY)
     foreach(operation IN LISTS ORBSIM_COUNT_WRAPAROUND_OPERATIONS)
         list(APPEND orbsim_lint_targets count_wraparound_${operation})
     endforeach()
-    list(APPEND orbsim_lint_targets angle_between_zero_probe)
+    list(APPEND orbsim_lint_targets angle_between_zero_probe reproducible_build_probe)
     if(ORBSIM_BUILD_APP)
         list(APPEND orbsim_lint_targets orbsim test_probe_clear test_radiometry
                 test_tonemap_port make_broken_goldens test_probe_lines test_probe_grid)

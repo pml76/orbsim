@@ -103,6 +103,53 @@ elseif(MSVC)
 endif()
 
 # ---------------------------------------------------------------------------
+# The same source makes the same bytes (M1-129, register decision 504).
+#
+# A test reruns when a program it runs changed, by its bytes; a build that
+# writes a time or a random identifier into every file it makes would rerun
+# every test on every rebuild. Measured on 2026-10-12 by building each tree
+# twice from clean and comparing every object, library and program:
+#
+#   * clang on Windows: 945 of 963 files differed. The compiler stamps each
+#     object with the time unless told the linker need not patch it
+#     (-mno-incremental-linker-compatible), and lld-link stamps each program
+#     unless given /Brepro. With both, 0 of 963.
+#   * gcc-14 and clang on Linux: 0 of 642 differed with no flag at all.
+#   * MSVC: 947 of 965 differed with /Brepro alone. With /Brepro every object
+#     and library is identical once debug information stops going to a shared
+#     PDB file (-Zi), but link.exe gives a PDB a new identifier each time it
+#     relinks over an existing one and writes it into the program -- 65 bytes
+#     of test_half.exe, with every switch Microsoft documents for it tried.
+#     The owner's ruling: the MSVC tree builds without debug information, so
+#     that it is reproducible like the others. It is the third opinion on the
+#     code, run before a milestone, not the tree anyone steps through.
+#
+# The CTest test `reproducible_build` rebuilds one object and one program in
+# place and fails if either comes out different.
+# ---------------------------------------------------------------------------
+if(WIN32 AND CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:-mno-incremental-linker-compatible>)
+    add_link_options(LINKER:/Brepro)
+elseif(MSVC)
+    set(CMAKE_MSVC_DEBUG_INFORMATION_FORMAT "")
+    # CMake's own Debug and RelWithDebInfo link flags are `/debug /INCREMENTAL`.
+    # Taken out rather than overridden by a later flag: an incremental link
+    # patches the program already on disk instead of writing it afresh, and a
+    # relink of reproducible_build_probe.exe with them in place came out
+    # different though two builds from clean were identical.
+    foreach(kind IN ITEMS EXE SHARED MODULE)
+        foreach(config IN ITEMS DEBUG RELWITHDEBINFO)
+            separate_arguments(orbsim_link_flags NATIVE_COMMAND "${CMAKE_${kind}_LINKER_FLAGS_${config}}")
+            list(REMOVE_ITEM orbsim_link_flags /debug /DEBUG /INCREMENTAL)
+            list(JOIN orbsim_link_flags " " CMAKE_${kind}_LINKER_FLAGS_${config})
+        endforeach()
+    endforeach()
+    add_compile_options(/Brepro)
+    add_link_options(/Brepro /DEBUG:NONE /INCREMENTAL:NO)
+    string(APPEND CMAKE_STATIC_LINKER_FLAGS " /Brepro")
+endif()
+
+# ---------------------------------------------------------------------------
 # Warnings: every one the compiler has, as errors.
 #
 # The owner's rule (ADR 0017): as many warnings as possible, as errors, to
@@ -910,6 +957,36 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"
         add_test(NAME float_equal_guard_self_test COMMAND ${CMAKE_COMMAND} -E false)
     endif()
 endif()
+
+# The same source compiles and links to the same bytes (M1-129, register
+# decisions 488 and 504), so that a rebuilt program whose input did not change
+# does not look changed to the tests that read it. A program no test runs,
+# because the script writes it again while other tests run; it holds the lock
+# the mutants_due tests hold, because they read the tree's objects and
+# programs. scripts/check-reproducible-build.py says how and why.
+add_executable(reproducible_build_probe tests/reproducible_build_probe.cpp)
+target_link_libraries(reproducible_build_probe PRIVATE
+        orbsim_core
+        orbsim_warnings
+        orbsim_sanitizers
+)
+if(ORBSIM_PYTHON)
+    add_test(NAME reproducible_build
+            COMMAND ${ORBSIM_PYTHON}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-reproducible-build.py
+                    ${CMAKE_BINARY_DIR} ${CMAKE_MAKE_PROGRAM}
+                    $<TARGET_OBJECTS:reproducible_build_probe>
+                    $<TARGET_FILE:reproducible_build_probe>
+    )
+    add_test(NAME reproducible_build_self_test
+            COMMAND ${ORBSIM_PYTHON}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-reproducible-build.py --self-test
+    )
+else()
+    add_test(NAME reproducible_build COMMAND ${CMAKE_COMMAND} -E false)
+    add_test(NAME reproducible_build_self_test COMMAND ${CMAKE_COMMAND} -E false)
+endif()
+set_tests_properties(reproducible_build PROPERTIES RESOURCE_LOCK ninja_deps)
 
 # The generated reference data is the data the error budgets were measured
 # against, or `check` says otherwise (M1-06, register decision 44). Horizons
@@ -1724,7 +1801,7 @@ list(APPEND ORBSIM_LINT_SOURCES ${ORBSIM_VIEW_SOURCES} ${ORBSIM_STB_IMAGE_SOURCE
 foreach(operation IN LISTS ORBSIM_COUNT_WRAPAROUND_OPERATIONS)
     list(APPEND ORBSIM_LINT_SOURCES tests/count_wraparound_${operation}.cpp)
 endforeach()
-list(APPEND ORBSIM_LINT_SOURCES tests/angle_between_zero_probe.cpp)
+list(APPEND ORBSIM_LINT_SOURCES tests/angle_between_zero_probe.cpp tests/reproducible_build_probe.cpp)
 if(ORBSIM_BUILD_APP)
     list(APPEND ORBSIM_LINT_SOURCES ${ORBSIM_APP_SOURCES} tests/test_probe_clear.cpp
             tests/test_radiometry.cpp tests/test_tonemap_port.cpp tests/make_broken_goldens.cpp
@@ -1848,6 +1925,7 @@ add_dependencies(check
         count_wraparound_addition
         count_wraparound_multiplication
         angle_between_zero_probe
+        reproducible_build_probe
         t_erfa_c
         t_erfa_c_extra
         orbsim_header_selfcheck

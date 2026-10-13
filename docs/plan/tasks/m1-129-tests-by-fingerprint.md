@@ -1,9 +1,9 @@
 # M1-129 — Tests that run only when what they read has changed
 
-Phase: B | Status: not started
+Phase: B | Status: in progress
 Prerequisites: M1-118
 Decided by: register decisions 483-491, 495-506 and 508-510, ruled
-2026-10-12.
+2026-10-12, and 511, ruled 2026-10-13.
 Continues [ADR 0024](../../adr/0024-verification-costs-what-changed.md); its
 sibling, the code as modules, is [M1-130](m1-130-code-as-modules.md).
 
@@ -47,6 +47,12 @@ changed, keeps a full run before every push, and removes two fixed costs every
 
 1. **Reproducible builds in every tree** (decision 488): the two settings
    above, and a test that rebuilds a program and requires identical bytes.
+   Each toolchain measured by two builds from clean (decision 504): Windows
+   clang 945 of 963 files different without the settings and 0 with them;
+   gcc-14 and clang on Linux 0 of 642 with none; MSVC 0 of 967 once built
+   without debug information (decision 511). `reproducible_build` fails
+   without the clang settings, naming the object and the program, and
+   passes with them.
 2. **Fingerprints** (decision 483): before a test runs, a hash of its program,
    its command line, its environment and every file it reads; equal to its
    last passing run, the test is skipped and reported as skipped. Built on
