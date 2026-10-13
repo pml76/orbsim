@@ -688,6 +688,19 @@
       }
     }
   },
+  "m1-129.json": {
+    "commit": "f03c4cd4f538920a482c4b86e86c0068a3da6d72",
+    "tree": "build/relwithdebinfo",
+    "date": "2026-10-13",
+    "judges": {
+      "ctest mutate_self_test": "2b93b80729d69528"
+    },
+    "judge_parts": {
+      "ctest mutate_self_test": {
+        "definition": "2a7dbc5dae9cfd21"
+      }
+    }
+  },
   "m1-13.json": {
     "commit": "2c8a90c4abde226c3f4a1e33e3169e5db789bceb",
     "tree": "build/debug",
