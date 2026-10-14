@@ -86,9 +86,11 @@ inheritance.
 """
 
 import argparse
+import contextlib
 import datetime
 import hashlib
 import importlib.util
+import io
 import json
 import os
 import re
@@ -345,6 +347,41 @@ def restore_command(root: Path, cmake: str, tree: Path, place: Path) -> int:
     return 0
 
 
+# What ctest prints when -R matches nothing, as 4.3.1 and 4.4.4 both do; with
+# --no-tests=error it then exits 8 rather than 0 (measured 2026-10-14).
+NO_TESTS = "No tests were found"
+
+
+def ctest_command(entry: str) -> list:
+    """One CTest judge, by its exact name. `--no-tests=error` because without
+    it a name that matches nothing exits 0 -- a judge renamed since the mutant
+    was written made its mutant survive in silence (M1-129, M1-121 finding
+    4.5, register decision 522)."""
+    return ["ctest", "-R", f"^{entry}$", "--no-tests=error", "--output-on-failure"]
+
+
+def ctest_judge(tree: Path, entry: str) -> str:
+    """"passed", "failed", or "no test" -- never a kill, which a missing judge's
+    failure would otherwise be counted as."""
+    run = subprocess.run(ctest_command(entry), cwd=tree, capture_output=True, text=True, encoding="utf-8",
+                         errors="replace", timeout=SUITE_TIMEOUT_SECONDS)
+    if run.returncode == 0:
+        return "passed"
+    return "no test" if NO_TESTS in run.stdout + run.stderr else "failed"
+
+
+def tree_tests(tree: Path) -> set:
+    """The names of every test CTest knows in `tree`."""
+    listing = subprocess.run(["ctest", "--show-only=json-v1"], cwd=tree, capture_output=True, text=True,
+                             encoding="utf-8", errors="replace", check=True).stdout
+    return {test["name"] for test in json.loads(listing)["tests"]}
+
+
+def unknown_judges(mutants: list, names: set) -> list:
+    """Every CTest judge the mutants name that `names` does not hold."""
+    return sorted({entry for mutant in mutants for entry in mutant.get("ctest", []) if entry not in names})
+
+
 def first_error(text: str) -> str:
     for line in text.splitlines():
         if "error:" in line:
@@ -548,12 +585,12 @@ def run_mutant(root: Path, cmake: str, tree: str, mutant: dict) -> tuple:
     # judged only this way survives in the release tree, which is honest.
     for entry in mutant.get("ctest", []):
         try:
-            run = subprocess.run(["ctest", "-R", f"^{entry}$", "--output-on-failure"],
-                                 cwd=root / tree, capture_output=True, text=True, encoding="utf-8", errors="replace",
-                                 timeout=SUITE_TIMEOUT_SECONDS)
+            judged = ctest_judge(root / tree, entry)
         except subprocess.TimeoutExpired:
             return "HUNG", f"ctest -R {entry} did not finish in {SUITE_TIMEOUT_SECONDS} s"
-        if run.returncode != 0:
+        if judged == "no test":
+            return "INVALID", f"the tree has no test {entry} to judge by"
+        if judged == "failed":
             caught.append(f"ctest: {entry}")
 
     if caught:
@@ -561,12 +598,18 @@ def run_mutant(root: Path, cmake: str, tree: str, mutant: dict) -> tuple:
     return "SURVIVED", ""
 
 
-def verify(root: Path, given: Path) -> int:
+def verify(root: Path, given: Path, names=None) -> int:
     """Every anchor still matches its file exactly once.
 
     An anchor that no longer matches is a mutant that cannot run, and a mutant
     that cannot run is not a kill -- so this rots into a pass unless something
     checks it. Hence `check`.
+
+    Since M1-129 (M1-121 finding 4.5, register decision 523) also: a file
+    names at least one mutant, and, where `names` holds a tree's tests, every
+    CTest judge is one of them. `check` gives its tree's names where the tree
+    builds the application; a core-only tree has neither the GPU tests nor
+    the `mutants_due` ones, and there the names are said to be unchecked.
     """
     files = sorted(given.glob("*.json")) if given.is_dir() else [given]
     if not files:
@@ -577,6 +620,11 @@ def verify(root: Path, given: Path) -> int:
     problems, anchors = [], 0
     for path in files:
         spec = json.loads(path.read_text(encoding="utf-8"))
+        if not spec["mutants"]:
+            problems.append(f"{path.name}: names no mutants, so a pass of it would prove nothing")
+        if names is not None:
+            problems += [f"{path.name}: judges by {entry}, which is not a test in this tree"
+                         for entry in unknown_judges(spec["mutants"], names)]
         for mutant in spec["mutants"]:
             anchors += 1
             target = root / mutant["file"]
@@ -599,6 +647,8 @@ def verify(root: Path, given: Path) -> int:
                 problems.append(f"{path.name}: {mutant['name']}: {problem}")
     for problem in problems:
         print(problem, file=sys.stderr)
+    if names is None:
+        print("mutant-anchors: judge names not checked: no tree that builds the application was named")
     print(f"mutant-anchors: {len(files)} tasks, {anchors} anchors, "
           f"{len(problems)} stale",
           file=sys.stderr if problems else sys.stdout)
@@ -629,7 +679,7 @@ def main(argv: list) -> int:
     given = Path(args.mutants)
 
     if args.verify:
-        return verify(root, given)
+        return verify(root, given, tree_tests(root / args.tree) if args.tree else None)
 
     if given.is_dir():
         print("a directory is only accepted with --verify; name one file to run a pass",
@@ -663,6 +713,14 @@ def main(argv: list) -> int:
         for mutant, problem in unjudged:
             print(f"  {mutant['name']}: {problem}", file=sys.stderr)
         return 2
+
+    # Every CTest judge in this tree, before anything runs (register decision
+    # 522), as for the card: a missing one is a pass that cannot judge.
+    if any(m.get("ctest") for m in mutants):
+        missing = unknown_judges(mutants, tree_tests(root / tree))
+        if missing:
+            print(f"refusing to run: {tree} has no test {', '.join(missing)} to judge by", file=sys.stderr)
+            return 2
 
     place = snapshot_place(root, tree)
     problem = leftover_problem(place, tree)
@@ -860,6 +918,7 @@ def snapshot_cases(tools: list) -> dict:
             restore_outputs(tree, place) != [])
         cases.update(scratch_build_cases(Path(scratch), cmake, ninja))
         cases.update(scratch_pass_cases(Path(scratch), cmake, ninja))
+    cases.update(verify_cases())
     return cases
 
 
@@ -912,12 +971,57 @@ def scratch_pass_cases(scratch: Path, cmake: str, ninja: str) -> dict:
                          timeout=BUILD_TIMEOUT_SECONDS, check=False)
     if run.returncode != 0:
         print(run.stdout + run.stderr)
-    return {
+    cases = {
         "a pass judges each mutant on a tree put back after the one before":
             run.returncode == 0 and (tree / "out.txt").read_text(encoding="utf-8") == "real\n",
         "a pass leaves its tree with nothing to build, and no snapshot":
             confirm_no_work(cmake, tree) is None and not snapshot_place(repo, "build/b").exists(),
     }
+    # A judge the tree does not have (M1-129, M1-121 finding 4.5, register
+    # decision 522): CTest's own answer for it, and a pass refused before its
+    # first mutant, leaving the source as it was.
+    cases["ctest judges a test that passes as passed"] = ctest_judge(tree, "same") == "passed"
+    cases["ctest judges a name that matches no test as no test, never as a kill"] = (
+        ctest_judge(tree, "no_such_test") == "no test")
+    renamed = scratch / "renamed.json"
+    renamed.write_text(json.dumps({"task": "self-test", "tree": "build/b", "mutants": [
+        mutant("A, judged by a test since renamed", "in.txt", "real", "mutated", "caught")
+        | {"ctest": ["renamed_test"]}]}), encoding="utf-8")
+    refused = subprocess.run([sys.executable, __file__, str(renamed), "--tree", "build/b", "--cmake", cmake],
+                             cwd=repo, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                             timeout=BUILD_TIMEOUT_SECONDS, check=False)
+    cases["a pass whose judge the tree does not have is refused before its first mutant"] = (
+        refused.returncode == 2 and "renamed_test" in refused.stderr
+        and (repo / "in.txt").read_text(encoding="utf-8") == "real\n")
+    return cases
+
+
+def verify_cases() -> dict:
+    """--verify's rules of M1-129 (register decision 523), on mutant files in a
+    scratch folder: a file with no mutants, and a judge the tree does not have."""
+    with tempfile.TemporaryDirectory() as scratch:
+        root = Path(scratch)
+        (root / "a.py").write_text("x = 1\n", encoding="utf-8")
+        judged = {"name": "m", "file": "a.py", "find": "x = 1", "replace": "x = 2", "suites": [],
+                  "ctest": ["known"]}
+
+        def verdict(name, mutants, names):
+            folder = root / name
+            folder.mkdir()
+            (folder / "t.json").write_text(json.dumps({"task": "T", "tree": "b", "mutants": mutants}),
+                                           encoding="utf-8")
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                return verify(root, folder, names)
+
+        return {
+            "--verify accepts a file whose judges all exist": verdict("good", [judged], {"known"}) == 0,
+            "--verify refuses a judge the tree does not have": verdict("renamed", [judged], {"other"}) == 1,
+            "--verify without a tree leaves judge names alone": verdict("unnamed", [judged], None) == 0,
+            "--verify refuses a file with no mutants": verdict("empty", [], {"known"}) == 1,
+            "a judge is unknown only where the names lack it": (
+                unknown_judges([judged, dict(judged, ctest=["b", "known"])], {"known"}) == ["b"]
+                and unknown_judges([judged], {"known"}) == []),
+        }
 
 
 def scratch_build_cases(scratch: Path, cmake: str, ninja: str) -> dict:

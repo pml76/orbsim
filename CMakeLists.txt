@@ -1876,11 +1876,18 @@ endif()
 # reference that has rotted is invisible from the inside. The script fails on
 # an empty directory rather than passing, by the same rule as below.
 if(ORBSIM_PYTHON)
+    # Every CTest judge a mutant names is checked against this tree's tests
+    # where the tree builds the application (M1-129, register decision 523): a
+    # core-only tree has neither the GPU tests nor the mutants_due ones.
+    set(orbsim_judge_tree)
+    if(ORBSIM_BUILD_APP)
+        set(orbsim_judge_tree --tree ${CMAKE_BINARY_DIR})
+    endif()
     add_custom_target(mutant-anchors
             COMMAND ${ORBSIM_PYTHON}
                     ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutate.py
-                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutants --verify
-            COMMENT "mutant-anchors: every mutation-pass anchor still matches once"
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutants --verify ${orbsim_judge_tree}
+            COMMENT "mutant-anchors: every mutation-pass anchor still matches once, every judge exists"
             VERBATIM
     )
 else()

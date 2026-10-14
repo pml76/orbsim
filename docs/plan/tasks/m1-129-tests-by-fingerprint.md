@@ -3,7 +3,7 @@
 Phase: B | Status: in progress
 Prerequisites: M1-118
 Decided by: register decisions 483-491, 495-506 and 508-510, ruled
-2026-10-12, and 511-519, ruled 2026-10-13.
+2026-10-12, 511-519, ruled 2026-10-13, and 520-524, ruled 2026-10-14.
 Continues [ADR 0024](../../adr/0024-verification-costs-what-changed.md); its
 sibling, the code as modules, is [M1-130](m1-130-code-as-modules.md).
 
@@ -87,7 +87,11 @@ changed, keeps a full run before every push, and removes two fixed costs every
    mutant file an input of its own due-list entry -- are done here, since they
    change the same scripts (decision 495). Their mutants come with them: no
    `--no-tests=error`, and the spec not an input, each caught by its
-   self-test.
+   self-test. **Done third, 2026-10-14** (decisions 520-524): Ninja's answers
+   stored in the tree, `mutants-due-graph.json`, under a key of what they rest
+   on and the script's own text; the fingerprints check compares a fresh
+   reading with them; a missing judge is refused by a pass and by `--verify`
+   and makes its file due; a file's own mutants, not its note, are its input.
 8. **The working loop** written into `CLAUDE.md`'s definition of done: the
    quick targets -- `lint`, `format-check`, `doc-links` -- and the affected
    suites before a full `check`.

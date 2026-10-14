@@ -1,7 +1,7 @@
 {
   "task": "M1-129",
   "tree": "build/relwithdebinfo",
-  "note": "The snapshot a pass restores the build tree from (register decisions 506 and 512-519). Each mutant takes away one part of the put-back -- the outputs, what the tests wrote, the second listing, the source's time, the check of git's bytes, the build's check, the second restore after it -- or one of the rules around it: a leftover snapshot, --restore, and the main loop putting the tree back after each mutant. All are judged by mutate.py's self-test, which runs the put-back on a tree of plain files and on a scratch project CMake configures and Ninja builds, and a whole two-mutant pass shaped as m1-95.json is. Two survive, declared: the order of the put-back's steps, and the check of the snapshot's copies.",
+  "note": "The snapshot a pass restores the build tree from (register decisions 506 and 512-519). Each mutant takes away one part of the put-back -- the outputs, what the tests wrote, the second listing, the source's time, the check of git's bytes, the build's check, the second restore after it -- or one of the rules around it: a leftover snapshot, --restore, and the main loop putting the tree back after each mutant. All are judged by mutate.py's self-test, which runs the put-back on a tree of plain files and on a scratch project CMake configures and Ninja builds, and a whole two-mutant pass shaped as m1-95.json is. Two survive, declared: the order of the put-back's steps, and the check of the snapshot's copies. Since item 7 (register decisions 520-524) also Ninja's stored answers and their key, the fingerprints check's fresh reading, a judge the tree does not have -- run by ctest, at the start of a pass, in --verify and in the due-list -- a file with no mutants, and a mutant file's own mutants as its input: judged by mutants-due.py's self-test, mutate.py's, and the CTest test mutants_due_mutant_file.",
   "mutants": [
     {
       "name": "the outputs are not put back",
@@ -160,6 +160,150 @@
         "mutate_self_test"
       ],
       "why": "Accepted by the owner, 2026-10-13 (register decision 519). shutil.copy2 kept the time of 40 of 40 programs to the nanosecond, measured 2026-10-13, and a copy that loses one cannot be made without faking the copy itself."
+    },
+    {
+      "name": "the stored answers' key leaves out the script",
+      "file": "scripts/mutants-due.py",
+      "find": "\"script\": hashlib.sha256(script).hexdigest(),",
+      "replace": "\"script\": \"\",",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "the stored answers' key leaves out .ninja_deps",
+      "file": "scripts/mutants-due.py",
+      "find": "GRAPH_FILES = (\"build.ninja\", \"CMakeFiles/rules.ninja\", \".ninja_deps\")",
+      "replace": "GRAPH_FILES = (\"build.ninja\", \"CMakeFiles/rules.ninja\")",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "the stored answers' key leaves out build.ninja",
+      "file": "scripts/mutants-due.py",
+      "find": "GRAPH_FILES = (\"build.ninja\", \"CMakeFiles/rules.ninja\", \".ninja_deps\")",
+      "replace": "GRAPH_FILES = (\"CMakeFiles/rules.ninja\", \".ninja_deps\")",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "--fingerprints reads the stored answers twice",
+      "file": "scripts/mutants-due.py",
+      "find": "    fresh = reader(tree, stored=False)",
+      "replace": "    fresh = reader(tree)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "a judge the tree does not have is not a reason",
+      "file": "scripts/mutants-due.py",
+      "find": "    hits += sorted(i for i in inputs if i.startswith(UNKNOWN_JUDGE))",
+      "replace": "    hits += []",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "a mutant file is not an input of itself",
+      "file": "scripts/mutants-due.py",
+      "find": "    if own not in changed:\n        return None",
+      "replace": "    if True:\n        return None",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "a mutant file's own reason is never asked for",
+      "file": "scripts/mutants-due.py",
+      "find": "        if own:\n            other.append(own)",
+      "replace": "        if False:\n            other.append(own)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutants_due_mutant_file"
+      ]
+    },
+    {
+      "name": "a judge is run without --no-tests=error",
+      "file": "scripts/mutate.py",
+      "find": "    return [\"ctest\", \"-R\", f\"^{entry}$\", \"--no-tests=error\", \"--output-on-failure\"]",
+      "replace": "    return [\"ctest\", \"-R\", f\"^{entry}$\", \"--output-on-failure\"]",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ]
+    },
+    {
+      "name": "a judge that matches no test counts as a kill",
+      "file": "scripts/mutate.py",
+      "find": "    return \"no test\" if NO_TESTS in run.stdout + run.stderr else \"failed\"",
+      "replace": "    return \"failed\"",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ]
+    },
+    {
+      "name": "a pass starts though a judge does not exist",
+      "file": "scripts/mutate.py",
+      "find": "        if missing:\n            print(f\"refusing to run: {tree} has no test",
+      "replace": "        if False:\n            print(f\"refusing to run: {tree} has no test",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ]
+    },
+    {
+      "name": "--verify accepts a judge the tree does not have",
+      "file": "scripts/mutate.py",
+      "find": "        if names is not None:\n            problems += [f\"{path.name}: judges by",
+      "replace": "        if False:\n            problems += [f\"{path.name}: judges by",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ]
+    },
+    {
+      "name": "--verify accepts a file with no mutants",
+      "file": "scripts/mutate.py",
+      "find": "        if not spec[\"mutants\"]:\n            problems.append",
+      "replace": "        if False:\n            problems.append",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ]
     }
   ]
 }

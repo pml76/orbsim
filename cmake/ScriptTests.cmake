@@ -90,7 +90,9 @@ set_tests_properties(configure_current configure_current_self_test configure_gua
 # The script is run by hand before a task's commit; here it is held to two
 # claims -- its decision function, by its self-test, and its reading of this
 # very tree, by assuming core/Scalar.hpp changed and requiring the two mutant
-# files that mutate it to be listed. About 8 s.
+# files that mutate it to be listed. The first test to read a tree asks Ninja,
+# about 25 s, and stores the answers; the rest read them, about 3 s each
+# (M1-129, register decision 520).
 #
 # The four that read the tree are registered only where the application is
 # built (M1-100, register decision 246). Several mutant files are judged by the
@@ -176,6 +178,15 @@ if(ORBSIM_PYTHON AND ORBSIM_BUILD_APP)
                     ${CMAKE_BINARY_DIR} --gpu-identity
     )
     set_tests_properties(mutants_due_gpu_identity PROPERTIES LABELS gpu RESOURCE_LOCK "gpu;ninja_deps")
+    # A mutant file's own mutants are an input of its own entry (M1-129,
+    # M1-121 finding 4.8, register decision 524), held from both sides: a
+    # change to m1-13.json makes it due and leaves m1-12.json current.
+    add_test(NAME mutants_due_mutant_file
+            COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/mutants-due.py
+                    ${CMAKE_BINARY_DIR} --assume-changed scripts/mutants/m1-13.json --only-assumed
+                    --expect-due m1-13.json --expect-current m1-12.json
+    )
+    set_tests_properties(mutants_due_mutant_file PROPERTIES LABELS fixtures RESOURCE_LOCK ninja_deps)
     # --expect-unmet requires the check to fail and to say why, both: CTest's own
     # rules can require one or the other, and each let a defect through -- a
     # refusal or a crash under WILL_FAIL, a check that said so but exited 0
@@ -199,6 +210,8 @@ elseif(ORBSIM_BUILD_APP)
             mutants_due_unmet_expectation_fails mutants_due_probe_shaders
             mutants_due_unmet_current_fails PROPERTIES LABELS fixtures)
     set_tests_properties(mutants_due_gpu_identity PROPERTIES LABELS gpu)
+    add_test(NAME mutants_due_mutant_file COMMAND ${CMAKE_COMMAND} -E false)
+    set_tests_properties(mutants_due_mutant_file PROPERTIES LABELS fixtures)
 endif()
 if(ORBSIM_PYTHON)
     add_test(NAME mutants_due_self_test

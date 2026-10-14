@@ -55,6 +55,12 @@ on" is, deliberately, more than it strictly needs:
 Each file is judged in the tree its pass was recorded in, whichever tree is
 named (M1-106): only there can its fingerprints be compared.
 
+Since M1-129 (register decisions 520-524) a file's own mutants are an input
+of it too, and a judge the tree does not have makes it due. And Ninja's
+answers about the graph are stored in the tree, `mutants-due-graph.json`,
+and used while what they rest on is unchanged: a reading took 26 s asking
+Ninja and 3 s from them (2026-10-14).
+
 It over-approximates on purpose: listing a file that did not need to run
 costs minutes, and missing one costs a hole nobody sees. Each narrowing M1-109
 made has a test that a file which must stay due still does.
@@ -71,6 +77,7 @@ import json
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -95,6 +102,21 @@ HASHES = "mutants-due-hashes-2.json"
 # How long the clear probe that names the graphics card may take (M1-109): it
 # runs in about 4.4 s; an order of magnitude clear of that.
 GPU_PROBE_SECONDS = 120
+# How a judge the tree does not have stands among a file's inputs.
+UNKNOWN_JUDGE = "<unknown ctest entry "
+# Ninja's answers about the build graph, stored in the build tree (M1-129,
+# register decision 520): the header record, every node asked about, every
+# walk and the commands it reached. Asking costs about 25 s a reading -- some
+# 120 calls of `ninja -t query`, each loading the 2.4 MB build.ninja again --
+# and the seven tests that read a tree asked the same questions one after
+# another; read from here, a reading took 1.1 s (measured 2026-10-14). The
+# answers are used only while nothing they came from has changed: GRAPH_FILES,
+# the ninja program, the tree's path, and this script's own text, so that a
+# mutant of the script is never judged by answers its unmutated self wrote.
+GRAPH = "mutants-due-graph.json"
+GRAPH_FILES = ("build.ninja", "CMakeFiles/rules.ninja", ".ninja_deps")
+# Raised whenever what is stored, or how, changes.
+GRAPH_FORMAT = 1
 
 
 def norm(path) -> str:
@@ -111,6 +133,10 @@ def is_due(changed: set, inputs: set, recorded: bool, judged=None, other=()) -> 
     if not recorded:
         return True, ["no recorded pass"]
     hits = sorted(changed & inputs)
+    # A judge this tree does not have can be judged by nothing, so it makes
+    # its file due rather than standing for an input that never changes
+    # (M1-129, M1-121 finding 4.5).
+    hits += sorted(i for i in inputs if i.startswith(UNKNOWN_JUDGE))
     root = norm(ROOT) + "/"
     # The build definition counts by itself only where no fingerprint can say
     # what a change to it did (M1-103).
@@ -119,6 +145,31 @@ def is_due(changed: set, inputs: set, recorded: bool, judged=None, other=()) -> 
                                         for a in watched)]
     reasons = hits + sorted(set(always) - set(hits)) + sorted(judged or []) + list(other)
     return bool(reasons), reasons
+
+
+def own_mutants_reason(spec: dict, own: str, changed: set, earlier):
+    """Why a mutant file is due on its own account, or None (M1-129, M1-121
+    finding 4.8, register decision 524): its `mutants` differ from those at the
+    commit its pass recorded -- a mutant's text, its verdict or its `why` -- but
+    not its note, task or tree. `own` is the file's normalised path, and
+    `earlier()` its text at that commit, or None where there is none to
+    compare with: a file new since, or a change only assumed."""
+    if own not in changed:
+        return None
+    text = earlier()
+    try:
+        then = json.loads(text).get("mutants") if text is not None else None
+    except (ValueError, AttributeError):
+        then = None
+    return None if then == spec["mutants"] else "its mutants changed since its pass"
+
+
+def file_at(commit: str, path: pathlib.Path):
+    """A file's text at a commit, or None where it did not exist there."""
+    try:
+        return run(["git", "show", f"{commit}:{path.relative_to(ROOT).as_posix()}"], ROOT)
+    except subprocess.CalledProcessError:
+        return None
 
 
 def placeholders(text: str, tree: pathlib.Path, root: pathlib.Path) -> str:
@@ -267,6 +318,37 @@ def parse_query(text: str) -> dict:
                 continue
             found[current].append(entry[2:] if entry.startswith("| ") else entry)
     return found
+
+
+def stamp(path) -> list:
+    """A file's size and modification time in ns, or ["missing"]."""
+    try:
+        info = os.stat(path)
+    except OSError:
+        return ["missing"]
+    return [info.st_size, info.st_mtime_ns]
+
+
+def graph_key(tree: pathlib.Path, ninja: str, script: bytes) -> dict:
+    """What Ninja's stored answers about `tree` rest on (decision 520): each of
+    GRAPH_FILES by its size and time, as decision 250 judges a file's digest;
+    the ninja program the same way; the tree's path, which every stored name
+    contains; and a hash of the script that asked."""
+    return {"format": GRAPH_FORMAT, "tree": norm(tree), "script": hashlib.sha256(script).hexdigest(),
+            "files": {name: stamp(tree / name) for name in GRAPH_FILES},
+            "ninja": [norm(ninja), stamp(ninja)]}
+
+
+def stored_graph(text, key: dict):
+    """The stored answers, if `text` holds them for exactly this key; None for
+    no file, a file that does not parse, or one stored under another key."""
+    if text is None:
+        return None
+    try:
+        stored = json.loads(text)
+    except ValueError:
+        return None
+    return stored if isinstance(stored, dict) and stored.get("key") == key else None
 
 
 def walk_graph(target: str, edges, key, built: dict, headers: dict) -> tuple:
@@ -436,27 +518,71 @@ def gpu_identity(tree: pathlib.Path) -> tuple:
 
 
 class Tree:
-    def __init__(self, tree: pathlib.Path):
+    def __init__(self, tree: pathlib.Path, stored: bool = True):
+        """One reading of `tree`. With `stored`, Ninja's answers come from the
+        tree's stored ones where those still hold (decision 520); without, every
+        one is asked again -- the fresh reading `--fingerprints` compares with
+        them (decision 521)."""
         self.tree = tree
         self.ninja = ninja_program(tree)
-        self.headers = self._headers()
+        self._key = self._graph_key()
+        found = None
+        if stored:
+            with contextlib.suppress(OSError):
+                found = stored_graph((tree / GRAPH).read_text(encoding="utf-8"), self._key)
+        self.from_stored = found is not None
+        # How many questions this reading put to Ninja itself.
+        self.asked_ninja = 0
+        self._learned = False
         tests = json.loads(run([ctest_program(tree), "--show-only=json-v1"], tree))["tests"]
         self.tests = {t["name"]: t for t in tests}
-        self._edges = {}
-        self._walks = {}
-        self._commands = {}
+        self._headers_found = ({obj: set(headers) for obj, headers in found["headers"].items()}
+                               if found else None)
+        self._edges = dict(found["edges"]) if found else {}
+        self._walks = ({target: (set(files), made) for target, (files, made) in found["walks"].items()}
+                       if found else {})
+        self._commands = dict(found["commands"]) if found else {}
+        self._built = dict(found["built"]) if found else None
         self._fingerprints = {}
         self._tracked = None
-        self._built = None
         self._hashes = None
 
-    def _headers(self) -> dict:
+    def _graph_key(self) -> dict:
+        return graph_key(self.tree, shutil.which(self.ninja) or self.ninja, pathlib.Path(__file__).read_bytes())
+
+    def _ask(self, tool: str, args=()) -> str:
+        """A question to Ninja itself; what it answers is stored at the end."""
+        self.asked_ninja += 1
+        self._learned = True
+        return run(tool_command(self.ninja, tool, args), self.tree)
+
+    @property
+    def headers(self) -> dict:
         """object -> the headers the compiler reported for it, from Ninja's log."""
-        found = parse_deps(run(tool_command(self.ninja, "deps"), self.tree), self.tree)
-        problem = deps_problem(found, self.tree)
-        if problem:
-            raise SystemExit(problem)
-        return found
+        if self._headers_found is None:
+            found = parse_deps(self._ask("deps"), self.tree)
+            problem = deps_problem(found, self.tree)
+            if problem:
+                raise SystemExit(problem)
+            self._headers_found = found
+        return self._headers_found
+
+    def save_graph(self) -> None:
+        """Store what this reading learned from Ninja for the next one -- unless
+        a file the answers rest on changed while it read, since they might then
+        describe neither state. Written whole and then renamed into place, so a
+        reader never finds half a file."""
+        if not self._learned or self._graph_key() != self._key:
+            return
+        stored = {"key": self._key,
+                  "headers": {obj: sorted(headers) for obj, headers in self.headers.items()},
+                  "edges": self._edges,
+                  "walks": {target: [sorted(files), made] for target, (files, made) in self._walks.items()},
+                  "commands": self._commands,
+                  "built": self.built()}
+        partial = self.tree / (GRAPH + ".partial")
+        partial.write_text(json.dumps(stored), encoding="utf-8")
+        os.replace(partial, self.tree / GRAPH)
 
     def key(self, name: str) -> str:
         return norm(name) if os.path.isabs(name) else norm(self.tree / name)
@@ -465,7 +591,7 @@ class Tree:
         """Every node a build step makes, by its normalised path, to Ninja's name for it."""
         if self._built is None:
             self._built = {}
-            for line in run(tool_command(self.ninja, "targets", ["all"]), self.tree).splitlines():
+            for line in self._ask("targets", ["all"]).splitlines():
                 name = line.rsplit(": ", 1)[0].strip()
                 self._built[self.key(name)] = name
         return self._built
@@ -484,7 +610,7 @@ class Tree:
                 length += len(name) + 1
                 continue
             if batch:
-                answered = parse_query(run(tool_command(self.ninja, "query", batch), self.tree))
+                answered = parse_query(self._ask("query", batch))
                 for asked in batch:
                     self._edges[self.key(asked)] = answered.get(asked, [])
             batch, length = ([name], len(name) + 1) if name is not None else ([], 0)
@@ -493,6 +619,7 @@ class Tree:
     def walk(self, target: str) -> tuple:
         if target not in self._walks:
             self._walks[target] = walk_graph(target, self.edges, self.key, self.built(), self.headers)
+            self._learned = True
         return self._walks[target]
 
     def build_inputs(self, target: str) -> set:
@@ -511,7 +638,7 @@ class Tree:
                     length += len(name) + 1
                     continue
                 if batch:
-                    text.append(run(tool_command(self.ninja, "commands", ["-s", *batch]), self.tree))
+                    text.append(self._ask("commands", ["-s", *batch]))
                 batch, length = ([name], len(name) + 1) if name is not None else ([], 0)
             self._commands[target] = "".join(text)
         return self._commands[target]
@@ -599,7 +726,7 @@ class Tree:
         for entry in self.judging_tests(spec):
             test = self.tests.get(entry)
             if test is None:
-                files.add(f"<unknown ctest entry {entry}>")
+                files.add(f"{UNKNOWN_JUDGE}{entry}>")
                 continue
             for value in arguments(test):
                 if pathlib.Path(value).is_file():
@@ -784,6 +911,10 @@ def main_check(tree: pathlib.Path, assumed: list, only_assumed: bool, expect_due
         # The graphics card, for a file judged on it (M1-109) -- compared with
         # the record, so not for made-up changes.
         other = []
+        own = own_mutants_reason(spec, norm(spec_path), changed,
+                                 lambda: None if only_assumed else file_at(record["commit"], spec_path))
+        if own:
+            other.append(own)
         if record and not only_assumed and t.needs_gpu(spec):
             reason = gpu_reason(record, *card(where))
             if reason:
@@ -802,6 +933,7 @@ def main_check(tree: pathlib.Path, assumed: list, only_assumed: bool, expect_due
             print(f"current  {spec_path.name}{in_tree} ({since})")
     for t in readings.values():
         t.save_hashes()
+        t.save_graph()
     print(f"mutants-due: {due_count} of {len(files)} mutant files due")
     # --expect-due and --expect-current: how CTest checks the real computation
     # against this tree, in both directions (the second since M1-109).
@@ -841,19 +973,31 @@ def main_expect_unmet(tree: pathlib.Path, assumed: list, name: str, kind: str = 
     return 1
 
 
-def main_fingerprints(tree: pathlib.Path, name: str) -> int:
-    """--fingerprints: one mutant file's judges, fingerprinted twice from two
-    fresh readings of the tree. A fingerprint that is not the same twice would
-    make files due at random; one that names no judge would decide nothing."""
+def main_fingerprints(tree: pathlib.Path, name: str, reader=None) -> int:
+    """--fingerprints: one mutant file's judges, fingerprinted twice -- once
+    from a reading that asks Ninja everything again, once from Ninja's stored
+    answers where they hold (M1-129, register decision 521). A fingerprint that
+    is not the same twice would make files due at random, or say the stored
+    answers are not what a fresh reading gives; one that names no judge would
+    decide nothing. The stored answers are read before the fresh reading is
+    taken, so that the two are never the same computation; where none hold,
+    the second reading asks Ninja too, as both did before."""
     spec = json.loads((ROOT / "scripts" / "mutants" / name).read_text(encoding="utf-8"))
-    first, second = Tree(tree).fingerprints(spec), Tree(tree).fingerprints(spec)
+    reader = reader or Tree
+    stored = reader(tree)
+    fresh = reader(tree, stored=False)
+    first, second = fresh.fingerprints(spec), stored.fingerprints(spec)
     problems = [f"no judges fingerprinted for {name}"] if not first else []
+    if fresh.asked_ninja == 0:
+        problems.append("the fresh reading asked Ninja nothing, so nothing was compared")
     problems += [f"{key} cannot be fingerprinted" for key, value in first.items() if value == combine({"definition": "unknown"})]
     problems += [f"{key} differs between two readings" for key in first if first[key] != second.get(key)]
     for line in problems:
         print(f"mutants-due: {line}")
     if not problems:
-        print(f"mutants-due: {len(first)} judges of {name}, the same fingerprints twice")
+        fresh.save_graph()
+        print(f"mutants-due: {len(first)} judges of {name}, the same fingerprints twice "
+              f"({'fresh and stored' if stored.from_stored else 'both fresh: no stored answers held'})")
     return 1 if problems else 0
 
 
@@ -1158,7 +1302,80 @@ def self_test() -> int:
             status = "ok" if got == want else "WRONG"
             failures += status == "WRONG"
             print(f"self-test: {name}: {'a program' if got else 'not a program'} ({status})")
+    for name, got in m1_129_cases(root, inputs).items():
+        status = "ok" if got else "WRONG"
+        failures += status == "WRONG"
+        print(f"self-test: {name} ({status})")
     return 1 if failures else 0
+
+
+def m1_129_cases(root: str, inputs: set) -> dict:
+    """M1-129's rules: a judge this tree does not have, a mutant file's own
+    mutants, and Ninja's stored answers -- whose key must move with each thing
+    they rest on, or a reading would use answers about another graph."""
+    unknown = inputs | {f"{UNKNOWN_JUDGE}renamed_test>"}
+    spec = {"task": "T", "tree": "build/debug", "note": "n",
+            "mutants": [{"name": "m", "file": "f", "find": "a", "replace": "b", "why": "w"}]}
+    own = root + "scripts/mutants/t.json"
+
+    def then(**changes):
+        return lambda: json.dumps(dict(spec, **changes))
+
+    moved_why = [dict(spec["mutants"][0], why="other")]
+    cases = {
+        "a judge this tree does not have makes its file due, and is named":
+            is_due(set(), unknown, True, []) == (True, [f"{UNKNOWN_JUDGE}renamed_test>"]),
+        "a file whose judges all exist is not due for that": not is_due(set(), inputs, True, [])[0],
+        "a mutant file that did not change is no reason":
+            own_mutants_reason(spec, own, set(), then()) is None,
+        "a changed note, task or tree is no reason":
+            own_mutants_reason(spec, own, {own}, then(note="x", task="U", tree="build/rel")) is None,
+        "a changed mutant is a reason, its why included":
+            own_mutants_reason(spec, own, {own}, then(mutants=moved_why)) is not None,
+        "a mutant file new since its pass, or assumed changed, is a reason":
+            own_mutants_reason(spec, own, {own}, lambda: None) is not None,
+    }
+    with tempfile.TemporaryDirectory() as scratch:
+        tree = pathlib.Path(scratch)
+        ninja = tree / "ninja.exe"
+        # Named here rather than taken from GRAPH_FILES, so that a file left
+        # out of the key is a case that fails, not a case that disappears.
+        rested_on = ("build.ninja", "CMakeFiles/rules.ninja", ".ninja_deps", ninja.name)
+        for name in rested_on:
+            (tree / name).parent.mkdir(parents=True, exist_ok=True)
+            (tree / name).write_text(name, encoding="utf-8")
+        key = graph_key(tree, str(ninja), b"script")
+        text = json.dumps({"key": key, "edges": {}})
+        cases["stored answers under this key are read"] = stored_graph(text, key) == json.loads(text)
+        cases["no stored answers, or a file that does not parse, give none"] = (
+            stored_graph(None, key) is None and stored_graph("{not json", key) is None)
+        cases["another version of this script misses the stored answers"] = (
+            stored_graph(text, graph_key(tree, str(ninja), b"mutated script")) is None)
+        cases["another tree misses them"] = stored_graph(text, graph_key(tree / "elsewhere", str(ninja), b"script")) is None
+        for name in rested_on:
+            before = (tree / name).stat().st_mtime_ns
+            os.utime(tree / name, ns=(before + 10**9, before + 10**9))
+            cases[f"a changed {name} misses them"] = stored_graph(text, graph_key(tree, str(ninja), b"script")) is None
+            os.utime(tree / name, ns=(before, before))
+        cases["put back, every file meets them again"] = stored_graph(text, graph_key(tree, str(ninja), b"script")) is not None
+    # --fingerprints compares a fresh reading with the stored answers (decision
+    # 521). On a real tree a mutant of this script never meets stored answers
+    # -- its own text is in their key -- so the wiring is held here, by a
+    # reader that says whether it was asked to read them.
+    class Reader:
+        def __init__(self, tree, stored=True):
+            self.asked_ninja, self.from_stored = (0, True) if stored else (5, False)
+
+        def fingerprints(self, spec):
+            return {"ctest t": "0123"}
+
+        def save_graph(self):
+            pass
+
+    with contextlib.redirect_stdout(io.StringIO()):
+        cases["--fingerprints takes one reading that asks Ninja itself"] = (
+            main_fingerprints(pathlib.Path("."), "m1-17.json", Reader) == 0)
+    return cases
 
 
 def option_values(args: list, flag: str) -> list:
