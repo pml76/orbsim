@@ -19,7 +19,13 @@
 # (M1-90, ADR 0024, register decision 210). The CTest test abort_listener asks
 # every suite, through Catch2's --list-listeners, whether it has it. See the
 # file for what it is for.
-add_library(orbsim_abort_behaviour OBJECT tests/AbortBehaviour.cpp)
+#
+# **The second listener, since M1-129**: tests/ReadRecordListener.cpp, which
+# writes each test case's read record (register decisions 498 and 527), in
+# the same library for the same reason -- a suite that reads no file must
+# still write a record saying so. abort_listener's check that every suite has
+# the first is a check that it has this library, and so the second.
+add_library(orbsim_abort_behaviour OBJECT tests/AbortBehaviour.cpp tests/ReadRecordListener.cpp)
 target_link_libraries(orbsim_abort_behaviour PRIVATE orbsim_test_support)
 foreach(test_name IN LISTS ORBSIM_TESTS)
     add_executable(${test_name} tests/${test_name}.cpp)

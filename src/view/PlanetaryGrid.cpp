@@ -213,11 +213,15 @@ std::expected<void, LineBatchError> addVisibleGrid(LineBatch& batch,
     // side can wrap, since a grid's pieces are at most its segments.
     const std::uint64_t left = std::uint64_t{batch.capacity().value()} - batch.size().value();
     if (2 * pieces > left) return std::unexpected(LineBatchError::OverCapacity);
+    // Room was counted above, so no piece can be refused. Asserted after the
+    // loop rather than inside the lambda, so that the message names this
+    // function: inside a lambda, __func__ names the call operator (register
+    // decision 568).
+    [[maybe_unused]] bool allAdded = true;
     forEachVisiblePiece(grid, colours, eye, [&](const Segment& piece, const Rgba& colour) {
-        // Room was counted above, so this cannot be refused.
-        [[maybe_unused]] const auto added = batch.addSegment(piece, colour, camera);
-        ORBSIM_ENSURES(added.has_value());
+        allAdded = batch.addSegment(piece, colour, camera).has_value() && allAdded;
     });
+    ORBSIM_ENSURES(allAdded);
     return {};
 }
 

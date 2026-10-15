@@ -24,9 +24,9 @@
 #include "core/Time.hpp"
 #include "core/Units.hpp"
 #include "tests/OrbitTestSupport.hpp"
+#include "tests/TestCase.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 
 #include <array>
@@ -44,14 +44,9 @@ using namespace orb::test;
 
 using namespace orb::test::timesuite;
 
-// A note on the readability-function-cognitive-complexity suppressions below.
-//
-// Catch2's REQUIRE and REQUIRE_THAT each expand to a do-while wrapping a
-// try/catch, so a case scores roughly three points per assertion whether or
-// not it branches at all. The score measures the framework, not the code.
-// Ruled by the project owner on 2026-09-09 -- see test_orbit_scales.cpp for
-// the alternatives that were measured -- and confirmed for this suite on
-// 2026-09-10: one suppression per function, and only where the check fires.
+// Each test case here is held to clang-tidy's size and complexity limits, and
+// one with more than a few checks names groups of them as helpers above it --
+// tests/TestCase.hpp says why (register decisions 578 and 581).
 
 // --- the type system: the half of this suite that runs at compile time -----
 
@@ -119,56 +114,65 @@ constexpr f64 kJ2000JulianDate = 2451545.0;
 constexpr f64 kMjdZeroJulianDate = 2400000.5;
 constexpr f64 kUnixEpochJulianDate = 2440587.5;
 
+struct PublishedEpoch {
+    std::string_view name;
+    CalendarDate date;
+    f64 julianDate;
+};
+constexpr std::array kPublishedEpochs = std::to_array<PublishedEpoch>({
+    {
+        .name = "J2000.0",
+        .date = {.year = 2000, .month = 1, .day = 1, .hour = 12},
+        .julianDate = kJ2000JulianDate,
+    },
+    {
+        .name = "MJD zero",
+        .date = {.year = 1858, .month = 11, .day = 17},
+        .julianDate = kMjdZeroJulianDate,
+    },
+    {
+        .name = "the Unix epoch",
+        .date = {.year = 1970, .month = 1, .day = 1},
+        .julianDate = kUnixEpochJulianDate,
+    },
+});
+
+// The epoch's calendar date, read back from its Julian date, field by field.
+void requireTheEpochsDate(const CalendarDate& civil, const PublishedEpoch& epoch) {
+    INFO("Julian date -> calendar");
+    REQUIRE(civil.year == epoch.date.year);
+    REQUIRE(civil.month == epoch.date.month);
+    REQUIRE(civil.day == epoch.date.day);
+    REQUIRE(civil.hour == epoch.date.hour);
+    REQUIRE(civil.minute == 0);
+    REQUIRE_THAT(civil.second.value(), WithinAbsOf(0.0, Tolerance{0.0}));
+}
+
+// The calendar date to the published Julian date, and the published Julian
+// date back to the calendar date.
+void requireThePublishedEpochBothWays(const PublishedEpoch& epoch) {
+    const TtTime t = instant<TimeScale::Tt>(epoch.date);
+    const JulianDate jd = t.julianDate();
+    INFO("calendar -> Julian date");
+    REQUIRE_THAT(jd.day + jd.fraction, WithinAbsOf(epoch.julianDate, Tolerance{0.0}));
+
+    const auto back = TtTime::fromJulianDate({.day = epoch.julianDate, .fraction = 0.0});
+    INFO(errorName(back));
+    REQUIRE(back.has_value());
+    const auto civil = back->toCalendar();
+    INFO(errorName(civil));
+    REQUIRE(civil.has_value());
+    requireTheEpochsDate(*civil, epoch);
+}
+
 } // namespace
 
 // Each checked both ways: the calendar date to the published Julian date, and
 // the published Julian date back to the calendar date.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("the published epochs, both ways", "[time][epochs]") {
-    struct Case {
-        std::string_view name;
-        CalendarDate date;
-        f64 julianDate;
-    };
-    constexpr std::array kCases = std::to_array<Case>({
-        {
-            .name = "J2000.0",
-            .date = {.year = 2000, .month = 1, .day = 1, .hour = 12},
-            .julianDate = kJ2000JulianDate,
-        },
-        {
-            .name = "MJD zero",
-            .date = {.year = 1858, .month = 11, .day = 17},
-            .julianDate = kMjdZeroJulianDate,
-        },
-        {
-            .name = "the Unix epoch",
-            .date = {.year = 1970, .month = 1, .day = 1},
-            .julianDate = kUnixEpochJulianDate,
-        },
-    });
-
-    for (const Case& c : kCases) {
-        CAPTURE(c.name);
-        const TtTime t = instant<TimeScale::Tt>(c.date);
-        const JulianDate jd = t.julianDate();
-        INFO("calendar -> Julian date");
-        REQUIRE_THAT(jd.day + jd.fraction, WithinAbsOf(c.julianDate, Tolerance{0.0}));
-
-        const auto back = TtTime::fromJulianDate({.day = c.julianDate, .fraction = 0.0});
-        INFO(errorName(back));
-        REQUIRE(back.has_value());
-        const auto civil = back->toCalendar();
-        INFO(errorName(civil));
-        REQUIRE(civil.has_value());
-        INFO("Julian date -> calendar");
-        REQUIRE(civil->year == c.date.year);
-        REQUIRE(civil->month == c.date.month);
-        REQUIRE(civil->day == c.date.day);
-        REQUIRE(civil->hour == c.date.hour);
-        REQUIRE(civil->minute == 0);
-        REQUIRE_THAT(civil->second.value(), WithinAbsOf(0.0, Tolerance{0.0}));
+    for (const PublishedEpoch& epoch : kPublishedEpochs) {
+        CAPTURE(epoch.name);
+        requireThePublishedEpochBothWays(epoch);
     }
 }
 
@@ -227,34 +231,43 @@ TEST_CASE("the calendar agrees with the standard library's on every day of 1900-
     REQUIRE(visited == 73'414);
 }
 
+namespace {
+
+// The date exists exactly when the standard library's ok() says it does, and is
+// refused as InvalidDay when it does not.
+[[nodiscard]] bool existsExactlyWhenTheStandardLibrarySays(const CalendarDate& date) {
+    const std::chrono::year_month_day civil{
+        std::chrono::year{date.year},
+        std::chrono::month{static_cast<unsigned>(date.month)},
+        std::chrono::day{static_cast<unsigned>(date.day)},
+    };
+    const auto t = TtTime::fromCalendar(date);
+    return civil.ok() ? t.has_value() : (!t.has_value() && t.error() == TimeError::InvalidDay);
+}
+
+// Days 28 to 31 of every month of one year.
+void requireTheLastDaysOfEveryMonthOf(std::int32_t year) {
+    for (std::int32_t m = 1; m <= 12; ++m) {
+        for (std::int32_t d = 28; d <= 31; ++d) {
+            CAPTURE(year, m, d);
+            REQUIRE(existsExactlyWhenTheStandardLibrarySays({.year = year, .month = m, .day = d}));
+        }
+    }
+}
+
+} // namespace
+
 // Which dates exist is the other half of a calendar, and the century rule is
 // where implementations differ: 1900 and 2100 have no 29 February, 2000 does.
 // Every candidate day 28-31 of every month of 1900-2100, and 29 February of
 // every year the type supports, against the standard library's ok().
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("a date exists exactly when the standard library says it does", "[time][calendar]") {
-    const auto agreesAbout = [](const CalendarDate& date) {
-        const std::chrono::year_month_day civil{
-            std::chrono::year{date.year},
-            std::chrono::month{static_cast<unsigned>(date.month)},
-            std::chrono::day{static_cast<unsigned>(date.day)},
-        };
-        const auto t = TtTime::fromCalendar(date);
-        return civil.ok() ? t.has_value() : (!t.has_value() && t.error() == TimeError::InvalidDay);
-    };
-
     for (std::int32_t y = 1900; y <= 2100; ++y) {
-        for (std::int32_t m = 1; m <= 12; ++m) {
-            for (std::int32_t d = 28; d <= 31; ++d) {
-                CAPTURE(y, m, d);
-                REQUIRE(agreesAbout({.year = y, .month = m, .day = d}));
-            }
-        }
+        requireTheLastDaysOfEveryMonthOf(y);
     }
     for (std::int32_t y = 1; y <= 9999; ++y) {
         CAPTURE(y);
-        REQUIRE(agreesAbout({.year = y, .month = 2, .day = 29}));
+        REQUIRE(existsExactlyWhenTheStandardLibrarySays({.year = y, .month = 2, .day = 29}));
     }
 }
 
@@ -346,15 +359,8 @@ struct Transition {
     CalendarDate to;
 };
 
-} // namespace
-
-// The dates the century rule and the month lengths turn on, crossed by
-// arithmetic rather than constructed: 1900 and 2100 are not leap years, 2000
-// is, and every month end in a common year and a leap year rolls over into the
-// first of the next month.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
-TEST_CASE("the century rule, 29 February and every month end", "[time][calendar]") {
+// The century rule's dates, crossed one day at a time.
+void requireTheCenturyRuleTransitions() {
     constexpr std::array kTransitions = std::to_array<Transition>({
         {.from = {.year = 1900, .month = 2, .day = 28}, .to = {.year = 1900, .month = 3, .day = 1}},
         {
@@ -375,24 +381,39 @@ TEST_CASE("the century rule, 29 February and every month end", "[time][calendar]
         REQUIRE(next.month == transition.to.month);
         REQUIRE(next.day == transition.to.day);
     }
+}
 
+// One month's end: the day after its last does not exist, and a day's
+// arithmetic from its last lands on the first of the next month.
+void requireTheMonthEnds(std::chrono::year_month_day_last end) {
+    const auto y = static_cast<std::int32_t>(end.year());
+    const auto m = static_cast<std::int32_t>(static_cast<unsigned>(end.month()));
+    const auto length = static_cast<std::int32_t>(static_cast<unsigned>(end.day()));
+    CAPTURE(y, m, length);
+
+    const auto beyond = TtTime::fromCalendar({.year = y, .month = m, .day = length + 1});
+    const bool beyondRefused = !beyond.has_value() && beyond.error() == TimeError::InvalidDay;
+    INFO("the day after the month's last does not exist -> " << errorName(beyond));
+    REQUIRE(beyondRefused);
+
+    const CalendarDate next = dayAfter({.year = y, .month = m, .day = length});
+    REQUIRE(next.day == 1);
+    REQUIRE(next.month == (m % 12) + 1);
+    REQUIRE(next.year == (m == 12 ? y + 1 : y));
+}
+
+} // namespace
+
+// The dates the century rule and the month lengths turn on, crossed by
+// arithmetic rather than constructed: 1900 and 2100 are not leap years, 2000
+// is, and every month end in a common year and a leap year rolls over into the
+// first of the next month.
+TEST_CASE("the century rule, 29 February and every month end", "[time][calendar]") {
+    requireTheCenturyRuleTransitions();
     for (const std::int32_t y : {1900, 2000, 2023, 2024}) {
         for (std::int32_t m = 1; m <= 12; ++m) {
-            const auto end = std::chrono::year{y} / std::chrono::month{static_cast<unsigned>(m)} /
-                             std::chrono::last;
-            const auto length = static_cast<std::int32_t>(static_cast<unsigned>(end.day()));
-            CAPTURE(y, m, length);
-
-            const auto beyond = TtTime::fromCalendar({.year = y, .month = m, .day = length + 1});
-            const bool beyondRefused =
-                !beyond.has_value() && beyond.error() == TimeError::InvalidDay;
-            INFO("the day after the month's last does not exist -> " << errorName(beyond));
-            REQUIRE(beyondRefused);
-
-            const CalendarDate next = dayAfter({.year = y, .month = m, .day = length});
-            REQUIRE(next.day == 1);
-            REQUIRE(next.month == (m % 12) + 1);
-            REQUIRE(next.year == (m == 12 ? y + 1 : y));
+            requireTheMonthEnds(std::chrono::year{y} /
+                                std::chrono::month{static_cast<unsigned>(m)} / std::chrono::last);
         }
     }
 }
@@ -522,14 +543,26 @@ constexpr std::array kStartingPicos = std::to_array<std::int64_t>({
     kDay / 2,
 });
 
+// Every step from one starting instant.
+void requireEveryStepFrom(const TaiTime& start) {
+    for (const Step& step : kExactSteps) {
+        CAPTURE(step.name, step.duration.value());
+        const TaiTime moved = start + step.duration;
+        INFO("normalised");
+        REQUIRE(isNormalised(moved));
+        INFO("moved by exactly the step");
+        REQUIRE(picosecondsIn({.from = start, .to = moved}) == step.picos);
+        INFO("and back again");
+        REQUIRE((moved - step.duration) == start);
+    }
+}
+
 } // namespace
 
 // Every step from every starting point: the instant stays normalised, moves by
 // exactly the picoseconds the step is worth, and comes back when the step is
 // taken away. The starting points put the carry into the next day, and the
 // borrow from the previous one, under both signs.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("arithmetic moves by the nearest picosecond and stays normalised", "[time][arithmetic]") {
     for (const std::int64_t startPicos : kStartingPicos) {
         // The arithmetic is exercised on TAI; the calendar that built the
@@ -539,16 +572,8 @@ TEST_CASE("arithmetic moves by the nearest picosecond and stays normalised", "[t
         REQUIRE(civil.has_value());
         const TaiTime start = instant<TimeScale::Tai>(*civil);
         REQUIRE(start.picosecondOfDay() == startPicos);
-        for (const Step& step : kExactSteps) {
-            CAPTURE(startPicos, step.name, step.duration.value());
-            const TaiTime moved = start + step.duration;
-            INFO("normalised");
-            REQUIRE(isNormalised(moved));
-            INFO("moved by exactly the step");
-            REQUIRE(picosecondsIn({.from = start, .to = moved}) == step.picos);
-            INFO("and back again");
-            REQUIRE((moved - step.duration) == start);
-        }
+        CAPTURE(startPicos);
+        requireEveryStepFrom(start);
     }
 }
 
@@ -568,10 +593,30 @@ TEST_CASE("enormous durations keep the instant normalised", "[time][arithmetic]"
     }
 }
 
+namespace {
+
+// Two instants, in the order the claim names them.
+struct InstantPair {
+    TaiTime a;
+    TaiTime b;
+};
+
+// The ordering of a and b agrees with the sign of b - a, and a - b is its
+// exact negative.
+void requireOrderingAgreesWithTheDifference(const InstantPair& pair) {
+    const TaiTime& a = pair.a;
+    const TaiTime& b = pair.b;
+    const f64 difference = (b - a).value();
+    REQUIRE((a < b) == (difference > 0.0));
+    REQUIRE((a > b) == (difference < 0.0));
+    REQUIRE((a == b) == nearlyEqual(difference, 0.0, Tolerance{0.0}));
+    REQUIRE_THAT((a - b).value(), WithinAbsOf(-difference, Tolerance{0.0}));
+}
+
+} // namespace
+
 // Ordering agrees with the sign of the difference, and the difference is
 // antisymmetric bit for bit: b - a is exactly -(a - b).
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("ordering agrees with the sign of the difference", "[time][arithmetic]") {
     Sampler sampler;
     for (std::size_t i = 0; i < kSweepCases; ++i) {
@@ -581,11 +626,7 @@ TEST_CASE("ordering agrees with the sign of the difference", "[time][arithmetic]
         const TaiTime b = (i % 2 == 0) ? instant<TimeScale::Tai>(drawDate(sampler))
                                        : a + Seconds{(sampler.unit() - 0.5) * 1e-6};
         CAPTURE(kSweepSeed, i, a, b);
-        const f64 difference = (b - a).value();
-        REQUIRE((a < b) == (difference > 0.0));
-        REQUIRE((a > b) == (difference < 0.0));
-        REQUIRE((a == b) == nearlyEqual(difference, 0.0, Tolerance{0.0}));
-        REQUIRE_THAT((a - b).value(), WithinAbsOf(-difference, Tolerance{0.0}));
+        requireOrderingAgreesWithTheDifference({.a = a, .b = b});
     }
 }
 

@@ -20,9 +20,9 @@
 #include "core/Scalar.hpp"
 #include "core/Units.hpp"
 #include "tests/OrbitTestSupport.hpp"
+#include "tests/TestCase.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 
 #include <algorithm>
@@ -172,8 +172,6 @@ private:
 
 // The four matrices whose quaternions are exactly a component of one: the
 // identity, and a half turn about each axis. Read off by hand, not computed.
-// Catch2 macro expansion, not written complexity.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("the identity and the three half turns convert exactly", "[math][quaternion]") {
     struct Case {
         std::string_view name;
@@ -212,10 +210,22 @@ TEST_CASE("the identity and the three half turns convert exactly", "[math][quate
     }
 }
 
+namespace {
+
+// The quaternion from m is a unit one, reproduces m, and is the representative
+// of q and -q whose largest component is positive.
+void requireTheQuaternionOf(const RotationMatrix& m, const Quat& q) {
+    REQUIRE_THAT(normOf(q), WithinAbsOf(1.0, kUnitQuaternion));
+    REQUIRE_THAT(worstElement(q, m), WithinAbsOf(0.0, kReproducesMatrix));
+    // q and -q are one rotation; this one is the representative whose largest
+    // component is positive.
+    REQUIRE(largestComponent(q) > 0.0);
+}
+
+} // namespace
+
 // Over a seeded sweep of rotations: every branch is reached, the quaternion is
 // a unit one, and it rotates the way the matrix it came from does.
-// Catch2 macro expansion, not written complexity.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("every branch is reached and each reproduces its matrix", "[math][quaternion]") {
     Sampler sampler;
     std::array<int, 4> taken{};
@@ -231,11 +241,7 @@ TEST_CASE("every branch is reached and each reproduces its matrix", "[math][quat
         taken.at(static_cast<std::size_t>(branchOf(m))) += 1;
         worstNorm = std::max(worstNorm, std::abs(normOf(q) - 1.0));
         worstElementError = std::max(worstElementError, worstElement(q, m));
-        REQUIRE_THAT(normOf(q), WithinAbsOf(1.0, kUnitQuaternion));
-        REQUIRE_THAT(worstElement(q, m), WithinAbsOf(0.0, kReproducesMatrix));
-        // q and -q are one rotation; this one is the representative whose
-        // largest component is positive.
-        REQUIRE(largestComponent(q) > 0.0);
+        requireTheQuaternionOf(m, q);
     }
     INFO("worst |q| - 1 " << worstNorm << ", worst element " << worstElementError);
     for (std::size_t branch = 0; branch < taken.size(); ++branch) {
@@ -247,8 +253,6 @@ TEST_CASE("every branch is reached and each reproduces its matrix", "[math][quat
 // Near a half turn, where the scalar part vanishes and the branch that divides
 // by it loses everything. This is what "largest component first" buys, and the
 // test says so by computing the other way too.
-// Catch2 macro expansion, not written complexity.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("near a half turn the conversion keeps what the trace alone would lose",
           "[math][quaternion]") {
     Sampler sampler;
@@ -288,10 +292,10 @@ TEST_CASE("near a half turn the conversion keeps what the trace alone would lose
 // tested through it: what rounding produces is a rotation, and what never was
 // one is not. A transposed rotation is still a rotation -- this check cannot
 // see a transposition, and the reference test is what does.
-// Catch2 macro expansion, not written complexity.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
-TEST_CASE("isRotation accepts rounding and refuses what was never a rotation",
-          "[math][quaternion]") {
+namespace {
+
+// The identity, and the identity nudged by less and by more than rounding.
+void requireRoundingIsAcceptedAndNoMore() {
     const RotationMatrix identity{.rows = {{{{1, 0, 0}}, {{0, 1, 0}}, {{0, 0, 1}}}}};
     REQUIRE(isRotation(identity, kRotationTolerance));
 
@@ -300,7 +304,10 @@ TEST_CASE("isRotation accepts rounding and refuses what was never a rotation",
     REQUIRE(isRotation(nudged, kRotationTolerance));
     nudged.rows.at(0).at(1) = 1e-11;
     REQUIRE(!isRotation(nudged, kRotationTolerance));
+}
 
+// A scaling, a reflection and the zero matrix, none ever a rotation.
+void requireWhatWasNeverARotationIsRefused() {
     const RotationMatrix scaled{.rows = {{{{2, 0, 0}}, {{0, 2, 0}}, {{0, 0, 2}}}}};
     REQUIRE(!isRotation(scaled, kRotationTolerance));
 
@@ -310,19 +317,31 @@ TEST_CASE("isRotation accepts rounding and refuses what was never a rotation",
 
     const RotationMatrix zero{};
     REQUIRE(!isRotation(zero, kRotationTolerance));
+}
+
+[[nodiscard]] RotationMatrix transposeOf(const RotationMatrix& m) {
+    RotationMatrix transposed{};
+    for (std::size_t r = 0; r < 3; ++r) {
+        for (std::size_t c = 0; c < 3; ++c) {
+            transposed.rows.at(r).at(c) = m.rows.at(c).at(r);
+        }
+    }
+    return transposed;
+}
+
+} // namespace
+
+TEST_CASE("isRotation accepts rounding and refuses what was never a rotation",
+          "[math][quaternion]") {
+    requireRoundingIsAcceptedAndNoMore();
+    requireWhatWasNeverARotationIsRefused();
 
     Sampler sampler;
     for (std::size_t i = 0; i < 100; ++i) {
         const RotationMatrix m = matrixOf(sampler.rotation());
         CAPTURE(kSweepSeed, i);
         REQUIRE(isRotation(m, kRotationTolerance));
-        RotationMatrix transposed{};
-        for (std::size_t r = 0; r < 3; ++r) {
-            for (std::size_t c = 0; c < 3; ++c) {
-                transposed.rows.at(r).at(c) = m.rows.at(c).at(r);
-            }
-        }
-        REQUIRE(isRotation(transposed, kRotationTolerance));
+        REQUIRE(isRotation(transposeOf(m), kRotationTolerance));
     }
 }
 

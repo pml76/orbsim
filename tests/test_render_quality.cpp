@@ -54,10 +54,10 @@
 //
 #include "core/Scalar.hpp"
 #include "core/Units.hpp"
+#include "tests/TestCase.hpp"
 #include "view/RenderQuality.hpp" // IWYU pragma: keep -- the static_asserts are the test
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 
 #include <array>
 #include <cstdint>
@@ -218,15 +218,27 @@ TEST_CASE("the compound forms are the plain ones, applied in place") {
 // because these are the values a guard written with the wrong comparison
 // would refuse. In the Debug tree, where assertions are live, that mistake
 // fails this case rather than passing quietly (VERIFICATION.md rule 5).
-TEST_CASE("the boundary values that do not wrap are accepted") {
+namespace {
+
+void requireTheBoundarySumsAndDifferences() {
     REQUIRE((Texels{kLargestCount} + Texels{0}).value() == kLargestCount);
     REQUIRE((Texels{0} + Texels{kLargestCount}).value() == kLargestCount);
     REQUIRE((Texels{kLargestCount} - Texels{kLargestCount}).value() == 0U);
     REQUIRE((Texels{kLargestCount} - Texels{0}).value() == kLargestCount);
+}
+
+void requireTheBoundaryProducts() {
     REQUIRE((Texels{kLargestCount} * 1U).value() == kLargestCount);
     REQUIRE((Texels{kLargestCount} * 0U).value() == 0U);
     REQUIRE((Texels{0} * kLargestCount).value() == 0U);
     REQUIRE((Texels{1U} * kLargestCount).value() == kLargestCount);
+}
+
+} // namespace
+
+TEST_CASE("the boundary values that do not wrap are accepted") {
+    requireTheBoundarySumsAndDifferences();
+    requireTheBoundaryProducts();
 }
 
 TEST_CASE("a default count is zero, not whatever was on the stack") {

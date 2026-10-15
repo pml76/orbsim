@@ -34,9 +34,10 @@
 #include "core/Units.hpp"
 #include "tests/FixtureFile.hpp"
 #include "tests/OrbitTestSupport.hpp"
+#include "tests/TestCase.hpp"
+#include "tests/TestReads.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 
 #include <algorithm>
@@ -216,26 +217,19 @@ struct Window {
 
 // --- the budget, against data this project did not produce -------------------
 
-// Catch2's macros make every assertion a branch, so a test case that sweeps
-// anything exceeds the cognitive-complexity threshold that keeps production
-// functions on one screen. The same suppression, for the same reason, as the
-// seventy-one already in this project's suites.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
-TEST_CASE("the Sun is where Horizons says it is", "[sun][horizons]") {
-    const auto fixture = readStateVectors(std::filesystem::path{dataDirectory()} / "horizons" /
-                                          "sun-geocentric.txt");
-    if (!fixture.has_value() && fixture.error().kind == FixtureErrorKind::FileNotFound) {
-        SKIP("data/horizons/sun-geocentric.txt has not been generated on this machine: "
-             "see data/horizons/README.md");
-    }
-    INFO(errorName(fixture) << " at line " << (fixture ? std::size_t{0} : fixture.error().line));
-    REQUIRE(fixture.has_value());
-    REQUIRE(fixture->states.size() == 40);
+namespace {
 
-    Radians worstDirection{0.0};
-    f64 worstDistanceAu = 0.0;
+// The largest misses over a sweep, in direction and in distance.
+struct WorstMiss {
+    Radians direction{0.0};
+    f64 distanceAu{0.0};
+};
 
-    for (const StateAtEpoch& state : fixture->states) {
+// Every row of the fixture inside both budgets; the worst misses, for the
+// check that the comparison was not vacuous.
+[[nodiscard]] WorstMiss requireEveryStateWithinTheBudget(const StateVectorFixture& fixture) {
+    WorstMiss worst;
+    for (const StateAtEpoch& state : fixture.states) {
         const JulianDate epoch = state.epoch.julianDate();
         CAPTURE(epoch.day, epoch.fraction);
 
@@ -251,15 +245,32 @@ TEST_CASE("the Sun is where Horizons says it is", "[sun][horizons]") {
         REQUIRE(offAxis.value() <= kDirectionBudget.value());
         REQUIRE(distanceErrorAu <= kDistanceBudgetAu);
 
-        worstDirection = std::max(worstDirection, offAxis);
-        worstDistanceAu = std::max(worstDistanceAu, distanceErrorAu);
+        worst.direction = std::max(worst.direction, offAxis);
+        worst.distanceAu = std::max(worst.distanceAu, distanceErrorAu);
     }
+    return worst;
+}
+
+} // namespace
+
+TEST_CASE("the Sun is where Horizons says it is", "[sun][horizons]") {
+    const auto fixture =
+        readStateVectors(std::filesystem::path{dataFile("horizons/sun-geocentric.txt")});
+    if (!fixture.has_value() && fixture.error().kind == FixtureErrorKind::FileNotFound) {
+        SKIP("data/horizons/sun-geocentric.txt has not been generated on this machine: "
+             "see data/horizons/README.md");
+    }
+    INFO(errorName(fixture) << " at line " << (fixture ? std::size_t{0} : fixture.error().line));
+    REQUIRE(fixture.has_value());
+    REQUIRE(fixture->states.size() == 40);
+
+    const WorstMiss worst = requireEveryStateWithinTheBudget(*fixture);
 
     // Not vacuous: a reference that agreed to the resolution of a double would
     // mean the fixture had come out of eraEpv00 rather than out of Horizons.
     // eraEpv00's own claim against DE405 is kilometres, and 1e-11 au is 1.5 m.
-    CAPTURE(toDegrees(worstDirection).value() * 3600.0, worstDistanceAu);
-    REQUIRE(worstDistanceAu > 1e-11);
+    CAPTURE(toDegrees(worst.direction).value() * 3600.0, worst.distanceAu);
+    REQUIRE(worst.distanceAu > 1e-11);
 }
 
 TEST_CASE("the distance is the length of the position", "[sun]") {
@@ -275,11 +286,35 @@ TEST_CASE("the distance is the length of the position", "[sun]") {
 
 // --- the physics the fixture's forty rows cannot force -----------------------
 
-// Catch2's macros make every assertion a branch, so a test case that sweeps
-// anything exceeds the cognitive-complexity threshold that keeps production
-// functions on one screen. The same suppression, for the same reason, as the
-// seventy-one already in this project's suites.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+namespace {
+
+// One year's perihelion and aphelion.
+struct ApsidesOfAYear {
+    Apsis perihelion;
+    Apsis aphelion;
+};
+
+void requireTheApsidesAtThePublishedDistances(const ApsidesOfAYear& apsides) {
+    REQUIRE_THAT(apsides.perihelion.distanceAu,
+                 WithinAbsOf(kPerihelionAu, Tolerance{kApsisBudgetAu}));
+    REQUIRE_THAT(apsides.aphelion.distanceAu, WithinAbsOf(kAphelionAu, Tolerance{kApsisBudgetAu}));
+}
+
+// And near the right dates, which is the half of the claim a distance alone
+// does not make. Measured over these fifty years: 2-5 January and 3-6 July.
+void requireTheApsidesNearThePublishedDates(const ApsidesOfAYear& apsides) {
+    const Apsis& perihelion = apsides.perihelion;
+    const Apsis& aphelion = apsides.aphelion;
+    REQUIRE(perihelion.month == 1);
+    REQUIRE(perihelion.day >= 1);
+    REQUIRE(perihelion.day <= 8);
+    REQUIRE(aphelion.month == 7);
+    REQUIRE(aphelion.day >= 1);
+    REQUIRE(aphelion.day <= 10);
+}
+
+} // namespace
+
 TEST_CASE("the apsides are where the published figures put them", "[sun]") {
     // **The window is not the calendar year** (decision 87). Perihelion sits
     // astride the turn of the year, so a calendar year holds two of them and
@@ -307,18 +342,8 @@ TEST_CASE("the apsides are where the published figures put them", "[sun]") {
         CAPTURE(perihelion.distanceAu, perihelion.month, perihelion.day);
         CAPTURE(aphelion.distanceAu, aphelion.month, aphelion.day);
 
-        REQUIRE_THAT(perihelion.distanceAu, WithinAbsOf(kPerihelionAu, Tolerance{kApsisBudgetAu}));
-        REQUIRE_THAT(aphelion.distanceAu, WithinAbsOf(kAphelionAu, Tolerance{kApsisBudgetAu}));
-
-        // And near the right dates, which is the half of the claim a distance
-        // alone does not make. Measured over these fifty years: 2-5 January
-        // and 3-6 July.
-        REQUIRE(perihelion.month == 1);
-        REQUIRE(perihelion.day >= 1);
-        REQUIRE(perihelion.day <= 8);
-        REQUIRE(aphelion.month == 7);
-        REQUIRE(aphelion.day >= 1);
-        REQUIRE(aphelion.day <= 10);
+        requireTheApsidesAtThePublishedDistances({.perihelion = perihelion, .aphelion = aphelion});
+        requireTheApsidesNearThePublishedDates({.perihelion = perihelion, .aphelion = aphelion});
 
         worstPerihelionGap =
             std::max(worstPerihelionGap, std::abs(perihelion.distanceAu - kPerihelionAu));
@@ -424,11 +449,27 @@ TEST_CASE("irradiance follows the inverse-square law", "[sun][irradiance]") {
 
 // --- the range, by name, at both ends ----------------------------------------
 
-// Catch2's macros make every assertion a branch, so a test case that sweeps
-// anything exceeds the cognitive-complexity threshold that keeps production
-// functions on one screen. The same suppression, for the same reason, as the
-// seventy-one already in this project's suites.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+namespace {
+
+// Inside the span: both functions answer.
+void requireBothAnswerAt(TdbTime at) {
+    REQUIRE(geocentricSunPosition(at).has_value());
+    REQUIRE(sunDistance(at).has_value());
+}
+
+// Outside it: both functions report the same name.
+void requireBothRefuseAt(TdbTime at) {
+    const auto position = geocentricSunPosition(at);
+    const auto distance = sunDistance(at);
+    REQUIRE_FALSE(position.has_value());
+    REQUIRE_FALSE(distance.has_value());
+    REQUIRE(position.error() == EphemerisError::OutsideEphemerisRange);
+    REQUIRE(distance.error() == EphemerisError::OutsideEphemerisRange);
+    REQUIRE(describe(position.error()) == describe(EphemerisError::OutsideEphemerisRange));
+}
+
+} // namespace
+
 TEST_CASE("a date outside ERFA's span is reported by name", "[sun]") {
     // The boundary is ERFA's own status, not a second copy of its rule
     // (decision 31), so these cases are what pins it.
@@ -437,24 +478,16 @@ TEST_CASE("a date outside ERFA's span is reported by name", "[sun]") {
         const TdbTime edge = tdbAtJulianDay(julianDay);
 
         // Both ends are inside.
-        REQUIRE(geocentricSunPosition(edge).has_value());
-        REQUIRE(sunDistance(edge).has_value());
+        requireBothAnswerAt(edge);
 
         const bool isFirst = julianDay < 2'451'545.0;
         const TdbTime inside = isFirst ? edge + kJustOutside : edge - kJustOutside;
         const TdbTime outside = isFirst ? edge - kJustOutside : edge + kJustOutside;
 
-        REQUIRE(geocentricSunPosition(inside).has_value());
-        REQUIRE(sunDistance(inside).has_value());
+        requireBothAnswerAt(inside);
 
         // And a millisecond beyond, both functions report the same name.
-        const auto position = geocentricSunPosition(outside);
-        const auto distance = sunDistance(outside);
-        REQUIRE_FALSE(position.has_value());
-        REQUIRE_FALSE(distance.has_value());
-        REQUIRE(position.error() == EphemerisError::OutsideEphemerisRange);
-        REQUIRE(distance.error() == EphemerisError::OutsideEphemerisRange);
-        REQUIRE(describe(position.error()) == describe(EphemerisError::OutsideEphemerisRange));
+        requireBothRefuseAt(outside);
     }
 }
 

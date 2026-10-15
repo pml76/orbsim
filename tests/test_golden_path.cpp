@@ -10,9 +10,8 @@
 // the two numbers swapped, uppercase digits, a short number's leading zeros
 // dropped, a long number cut to four digits.
 //
+#include "tests/TestCase.hpp"
 #include "view/GoldenPath.hpp"
-
-#include <catch2/catch_test_macros.hpp>
 
 #include <filesystem>
 

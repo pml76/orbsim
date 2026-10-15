@@ -37,10 +37,11 @@
 // port check.
 //
 #include "HdrDumpFile.hpp"
+#include "TestReads.hpp"
 #include "core/Scalar.hpp"
+#include "tests/TestCase.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 
 #include <array>
 #include <cmath>
@@ -107,7 +108,7 @@ struct Neighbours {
 }
 
 [[nodiscard]] HdrDump readClearDump() {
-    const std::filesystem::path path = std::filesystem::path{ORBSIM_PROBE_DIR} / "clear.hdr.f32";
+    const std::filesystem::path path = std::filesystem::path{probeFile("clear.hdr.f32")};
     auto dump = readHdrDump(path);
     INFO("reading " << path.string() << ": " << (dump.has_value() ? "ok" : describe(dump.error())));
     REQUIRE(dump.has_value());

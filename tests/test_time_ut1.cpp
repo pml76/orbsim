@@ -8,9 +8,9 @@
 #include "core/Time.hpp"
 #include "core/Units.hpp"
 #include "tests/OrbitTestSupport.hpp"
+#include "tests/TestCase.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 
 #include <array>
@@ -28,14 +28,9 @@ using namespace orb::test;
 
 using namespace orb::test::timesuite;
 
-// A note on the readability-function-cognitive-complexity suppressions below.
-//
-// Catch2's REQUIRE and REQUIRE_THAT each expand to a do-while wrapping a
-// try/catch, so a case scores roughly three points per assertion whether or
-// not it branches at all. The score measures the framework, not the code.
-// Ruled by the project owner on 2026-09-09 -- see test_orbit_scales.cpp for
-// the alternatives that were measured -- and confirmed for this suite on
-// 2026-09-10: one suppression per function, and only where the check fires.
+// Each test case here is held to clang-tidy's size and complexity limits, and
+// one with more than a few checks names groups of them as helpers above it --
+// tests/TestCase.hpp says why (register decisions 578 and 581).
 
 // --- UT1 (M1-05) -------------------------------------------------------------
 //
@@ -113,8 +108,6 @@ TEST_CASE("with DeltaUT1 unmodelled, UT1 is UTC's day and time of day", "[time][
 // The sign, asserted against the definition: +0.3 s puts UT1 ahead of UTC by
 // exactly 300 000 000 000 ps, -0.3 s behind it, and either carries across
 // midnight rather than out of the day.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("UT1 = UTC + DeltaUT1, to the picosecond", "[time][ut1]") {
     constexpr std::int64_t kDayOne = 57'754; // 2017-01-01, which ends in no leap second
     constexpr std::int64_t kNoon = 43'200 * kSecond;
@@ -151,8 +144,6 @@ TEST_CASE("UT1 = UTC + DeltaUT1, to the picosecond", "[time][ut1]") {
 // With a DeltaUT1 that steps by +1 s at the leap second, as the published
 // series does, UT1 runs on through it; with DeltaUT1 unmodelled it steps back
 // instead, which is the model error the header states.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("UT1 across a leap second runs on, and the way back lands a second later",
           "[time][ut1][leap]") {
     constexpr std::int64_t kLeapDay = 57'753; // 2016-12-31, which ends in 23:59:60
@@ -185,8 +176,6 @@ TEST_CASE("UT1 across a leap second runs on, and the way back lands a second lat
 // published table is everywhere: no negative leap second has occurred. DeltaUT1
 // is drawn over its whole range, to the picosecond, and read back to the
 // picosecond it was drawn as.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("UT1 to UTC and back is exact over a seeded sweep", "[time][ut1]") {
     Sampler sampler;
     for (std::size_t i = 0; i < kSweepCases; ++i) {
@@ -201,15 +190,17 @@ TEST_CASE("UT1 to UTC and back is exact over a seeded sweep", "[time][ut1]") {
     }
 }
 
-// Every way a DeltaUT1 can be wrong, by name, and the edges that are right.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
-TEST_CASE("DeltaUT1 is refused by name beyond 0.9 s and when not finite", "[time][ut1][errors]") {
-    struct Refused {
-        f64 seconds;
-        TimeError error;
-    };
-    constexpr std::array kRefused = std::to_array<Refused>({
+namespace {
+
+// A value a factory refuses, and the name it must refuse it by.
+struct RefusedSeconds {
+    f64 seconds;
+    TimeError error;
+};
+
+// Not finite, or past 0.9 s either way.
+void requireEveryBadDeltaUt1Refused() {
+    constexpr std::array kRefused = std::to_array<RefusedSeconds>({
         {.seconds = kNaN, .error = TimeError::NotFinite},
         {.seconds = kInf, .error = TimeError::NotFinite},
         {.seconds = -kInf, .error = TimeError::NotFinite},
@@ -220,13 +211,17 @@ TEST_CASE("DeltaUT1 is refused by name beyond 0.9 s and when not finite", "[time
         {.seconds = 1e300, .error = TimeError::DeltaUt1OutOfRange},
         {.seconds = -1e300, .error = TimeError::DeltaUt1OutOfRange},
     });
-    for (const Refused& r : kRefused) {
-        const auto delta = DeltaUt1::fromSeconds(Seconds{r.seconds});
+    for (const RefusedSeconds& r : kRefused) {
         CAPTURE(r.seconds);
-        INFO(errorName(delta));
-        REQUIRE(!delta.has_value());
-        REQUIRE(delta.error() == r.error);
+        requireRefused(DeltaUt1::fromSeconds(Seconds{r.seconds}), r.error);
     }
+}
+
+} // namespace
+
+// Every way a DeltaUT1 can be wrong, by name, and the edges that are right.
+TEST_CASE("DeltaUT1 is refused by name beyond 0.9 s and when not finite", "[time][ut1][errors]") {
+    requireEveryBadDeltaUt1Refused();
 
     // The limit itself is inside it, both ways.
     REQUIRE(validDeltaUt1(Seconds{0.9}).picoseconds() == kItuUt1Limit);
@@ -241,8 +236,6 @@ TEST_CASE("DeltaUT1 is refused by name beyond 0.9 s and when not finite", "[time
 
 // A UTC instant stays inside the calendar that says how long its day is, so UT1
 // within a second of either end can have no UTC, and says so by name.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("UT1 to UTC past either end of the calendar is YearOutOfRange", "[time][ut1][errors]") {
     const Ut1Time first =
         instant<TimeScale::Ut1>({.year = 1, .month = 1, .day = 1, .second = Seconds{0.1}});
@@ -271,8 +264,6 @@ TEST_CASE("UT1 to UTC past either end of the calendar is YearOutOfRange", "[time
 // synthetic table, as decision 33's queries are, because the published table
 // cannot reach it -- and checked against the published table too, where the
 // same day is ordinary and the same UT1 has its UTC.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("UT1 in the second a negative leap second removes has no UTC", "[time][ut1][leap]") {
     constexpr std::int64_t kShortDay = 60'000;
     constexpr auto kNegative = std::to_array<LeapSecondStep>({
@@ -392,34 +383,42 @@ struct NearStep {
 
 } // namespace
 
+namespace {
+
+// The table's DeltaT around published step i, under one DeltaUT1: half a second
+// after its UTC midnight the new DeltaAT, and half a second and a second and a
+// half before it the old one. The first step has no "before".
+void requireDeltaTEitherSideOfStep(const DeltaUt1& delta, std::size_t i) {
+    constexpr std::int64_t kHalf = kSecond / 2;
+    const std::int64_t after = kPublishedSteps.at(i).deltaAtSeconds;
+    CAPTURE(i, after);
+    const DeltaT justAfter =
+        converted(deltaTFromLeapSecondTable(ttAtStep({.step = i, .offset = kHalf}), delta));
+    REQUIRE(justAfter.picoseconds() == kTtMinusTai + (after * kSecond) - delta.picoseconds());
+    if (i == 0) return;
+    const std::int64_t before = kPublishedSteps.at(i - 1).deltaAtSeconds;
+    CAPTURE(before);
+    for (const std::int64_t offset : {-kHalf, -(3 * kHalf)}) {
+        CAPTURE(offset);
+        const DeltaT earlier =
+            converted(deltaTFromLeapSecondTable(ttAtStep({.step = i, .offset = offset}), delta));
+        REQUIRE(earlier.picoseconds() == kTtMinusTai + (before * kSecond) - delta.picoseconds());
+    }
+}
+
+} // namespace
+
 // The definition at every published step. Half a second after the step's UTC
 // midnight DeltaAT is the new value; half a second before it the instant is
 // inside the leap second, whose DeltaAT is still the old one; and a second and a
 // half before it, the old one too. The first step has no "before".
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("the table's DeltaT is 32.184 s + DeltaAT - DeltaUT1 either side of every step",
           "[time][ut1][deltat]") {
-    constexpr std::int64_t kHalf = kSecond / 2;
     for (const f64 dut1 : {0.0, 0.3, -0.9}) {
         const DeltaUt1 delta = validDeltaUt1(Seconds{dut1});
+        CAPTURE(dut1);
         for (std::size_t i = 0; i < kPublishedSteps.size(); ++i) {
-            const std::int64_t after = kPublishedSteps.at(i).deltaAtSeconds;
-            CAPTURE(dut1, i, after);
-            const DeltaT justAfter =
-                converted(deltaTFromLeapSecondTable(ttAtStep({.step = i, .offset = kHalf}), delta));
-            REQUIRE(justAfter.picoseconds() ==
-                    kTtMinusTai + (after * kSecond) - delta.picoseconds());
-            if (i == 0) continue;
-            const std::int64_t before = kPublishedSteps.at(i - 1).deltaAtSeconds;
-            CAPTURE(before);
-            for (const std::int64_t offset : {-kHalf, -(3 * kHalf)}) {
-                CAPTURE(offset);
-                const DeltaT earlier = converted(
-                    deltaTFromLeapSecondTable(ttAtStep({.step = i, .offset = offset}), delta));
-                REQUIRE(earlier.picoseconds() ==
-                        kTtMinusTai + (before * kSecond) - delta.picoseconds());
-            }
+            requireDeltaTEitherSideOfStep(delta, i);
         }
     }
 }
@@ -428,8 +427,6 @@ TEST_CASE("the table's DeltaT is 32.184 s + DeltaAT - DeltaUT1 either side of ev
 // from the table's DeltaT is the UTC road's UT1 to the picosecond. Over a seeded
 // sweep of 1972-2026 with DeltaUT1 drawn over its whole range, and through every
 // leap second, a quarter of a second at a time.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("UT1 from the table's DeltaT is the UTC road's UT1 to the picosecond",
           "[time][ut1][deltat]") {
     const auto requireSameRoad = [](TtTime tt, DeltaUt1 delta) {
@@ -470,8 +467,6 @@ TEST_CASE("UT1 from the table's DeltaT is the UTC road's UT1 to the picosecond",
 // was negative from about 1873 to 1901 -- -2.0 s at 1900-01-01 by the Morrison
 // et al. (2021) splines, as Skyfield 1.55 carries them -- so a negative one is an
 // ordinary input rather than an error.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("UT1 = TT - DeltaT to the picosecond", "[time][ut1][deltat]") {
     constexpr std::int64_t kDayOne = 57'754; // 2017-01-01
     constexpr std::int64_t kNoon = 43'200 * kSecond;
@@ -530,8 +525,6 @@ TEST_CASE("UT1 = TT - DeltaT to the picosecond", "[time][ut1][deltat]") {
 // Both round trips are exact, bit for bit: the arithmetic is whole picoseconds,
 // so anything short of identity is a defect and not a rounding. DeltaT is drawn
 // to the picosecond over its whole range, days of it included.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("TT to UT1 and back is exact both ways with DeltaT anywhere in its range",
           "[time][ut1][deltat]") {
     Sampler sampler;
@@ -559,8 +552,6 @@ TEST_CASE("TT to UT1 and back is exact both ways with DeltaT anywhere in its ran
 // second. The UTC road with DeltaUT1 unmodelled does not: it runs one second of
 // UT1 twice and steps back at the UTC midnight after the leap second, which is
 // the model error core/Time.hpp states for it.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("a held DeltaT turns UT1 uniformly through a leap second where the UTC road steps back",
           "[time][ut1][deltat][leap]") {
     constexpr std::int64_t kDayOne = 57'754; // 2017-01-01; its UTC midnight is TT 00:01:09.184
@@ -589,17 +580,12 @@ TEST_CASE("a held DeltaT turns UT1 uniformly through a leap second where the UTC
     REQUIRE(steppedBack == 1);
 }
 
-// Every way a DeltaT can be wrong, by name, and the edges that are right.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
-TEST_CASE("DeltaT is refused by name beyond 10^6 s and when not finite",
-          "[time][ut1][deltat][errors]") {
+namespace {
+
+// Not finite, or past 10^6 s either way, in seconds and in picoseconds.
+void requireEveryBadDeltaTRefused() {
     const f64 pastTheLimit = std::nextafter(1e6, 2e6);
-    struct Refused {
-        f64 seconds;
-        TimeError error;
-    };
-    const auto refused = std::to_array<Refused>({
+    const auto refused = std::to_array<RefusedSeconds>({
         {.seconds = kNaN, .error = TimeError::NotFinite},
         {.seconds = kInf, .error = TimeError::NotFinite},
         {.seconds = -kInf, .error = TimeError::NotFinite},
@@ -608,12 +594,9 @@ TEST_CASE("DeltaT is refused by name beyond 10^6 s and when not finite",
         {.seconds = 1e300, .error = TimeError::DeltaTOutOfRange},
         {.seconds = -1e300, .error = TimeError::DeltaTOutOfRange},
     });
-    for (const Refused& r : refused) {
-        const auto delta = DeltaT::fromSeconds(Seconds{r.seconds});
+    for (const RefusedSeconds& r : refused) {
         CAPTURE(r.seconds);
-        INFO(errorName(delta));
-        REQUIRE(!delta.has_value());
-        REQUIRE(delta.error() == r.error);
+        requireRefused(DeltaT::fromSeconds(Seconds{r.seconds}), r.error);
     }
     for (const std::int64_t picoseconds : {
              kDeltaTLimit + 1,
@@ -621,18 +604,26 @@ TEST_CASE("DeltaT is refused by name beyond 10^6 s and when not finite",
              std::numeric_limits<std::int64_t>::max(),
              std::numeric_limits<std::int64_t>::min(),
          }) {
-        const auto delta = DeltaT::fromPicoseconds(picoseconds);
         CAPTURE(picoseconds);
-        INFO(errorName(delta));
-        REQUIRE(!delta.has_value());
-        REQUIRE(delta.error() == TimeError::DeltaTOutOfRange);
+        requireRefused(DeltaT::fromPicoseconds(picoseconds), TimeError::DeltaTOutOfRange);
     }
+}
 
-    // The limit itself is inside it, from either factory and on either side.
+// The limit itself is inside it, from either factory and on either side.
+void requireTheDeltaTLimitIsInside() {
     REQUIRE(validDeltaT(Seconds{1e6}).picoseconds() == kDeltaTLimit);
     REQUIRE(validDeltaT(Seconds{-1e6}).picoseconds() == -kDeltaTLimit);
     REQUIRE(validDeltaTPicoseconds(kDeltaTLimit).picoseconds() == kDeltaTLimit);
     REQUIRE(validDeltaTPicoseconds(-kDeltaTLimit).picoseconds() == -kDeltaTLimit);
+}
+
+} // namespace
+
+// Every way a DeltaT can be wrong, by name, and the edges that are right.
+TEST_CASE("DeltaT is refused by name beyond 10^6 s and when not finite",
+          "[time][ut1][deltat][errors]") {
+    requireEveryBadDeltaTRefused();
+    requireTheDeltaTLimitIsInside();
 
     // The nearest picosecond, whatever the size. 0.1 s is not a binary
     // fraction; 69.2138671875 s is 420 / 2^19 of a day, exactly; and 2^17 s +
@@ -650,8 +641,6 @@ TEST_CASE("DeltaT is refused by name beyond 10^6 s and when not finite",
 // name, a picosecond either side of each edge. UTC's first instant is 00:00:10
 // TAI, which is 00:00:42.184 TT; the expiry, UTC 2027-01-01T00:00:00, is
 // 00:01:09.184 TT.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("the table's DeltaT is refused by name where the table has none",
           "[time][ut1][deltat][errors]") {
     constexpr std::int64_t kEraBegins = 42'184'000'000'000;

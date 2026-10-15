@@ -17,15 +17,17 @@
 //
 #include "HdrDumpFile.hpp"
 #include "core/Scalar.hpp"
+#include "tests/TestCase.hpp"
 #include "view/ProbeImage.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
 #include <initializer_list>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -75,20 +77,42 @@ void requireRefused(const std::vector<std::byte>& file, HdrDumpError expected) {
 
 } // namespace
 
+namespace {
+
+// One value of a dump, where it is and what its bits must be.
+struct ExpectedValue {
+    Pixel pixel;
+    HdrDump::Channel channel{};
+    f32 value{};
+};
+
+// Every value of the table, bit for bit, in the table's order.
+void requireTheValues(const HdrDump& dump, std::span<const ExpectedValue> expected) {
+    for (const ExpectedValue& e : expected) {
+        CAPTURE(e.pixel.column, e.pixel.row, e.value);
+        REQUIRE(bitsOf(dump.at(e.pixel, e.channel)) == bitsOf(e.value));
+    }
+}
+
+} // namespace
+
 TEST_CASE("a well-formed dump is read value for value") {
     const auto dump = parseHdrDump(fileOf("orbsim-hdr-f32 v1 2 1\n", kTwoPixels));
     REQUIRE(dump.has_value());
     REQUIRE(dump->width() == 2U);
     REQUIRE(dump->height() == 1U);
     using C = HdrDump::Channel;
-    REQUIRE(bitsOf(dump->at({.column = 0, .row = 0}, C::Red)) == bitsOf(1.0F));
-    REQUIRE(bitsOf(dump->at({.column = 0, .row = 0}, C::Green)) == bitsOf(-2.0F));
-    REQUIRE(bitsOf(dump->at({.column = 0, .row = 0}, C::Blue)) == bitsOf(0.5F));
-    REQUIRE(bitsOf(dump->at({.column = 0, .row = 0}, C::Alpha)) == bitsOf(1.0F));
-    REQUIRE(bitsOf(dump->at({.column = 1, .row = 0}, C::Red)) == bitsOf(0.0F));
-    REQUIRE(bitsOf(dump->at({.column = 1, .row = 0}, C::Green)) == bitsOf(65504.0F));
-    REQUIRE(bitsOf(dump->at({.column = 1, .row = 0}, C::Blue)) == bitsOf(0x1p-24F));
-    REQUIRE(bitsOf(dump->at({.column = 1, .row = 0}, C::Alpha)) == bitsOf(-0.0F));
+    requireTheValues(*dump,
+                     std::to_array<ExpectedValue>({
+                         {.pixel = {.column = 0, .row = 0}, .channel = C::Red, .value = 1.0F},
+                         {.pixel = {.column = 0, .row = 0}, .channel = C::Green, .value = -2.0F},
+                         {.pixel = {.column = 0, .row = 0}, .channel = C::Blue, .value = 0.5F},
+                         {.pixel = {.column = 0, .row = 0}, .channel = C::Alpha, .value = 1.0F},
+                         {.pixel = {.column = 1, .row = 0}, .channel = C::Red, .value = 0.0F},
+                         {.pixel = {.column = 1, .row = 0}, .channel = C::Green, .value = 65504.0F},
+                         {.pixel = {.column = 1, .row = 0}, .channel = C::Blue, .value = 0x1p-24F},
+                         {.pixel = {.column = 1, .row = 0}, .channel = C::Alpha, .value = -0.0F},
+                     }));
 }
 
 TEST_CASE("rows run top to bottom") {

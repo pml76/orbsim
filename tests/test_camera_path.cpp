@@ -16,11 +16,11 @@
 #include "core/Math.hpp"
 #include "core/Scalar.hpp"
 #include "core/Units.hpp"
+#include "tests/TestCase.hpp"
 #include "view/CameraPath.hpp"
 #include "view/Pose.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
 #include <array>

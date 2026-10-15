@@ -19,12 +19,12 @@
 #include "core/Math.hpp"
 #include "core/Scalar.hpp"
 #include "core/Units.hpp"
+#include "tests/TestCase.hpp"
 #include "view/Camera.hpp"
 #include "view/LineBatch.hpp"
 #include "view/VertexLayout.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 
 #include <array>
 #include <cmath>
@@ -276,6 +276,17 @@ TEST_CASE("past the capacity is refused by name, and leaves the batch unchanged"
     requireUnchanged(batch, full);
 }
 
+namespace {
+
+// Cleared: nothing left to draw, and the room for six vertices kept.
+void requireClearedWithItsRoomKept(const LineBatch& batch) {
+    CHECK(batch.vertices().empty());
+    CHECK(batch.size() == VertexCount{0U});
+    CHECK(batch.capacity() == VertexCount{6U});
+}
+
+} // namespace
+
 TEST_CASE("filling, clearing and refilling never moves the storage") {
     // The capacity test the task asks for beside reading the code: the
     // vertices stay where the constructor put them while the batch is filled
@@ -287,9 +298,7 @@ TEST_CASE("filling, clearing and refilling never moves the storage") {
     const LineVertex* const storage = batch.vertices().data();
 
     batch.clear();
-    CHECK(batch.vertices().empty());
-    CHECK(batch.size() == VertexCount{0U});
-    CHECK(batch.capacity() == VertexCount{6U});
+    requireClearedWithItsRoomKept(batch);
 
     REQUIRE(batch.addAxes(Position{1.0, 1.0, 1.0}, Metres{2.0}, camera).has_value());
     CHECK(batch.size() == VertexCount{6U});

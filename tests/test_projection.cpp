@@ -37,11 +37,11 @@
 #include "core/Math.hpp"
 #include "core/Scalar.hpp"
 #include "core/Units.hpp"
+#include "tests/TestCase.hpp"
 #include "view/Mat4.hpp"
 #include "view/Projection.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
 #include <array>
@@ -462,6 +462,30 @@ TEST_CASE("the admissible extremes are accepted, and each error says something d
     REQUIRE(!describe(ProjectionError::InvalidNearPlane).empty());
 }
 
+namespace {
+
+// A point in front of the camera and its mirror image behind it, in clip space.
+struct FrontAndBehind {
+    ClipPoint front;
+    ClipPoint behind;
+};
+
+// The arithmetic does not tell them apart: x and y are **bit-identical**, not
+// merely close, and nothing downstream of the divide could tell these apart.
+// The depth is what differs, and it leaves the unit interval -- which is the
+// signal a caller would have to know to look for, and the reason the predicate
+// is better than expecting them to.
+void requireTheMirrorIsExactAndOnlyTheDepthDiffers(const FrontAndBehind& points) {
+    const auto frontNdc = perspectiveDivide(points.front);
+    const auto behindNdc = perspectiveDivide(points.behind);
+    REQUIRE(frontNdc.v.x.bitIdentical(behindNdc.v.x));
+    REQUIRE(frontNdc.v.y.bitIdentical(behindNdc.v.y));
+    REQUIRE(frontNdc.v.z.value() > 0.0);
+    REQUIRE(behindNdc.v.z.value() < 0.0);
+}
+
+} // namespace
+
 TEST_CASE("a point behind the camera lands back on screen, and is told apart by name") {
     // **The hazard `isInFrontOfCamera` exists for** (M1-11, register decision
     // 122), and the measurement that earned it its place. A negative w is the
@@ -479,18 +503,8 @@ TEST_CASE("a point behind the camera lands back on screen, and is told apart by 
     REQUIRE(isInFrontOfCamera(frontClip));
     REQUIRE(!isInFrontOfCamera(behindClip));
 
-    // And the arithmetic does not: x and y are **bit-identical**, not merely
-    // close. Nothing downstream of the divide could tell these apart.
-    const auto frontNdc = perspectiveDivide(frontClip);
-    const auto behindNdc = perspectiveDivide(behindClip);
-    REQUIRE(frontNdc.v.x.bitIdentical(behindNdc.v.x));
-    REQUIRE(frontNdc.v.y.bitIdentical(behindNdc.v.y));
-
-    // The depth is what differs, and it leaves the unit interval -- which is
-    // the signal a caller would have to know to look for, and the reason the
-    // predicate above is better than expecting them to.
-    REQUIRE(frontNdc.v.z.value() > 0.0);
-    REQUIRE(behindNdc.v.z.value() < 0.0);
+    // And the arithmetic does not: the mirror image lands on the same x and y.
+    requireTheMirrorIsExactAndOnlyTheDepthDiffers({.front = frontClip, .behind = behindClip});
 
     // A point on the camera plane is the loud case, and it is now a
     // precondition rather than an infinity. Asserted in Debug; here the claim

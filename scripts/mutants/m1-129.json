@@ -1,7 +1,7 @@
 {
   "task": "M1-129",
   "tree": "build/relwithdebinfo",
-  "note": "The snapshot a pass restores the build tree from (register decisions 506 and 512-519). Each mutant takes away one part of the put-back -- the outputs, what the tests wrote, the second listing, the source's time, the check of git's bytes, the build's check, the second restore after it -- or one of the rules around it: a leftover snapshot, --restore, and the main loop putting the tree back after each mutant. All are judged by mutate.py's self-test, which runs the put-back on a tree of plain files and on a scratch project CMake configures and Ninja builds, and a whole two-mutant pass shaped as m1-95.json is. Two survive, declared: the order of the put-back's steps, and the check of the snapshot's copies. Since item 7 (register decisions 520-524) also Ninja's stored answers and their key, the fingerprints check's fresh reading, a judge the tree does not have -- run by ctest, at the start of a pass, in --verify and in the due-list -- a file with no mutants, and a mutant file's own mutants as its input: judged by mutants-due.py's self-test, mutate.py's, and the CTest test mutants_due_mutant_file.",
+  "note": "The snapshot a pass restores the build tree from (register decisions 506 and 512-519). Each mutant takes away one part of the put-back -- the outputs, what the tests wrote, the second listing, the source's time, the check of git's bytes, the build's check, the second restore after it -- or one of the rules around it: a leftover snapshot, --restore, and the main loop putting the tree back after each mutant. All are judged by mutate.py's self-test, which runs the put-back on a tree of plain files and on a scratch project CMake configures and Ninja builds, and a whole two-mutant pass shaped as m1-95.json is. Two survive, declared: the order of the put-back's steps, and the check of the snapshot's copies. Since item 7 (register decisions 520-524) also Ninja's stored answers and their key, the fingerprints check's fresh reading, a judge the tree does not have -- run by ctest, at the start of a pass, in --verify and in the due-list -- a file with no mutants, and a mutant file's own mutants as its input: judged by mutants-due.py's self-test, mutate.py's, and the CTest test mutants_due_mutant_file. Since item 9's step B (register decisions 573-577): tests/TestCase.hpp's fixed line, its registration's line, its tags and the file it reports, each judged by test_test_case, each of whose cases kills one; and check-test-cases.py's rules -- a repeated section name, a section outside a test case, a computed name, a TEST_CASE without the header, a suite including Catch2's macros, and its reading of a comment -- judged by its self-test.",
   "mutants": [
     {
       "name": "the outputs are not put back",
@@ -303,6 +303,122 @@
       "targets": [],
       "ctest": [
         "mutate_self_test"
+      ]
+    },
+    {
+      "name": "Catch2's line is not fixed",
+      "file": "tests/TestCase.hpp",
+      "find": "#undef CATCH_INTERNAL_LINEINFO\n#define CATCH_INTERNAL_LINEINFO ::Catch::SourceLineInfo(__FILE__, 0)\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [
+        "test_test_case"
+      ],
+      "targets": []
+    },
+    {
+      "name": "a test case is registered with a line",
+      "file": "tests/TestCase.hpp",
+      "find": "::Catch::SourceLineInfo(kCaseFile<Id>, 0)",
+      "replace": "::Catch::SourceLineInfo(kCaseFile<Id>, 1)",
+      "expect": "caught",
+      "suites": [
+        "test_test_case"
+      ],
+      "targets": []
+    },
+    {
+      "name": "a test case's tags are dropped",
+      "file": "tests/TestCase.hpp",
+      "find": "Catch::StringRef(Id.tags.data())",
+      "replace": "Catch::StringRef()",
+      "expect": "caught",
+      "suites": [
+        "test_test_case"
+      ],
+      "targets": []
+    },
+    {
+      "name": "a failure is reported in the header's file",
+      "file": "tests/TestCase.hpp",
+      "find": "::Catch::SourceLineInfo(kCaseFile<Id>, 0)",
+      "replace": "::Catch::SourceLineInfo(__FILE__, 0)",
+      "expect": "caught",
+      "suites": [
+        "test_test_case"
+      ],
+      "targets": []
+    },
+    {
+      "name": "two sections of one name are accepted",
+      "file": "scripts/check-test-cases.py",
+      "find": "        if key in seen:\n",
+      "replace": "        if False:\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "test_cases_self_test"
+      ]
+    },
+    {
+      "name": "a section outside a test case is accepted",
+      "file": "scripts/check-test-cases.py",
+      "find": "        if not owner:\n",
+      "replace": "        if not owner and False:\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "test_cases_self_test"
+      ]
+    },
+    {
+      "name": "a computed section name is accepted",
+      "file": "scripts/check-test-cases.py",
+      "find": "    if not pieces or any(p is None for p in pieces):\n        return None\n",
+      "replace": "    if not pieces or any(p is None for p in pieces):\n        return argument\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "test_cases_self_test"
+      ]
+    },
+    {
+      "name": "a TEST_CASE without the header is accepted",
+      "file": "scripts/check-test-cases.py",
+      "find": "    if cases and not INCLUDE_HEADER.search(code):\n",
+      "replace": "    if cases and not INCLUDE_HEADER.search(code) and False:\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "test_cases_self_test"
+      ]
+    },
+    {
+      "name": "a suite including Catch2's macros is accepted",
+      "file": "scripts/check-test-cases.py",
+      "find": "    for match in INCLUDE_CATCH_MACROS.finditer(code):\n",
+      "replace": "    for match in INCLUDE_CATCH_MACROS.finditer(\"\"):\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "test_cases_self_test"
+      ]
+    },
+    {
+      "name": "a commented-out section is read as a section",
+      "file": "scripts/check-test-cases.py",
+      "find": "            wipe(i, j, True)\n            i = j\n        elif text.startswith(\"/*\", i):\n",
+      "replace": "            i = j\n        elif text.startswith(\"/*\", i):\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "test_cases_self_test"
       ]
     }
   ]

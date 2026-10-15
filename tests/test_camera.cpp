@@ -39,6 +39,7 @@
 #include "core/Math.hpp"
 #include "core/Scalar.hpp"
 #include "core/Units.hpp"
+#include "tests/TestCase.hpp"
 #include "view/Camera.hpp"
 #include "view/Frame.hpp"
 #include "view/Mat4.hpp"
@@ -46,7 +47,6 @@
 #include "view/PushConstants.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
 #include <array>
@@ -506,36 +506,60 @@ TEST_CASE("a camera whose near plane is not finite and positive is refused") {
     }
 }
 
+namespace {
+
+// Where the tolerance is probed from: a unit orientation, and a camera's place
+// and field of view.
+struct ToleranceProbe {
+    Quat unit;
+    Position where;
+    Radians fov;
+};
+
+// Inside the tolerance: accepted, at three quarters of it either way. The
+// probes are placed relative to the constant rather than at a written number,
+// so that changing the constant moves them with it.
+void requireInsideTheToleranceAccepted(const ToleranceProbe& p) {
+    REQUIRE(Camera::from(p.where, atUlpsOffUnit(p.unit, 0.75 * kAdmittedUlps), p.fov, kNearPlane)
+                .has_value());
+    REQUIRE(Camera::from(p.where, atUlpsOffUnit(p.unit, -0.75 * kAdmittedUlps), p.fov, kNearPlane)
+                .has_value());
+}
+
+// Outside it: refused, at twice it either way -- and still a quaternion every
+// other tolerance in this project would happily call unit.
+void requireOutsideTheToleranceRefused(const ToleranceProbe& p) {
+    REQUIRE(refusedError(p.where, atUlpsOffUnit(p.unit, 2.0 * kAdmittedUlps), p.fov, kNearPlane) ==
+            CameraError::NotUnitOrientation);
+    REQUIRE(refusedError(p.where, atUlpsOffUnit(p.unit, -2.0 * kAdmittedUlps), p.fov, kNearPlane) ==
+            CameraError::NotUnitOrientation);
+}
+
+// And what every producer in this project makes is accepted, which is the half
+// that says the tolerance is usable rather than merely strict.
+void requireWhatTheProducersMakeAccepted(const ToleranceProbe& p) {
+    REQUIRE(Camera::from(
+                p.where, Quat::fromAxisAngle(probeDirection(), Radians{0.77}), p.fov, kNearPlane)
+                .has_value());
+    REQUIRE(
+        Camera::from(p.where, normalize(Quat{1.0, 2.0, 3.0, 4.0}), p.fov, kNearPlane).has_value());
+    REQUIRE(Camera::from(p.where, Quat{}, p.fov, kNearPlane).has_value());
+}
+
+} // namespace
+
 TEST_CASE("the orientation tolerance is a boundary, and it is checked from both sides") {
     // **The case that gives the refusals above their teeth.** Without it, a
     // factory that refused *every* quaternion would pass every assertion in
     // the orientation section above (VERIFICATION.md rule 23).
-    const Quat unit = lookInwardAlong(probeDirection());
-    const Position where = along(probeDirection(), Metres{6.771e6});
-    const Radians fov = degrees(45.0);
-
-    // Inside the tolerance: accepted, at three quarters of it either way. The
-    // probes are placed relative to the constant rather than at a written
-    // number, so that changing the constant moves them with it.
-    REQUIRE(Camera::from(where, atUlpsOffUnit(unit, 0.75 * kAdmittedUlps), fov, kNearPlane)
-                .has_value());
-    REQUIRE(Camera::from(where, atUlpsOffUnit(unit, -0.75 * kAdmittedUlps), fov, kNearPlane)
-                .has_value());
-
-    // Outside it: refused, at twice it either way -- and still a quaternion
-    // every other tolerance in this project would happily call unit.
-    REQUIRE(refusedError(where, atUlpsOffUnit(unit, 2.0 * kAdmittedUlps), fov, kNearPlane) ==
-            CameraError::NotUnitOrientation);
-    REQUIRE(refusedError(where, atUlpsOffUnit(unit, -2.0 * kAdmittedUlps), fov, kNearPlane) ==
-            CameraError::NotUnitOrientation);
-
-    // And what every producer in this project makes is accepted, which is the
-    // half that says the tolerance is usable rather than merely strict.
-    REQUIRE(
-        Camera::from(where, Quat::fromAxisAngle(probeDirection(), Radians{0.77}), fov, kNearPlane)
-            .has_value());
-    REQUIRE(Camera::from(where, normalize(Quat{1.0, 2.0, 3.0, 4.0}), fov, kNearPlane).has_value());
-    REQUIRE(Camera::from(where, Quat{}, fov, kNearPlane).has_value());
+    const ToleranceProbe probe{
+        .unit = lookInwardAlong(probeDirection()),
+        .where = along(probeDirection(), Metres{6.771e6}),
+        .fov = degrees(45.0),
+    };
+    requireInsideTheToleranceAccepted(probe);
+    requireOutsideTheToleranceRefused(probe);
+    requireWhatTheProducersMakeAccepted(probe);
 }
 
 // ------------------------------------------------------------ the view matrix
@@ -750,43 +774,55 @@ TEST_CASE("the narrowing's error is flat across six decades of world magnitude")
     }
 }
 
+namespace {
+
+void requireTheNaivePathFailsAtOneAu(Radians fov) {
+    const PathErrors errors = walk(
+        {.worldMagnitude = Metres{1.495978707e11}, .range = Metres{4.0e5}, .verticalFov = fov});
+    CAPTURE(errors.naive, errors.render);
+    REQUIRE(errors.naive > 20.0 * kAcceptancePixels);
+}
+
+void requireTheNaivePathFailsAtShortRange(Radians fov) {
+    const PathErrors atOneKilometre =
+        walk({.worldMagnitude = Metres{6.371e6}, .range = Metres{1.0e3}, .verticalFov = fov});
+    CAPTURE(atOneKilometre.naive);
+    REQUIRE(atOneKilometre.naive > 2.0 * kAcceptancePixels);
+
+    const PathErrors atOneHundredMetres =
+        walk({.worldMagnitude = Metres{6.371e6}, .range = Metres{1.0e2}, .verticalFov = fov});
+    CAPTURE(atOneHundredMetres.naive);
+    REQUIRE(atOneHundredMetres.naive > 20.0 * kAcceptancePixels);
+}
+
+void requireTheNaivePathPassesAt400Km(Radians fov) {
+    const PathErrors errors =
+        walk({.worldMagnitude = Metres{6.371e6}, .range = Metres{4.0e5}, .verticalFov = fov});
+    CAPTURE(errors.naive, errors.render);
+    // Measured 5.8e-4 px, 86 times inside the budget. Asserted so that the task
+    // document's original claim cannot come back unnoticed.
+    REQUIRE(errors.naive < kAcceptancePixels);
+    // It is still an order of magnitude worse than doing it properly --
+    // invisible, not harmless -- and that is what says the two paths are
+    // genuinely different here rather than the test comparing a thing with
+    // itself (VERIFICATION.md rule 23).
+    REQUIRE(errors.naive > 5.0 * errors.render);
+}
+
+} // namespace
+
 TEST_CASE("the naive path fails the budget where it bites, and passes where it does not") {
     // **The half that gives the budget teeth, and the half that records a
     // measurement the plan got wrong.** Register decision 115.
     const Radians fov = degrees(45.0);
 
-    SECTION("at 1 AU it is 95 times over") {
-        const PathErrors errors = walk(
-            {.worldMagnitude = Metres{1.495978707e11}, .range = Metres{4.0e5}, .verticalFov = fov});
-        CAPTURE(errors.naive, errors.render);
-        REQUIRE(errors.naive > 20.0 * kAcceptancePixels);
-    }
+    SECTION("at 1 AU it is 95 times over") { requireTheNaivePathFailsAtOneAu(fov); }
 
-    SECTION("at short range it is over too") {
-        const PathErrors atOneKilometre =
-            walk({.worldMagnitude = Metres{6.371e6}, .range = Metres{1.0e3}, .verticalFov = fov});
-        CAPTURE(atOneKilometre.naive);
-        REQUIRE(atOneKilometre.naive > 2.0 * kAcceptancePixels);
-
-        const PathErrors atOneHundredMetres =
-            walk({.worldMagnitude = Metres{6.371e6}, .range = Metres{1.0e2}, .verticalFov = fov});
-        CAPTURE(atOneHundredMetres.naive);
-        REQUIRE(atOneHundredMetres.naive > 20.0 * kAcceptancePixels);
-    }
+    SECTION("at short range it is over too") { requireTheNaivePathFailsAtShortRange(fov); }
 
     SECTION("but at 400 km from Earth radius it is inside the budget, which the plan did not "
             "expect") {
-        const PathErrors errors =
-            walk({.worldMagnitude = Metres{6.371e6}, .range = Metres{4.0e5}, .verticalFov = fov});
-        CAPTURE(errors.naive, errors.render);
-        // Measured 5.8e-4 px, 86 times inside the budget. Asserted so that the
-        // task document's original claim cannot come back unnoticed.
-        REQUIRE(errors.naive < kAcceptancePixels);
-        // It is still an order of magnitude worse than doing it properly --
-        // invisible, not harmless -- and that is what says the two paths are
-        // genuinely different here rather than the test comparing a thing with
-        // itself (VERIFICATION.md rule 23).
-        REQUIRE(errors.naive > 5.0 * errors.render);
+        requireTheNaivePathPassesAt400Km(fov);
     }
 }
 

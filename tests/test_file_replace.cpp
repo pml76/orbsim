@@ -9,25 +9,29 @@
 // temporary directory, one per case, so that cases CTest runs in parallel
 // never share one.
 //
-// **Read back by this file's own reader**, a byte at a time through
-// std::ifstream, never by anything view/FileWrite.cpp uses. The bytes are
-// every value from 0 to 255, so a write in text mode -- which on Windows turns
-// 0x0A into 0x0D 0x0A and stops at nothing -- comes back a different length.
+// **Read back by the tests' own reader**, tests/TestReads.hpp's
+// readScratchFile, a binary-mode input stream -- never by anything
+// view/FileWrite.cpp uses -- and through that helper since M1-129, so that no
+// suite opens a file itself (register decision 530). The bytes are every value
+// from 0 to 255, so a write in text mode -- which on Windows turns 0x0A into
+// 0x0D 0x0A and stops at nothing -- comes back a different length.
 //
+#include "tests/TestCase.hpp"
+#include "tests/TestReads.hpp"
 #include "view/FileWrite.hpp"
 
-#include <catch2/catch_test_macros.hpp>
+#include <catch2/catch_message.hpp>
 
 #include <cstddef>
 #include <filesystem>
-#include <fstream>
-#include <ios>
 #include <iterator>
 #include <string>
 #include <string_view>
 #include <system_error>
+#include <utility>
 #include <vector>
 
+using namespace orb::test;
 using namespace orb::view;
 
 namespace {
@@ -65,13 +69,11 @@ namespace {
 }
 
 [[nodiscard]] std::vector<std::byte> contentsOf(const std::filesystem::path& file) {
-    std::ifstream in(file, std::ios::binary);
-    REQUIRE(in);
-    std::vector<std::byte> bytes;
-    for (std::istreambuf_iterator<char> it(in), end; it != end; ++it) {
-        bytes.push_back(static_cast<std::byte>(*it));
-    }
-    return bytes;
+    auto bytes = readScratchFile(file);
+    INFO("reading " << file.string() << ": "
+                    << (bytes.has_value() ? "ok" : describe(bytes.error())));
+    REQUIRE(bytes.has_value());
+    return *std::move(bytes);
 }
 
 [[nodiscard]] std::filesystem::path partialOf(const std::filesystem::path& target) {
@@ -208,6 +210,17 @@ TEST_CASE("a write that cannot start is reported, and leaves no file and no part
     std::filesystem::remove_all(folder);
 }
 
+namespace {
+
+// The folder in the target's place is as it was, and no partial file is left.
+void requireTheTargetAsItWas(const std::filesystem::path& target) {
+    CHECK(std::filesystem::is_directory(target));
+    CHECK(contentsOf(target / "inside.txt") == bytesOf("kept"));
+    CHECK_FALSE(std::filesystem::exists(partialOf(target)));
+}
+
+} // namespace
+
 TEST_CASE("a rename that fails is reported, and leaves the target as it was and no partial file") {
     const std::filesystem::path folder = scratchFolder("rename_fails");
     // A folder, with a file in it, where the target should be: no platform
@@ -220,9 +233,7 @@ TEST_CASE("a rename that fails is reported, and leaves the target as it was and 
     REQUIRE_FALSE(replaced);
     CHECK(replaced.error().contains("in place"));
     CHECK(replaced.error().contains("golden.png"));
-    CHECK(std::filesystem::is_directory(target));
-    CHECK(contentsOf(target / "inside.txt") == bytesOf("kept"));
-    CHECK_FALSE(std::filesystem::exists(partialOf(target)));
+    requireTheTargetAsItWas(target);
 
     std::error_code ignored;
     std::filesystem::remove_all(folder, ignored);

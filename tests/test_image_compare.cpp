@@ -17,11 +17,11 @@
 // 5 steps out fails the cap and passes the mean; every value 1 step out
 // passes the cap and fails the mean. Both boundaries are asserted exactly.
 //
+#include "tests/TestCase.hpp"
 #include "view/ImageCompare.hpp"
 #include "view/ProbeImage.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 
 #include <array>
 #include <cstddef>

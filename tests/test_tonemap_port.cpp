@@ -39,8 +39,10 @@
 // the fixture pattern is tests/test_radiometry.cpp's.
 //
 #include "HdrDumpFile.hpp"
+#include "TestReads.hpp"
 #include "core/Scalar.hpp"
 #include "core/Units.hpp"
+#include "tests/TestCase.hpp"
 #include "view/Exposure.hpp"
 #include "view/ImageCompare.hpp"
 #include "view/ImageFiles.hpp"
@@ -48,17 +50,12 @@
 #include "view/Tonemap.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 
-#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
-#include <fstream>
-#include <ios>
-#include <iterator>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -93,11 +90,6 @@ struct ProbeUnderTest {
     f64 fNumber{};
 };
 
-// A probe's file, by its whole name: `clear.png`, `lambert.hdr.f32`.
-[[nodiscard]] std::filesystem::path probeFile(const std::string& fileName) {
-    return std::filesystem::path{ORBSIM_PROBE_DIR} / fileName;
-}
-
 [[nodiscard]] HdrDump readDump(std::string_view probe) {
     const std::filesystem::path path = probeFile(std::string(probe) + ".hdr.f32");
     auto dump = readHdrDump(path);
@@ -108,15 +100,13 @@ struct ProbeUnderTest {
     return *std::move(dump);
 }
 
-[[nodiscard]] std::vector<std::byte> readBytes(const std::filesystem::path& path) {
-    std::ifstream file(path, std::ios::binary);
-    INFO("reading " << path.string());
-    REQUIRE(file.good());
-    const std::vector<char> chars{std::istreambuf_iterator<char>(file),
-                                  std::istreambuf_iterator<char>()};
-    std::vector<std::byte> bytes(chars.size());
-    std::ranges::transform(chars, bytes.begin(), [](char c) { return static_cast<std::byte>(c); });
-    return bytes;
+// A probe's file, by its whole name -- `clear.png` -- read through the
+// recording helper (M1-129, register decision 530).
+[[nodiscard]] std::vector<std::byte> readBytes(std::string_view file) {
+    auto bytes = readRecordedFile(file);
+    INFO("reading " << file << ": " << (bytes.has_value() ? "ok" : describe(bytes.error())));
+    REQUIRE(bytes.has_value());
+    return *std::move(bytes);
 }
 
 using Channel = HdrDump::Channel;
@@ -217,6 +207,22 @@ void requirePort(const ProbeUnderTest& probe) {
     REQUIRE(worst.sixteenBitSteps <= kSixteenBitSteps);
 }
 
+// A row and the channel of it that must be negative in every column.
+struct NegativeBand {
+    std::uint32_t row{};
+    Channel channel{};
+};
+
+void requireNegativeAcrossTheBand(const HdrDump& dump, const NegativeBand& band) {
+    for (std::uint32_t column = 0; column < kWidth; ++column) {
+        const f32 value = dump.at({.column = column, .row = band.row}, band.channel);
+        if (!(value < 0.0F)) {
+            INFO("row " << band.row << ", column " << column << ": " << value);
+            REQUIRE(value < 0.0F);
+        }
+    }
+}
+
 } // namespace
 
 TEST_CASE("the tonemap-port frame holds the light the clamps act on") {
@@ -226,10 +232,6 @@ TEST_CASE("the tonemap-port frame holds the light the clamps act on") {
     // Bands of 120 rows (shaders/probe_port.frag): the second band's green,
     // the third's red, the fourth's blue and all of the sixth's are negative
     // in every column.
-    struct NegativeBand {
-        std::uint32_t row{};
-        Channel channel{};
-    };
     const auto negative = std::to_array<NegativeBand>({
         {.row = 180, .channel = Channel::Green},
         {.row = 300, .channel = Channel::Red},
@@ -237,13 +239,7 @@ TEST_CASE("the tonemap-port frame holds the light the clamps act on") {
         {.row = 660, .channel = Channel::Red},
     });
     for (const NegativeBand& band : negative) {
-        for (std::uint32_t column = 0; column < kWidth; ++column) {
-            const f32 value = dump.at({.column = column, .row = band.row}, band.channel);
-            if (!(value < 0.0F)) {
-                INFO("row " << band.row << ", column " << column << ": " << value);
-                REQUIRE(value < 0.0F);
-            }
-        }
+        requireNegativeAcrossTheBand(dump, band);
     }
     // And radiance above AgX's white, 2^kMaxEv exposed, in the grey band's
     // brightest column and the red band's.

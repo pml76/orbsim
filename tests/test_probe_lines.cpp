@@ -30,10 +30,11 @@
 // must be exactly zero: nothing interpolated from zeros is anything else.
 //
 #include "HdrDumpFile.hpp"
+#include "TestReads.hpp"
 #include "core/Scalar.hpp"
+#include "tests/TestCase.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 
 #include <array>
 #include <cmath>
@@ -182,7 +183,7 @@ findNear(const HdrDump& dump, Pixel centre, const Radiance3& expected) {
 }
 
 [[nodiscard]] HdrDump readLinesDump() {
-    const std::filesystem::path path = std::filesystem::path{ORBSIM_PROBE_DIR} / "lines.hdr.f32";
+    const std::filesystem::path path = std::filesystem::path{probeFile("lines.hdr.f32")};
     auto dump = readHdrDump(path);
     INFO("reading " << path.string() << ": " << (dump.has_value() ? "ok" : describe(dump.error())));
     REQUIRE(dump.has_value());

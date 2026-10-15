@@ -12,10 +12,10 @@
 #include "core/Scalar.hpp"
 #include "core/Units.hpp"
 #include "tests/OrbitTestSupport.hpp"
+#include "tests/TestCase.hpp"
 #include "view/FrameStatistics.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 
 #include <algorithm>
@@ -158,17 +158,43 @@ TEST_CASE("percentiles and the mean against exact references") {
     CHECK_THAT(average->value(), WithinRelTo(kSampleMean, kReferenceRelative));
 }
 
+namespace {
+
+// Each figure of the summary is the single function's answer, bit for bit.
+void requireTheSingleFunctionsAnswers(const FrameTimeSummary& summary,
+                                      const std::vector<Seconds>& sample) {
+    const auto average = mean(sample);
+    REQUIRE(average.has_value());
+    CHECK(summary.mean.bitIdentical(*average));
+    CHECK(summary.median.bitIdentical(percentileOf(sample, fraction(0.5))));
+    CHECK(summary.p95.bitIdentical(percentileOf(sample, fraction(0.95))));
+    CHECK(summary.p99.bitIdentical(percentileOf(sample, fraction(0.99))));
+    CHECK(sameBits(summary.max, kSampleMax));
+}
+
+// The summary of a sample, and of the same sample reversed.
+struct BothOrders {
+    FrameTimeSummary before;
+    FrameTimeSummary after;
+};
+
+void requireTheSameFigures(const BothOrders& summaries) {
+    const FrameTimeSummary& before = summaries.before;
+    const FrameTimeSummary& after = summaries.after;
+    CHECK(before.mean.bitIdentical(after.mean));
+    CHECK(before.median.bitIdentical(after.median));
+    CHECK(before.p95.bitIdentical(after.p95));
+    CHECK(before.p99.bitIdentical(after.p99));
+    CHECK(before.max.bitIdentical(after.max));
+}
+
+} // namespace
+
 TEST_CASE("the summary is the single functions, from one sort") {
     const std::vector<Seconds> sample = secondsOf(kSample);
     const auto summary = summarise(sample);
     REQUIRE(summary.has_value());
-    const auto average = mean(sample);
-    REQUIRE(average.has_value());
-    CHECK(summary->mean.bitIdentical(*average));
-    CHECK(summary->median.bitIdentical(percentileOf(sample, fraction(0.5))));
-    CHECK(summary->p95.bitIdentical(percentileOf(sample, fraction(0.95))));
-    CHECK(summary->p99.bitIdentical(percentileOf(sample, fraction(0.99))));
-    CHECK(sameBits(summary->max, kSampleMax));
+    requireTheSingleFunctionsAnswers(*summary, sample);
 }
 
 TEST_CASE("the order of the sample does not matter") {
@@ -178,11 +204,7 @@ TEST_CASE("the order of the sample does not matter") {
     std::ranges::reverse(sample);
     const auto after = summarise(sample);
     REQUIRE(after.has_value());
-    CHECK(before->mean.bitIdentical(after->mean));
-    CHECK(before->median.bitIdentical(after->median));
-    CHECK(before->p95.bitIdentical(after->p95));
-    CHECK(before->p99.bitIdentical(after->p99));
-    CHECK(before->max.bitIdentical(after->max));
+    requireTheSameFigures({.before = *before, .after = *after});
 }
 
 TEST_CASE("the mean keeps what a plain sum rounds away") {

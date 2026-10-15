@@ -16,19 +16,20 @@
 // worked out on paper for an eye on an axis.
 //
 #include "FixtureFile.hpp"
+#include "TestReads.hpp"
 #include "astro/EarthOrientation.hpp"
 #include "core/DoubleDouble.hpp"
 #include "core/Math.hpp"
 #include "core/Scalar.hpp"
 #include "core/Time.hpp"
 #include "core/Units.hpp"
+#include "tests/TestCase.hpp"
 #include "view/Camera.hpp"
 #include "view/LineBatch.hpp"
 #include "view/PlanetaryGrid.hpp"
 #include "view/VertexLayout.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
 #include <array>
@@ -115,8 +116,8 @@ constexpr JulianDate kEpochUt1{.day = 2'460'886.5, .fraction = 0.269111633300781
 
 // The fixture's celestial-to-terrestrial matrix at the epoch's row.
 [[nodiscard]] RotationMatrix fixtureMatrixAtEpoch() {
-    auto fixture = readEarthOrientation(std::filesystem::path{dataDirectory()} / "skyfield" /
-                                        "earth-orientation.txt");
+    auto fixture =
+        readEarthOrientation(std::filesystem::path{dataFile("skyfield/earth-orientation.txt")});
     INFO((fixture.has_value() ? "" : describe(fixture.error())));
     REQUIRE(fixture.has_value());
     const auto tt = TtTime::fromJulianDate(kEpochTt);
@@ -254,7 +255,9 @@ struct DirectionPair {
 
 // --- the layout ---------------------------------------------------------------
 
-TEST_CASE("a grid's counts are refused by name where no grid can be made of them") {
+namespace {
+
+void requireNoMeridiansAndNoSegmentsRefused() {
     const auto noMeridians = GridLayout::from(
         {.meridians = 0, .parallelsPerHemisphere = 8, .segmentsPerQuarterCircle = 180});
     REQUIRE(!noMeridians.has_value());
@@ -264,9 +267,11 @@ TEST_CASE("a grid's counts are refused by name where no grid can be made of them
         {.meridians = 24, .parallelsPerHemisphere = 8, .segmentsPerQuarterCircle = 0});
     REQUIRE(!noSegments.has_value());
     CHECK(noSegments.error() == GridError::NoSegments);
+}
 
-    // 2 x (1 x 2 x s + 1 x 4 x s) = 12 s vertices: one past 2^32 - 1 at the
-    // smallest s that reaches it, and the largest s that does not.
+// 2 x (1 x 2 x s + 1 x 4 x s) = 12 s vertices: one past 2^32 - 1 at the
+// smallest s that reaches it, and the largest s that does not.
+void requireTheVertexCountsLimit() {
     constexpr std::uint32_t kFirstTooLarge = 357'913'942; // 12 s > 4 294 967 295
     const auto tooLarge = GridLayout::from(
         {.meridians = 1, .parallelsPerHemisphere = 0, .segmentsPerQuarterCircle = kFirstTooLarge});
@@ -279,6 +284,13 @@ TEST_CASE("a grid's counts are refused by name where no grid can be made of them
     });
     REQUIRE(largest.has_value());
     CHECK(largest->vertexCount() == VertexCount{4'294'967'292U});
+}
+
+} // namespace
+
+TEST_CASE("a grid's counts are refused by name where no grid can be made of them") {
+    requireNoMeridiansAndNoSegmentsRefused();
+    requireTheVertexCountsLimit();
 }
 
 TEST_CASE("the task's grid has the lines and the vertex counts its spacing gives") {
@@ -605,22 +617,36 @@ TEST_CASE("there is no horizon from on or inside the sphere") {
     CHECK(!horizonFrom(Position{kRadius, 0.0, 0.0}, Metres{kRadius}).has_value());
 }
 
-TEST_CASE("from an eye on an axis the horizon is the circle worked out on paper") {
-    // An eye at distance d on +x: the circle x = R^2/d, of radius
-    // R sqrt(1 - R^2/d^2), about the x axis.
-    const f64 d = kRadius + 400e3;
-    const Horizon horizon = horizonOrFail(Position{d, 0.0, 0.0});
+namespace {
+
+// The circle x = R^2/d, of radius R sqrt(1 - R^2/d^2), about the x axis.
+void requireTheCircleSeenFromDistance(const Horizon& horizon, Metres distance) {
+    const f64 d = distance.value();
     constexpr f64 kMicrometre = 1e-6; // far below a pixel, far above rounding
     CHECK(std::abs(horizon.centre.x.value() - ((kRadius * kRadius) / d)) <= kMicrometre);
     CHECK(std::abs(horizon.centre.y.value()) <= kMicrometre);
     CHECK(std::abs(horizon.centre.z.value()) <= kMicrometre);
     const f64 radius = kRadius * std::sqrt(1.0 - ((kRadius * kRadius) / (d * d)));
     CHECK(std::abs(horizon.radius.value() - radius) <= kMicrometre);
-    // The two directions span the plane x = const: unit, perpendicular to x
-    // and to each other.
+}
+
+// The two directions span the plane x = const: unit, perpendicular to x and to
+// each other.
+void requireTheDirectionsSpanThePlane(const Horizon& horizon) {
     CHECK(std::abs(horizon.across.x.value()) <= 1e-15);
     CHECK(std::abs(horizon.around.x.value()) <= 1e-15);
     CHECK(std::abs(dot(horizon.across, horizon.around).value()) <= 1e-15);
+}
+
+} // namespace
+
+TEST_CASE("from an eye on an axis the horizon is the circle worked out on paper") {
+    // An eye at distance d on +x: the circle x = R^2/d, of radius
+    // R sqrt(1 - R^2/d^2), about the x axis.
+    const f64 d = kRadius + 400e3;
+    const Horizon horizon = horizonOrFail(Position{d, 0.0, 0.0});
+    requireTheCircleSeenFromDistance(horizon, Metres{d});
+    requireTheDirectionsSpanThePlane(horizon);
 }
 
 TEST_CASE("every point of the horizon is on the sphere and on the horizon plane") {

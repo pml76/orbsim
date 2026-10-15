@@ -32,9 +32,10 @@
 #include "core/Units.hpp"
 #include "tests/FixtureFile.hpp"
 #include "tests/OrbitTestSupport.hpp"
+#include "tests/TestCase.hpp"
+#include "tests/TestReads.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 
 #include <algorithm>
@@ -235,8 +236,8 @@ private:
 };
 
 [[nodiscard]] EarthOrientationFixture readTheFixture() {
-    auto fixture = readEarthOrientation(std::filesystem::path{dataDirectory()} / "skyfield" /
-                                        "earth-orientation.txt");
+    auto fixture =
+        readEarthOrientation(std::filesystem::path{dataFile("skyfield/earth-orientation.txt")});
     INFO(errorName(fixture) << " at line " << (fixture ? std::size_t{0} : fixture.error().line));
     REQUIRE(fixture.has_value());
     REQUIRE(!fixture->rows.empty());
@@ -266,8 +267,6 @@ TEST_CASE("the Earth rotation angle at J2000.0 is the published value", "[earth]
 // that period from the angle rather than being told it. A wrong rate constant
 // fails this; so does TT handed in where UT1 belongs, at the epoch below,
 // because the two disagree by 69 s and the angle by 1041".
-// Catch2 macro expansion, not written complexity.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("one turn of the Earth rotation angle takes the stellar day", "[earth][era]") {
     // Four epochs across the span, each at a different time of day.
     for (const Stamp start : {
@@ -303,8 +302,6 @@ TEST_CASE("one turn of the Earth rotation angle takes the stellar day", "[earth]
 
 // The budget, against an implementation this project did not write and did not
 // derive from the one under test.
-// Catch2 macro expansion, not written complexity.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("the rotation agrees with an independent implementation to 0.1 mas", "[earth][budget]") {
     const EarthOrientationFixture fixture = readTheFixture();
     REQUIRE(fixture.rows.size() == 1029);
@@ -334,8 +331,6 @@ TEST_CASE("the rotation agrees with an independent implementation to 0.1 mas", "
 // time leaves the equation of the origins in the answer: a rotation about the
 // pole, 1231" in 2026 and growing by 46" a year. The pole itself is untouched
 // by that mistake, which is why the spin is where it must be measured.
-// Catch2 macro expansion, not written complexity.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("the composition is CIO-consistent", "[earth][budget]") {
     const EarthOrientationFixture fixture = readTheFixture();
     Radians worstSpin{0.0};
@@ -363,8 +358,6 @@ TEST_CASE("the composition is CIO-consistent", "[earth][budget]") {
 // Only UT1 turns the Earth. With TT held, moving UT1 turns the frame about the
 // terrestrial pole by exactly the change in the Earth rotation angle, and
 // leaves the pole where it was.
-// Catch2 macro expansion, not written complexity.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("only UT1 turns the Earth", "[earth][structure]") {
     Sampler sampler;
     for (std::size_t i = 0; i < 200; ++i) {
@@ -451,8 +444,6 @@ TEST_CASE("the pole of date is the same with and without the Earth's rotation",
 // polar motion zero and which is not in Rz(ERA) x C2I: -47 uas a century from
 // J2000, so under 0.1 mas across 1900-2100. That it is a *spin* and not a tilt
 // is asserted too, because that is what s' is.
-// Catch2 macro expansion, not written complexity.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("the intermediate frame is the full rotation less the Earth's turn",
           "[earth][structure]") {
     Sampler sampler;
@@ -496,12 +487,73 @@ TEST_CASE("the intermediate frame is the full rotation less the Earth's turn",
     }
 }
 
+namespace {
+
+// The time of day on day mjd at which the Earth rotation angle is within a
+// milliradian of pi -- from the defining formula, not from the code under
+// test.
+[[nodiscard]] std::int64_t picosecondsNearAHalfTurn(std::int64_t mjd) {
+    const f64 turnsAtMidnight =
+        kEraAtJ2000Turns + (kEraTurnsPerDay * ((kMjdZero + static_cast<f64>(mjd)) - 2'451'545.0));
+    const f64 wanted = 0.5 - (turnsAtMidnight - std::floor(turnsAtMidnight));
+    const f64 fraction = (wanted < 0.0 ? wanted + 1.0 : wanted) / kEraTurnsPerDay;
+    const auto picos =
+        static_cast<std::int64_t>(fraction * static_cast<f64>(kPicosecondsPerDayHere));
+    return std::clamp(picos, std::int64_t{0}, kPicosecondsPerDayHere - 1);
+}
+
+// The rotation angle really is near pi; whether the quaternion's scalar part
+// is near zero there, which is the branch the case was chosen for.
+[[nodiscard]] bool requireNearAHalfTurn(Ut1Time ut1, const Quat& q) {
+    const f64 era = earthRotationAngle(ut1).value();
+    CAPTURE(era);
+    REQUIRE(std::abs(era - std::numbers::pi_v<f64>) < 1e-3);
+    return std::abs(q.w) < 0.05;
+}
+
+// A unit quaternion; how far its norm is from one.
+[[nodiscard]] f64 requireAUnitQuaternion(const Quat& q) {
+    const f64 norm = std::sqrt((q.w * q.w) + (q.x * q.x) + (q.y * q.y) + (q.z * q.z));
+    REQUIRE_THAT(norm, WithinAbsOf(1.0, kUnitQuaternion));
+    return std::abs(norm - 1.0);
+}
+
+// q turns each axis onto the column of m it should; the worst element error.
+[[nodiscard]] f64 requireTheQuaternionIsTheMatrix(const Quat& q, const RotationMatrix& m) {
+    f64 worstElement = 0.0;
+    for (std::size_t column = 0; column < 3; ++column) {
+        const auto axes = std::to_array<Direction>({
+            Direction{1, 0, 0},
+            Direction{0, 1, 0},
+            Direction{0, 0, 1},
+        });
+        const Direction turned = q.rotate(axes.at(column));
+        const std::array<f64, 3> got{{turned.x.value(), turned.y.value(), turned.z.value()}};
+        for (std::size_t r = 0; r < 3; ++r) {
+            const f64 error = std::abs(got.at(r) - m.rows.at(r).at(column));
+            worstElement = std::max(worstElement, error);
+            REQUIRE_THAT(error, WithinAbsOf(0.0, kReproducesMatrix));
+        }
+    }
+    return worstElement;
+}
+
+// Inertial -> body-fixed -> inertial, on a vector that is not an axis; how far
+// it came back from where it began.
+[[nodiscard]] f64 requireTheRotationUndoesItself(const Quat& q) {
+    const Direction v = directionOf(Direction{0.3, -0.7, 0.64});
+    const Direction back = q.inverseRotate(q.rotate(v));
+    const f64 roundTrip = length(back - v).value();
+    REQUIRE_THAT(roundTrip, WithinAbsOf(0.0, kStructural));
+    return roundTrip;
+}
+
+} // namespace
+
 // The quaternion is the matrix, and the rotation undoes itself: the two claims
 // that are about this project's own arithmetic rather than about the IAU
 // models. Over a seeded sweep, and at epochs where the rotation is within a
 // whisker of a half turn, which is the case the conversion is shaped for.
-// Catch2 macro expansion, not written complexity.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("the quaternion is a unit one and reproduces the matrix", "[earth][structure]") {
     Sampler sampler;
     f64 worstNorm = 0.0;
@@ -516,57 +568,22 @@ TEST_CASE("the quaternion is a unit one and reproduces the matrix", "[earth][str
             .picosecondOfDay = sampler.between({.lo = 0, .hi = kPicosecondsPerDayHere - 1}),
         });
         // Half of the cases at an arbitrary UT1, and half where the Earth
-        // rotation angle is within a milliradian of pi -- the fraction of the
-        // day that puts it there comes from the defining formula, not from the
-        // code under test.
+        // rotation angle is within a milliradian of pi. The arbitrary time of
+        // day is drawn either way, so that the sweep's draws do not depend on
+        // which half a case is in.
         const bool nearHalfTurn = i % 2 == 1;
         std::int64_t picos = sampler.between({.lo = 0, .hi = kPicosecondsPerDayHere - 1});
-        if (nearHalfTurn) {
-            const f64 turnsAtMidnight =
-                kEraAtJ2000Turns +
-                (kEraTurnsPerDay * ((kMjdZero + static_cast<f64>(mjd)) - 2'451'545.0));
-            const f64 wanted = 0.5 - (turnsAtMidnight - std::floor(turnsAtMidnight));
-            const f64 fraction = (wanted < 0.0 ? wanted + 1.0 : wanted) / kEraTurnsPerDay;
-            picos = static_cast<std::int64_t>(fraction * static_cast<f64>(kPicosecondsPerDayHere));
-            picos = std::clamp(picos, std::int64_t{0}, kPicosecondsPerDayHere - 1);
-        }
+        if (nearHalfTurn) picos = picosecondsNearAHalfTurn(mjd);
         const Ut1Time ut1 = instantAt<TimeScale::Ut1>({.mjd = mjd, .picosecondOfDay = picos});
         CAPTURE(kSweepSeed, i, tt, ut1, nearHalfTurn);
 
         const RotationMatrix m = earthFixedFromInertialMatrix(tt, ut1);
         const Quat q = earthFixedFromInertial(tt, ut1);
-        if (nearHalfTurn) {
-            const f64 era = earthRotationAngle(ut1).value();
-            CAPTURE(era);
-            REQUIRE(std::abs(era - std::numbers::pi_v<f64>) < 1e-3);
-            if (std::abs(q.w) < 0.05) ++nearHalfTurns;
-        }
+        if (nearHalfTurn && requireNearAHalfTurn(ut1, q)) ++nearHalfTurns;
 
-        const f64 norm = std::sqrt((q.w * q.w) + (q.x * q.x) + (q.y * q.y) + (q.z * q.z));
-        worstNorm = std::max(worstNorm, std::abs(norm - 1.0));
-        REQUIRE_THAT(norm, WithinAbsOf(1.0, kUnitQuaternion));
-
-        for (std::size_t column = 0; column < 3; ++column) {
-            const auto axes = std::to_array<Direction>({
-                Direction{1, 0, 0},
-                Direction{0, 1, 0},
-                Direction{0, 0, 1},
-            });
-            const Direction turned = q.rotate(axes.at(column));
-            const std::array<f64, 3> got{{turned.x.value(), turned.y.value(), turned.z.value()}};
-            for (std::size_t r = 0; r < 3; ++r) {
-                const f64 error = std::abs(got.at(r) - m.rows.at(r).at(column));
-                worstElement = std::max(worstElement, error);
-                REQUIRE_THAT(error, WithinAbsOf(0.0, kReproducesMatrix));
-            }
-        }
-
-        // Inertial -> body-fixed -> inertial, on a vector that is not an axis.
-        const Direction v = directionOf(Direction{0.3, -0.7, 0.64});
-        const Direction back = q.inverseRotate(q.rotate(v));
-        const f64 roundTrip = length(back - v).value();
-        worstRoundTrip = std::max(worstRoundTrip, roundTrip);
-        REQUIRE_THAT(roundTrip, WithinAbsOf(0.0, kStructural));
+        worstNorm = std::max(worstNorm, requireAUnitQuaternion(q));
+        worstElement = std::max(worstElement, requireTheQuaternionIsTheMatrix(q, m));
+        worstRoundTrip = std::max(worstRoundTrip, requireTheRotationUndoesItself(q));
     }
 
     INFO("worst |q| - 1 " << worstNorm << ", element " << worstElement << ", round trip "

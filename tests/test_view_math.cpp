@@ -42,11 +42,11 @@
 #include "core/Math.hpp"
 #include "core/Scalar.hpp"
 #include "core/Units.hpp"
+#include "tests/TestCase.hpp"
 #include "view/Frame.hpp"
 #include "view/Mat4.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
 #include <array>
@@ -239,6 +239,30 @@ struct InverseResidual {
     return worstUlps;
 }
 
+// The elements of (a b) c and a (b c), column-major, and the magnitude product
+// |a| |b| |c| that conditions each.
+struct BothGroupings {
+    std::array<f64, 16> left{};
+    std::array<f64, 16> right{};
+    std::array<f64, 16> conditioning{};
+};
+
+// Exactly equal wherever nothing conditions an element; elsewhere, the worst
+// ratio of the difference to its conditioning.
+[[nodiscard]] f64 requireExactWhereUnconditioned(const BothGroupings& groupings, std::size_t i) {
+    f64 worstRatio = 0.0;
+    for (std::size_t j = 0; j < 16; ++j) {
+        const f64 difference = std::abs(groupings.left.at(j) - groupings.right.at(j));
+        if (groupings.conditioning.at(j) <= 0.0) {
+            CAPTURE(i, j);
+            REQUIRE(difference <= 0.0);
+            continue;
+        }
+        worstRatio = std::max(worstRatio, difference / groupings.conditioning.at(j));
+    }
+    return worstRatio;
+}
+
 } // namespace
 
 TEST_CASE("matrix multiplication is associative to the conditioning of the product") {
@@ -251,22 +275,15 @@ TEST_CASE("matrix multiplication is associative to the conditioning of the produ
 
         const WorldTransform left = (a * b) * c;
         const WorldTransform right = a * (b * c);
-        const std::array<f64, 16> conditioning = magnitudeProduct({
-            .left = magnitudeProduct({.left = a.columnMajor(), .right = b.columnMajor()}),
-            .right = c.columnMajor(),
-        });
-
-        const std::array<f64, 16> leftElements = left.columnMajor();
-        const std::array<f64, 16> rightElements = right.columnMajor();
-        for (std::size_t j = 0; j < 16; ++j) {
-            const f64 difference = std::abs(leftElements.at(j) - rightElements.at(j));
-            if (conditioning.at(j) <= 0.0) {
-                CAPTURE(i, j);
-                REQUIRE(difference <= 0.0);
-                continue;
-            }
-            worstRatio = std::max(worstRatio, difference / conditioning.at(j));
-        }
+        const BothGroupings groupings{
+            .left = left.columnMajor(),
+            .right = right.columnMajor(),
+            .conditioning = magnitudeProduct({
+                .left = magnitudeProduct({.left = a.columnMajor(), .right = b.columnMajor()}),
+                .right = c.columnMajor(),
+            }),
+        };
+        worstRatio = std::max(worstRatio, requireExactWhereUnconditioned(groupings, i));
     }
     CAPTURE(worstRatio, kAssociativityFactor);
     REQUIRE(worstRatio <= kAssociativityFactor);

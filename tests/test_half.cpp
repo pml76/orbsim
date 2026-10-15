@@ -20,10 +20,10 @@
 //     signalling NaNs, which are compared with the quiet bit set.
 //
 #include "core/Scalar.hpp"
+#include "tests/TestCase.hpp"
 #include "view/Half.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 
 #include <bit>
 #include <cmath>

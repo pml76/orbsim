@@ -25,9 +25,9 @@
 //
 #include "core/DoubleDouble.hpp"
 #include "core/Scalar.hpp"
+#include "tests/TestCase.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 
 #include <cmath>
 #include <cstdint>
@@ -325,50 +325,69 @@ TEST_CASE("the quotient and the square root are correct beyond a double", "[core
 // answer, and a postcondition that looks only for NaN would let the NaN
 // through as a success. Every one of these returned a NaN at some point while
 // the header was being written.
+namespace {
+
+constexpr f64 kOverflowingInfinity = std::numeric_limits<f64>::infinity();
+constexpr f64 kHuge = 0x1p1000;
+
+// `REQUIRE(!x)` rather than REQUIRE_FALSE in these two, for the reason
+// tests/test_projection.cpp gives: in a small function the latter trips
+// clang-analyzer-optin.core.EnumCastOutOfRange inside Catch2's own flags.
+void requireAProductThatOverflowsStaysInfinite() {
+    const DoubleDouble got = exact(kHuge) * exact(kHuge);
+    REQUIRE(std::isinf(toDouble(got)));
+    REQUIRE(!std::isnan(got.lo));
+}
+
+void requireASumThatOverflowsStaysInfinite() {
+    const DoubleDouble got = exact(0x1.fp1023) + exact(0x1.fp1023);
+    REQUIRE(std::isinf(toDouble(got)));
+    REQUIRE(!std::isnan(got.lo));
+}
+
+void requireAQuotientByAnInfinityIsZero() {
+    const DoubleDouble got = exact(1.0) / exact(kOverflowingInfinity);
+    INFO(std::format("1 / inf = {:.17g}", toDouble(got)));
+    REQUIRE(identical(toDouble(got), 0.0));
+}
+
+void requireAQuotientOfAnInfinityIsInfinite() {
+    const DoubleDouble got = exact(kOverflowingInfinity) / exact(2.0);
+    REQUIRE(std::isinf(toDouble(got)));
+}
+
+void requireTheRootOfAnInfinityIsInfinite() {
+    REQUIRE(std::isinf(toDouble(sqrtOf(exact(kOverflowingInfinity)))));
+}
+
+// Zero here would be the worst answer available: it is a plausible length, so
+// nothing downstream would notice.
+void requireTheRootOfANaNIsANaN() {
+    const DoubleDouble got = sqrtOf(exact(std::numeric_limits<f64>::quiet_NaN()));
+    REQUIRE(std::isnan(toDouble(got)));
+}
+
+void requireTheRootsOfZeroAndANegativeRoundingAreZero() {
+    REQUIRE(identical(toDouble(sqrtOf(exact(0.0))), 0.0));
+    REQUIRE(identical(toDouble(sqrtOf(exact(-0.0))), 0.0));
+    // A sum of squares can round just below zero; a length of zero is the
+    // answer there, not a NaN.
+    REQUIRE(identical(toDouble(sqrtOf(exact(-0x1p-1070))), 0.0));
+}
+
+} // namespace
+
 TEST_CASE("an overflow stays an overflow rather than becoming a NaN", "[core][dd]") {
-    constexpr f64 kInf = std::numeric_limits<f64>::infinity();
-    constexpr f64 kHuge = 0x1p1000;
-
-    SECTION("a product that overflows") {
-        const DoubleDouble got = exact(kHuge) * exact(kHuge);
-        REQUIRE(std::isinf(toDouble(got)));
-        REQUIRE_FALSE(std::isnan(got.lo));
-    }
-
-    SECTION("a sum that overflows") {
-        const DoubleDouble got = exact(0x1.fp1023) + exact(0x1.fp1023);
-        REQUIRE(std::isinf(toDouble(got)));
-        REQUIRE_FALSE(std::isnan(got.lo));
-    }
-
-    SECTION("a quotient by an infinity") {
-        const DoubleDouble got = exact(1.0) / exact(kInf);
-        INFO(std::format("1 / inf = {:.17g}", toDouble(got)));
-        REQUIRE(identical(toDouble(got), 0.0));
-    }
-
-    SECTION("a quotient of an infinity") {
-        const DoubleDouble got = exact(kInf) / exact(2.0);
-        REQUIRE(std::isinf(toDouble(got)));
-    }
-
-    SECTION("the square root of an infinity") {
-        REQUIRE(std::isinf(toDouble(sqrtOf(exact(kInf)))));
-    }
-
+    SECTION("a product that overflows") { requireAProductThatOverflowsStaysInfinite(); }
+    SECTION("a sum that overflows") { requireASumThatOverflowsStaysInfinite(); }
+    SECTION("a quotient by an infinity") { requireAQuotientByAnInfinityIsZero(); }
+    SECTION("a quotient of an infinity") { requireAQuotientOfAnInfinityIsInfinite(); }
+    SECTION("the square root of an infinity") { requireTheRootOfAnInfinityIsInfinite(); }
     SECTION("the square root of a NaN propagates rather than collapsing to zero") {
-        // Zero here would be the worst answer available: it is a plausible
-        // length, so nothing downstream would notice.
-        const DoubleDouble got = sqrtOf(exact(std::numeric_limits<f64>::quiet_NaN()));
-        REQUIRE(std::isnan(toDouble(got)));
+        requireTheRootOfANaNIsANaN();
     }
-
     SECTION("the square root of zero and of a negative rounding") {
-        REQUIRE(identical(toDouble(sqrtOf(exact(0.0))), 0.0));
-        REQUIRE(identical(toDouble(sqrtOf(exact(-0.0))), 0.0));
-        // A sum of squares can round just below zero; a length of zero is the
-        // answer there, not a NaN.
-        REQUIRE(identical(toDouble(sqrtOf(exact(-0x1p-1070))), 0.0));
+        requireTheRootsOfZeroAndANegativeRoundingAreZero();
     }
 }
 

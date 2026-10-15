@@ -15,8 +15,8 @@
 #include "core/Scalar.hpp"
 #include "core/Units.hpp"
 #include "orbit/Orbit.hpp"
+#include "tests/TestCase.hpp"
 
-#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_tostring.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 #include <catch2/matchers/catch_matchers_templated.hpp>
@@ -292,6 +292,19 @@ WithinRelVec(const Vec3<kReference>&, Tolerance) -> WithinRelVec<kReference>;
 template <typename T, typename Error>
 [[nodiscard]] constexpr std::string_view errorName(const std::expected<T, Error>& result) noexcept {
     return result.has_value() ? std::string_view{"(succeeded)"} : describe(result.error());
+}
+
+// A call refused, and refused by the name the test asks for: the two checks
+// every refusal case makes, in the order VERIFICATION.md rule 23 learnt -- that
+// it holds no value first, since error() on a success is undefined behaviour
+// and compares equal to the zero enumerator. In one place so that a test case
+// asking for many refusals meets the size limits (register decision 578)
+// without either check loosened.
+template <typename T, typename Error>
+void requireRefused(const std::expected<T, Error>& result, Error named) {
+    INFO("refused as " << errorName(result));
+    REQUIRE(!result.has_value());
+    REQUIRE(result.error() == named);
 }
 
 // stateFromElements reports an element set no conic realises -- an anomaly past

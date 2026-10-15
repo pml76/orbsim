@@ -13,6 +13,7 @@
 #include "core/Scalar.hpp"
 #include "core/Time.hpp"
 #include "core/Units.hpp"
+#include "tests/TestCase.hpp"
 #include "view/Camera.hpp"
 #include "view/Exposure.hpp"
 #include "view/ImageCompare.hpp"
@@ -20,7 +21,6 @@
 #include "view/ProbeSidecar.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
 #include <array>
@@ -145,41 +145,64 @@ constexpr auto kResolveShaders = std::to_array<std::string_view>({
     });
 }
 
+// A key of the sidecar and the value it must hold, exactly.
+struct KeyValue {
+    std::string_view key;
+    std::string_view value;
+};
+
+// Every key of the table holds its value, read in the table's order.
+void requireTheValues(const std::vector<std::string>& lines, std::span<const KeyValue> expected) {
+    for (const KeyValue& line : expected) {
+        CAPTURE(line.key);
+        REQUIRE(valueOf(lines, line.key) == line.value);
+    }
+}
+
 } // namespace
 
 TEST_CASE("the sidecar's text fields are each under their own key") {
     const std::vector<std::string> lines = linesOf(sidecarText());
     REQUIRE(lines.front().starts_with("# "));
-    REQUIRE(valueOf(lines, "probe") == "clear");
-    REQUIRE(valueOf(lines, "description") == "a description");
-    REQUIRE(valueOf(lines, "outcome") == "rendered");
-    REQUIRE(valueOf(lines, "quality") == "high");
-    REQUIRE(valueOf(lines, "gpu") == "A GPU");
-    REQUIRE(valueOf(lines, "driver.name") == "A driver");
-    REQUIRE(valueOf(lines, "driver.info") == "582.53");
-    REQUIRE(valueOf(lines, "build.configuration") == "Debug");
-    REQUIRE(valueOf(lines, "build.compiler") == "clang 23.1.0");
-    REQUIRE(valueOf(lines, "run.date") == "2026-09-26T12:34:56Z");
-    REQUIRE(valueOf(lines, "files") == "a.png a.exr");
+    requireTheValues(lines,
+                     std::to_array<KeyValue>({
+                         {.key = "probe", .value = "clear"},
+                         {.key = "description", .value = "a description"},
+                         {.key = "outcome", .value = "rendered"},
+                         {.key = "quality", .value = "high"},
+                         {.key = "gpu", .value = "A GPU"},
+                         {.key = "driver.name", .value = "A driver"},
+                         {.key = "driver.info", .value = "582.53"},
+                         {.key = "build.configuration", .value = "Debug"},
+                         {.key = "build.compiler", .value = "clang 23.1.0"},
+                         {.key = "run.date", .value = "2026-09-26T12:34:56Z"},
+                         {.key = "files", .value = "a.png a.exr"},
+                     }));
 }
 
 TEST_CASE("the sidecar's numbers are written with their units") {
     const std::vector<std::string> lines = linesOf(sidecarText());
-    // J2000.0 TT: noon on 2000-01-01, stored as MJD 51544 and half a day of
-    // picoseconds (core/Time.hpp asserts both).
-    REQUIRE(valueOf(lines, "epoch") ==
-            "TT 2000-01-01T12:00:00.000 (MJD 51544 + 43200000000000000 ps)");
-    REQUIRE(valueOf(lines, "camera.position") == "1.5 -2 3.25 m");
-    REQUIRE(valueOf(lines, "camera.orientation") == "1 0 0 0 (w x y z, camera to world)");
-    REQUIRE(valueOf(lines, "camera.fov") == "0.5 rad vertical");
-    REQUIRE(valueOf(lines, "camera.near") == "0.25 m");
-    REQUIRE(valueOf(lines, "exposure.aperture") == "f/16");
-    REQUIRE(valueOf(lines, "exposure.shutter") == "0.008 s");
-    REQUIRE(valueOf(lines, "exposure.iso") == "100");
-    REQUIRE(valueOf(lines, "gpu.vendor") == "0x10de");
-    REQUIRE(valueOf(lines, "gpu.device") == "0x25b8");
-    REQUIRE(valueOf(lines, "driver.version") == "0x91a34000");
-    REQUIRE(valueOf(lines, "vulkan.api") == "1.4.312 (variant 0)");
+    requireTheValues(
+        lines,
+        std::to_array<KeyValue>({
+            // J2000.0 TT: noon on 2000-01-01, stored as MJD 51544 and half a day
+            // of picoseconds (core/Time.hpp asserts both).
+            {
+                .key = "epoch",
+                .value = "TT 2000-01-01T12:00:00.000 (MJD 51544 + 43200000000000000 ps)",
+            },
+            {.key = "camera.position", .value = "1.5 -2 3.25 m"},
+            {.key = "camera.orientation", .value = "1 0 0 0 (w x y z, camera to world)"},
+            {.key = "camera.fov", .value = "0.5 rad vertical"},
+            {.key = "camera.near", .value = "0.25 m"},
+            {.key = "exposure.aperture", .value = "f/16"},
+            {.key = "exposure.shutter", .value = "0.008 s"},
+            {.key = "exposure.iso", .value = "100"},
+            {.key = "gpu.vendor", .value = "0x10de"},
+            {.key = "gpu.device", .value = "0x25b8"},
+            {.key = "driver.version", .value = "0x91a34000"},
+            {.key = "vulkan.api", .value = "1.4.312 (variant 0)"},
+        }));
 }
 
 TEST_CASE("the sidecar's exposure agrees with its definitions") {
@@ -237,13 +260,16 @@ TEST_CASE("a lambert probe's sidecar records its light and its surface") {
         .towardSun = Direction{0.0, 0.0, 1.0},
     };
     const std::vector<std::string> lines = linesOf(sidecarText(kNoGolden, scene));
-    REQUIRE(valueOf(lines, "scene.light") == "the Sun, a Lambertian patch");
-    REQUIRE(valueOf(lines, "scene.albedo") == "0.3");
-    REQUIRE(valueOf(lines, "scene.sun.distance") == "74798935350 m");
-    REQUIRE(valueOf(lines, "scene.irradiance") == "5444 W/m^2 at normal incidence");
-    REQUIRE(valueOf(lines, "scene.sun.direction") == "0 0 1 (world, toward the Sun)");
-    REQUIRE(valueOf(lines, "scene.patch.centre") == "0 0 -10 m");
-    REQUIRE(valueOf(lines, "scene.patch.side") == "100 m");
+    requireTheValues(lines,
+                     std::to_array<KeyValue>({
+                         {.key = "scene.light", .value = "the Sun, a Lambertian patch"},
+                         {.key = "scene.albedo", .value = "0.3"},
+                         {.key = "scene.sun.distance", .value = "74798935350 m"},
+                         {.key = "scene.irradiance", .value = "5444 W/m^2 at normal incidence"},
+                         {.key = "scene.sun.direction", .value = "0 0 1 (world, toward the Sun)"},
+                         {.key = "scene.patch.centre", .value = "0 0 -10 m"},
+                         {.key = "scene.patch.side", .value = "100 m"},
+                     }));
     const std::string tiltText = valueOf(lines, "scene.patch.tilt");
     REQUIRE(tiltText.ends_with(" rad about the horizontal axis"));
     REQUIRE(std::abs(leadingNumber(tiltText) - tilt) <= 1e-15);

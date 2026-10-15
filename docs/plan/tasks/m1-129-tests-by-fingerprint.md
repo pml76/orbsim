@@ -3,7 +3,8 @@
 Phase: B | Status: in progress
 Prerequisites: M1-118
 Decided by: register decisions 483-491, 495-506 and 508-510, ruled
-2026-10-12, 511-519, ruled 2026-10-13, and 520-524, ruled 2026-10-14.
+2026-10-12, 511-519, ruled 2026-10-13, 520-524 and 525-542, ruled
+2026-10-14, and 543, 544-568 and 569-581, ruled 2026-10-15.
 Continues [ADR 0024](../../adr/0024-verification-costs-what-changed.md); its
 sibling, the code as modules, is [M1-130](m1-130-code-as-modules.md).
 
@@ -96,6 +97,24 @@ changed, keeps a full run before every push, and removes two fixed costs every
    quick targets -- `lint`, `format-check`, `doc-links` -- and the affected
    suites before a full `check`.
 
+**Items 2-5 as one step** (decisions 525-537, ruled 2026-10-14): a program
+is fingerprinted by its own bytes and those of every library it loads (525);
+every file is hashed in full on every run (526); a read record holds each
+file's hash beside its path, taken as the test case ends (527), and is named
+after its test with forbidden characters escaped (528); tests name the files
+they read through a recording helper (529), and a check in `check` keeps every
+other way out of `tests/` (530); script tests are fingerprinted on all of
+`scripts/` and `cmake/` (531); the card is read from a clear probe the driver
+runs before CTest (532); the files outside the repository are one "machine"
+part of every fingerprint (533); `check` skips in every tree and the gate
+trees use `check-full` (534); the push order is commit, mutation pass, record,
+`check-full` in both trees, push (535); only a passed test is remembered
+(536); and the self-tests are those of decision 537. Then, as the work
+measured: `tests/TestReads.cpp` optimised where the compiler allows (538),
+only the libraries a program loads at start (539), the end-to-end test kept
+(540), `ldd` and two zoneinfo files on Linux (541), and a full run refused
+after an edit newer than the build's last step (542).
+
 ## Questions put at the start
 
 Whatever the design raises that decisions 483-491 do not settle, put to the
@@ -113,6 +132,8 @@ restoring the text and the time but not the outputs; a recorded read left out
 ## Done when
 
 - [ ] Every question the design raised ruled, and the rulings in the register.
+- [ ] Item 9, function-level selection, built, and M1-118's 16 commits
+      measured with it against the spike's 18% (decision 543).
 - [ ] M1-118's 16 commits measured again with the real implementation,
       against the simulation's 26%.
 - [ ] Before and after for a clean `check`, a one-file change, a header change
@@ -120,3 +141,205 @@ restoring the text and the time but not the outputs; a recorded read left out
 - [ ] `check` passes in both trees.
 - [ ] The task's mutant file has run after the commit and its record is
       committed.
+
+## Where it stands (2026-10-15, third session's end)
+
+**Committed as a checkpoint on `master`, not pushed** -- at the owner's
+request, to continue the next day. A push waits for the whole task:
+`check-full` in both trees and the mutation passes of decision 580. **`check`
+passes in both trees with all of it** (2026-10-15: Debug 579 of 579,
+RelWithDebInfo 579 of 579, the assertion probes skipping themselves where
+assertions are not live, and the one Linux-only case skipping itself).
+
+Items 2-5:
+
+- read records: `tests/TestReads.hpp`/`.cpp`, `tests/Sha256.hpp`,
+  `tests/ReadRecordListener.cpp`, `tests/test_read_records.cpp`, the call
+  sites in the suites, `cmake/VerifyReadRecord.cmake`;
+- the structural check, `scripts/check-test-reads.py` (CTest `test_reads`);
+- the driver, `scripts/run-tests.py`: self-test 69 cases, end-to-end test
+  12 steps (`run_tests_self_test`, `run_tests_end_to_end`);
+- `check` and `check-full` calling the driver; `scripts/git-hooks/pre-push`;
+- the fixes `check` needed: five lint findings in the code above, a
+  recorded file held to CMake's SHA-256 (decision 554), and `parallel_tests`
+  reading the driver's `--jobs` (decision 555).
+
+Item 9, **step A done** -- the assertion message (decisions 556, 557, 568):
+`src/core/Contract.hpp` and the new `src/core/Contract.cpp`, the probe
+`tests/assertion_message_probe.cpp` and its checker
+`cmake/VerifyAssertionMessage.cmake` (CTest `assertion_message_precondition`
+and `_postcondition`, seen failing against `assert` first), `stdc++exp` linked
+on Linux, and `addVisibleGrid` asserting after its loop.
+
+Item 9, **step B done** (decisions 569-581, 2026-10-15):
+
+- `tests/TestCase.hpp`, included by every test file in place of Catch2's
+  macro header: Catch2's line fixed at 0, and each test's function and
+  registration named after the test's own name and tags, a start-up function
+  of its own per test (573, 574, 576, 577). Measured on a scratch file: one
+  test inserted before two left every other function's digest unchanged,
+  where Catch2's counter had changed 7 and removed 8. Seen failing: four
+  faults planted in the header, each caught by its case of the new suite
+  `tests/test_test_case.cpp` (decision 574). Clean under clang, MSVC
+  `/Wall /WX` and gcc-14.
+- `scripts/check-test-cases.py` (CTest `test_cases`, `test_cases_self_test`,
+  32 cases): only the header includes Catch2's macros, every file writing a
+  `TEST_CASE` includes the header, none of Catch2's other registering macros,
+  and no two sections of one test case share a name (558, 572, 575). On the
+  tree: 477 test cases and 28 sections -- decision 558's 29 had counted a
+  comment.
+- **The test bodies reshaped to clang-tidy's size and complexity limits**
+  (578, 581): the new `TEST_CASE` made the size check reach test bodies, which
+  Catch2's never had, and the owner ruled the bodies be reshaped and the 69
+  complexity suppressions of 2026-09-09 removed with them. 76 test cases in
+  24 files, each long body split into named helpers or a table with one
+  check in a loop; no test renamed, split or removed. **Proved unchanged**
+  (579): Catch2's JSON report of every CTest test, each run's sections and
+  checks in order with their results, identical before and after in both
+  trees -- 479 test cases, 3,941,219 checks -- and the numbers in the code
+  compared file by file, the only differences a helper's starting `0.0` or an
+  array size, and one check shared by two cases through a helper. A shared
+  helper `requireRefused` in `tests/OrbitTestSupport.hpp`. In two helpers of
+  `tests/test_double_double.cpp`, `REQUIRE(!x)` rather than `REQUIRE_FALSE`,
+  for the reason `tests/test_projection.cpp` gives.
+- Ten mutants for step B in `scripts/mutants/m1-129.json`: the header's
+  line, registration line, tags and file, and six of the check's rules.
+- What decisions 569 and 570 settle for steps C and D: the hook on the
+  project's own targets, with one fingerprint per program over the code that
+  carries none; and the recorder writing only when the driver names a record
+  folder.
+
+Decisions 525-581 in the register; working agreement 9 in `CLAUDE.md`.
+
+**Next, item 9's remaining steps**, in this order:
+
+- **C** -- `ORBSIM_COVERAGE_HOOK` on in the `debug` and `relwithdebinfo`
+  presets (566); the recorder, CoverageRecorder.cpp under tests/, with the
+  `inline-bool-flag` and `pc-table` hook and its section markers (559), its
+  suppressions (565), one file per process named by number and start time,
+  writing only into the folder the driver names (570), and the test's name in
+  the environment of every test `CMakeLists.txt` defines (564); the hook on
+  the project's own targets only (569).
+- **D** -- the driver: a COFF reader, each address turned into a function
+  through its object-file section (560), the digests (545), stored per test
+  with removed functions counting as changed (547) and only a test's own
+  registrar (550) -- since decision 573 the start-up function named after the
+  test's own name -- the code without the hook fingerprinted whole per
+  program (569), whole-program fingerprints where there is no hook (548), the
+  digest cost measured (567); self-tests and the end-to-end test, among them
+  that a test inserted before others leaves their digests unchanged.
+- **E** -- `check` in both trees, then step 1c with the split by cause (561)
+  and the mutant check of the selection (552).
+
+Then the rest of the order below; before the push, every mutant file
+`scripts/mutants-due.py` lists (decision 580). Steps C to E estimated at 10-12
+hours. The measurements behind decisions 544-581 were taken in scratch trees
+and folders on the machine they were taken on; `STATUS.md` names them.
+
+## 9. Function-level test selection (decision 543)
+
+Added 2026-10-15, to be done **before this task's commit**. Whole-program
+fingerprints (decision 525) rerun every test of a program whose bytes changed;
+nearly every program links the core library, so a one-function fix to
+`Orbit.cpp` reran 507 tests. Function level reruns a test only when a function
+it entered, at its last run, changed in its compiled code.
+
+**The spike, 2026-10-15** (`build/wtfn`, machine-local, removed with the
+task's scratch): a clang Debug tree with `-ffunction-sections` and
+`-fsanitize-coverage=func,trace-pc-guard`, a recorder linked into every
+program, replayed over M1-118's 16 commits; C++ tests only, the rest being
+judged alike either way.
+
+| | Whole program | Function level | Function level, strict |
+|---|---|---|---|
+| test runs | 4,646 | 840 (18%) | 1,988 (43%) |
+| test time, summed | 6,158 s | 1,997 s (32%) | -- |
+
+Per commit, whole program against function level: `wrapTau` 505/121; mean
+motion 507/30; `propagateElements` 508/183; angular velocity 511/22; anomaly
+converters 521/209; period 522/38; double-double 523/35; `angleBetween`
+524/166; `stateFromElements` 525/36; the docs-only commits and the fuzz
+commit 0/0. "Strict" counts added and removed functions as changed too; a
+function that did not exist cannot have been entered, and its caller changed.
+
+How a function is compared, as the spike settled it on four known edits: its
+raw instruction bytes and the names its relocations point at, labels starting
+with `$` inside it; a data item -- a data section, named by its symbols --
+whose contents changed makes every function referring to it changed. A comment
+changed nothing; a `constexpr` table value changed exactly the function
+reading it.
+
+**The 18% is probably too low** (found 2026-10-15, decision 561): the spike
+turned each recorded address into a name through the debug information, which
+gave 2,813 of the 15,962 names in one record in their readable form, and
+those never matched a digest, filed under the object file's names. A change
+to such a function could select no test. Step 1c measures the real figure.
+
+What the remaining 18% is: tests whose own file was edited (Catch2 registers
+every case at start-up, so the whole program reruns -- 147 runs); the GPU
+chain, one probe entering a changed function rerunning the probe suites
+through decision 508; line numbers in assertion messages shifting functions
+below an edit; and probably an artefact of the spike's keying of unnamed data
+sections by position, which makes 18% an upper bound.
+
+**The design questions were ruled on 2026-10-15** (1a, decisions 544-553):
+the hook in both `check` trees if it measures cheap (544); a function's digest
+its code, the names it points at and the contents of the data it uses,
+followed through data, with no data named by position (545); the object files
+read by a COFF reader in Python (546); a removed function that was entered
+counts as changed (547); trees without the hook keep whole-program
+fingerprints (548); the project's assertions print a stack trace from the
+debug information instead of carrying a line number (549); Catch2's line
+information fixed in one project header, and a test counting only its own
+registrar (550); folding checked before addresses are named (551); and the
+selection proved safe by `m1-118.json`'s mutants (552). The order (553): first
+`check` passing in both trees with items 2-5, then the measurements those
+rulings call for, then the build (1b) and M1-118's commits measured with the
+real implementation (1c).
+
+**Measured and ruled further on 2026-10-15** (decisions 554-563): `check`
+passed in both trees with items 2-5 after the fixes of 554 and 555; the
+assertion message names file, function and condition and adds a stack trace
+taken inside the macro (556), `ORBSIM_ENSURES` alike (557); two same-named
+sections in a test case are refused (558); the hook is `inline-bool-flag`
+with `pc-table`, no measurable cost in either tree, where a call at every
+entry cost about 30% of the Debug tests (559); an address becomes a function
+through its object-file section, never through the debug information's names
+(560); and the split by cause is measured in step 1c (561).
+
+## The order from here (ruled 2026-10-15, decision 543)
+
+1. **Item 9, function-level selection** -- design questions, build, measure.
+2. **Finish this task**: its mutants; the before-and-after measurements in
+   `STATUS.md`; the documents (`CLAUDE.md`'s definition of done with
+   `check-full` and the pre-push hook, `VERIFICATION.md`, `HISTORY.md`,
+   `PROJECT_STATE.md`); item 8; `check` in both trees; then commit, the
+   mutation pass and its record, `check-full` in both trees, and push
+   (decision 535).
+3. **Mutation testing at function level**: which mutants are due, decided per
+   mutant from the functions its judging tests enter; only the tests that
+   enter the functions a mutant changed run against it; a mutant that leaves
+   every compiled function identical is equivalent without running anything
+   ("trivial compiler equivalence"). For the Python mutants, the same through
+   Python's syntax tree (`ast`) and `sys.monitoring` -- measured on the last
+   16 commits of `mutants-due.py` and `mutate.py`: 169 of 586 function
+   versions changed (29%), with module-level names tracked one by one -- which
+   needs each self-test to mark where its cases begin and end. Keeping the
+   tools in Python rather than rewriting them in C++ was recommended.
+   Python accounts for 113 of the 467 mutants, CMake 13, shaders 18, C++ 323.
+4. **Working agreement 9 applied to the existing process** -- each measured
+   before a proposal:
+   - the configure step in the definition of done: `cmake --preset` took
+     114 s and 106 s with nothing changed (measured with the spike running,
+     to be repeated), where Ninja reruns CMake itself and `configure-current`
+     refuses a stale tree;
+   - tests that cannot depend on the tree -- the scripts' self-tests,
+     `doc-links`, `run_tests_end_to_end` -- running in both `check` trees;
+   - clang-tidy reading every file once per tree.
+5. **Whether agreement 9 covers the documentation too**: `STATUS.md` is
+   146 KB, read at the start of every session.
+
+Points 3-5 may become tasks of their own; that is decided when each is taken
+up. **Still owed to the owner along the way**: confirmation of the MSVC
+exception in decision 538, and when to bring the proposal to build the Linux
+trees on WSL's own disk (recommended: after this task).

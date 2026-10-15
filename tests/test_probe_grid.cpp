@@ -51,12 +51,13 @@
 //
 #include "FixtureFile.hpp"
 #include "HdrDumpFile.hpp"
+#include "TestReads.hpp"
 #include "core/Math.hpp"
 #include "core/Scalar.hpp"
 #include "core/Time.hpp"
+#include "tests/TestCase.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
 #include <array>
@@ -220,8 +221,8 @@ struct ScreenPoint {
 // The Skyfield fixture's celestial-to-terrestrial matrix at the probes'
 // epoch: the row at JD 2460886.5 + 0.2699127197265625 TT.
 [[nodiscard]] RotationMatrix fixtureMatrix() {
-    auto fixture = readEarthOrientation(std::filesystem::path{dataDirectory()} / "skyfield" /
-                                        "earth-orientation.txt");
+    auto fixture =
+        readEarthOrientation(std::filesystem::path{dataFile("skyfield/earth-orientation.txt")});
     INFO((fixture.has_value() ? "" : describe(fixture.error())));
     REQUIRE(fixture.has_value());
     const auto tt = TtTime::fromJulianDate({.day = 2'460'886.5, .fraction = 0.2699127197265625});
@@ -257,7 +258,7 @@ struct Place {
 
 [[nodiscard]] HdrDump readDump(std::string_view probe) {
     const std::filesystem::path path =
-        std::filesystem::path{ORBSIM_PROBE_DIR} / (std::string(probe) + ".hdr.f32");
+        std::filesystem::path{probeFile(std::string(probe) + ".hdr.f32")};
     auto dump = readHdrDump(path);
     INFO("reading " << path.string() << ": " << (dump.has_value() ? "ok" : describe(dump.error())));
     REQUIRE(dump.has_value());

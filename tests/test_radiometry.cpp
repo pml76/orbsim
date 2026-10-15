@@ -53,20 +53,18 @@
 // of exactly -1, and no light at all (register decision 274).
 //
 #include "HdrDumpFile.hpp"
+#include "TestReads.hpp"
 #include "core/Scalar.hpp"
+#include "tests/TestCase.hpp"
 #include "view/ImageCompare.hpp"
 #include "view/ImageFiles.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <filesystem>
-#include <fstream>
-#include <ios>
-#include <iterator>
 #include <numbers>
 #include <string>
 #include <string_view>
@@ -119,10 +117,6 @@ struct Neighbours {
     return {.below = below, .above = bitsOf(below) == bitsOf(value) ? value : below + step};
 }
 
-[[nodiscard]] std::filesystem::path probeFile(std::string_view name) {
-    return std::filesystem::path{ORBSIM_PROBE_DIR} / std::string(name);
-}
-
 [[nodiscard]] HdrDump readDump(std::string_view probe) {
     const std::filesystem::path path = probeFile(std::string(probe) + ".hdr.f32");
     auto dump = readHdrDump(path);
@@ -133,17 +127,13 @@ struct Neighbours {
     return *std::move(dump);
 }
 
-[[nodiscard]] std::vector<std::byte> readBytes(const std::filesystem::path& path) {
-    std::ifstream file(path, std::ios::binary);
-    INFO("reading " << path.string());
-    REQUIRE(file.good());
-    const std::vector<char> chars{std::istreambuf_iterator<char>(file),
-                                  std::istreambuf_iterator<char>()};
-    std::vector<std::byte> bytes(chars.size());
-    for (std::size_t i = 0; i < chars.size(); ++i) {
-        bytes.at(i) = static_cast<std::byte>(chars.at(i));
-    }
-    return bytes;
+// A probe's file, by its whole name -- `lambert.png` -- read through the
+// recording helper (M1-129, register decision 530).
+[[nodiscard]] std::vector<std::byte> readBytes(std::string_view file) {
+    auto bytes = readRecordedFile(file);
+    INFO("reading " << file << ": " << (bytes.has_value() ? "ok" : describe(bytes.error())));
+    REQUIRE(bytes.has_value());
+    return *std::move(bytes);
 }
 
 using Channel = HdrDump::Channel;

@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+#
+# Refuses a push unless a full, unskipped `check` passed in both trees at
+# exactly the commit being pushed, from a clean working tree (M1-129,
+# register decisions 484, 503 and 535):
+#
+#     cmake --build build/debug --target check-full
+#     cmake --build build/relwithdebinfo --target check-full
+#
+# `check` skips a test whose inputs are unchanged since its last pass; this is
+# where every test runs again, so that a fingerprint that missed something is
+# caught before the commit leaves the machine. The decision is
+# scripts/run-tests.py --pre-push, where its self-test reaches it; this hook
+# only hands it the lines git gives a pre-push hook.
+#
+# Enabled with the pre-commit hook, once per clone:
+#
+#     git config core.hooksPath scripts/git-hooks
+#
+set -euo pipefail
+
+root=$(git rev-parse --show-toplevel)
+exec python "$root/scripts/run-tests.py" --pre-push "$root"

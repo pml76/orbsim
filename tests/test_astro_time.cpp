@@ -21,9 +21,10 @@
 #include "core/Units.hpp"
 #include "tests/FixtureFile.hpp"
 #include "tests/OrbitTestSupport.hpp"
+#include "tests/TestCase.hpp"
+#include "tests/TestReads.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_tostring.hpp>
 
 #include <algorithm>
@@ -63,11 +64,9 @@ template <orb::TimeScale Scale> struct StringMaker<orb::TimePoint<Scale>> {
 
 } // namespace Catch
 
-// A note on the readability-function-cognitive-complexity suppressions below:
-// Catch2's REQUIRE expands to a do-while around a try/catch, so a case scores
-// about three points per assertion whether or not it branches. Ruled by the
-// project owner on 2026-09-09 -- see tests/test_orbit_scales.cpp -- one
-// suppression per function, and only where the check fires.
+// Each test case here is held to clang-tidy's size and complexity limits, and
+// one with more than a few checks names groups of them as helpers above it --
+// tests/TestCase.hpp says why (register decisions 578 and 581).
 
 namespace {
 
@@ -146,10 +145,9 @@ static_assert(noexcept(tdbFromTt(std::declval<TtTime>())) &&
 // applies it, within 20 us of Skyfield's. The fixture's epochs are TDB, which
 // is the argument Skyfield's function takes, so the conversion checked is
 // ttFromTdb -- the direction that evaluates the series at its own argument.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("TDB - TT is within 20 us of Circular 179 over 1900-2100", "[astro][tdb]") {
     const auto fixture =
-        readTdbMinusTt(std::filesystem::path{dataDirectory()} / "skyfield" / "tdb-minus-tt.txt");
+        readTdbMinusTt(std::filesystem::path{dataFile("skyfield/tdb-minus-tt.txt")});
     INFO(errorName(fixture) << " at line " << (fixture ? std::size_t{0} : fixture.error().line));
     REQUIRE(fixture.has_value());
     REQUIRE(fixture->rows.size() == 1975);
@@ -242,35 +240,31 @@ struct Crossing {
     bool upward;
 };
 
-} // namespace
-
-// Two years, 2024 and 2025, sampled hourly. The annual term peaks at the
-// amplitude the Kepler problem gives, crosses zero upward at perihelion and
-// downward at aphelion, and nowhere else -- which a wrong sign, a wrong unit
-// or a wrong argument would each fail, and which the fixture cannot check.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
-TEST_CASE("the annual term peaks and crosses zero where the physics says", "[astro][tdb]") {
-    const auto start = TtTime::fromCalendar({.year = 2024, .month = 1, .day = 1});
-    REQUIRE(start.has_value());
-    constexpr std::int64_t kHours = std::int64_t{366 + 365} * 24; // 2024 is a leap year
-    constexpr f64 kHourSeconds = 3'600.0;
-
-    f64 highest = -1.0;
-    f64 lowest = 1.0;
+// What an hourly sweep of TDB - TT found: its highest and lowest value, and
+// where it crossed zero.
+struct AnnualSweep {
+    f64 highest{-1.0};
+    f64 lowest{1.0};
     std::vector<Crossing> crossings;
-    TtTime previousAt = *start;
+};
+
+// TDB - TT every hour from start, for so many hours.
+[[nodiscard]] AnnualSweep sweepTheAnnualTerm(TtTime start, std::int64_t hours) {
+    constexpr f64 kHourSeconds = 3'600.0;
+    AnnualSweep sweep;
+    TtTime previousAt = start;
     f64 previous = tdbMinusTtAt(previousAt);
-    for (std::int64_t hour = 1; hour <= kHours; ++hour) {
-        const TtTime at = *start + Seconds{kHourSeconds * static_cast<f64>(hour)};
+    for (std::int64_t hour = 1; hour <= hours; ++hour) {
+        const TtTime at = start + Seconds{kHourSeconds * static_cast<f64>(hour)};
         const f64 value = tdbMinusTtAt(at);
-        highest = std::max(highest, value);
-        lowest = std::min(lowest, value);
+        sweep.highest = std::max(sweep.highest, value);
+        sweep.lowest = std::min(sweep.lowest, value);
         if ((previous < 0.0) != (value < 0.0)) {
             // Linear between the two samples: the curve moves 1.2 us in an
             // hour there, and is straight to far better than that.
             const f64 fraction = previous / (previous - value);
             const TtTime crossing = previousAt + Seconds{kHourSeconds * fraction};
-            crossings.push_back({
+            sweep.crossings.push_back({
                 .at = crossing,
                 .meanAnomaly = meanAnomalyDegrees(crossing),
                 .upward = value > previous,
@@ -279,11 +273,35 @@ TEST_CASE("the annual term peaks and crosses zero where the physics says", "[ast
         previousAt = at;
         previous = value;
     }
+    return sweep;
+}
+
+void requireEveryCrossingAtAnApsis(const std::vector<Crossing>& crossings) {
+    const f64 tolerance = kCrossingToleranceDays * kMeanAnomalyDegreesPerDay;
+    for (const Crossing& c : crossings) {
+        CAPTURE(c.at, c.meanAnomaly, c.upward);
+        // Upward at perihelion, g = 0; downward at aphelion, g = 180.
+        REQUIRE(degreesFrom(c.meanAnomaly, c.upward ? 0.0 : 180.0) <= tolerance);
+    }
+}
+
+} // namespace
+
+// Two years, 2024 and 2025, sampled hourly. The annual term peaks at the
+// amplitude the Kepler problem gives, crosses zero upward at perihelion and
+// downward at aphelion, and nowhere else -- which a wrong sign, a wrong unit
+// or a wrong argument would each fail, and which the fixture cannot check.
+TEST_CASE("the annual term peaks and crosses zero where the physics says", "[astro][tdb]") {
+    const auto start = TtTime::fromCalendar({.year = 2024, .month = 1, .day = 1});
+    REQUIRE(start.has_value());
+    constexpr std::int64_t kHours = std::int64_t{366 + 365} * 24; // 2024 is a leap year
+    const AnnualSweep sweep = sweepTheAnnualTerm(*start, kHours);
+    const std::vector<Crossing>& crossings = sweep.crossings;
 
     const f64 amplitude = annualAmplitudeSeconds();
-    CAPTURE(amplitude, highest, lowest);
-    REQUIRE(absOf(highest - amplitude) <= kNeglectedTermsSeconds);
-    REQUIRE(absOf(lowest + amplitude) <= kNeglectedTermsSeconds);
+    CAPTURE(amplitude, sweep.highest, sweep.lowest);
+    REQUIRE(absOf(sweep.highest - amplitude) <= kNeglectedTermsSeconds);
+    REQUIRE(absOf(sweep.lowest + amplitude) <= kNeglectedTermsSeconds);
 
     // Twice a year, and only there: the other terms' slopes are two orders of
     // magnitude below the annual term's where it crosses zero, so they cannot
@@ -308,12 +326,7 @@ TEST_CASE("the annual term peaks and crosses zero where the physics says", "[ast
     // under three days**, which is why it is written down rather than left to
     // be rediscovered.
     REQUIRE(crossings.size() == 4);
-    const f64 tolerance = kCrossingToleranceDays * kMeanAnomalyDegreesPerDay;
-    for (const Crossing& c : crossings) {
-        CAPTURE(c.at, c.meanAnomaly, c.upward);
-        // Upward at perihelion, g = 0; downward at aphelion, g = 180.
-        REQUIRE(degreesFrom(c.meanAnomaly, c.upward ? 0.0 : 180.0) <= tolerance);
-    }
+    requireEveryCrossingAtAnApsis(crossings);
 }
 
 namespace {
@@ -345,7 +358,6 @@ constexpr f64 kHalfDayToleranceSeconds = 1e-6;
 // above. Twelve hours apart on one day, TDB - TT must change as the Kepler
 // problem's annual term does -- A (sin E(noon) - sin E(midnight)) -- to within
 // what the neglected terms can move in that time. Every fifth day of 2024-2025.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("TDB - TT changes within a day as the annual term does", "[astro][tdb]") {
     const auto start = TtTime::fromCalendar({.year = 2024, .month = 1, .day = 1});
     REQUIRE(start.has_value());
@@ -392,7 +404,32 @@ TEST_CASE("TDB - TT changes within a day as the annual term does", "[astro][tdb]
 // tie -- not the 1,700 that evaluating at TT would.
 constexpr std::size_t kExactAtLeast = kSweepCases * 99 / 100;
 
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+namespace {
+
+// TT to TDB and back, within the budget; whether it came back exactly.
+[[nodiscard]] bool requireTheRoundTripFromTt(const JulianDate& date) {
+    const auto tt = TtTime::fromJulianDate(date);
+    REQUIRE(tt.has_value());
+    const TtTime ttBack = ttFromTdb(tdbFromTt(*tt));
+    CAPTURE(*tt, ttBack);
+    const std::int64_t ttError = picosecondsBetween(Interval{.earlier = *tt, .later = ttBack});
+    REQUIRE(std::abs(ttError) <= kRoundTripBudgetPicoseconds);
+    return ttError == 0;
+}
+
+// TDB to TT and back, within the budget; whether it came back exactly.
+[[nodiscard]] bool requireTheRoundTripFromTdb(const JulianDate& date) {
+    const auto tdb = TdbTime::fromJulianDate(date);
+    REQUIRE(tdb.has_value());
+    const TdbTime tdbBack = tdbFromTt(ttFromTdb(*tdb));
+    CAPTURE(*tdb, tdbBack);
+    const std::int64_t tdbError = picosecondsBetween(Interval{.earlier = *tdb, .later = tdbBack});
+    REQUIRE(std::abs(tdbError) <= kRoundTripBudgetPicoseconds);
+    return tdbError == 0;
+}
+
+} // namespace
+
 TEST_CASE("TT to TDB and back is within 1 ps both ways over a seeded sweep", "[astro][tdb]") {
     // NOLINTNEXTLINE(cert-msc32-c,cert-msc51-cpp,bugprone-random-generator-seed)
     std::mt19937_64 rng{kSweepSeed};
@@ -405,22 +442,8 @@ TEST_CASE("TT to TDB and back is within 1 ps both ways over a seeded sweep", "[a
         const JulianDate date{.day = kMjdZero + static_cast<f64>(mjd), .fraction = fraction};
         CAPTURE(kSweepSeed, i, mjd, fraction);
 
-        const auto tt = TtTime::fromJulianDate(date);
-        REQUIRE(tt.has_value());
-        const TtTime ttBack = ttFromTdb(tdbFromTt(*tt));
-        CAPTURE(*tt, ttBack);
-        const std::int64_t ttError = picosecondsBetween(Interval{.earlier = *tt, .later = ttBack});
-        REQUIRE(std::abs(ttError) <= kRoundTripBudgetPicoseconds);
-        if (ttError == 0) ++exactFromTt;
-
-        const auto tdb = TdbTime::fromJulianDate(date);
-        REQUIRE(tdb.has_value());
-        const TdbTime tdbBack = tdbFromTt(ttFromTdb(*tdb));
-        CAPTURE(*tdb, tdbBack);
-        const std::int64_t tdbError =
-            picosecondsBetween(Interval{.earlier = *tdb, .later = tdbBack});
-        REQUIRE(std::abs(tdbError) <= kRoundTripBudgetPicoseconds);
-        if (tdbError == 0) ++exactFromTdb;
+        if (requireTheRoundTripFromTt(date)) ++exactFromTt;
+        if (requireTheRoundTripFromTdb(date)) ++exactFromTdb;
     }
     CAPTURE(exactFromTt, exactFromTdb, kExactAtLeast);
     REQUIRE(exactFromTt >= kExactAtLeast);
@@ -433,7 +456,6 @@ TEST_CASE("TT to TDB and back is within 1 ps both ways over a seeded sweep", "[a
 // result is an ordinary instant, the term stays inside the bound the header
 // states -- within 1.76 ms at six epochs when it was measured, and 2 ms here
 // -- and the round trip still holds.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("TDB is converted, not refused, at both ends of the calendar", "[astro][tdb]") {
     for (const CalendarDate& date : {
              CalendarDate{.year = 1, .month = 1, .day = 1, .hour = 12},

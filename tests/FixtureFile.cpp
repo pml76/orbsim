@@ -440,6 +440,4 @@ std::expected<TdbMinusTtFixture, FixtureError> readTdbMinusTt(const std::filesys
     return parseTdbMinusTt(*text);
 }
 
-std::string_view dataDirectory() { return ORBSIM_DATA_DIR; }
-
 } // namespace orb::test

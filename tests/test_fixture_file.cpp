@@ -25,9 +25,10 @@
 #include "core/Units.hpp"
 #include "tests/FixtureFile.hpp"
 #include "tests/OrbitTestSupport.hpp"
+#include "tests/TestCase.hpp"
+#include "tests/TestReads.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 
 #include <algorithm>
@@ -47,11 +48,9 @@
 using namespace orb;
 using namespace orb::test;
 
-// A note on the readability-function-cognitive-complexity suppressions below:
-// Catch2's REQUIRE expands to a do-while around a try/catch, so a case scores
-// about three points per assertion whether or not it branches. Ruled by the
-// project owner on 2026-09-09 -- see tests/test_orbit_scales.cpp -- one
-// suppression per function, and only where the check fires.
+// Each test case here is held to clang-tidy's size and complexity limits, and
+// one with more than a few checks names groups of them as helpers above it --
+// tests/TestCase.hpp says why (register decisions 578 and 581).
 
 namespace {
 
@@ -120,61 +119,93 @@ constexpr std::size_t kSweepCases = 10'000;
 
 // --- the untyped layer --------------------------------------------------------
 
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+namespace {
+
+void requireTheGoodHeader(const FixtureTable& table) {
+    REQUIRE(table.header.size() == 8);
+    REQUIRE(headerValue(table.header, "source") == "JPL Horizons API");
+    REQUIRE(headerValue(table.header, "time scale") == "TDB"); // a key may hold a space
+    REQUIRE(headerValue(table.header, "frame") == "ICRF");
+}
+
+void requireTheGoodColumns(const FixtureTable& table) {
+    REQUIRE(table.columns.size() == 7);
+    REQUIRE(table.columns.front() == "jd_tdb");
+    REQUIRE(table.columns.back() == "vz_km_s");
+}
+
+void requireTheGoodRows(const FixtureTable& table) {
+    REQUIRE(table.rows.size() == 2);
+    REQUIRE(table.rows.front().line == 12);
+    REQUIRE(table.rows.back().line == 13);
+    REQUIRE(table.rows.front().fields.size() == 7);
+    // Still text, exactly as the file spells it.
+    REQUIRE(table.rows.front().fields.at(1) == "2.649903367743050E+07");
+}
+
+} // namespace
+
 TEST_CASE("a known-good fixture parses, header and rows", "[fixture]") {
     const auto table = parseFixtureTable(kGoodFixture);
     INFO(errorName(table));
     REQUIRE(table.has_value());
 
-    REQUIRE(table->header.size() == 8);
-    REQUIRE(headerValue(table->header, "source") == "JPL Horizons API");
-    REQUIRE(headerValue(table->header, "time scale") == "TDB"); // a key may hold a space
-    REQUIRE(headerValue(table->header, "frame") == "ICRF");
-
-    REQUIRE(table->columns.size() == 7);
-    REQUIRE(table->columns.front() == "jd_tdb");
-    REQUIRE(table->columns.back() == "vz_km_s");
-
-    REQUIRE(table->rows.size() == 2);
-    REQUIRE(table->rows.front().line == 12);
-    REQUIRE(table->rows.back().line == 13);
-    REQUIRE(table->rows.front().fields.size() == 7);
-    // Still text, exactly as the file spells it.
-    REQUIRE(table->rows.front().fields.at(1) == "2.649903367743050E+07");
+    requireTheGoodHeader(*table);
+    requireTheGoodColumns(*table);
+    requireTheGoodRows(*table);
 }
 
-// Comments, blank lines and CRLF line endings are all accepted, and change
-// nothing about what is read.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
-TEST_CASE("comments, blank lines and CRLF change nothing", "[fixture]") {
+namespace {
+
+// The text with every line ending CRLF instead of LF.
+[[nodiscard]] std::string withWindowsLineEndings(std::string_view text) {
     std::string crlf;
-    for (const char c : kGoodFixture) {
+    for (const char c : text) {
         if (c == '\n') crlf += '\r';
         crlf += c;
     }
+    return crlf;
+}
+
+// The same file, read with LF and with CRLF line endings.
+struct TwoReadings {
+    FixtureTable lf;
+    FixtureTable windows;
+};
+
+void requireTheSameTable(const TwoReadings& readings) {
+    const FixtureTable& lf = readings.lf;
+    const FixtureTable& windows = readings.windows;
+    // Not vacuous: two empty parses would agree on everything below. Seen to
+    // happen against the stub, where this case then aborted on front() rather
+    // than failing with a message.
+    REQUIRE(lf.header.size() == 8);
+    REQUIRE(lf.rows.size() == 2);
+    REQUIRE(windows.header == lf.header);
+    REQUIRE(windows.rows.size() == lf.rows.size());
+    REQUIRE(windows.rows.front().fields == lf.rows.front().fields);
+}
+
+} // namespace
+
+// Comments, blank lines and CRLF line endings are all accepted, and change
+// nothing about what is read.
+TEST_CASE("comments, blank lines and CRLF change nothing", "[fixture]") {
+    const std::string crlf = withWindowsLineEndings(kGoodFixture);
     const auto lf = parseFixtureTable(kGoodFixture);
     const auto windows = parseFixtureTable(crlf);
     REQUIRE(lf.has_value());
     INFO(errorName(windows));
     REQUIRE(windows.has_value());
-    // Not vacuous: two empty parses would agree on everything below. Seen to
-    // happen against the stub, where this case then aborted on front() rather
-    // than failing with a message.
-    REQUIRE(lf->header.size() == 8);
-    REQUIRE(lf->rows.size() == 2);
-    REQUIRE(windows->header == lf->header);
-    REQUIRE(windows->rows.size() == lf->rows.size());
-    REQUIRE(windows->rows.front().fields == lf->rows.front().fields);
+    requireTheSameTable({.lf = *lf, .windows = *windows});
 }
 
-// Every way a fixture can be wrong, each asked for by the name of the check
-// that must catch it, and at the line it is on.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
-TEST_CASE("every malformed fixture is refused by name and line", "[fixture][errors]") {
+namespace {
+
+// The ways the file as a whole and its header can be wrong.
+[[nodiscard]] auto malformedFiles() {
     const std::string good{kGoodFixture};
-    const std::array refusals = std::to_array<Refusal>({
+    return std::to_array<Refusal>({
         {.name = "an empty file", .text = "", .kind = FixtureErrorKind::EmptyFile, .line = 0},
         {
             .name = "a header and no rows",
@@ -212,6 +243,12 @@ TEST_CASE("every malformed fixture is refused by name and line", "[fixture][erro
             .kind = FixtureErrorKind::UnexpectedHeaderValue,
             .line = 2,
         },
+    });
+}
+
+// The ways a row can be wrong.
+[[nodiscard]] auto malformedRows() {
+    return std::to_array<Refusal>({
         {
             .name = "a row with too few columns",
             .text = "columns = a b c\n1 2 3\n4 5\n",
@@ -262,19 +299,32 @@ TEST_CASE("every malformed fixture is refused by name and line", "[fixture][erro
             .line = 3,
         },
     });
+}
 
-    for (const Refusal& refusal : refusals) {
-        const auto table = parseFixtureTable(refusal.text);
-        INFO(refusal.name << " -> " << errorName(table));
-        REQUIRE(!table.has_value());
-        REQUIRE(table.error().kind == refusal.kind);
-        REQUIRE(table.error().line == refusal.line);
+void requireTheTableRefused(const Refusal& refusal) {
+    const auto table = parseFixtureTable(refusal.text);
+    INFO(refusal.name << " -> " << errorName(table));
+    REQUIRE(!table.has_value());
+    REQUIRE(table.error().kind == refusal.kind);
+    REQUIRE(table.error().line == refusal.line);
+}
+
+} // namespace
+
+// Every way a fixture can be wrong, each asked for by the name of the check
+// that must catch it, and at the line it is on.
+TEST_CASE("every malformed fixture is refused by name and line", "[fixture][errors]") {
+    for (const Refusal& refusal : malformedFiles()) {
+        requireTheTableRefused(refusal);
+    }
+    for (const Refusal& refusal : malformedRows()) {
+        requireTheTableRefused(refusal);
     }
 }
 
 TEST_CASE("a file that is not there is FileNotFound", "[fixture][errors]") {
-    const auto text = readFixtureText(std::filesystem::path{dataDirectory()} / "horizons" /
-                                      "no-such-fixture.txt");
+    const auto text =
+        readFixtureText(std::filesystem::path{dataFile("horizons/no-such-fixture.txt")});
     INFO(errorName(text));
     REQUIRE(!text.has_value());
     REQUIRE(text.error().kind == FixtureErrorKind::FileNotFound);
@@ -327,13 +377,11 @@ TEST_CASE("a double written with 17 digits reads back bit for bit", "[fixture][n
     REQUIRE(checked > kSweepCases * 9 / 10);
 }
 
-// Kilometres become metres by moving the decimal exponent and parsing once, so
-// the result is the double nearest the true value in metres. The three values
-// below are ones on which parsing *then* multiplying by 1000 gives the next
+namespace {
+
+// The three values on which parsing *then* multiplying by 1000 gives the next
 // double over; the expected results are exact rational arithmetic's.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
-TEST_CASE("kilometres become metres with a single rounding", "[fixture][numbers]") {
+void requireASingleRounding() {
     struct Case {
         std::string_view kilometres;
         f64 metres;
@@ -349,15 +397,19 @@ TEST_CASE("kilometres become metres with a single rounding", "[fixture][numbers]
         REQUIRE(read.has_value());
         REQUIRE(bitsOf(read.value_or(kNotRead)) == bitsOf(c.metres));
     }
+}
 
-    // Every spelling of the exponent, and none at all.
+// Every spelling of the exponent, and none at all.
+void requireEveryExponentSpelling() {
     REQUIRE(bitsOf(parseScaled("1.5E+07", 3).value_or(0.0)) == bitsOf(1.5e10));
     REQUIRE(bitsOf(parseScaled("1.5e7", 3).value_or(0.0)) == bitsOf(1.5e10));
     REQUIRE(bitsOf(parseScaled("1.5E-07", 3).value_or(0.0)) == bitsOf(1.5e-4));
     REQUIRE(bitsOf(parseScaled("1.5", 3).value_or(0.0)) == bitsOf(1500.0));
     REQUIRE(bitsOf(parseScaled("-2", 3).value_or(0.0)) == bitsOf(-2000.0));
+}
 
-    // And refusals: not a number, not finite, or finite until it was scaled.
+// And refusals: not a number, not finite, or finite until it was scaled.
+void requireTheScaledRefusals() {
     REQUIRE(!parseScaled("two", 3).has_value());
     REQUIRE(!parseScaled("nan", 0).has_value());
     REQUIRE(!parseScaled("1e308", 3).has_value());
@@ -365,10 +417,42 @@ TEST_CASE("kilometres become metres with a single rounding", "[fixture][numbers]
     REQUIRE(!parseScaled("", 0).has_value());
 }
 
+} // namespace
+
+// Kilometres become metres by moving the decimal exponent and parsing once, so
+// the result is the double nearest the true value in metres. The three values
+// below are ones on which parsing *then* multiplying by 1000 gives the next
+// double over; the expected results are exact rational arithmetic's.
+TEST_CASE("kilometres become metres with a single rounding", "[fixture][numbers]") {
+    requireASingleRounding();
+    requireEveryExponentSpelling();
+    requireTheScaledRefusals();
+}
+
 // --- state vectors ----------------------------------------------------------
 
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+namespace {
+
+// J2000.0, reached through the calendar rather than a Julian date.
+void requireTheFirstEpochIsJ2000(const StateAtEpoch& first) {
+    const auto j2000 = TdbTime::fromCalendar({.year = 2000, .month = 1, .day = 1, .hour = 12});
+    REQUIRE(j2000.has_value());
+    REQUIRE(first.epoch == *j2000);
+}
+
+// The compiler's reading of each literal is the reference: it is correctly
+// rounded and owes nothing to the reader.
+void requireTheFirstStateInMetres(const StateAtEpoch& first) {
+    REQUIRE(first.position.x.bitIdentical(Metres{2.649903367743050e10}));
+    REQUIRE(first.position.y.bitIdentical(Metres{-1.327574173383451e11}));
+    REQUIRE(first.position.z.bitIdentical(Metres{-5.755671847054072e10}));
+    REQUIRE(first.velocity.x.bitIdentical(MetresPerSecond{2.979426007043741e4}));
+    REQUIRE(first.velocity.y.bitIdentical(MetresPerSecond{5.018052308799903e3}));
+    REQUIRE(first.velocity.z.bitIdentical(MetresPerSecond{2.175393802830554e3}));
+}
+
+} // namespace
+
 TEST_CASE("a state-vector fixture arrives in metres, metres per second and TDB",
           "[fixture][states]") {
     const auto fixture = parseStateVectors(kGoodFixture);
@@ -378,20 +462,8 @@ TEST_CASE("a state-vector fixture arrives in metres, metres per second and TDB",
     REQUIRE(headerValue(fixture->header, "target") == "Sun (10)");
 
     const StateAtEpoch& first = fixture->states.front();
-
-    // J2000.0, reached through the calendar rather than a Julian date.
-    const auto j2000 = TdbTime::fromCalendar({.year = 2000, .month = 1, .day = 1, .hour = 12});
-    REQUIRE(j2000.has_value());
-    REQUIRE(first.epoch == *j2000);
-
-    // The compiler's reading of each literal is the reference: it is correctly
-    // rounded and owes nothing to the reader.
-    REQUIRE(first.position.x.bitIdentical(Metres{2.649903367743050e10}));
-    REQUIRE(first.position.y.bitIdentical(Metres{-1.327574173383451e11}));
-    REQUIRE(first.position.z.bitIdentical(Metres{-5.755671847054072e10}));
-    REQUIRE(first.velocity.x.bitIdentical(MetresPerSecond{2.979426007043741e4}));
-    REQUIRE(first.velocity.y.bitIdentical(MetresPerSecond{5.018052308799903e3}));
-    REQUIRE(first.velocity.z.bitIdentical(MetresPerSecond{2.175393802830554e3}));
+    requireTheFirstEpochIsJ2000(first);
+    requireTheFirstStateInMetres(first);
 
     // The second row is 365 days later, exactly.
     REQUIRE_THAT((fixture->states.back().epoch - first.epoch).value(),
@@ -419,7 +491,6 @@ TEST_CASE("a fractional epoch keeps its fraction", "[fixture][states]") {
 // corrections and the units this reader converts from. Anything else is
 // refused by name rather than read wrongly: a file in AU read as km is out by
 // 1.5e8 and still plausible to look at (register decision 45).
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("a state-vector fixture in the wrong frame, scale or units is refused",
           "[fixture][states][errors]") {
     const std::array refusals = std::to_array<Refusal>({
@@ -509,10 +580,27 @@ constexpr std::string_view kGoodTdbFixture =
 
 } // namespace
 
+namespace {
+
+// JD 2415020.5 is 1900-01-01T00:00, and the rows are 37 days apart.
+void requireTheTdbEpochs(const TdbMinusTtFixture& fixture) {
+    const auto first = TdbTime::fromCalendar({.year = 1900, .month = 1, .day = 1});
+    REQUIRE(first.has_value());
+    REQUIRE(fixture.rows.front().epoch == *first);
+    REQUIRE_THAT((fixture.rows.at(1).epoch - fixture.rows.front().epoch).value(),
+                 WithinAbsOf(37.0 * 86'400.0, Tolerance{0.0}));
+}
+
+void requireTheTdbValuesInSeconds(const TdbMinusTtFixture& fixture) {
+    REQUIRE(fixture.rows.at(0).tdbMinusTt.bitIdentical(Seconds{-1.841120030058693e-05}));
+    REQUIRE(fixture.rows.at(1).tdbMinusTt.bitIdentical(Seconds{0.000997346517151686}));
+    REQUIRE(fixture.rows.at(2).tdbMinusTt.bitIdentical(Seconds{0.0016089583859698765}));
+}
+
+} // namespace
+
 // The epochs against the calendar, and the values against the compiler's own
 // reading of each literal: correctly rounded, and owing nothing to the reader.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("a TDB - TT fixture arrives in TDB and seconds", "[fixture][tdb]") {
     const auto fixture = parseTdbMinusTt(kGoodTdbFixture);
     INFO(errorName(fixture));
@@ -520,21 +608,12 @@ TEST_CASE("a TDB - TT fixture arrives in TDB and seconds", "[fixture][tdb]") {
     REQUIRE(fixture->rows.size() == 3);
     REQUIRE(headerValue(fixture->header, "function") == "skyfield.timelib.tdb_minus_tt");
 
-    // JD 2415020.5 is 1900-01-01T00:00, and the rows are 37 days apart.
-    const auto first = TdbTime::fromCalendar({.year = 1900, .month = 1, .day = 1});
-    REQUIRE(first.has_value());
-    REQUIRE(fixture->rows.front().epoch == *first);
-    REQUIRE_THAT((fixture->rows.at(1).epoch - fixture->rows.front().epoch).value(),
-                 WithinAbsOf(37.0 * 86'400.0, Tolerance{0.0}));
-
-    REQUIRE(fixture->rows.at(0).tdbMinusTt.bitIdentical(Seconds{-1.841120030058693e-05}));
-    REQUIRE(fixture->rows.at(1).tdbMinusTt.bitIdentical(Seconds{0.000997346517151686}));
-    REQUIRE(fixture->rows.at(2).tdbMinusTt.bitIdentical(Seconds{0.0016089583859698765}));
+    requireTheTdbEpochs(*fixture);
+    requireTheTdbValuesInSeconds(*fixture);
 }
 
 // A TDB - TT fixture must be in the scale and the unit this reader converts
 // from, and anything else is refused by name.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("a TDB - TT fixture in the wrong scale or unit is refused", "[fixture][tdb][errors]") {
     const std::array refusals = std::to_array<Refusal>({
         {
@@ -578,37 +657,28 @@ TEST_CASE("a TDB - TT fixture in the wrong scale or unit is refused", "[fixture]
     }
 }
 
-// The committed file itself. Not skipped when absent, unlike the Horizons
-// fixtures: it is in the repository (register decision 55), so its absence is
-// a broken checkout. A plausibility check on its shape and its unit, not an
-// accuracy claim -- that is test_astro_time.cpp's, against these same rows.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
-TEST_CASE("the committed TDB - TT fixture reads, in seconds", "[fixture][tdb]") {
-    const auto fixture =
-        readTdbMinusTt(std::filesystem::path{dataDirectory()} / "skyfield" / "tdb-minus-tt.txt");
-    INFO(errorName(fixture) << " at line " << (fixture ? std::size_t{0} : fixture.error().line));
-    REQUIRE(fixture.has_value());
-    REQUIRE(headerValue(fixture->header, "source") ==
-            "Skyfield 1.55 (Brandon Rhodes, MIT licence)");
-    REQUIRE(headerValue(fixture->header, "model") == "USNO Circular 179 (Kaplan 2005), eq. 2.6");
+namespace {
 
-    // 1900-01-01 to 2100-01-01 on a 37-day stride: MJD 15020 to 88069 holds
-    // floor((88069 - 15020) / 37) + 1 = 1975 epochs.
-    REQUIRE(fixture->rows.size() == 1975);
+// 1900-01-01 to 2100-01-01 on a 37-day stride: MJD 15020 to 88069 holds
+// floor((88069 - 15020) / 37) + 1 = 1975 epochs.
+void requireTheCommittedTdbStride(const TdbMinusTtFixture& fixture) {
+    REQUIRE(fixture.rows.size() == 1975);
     const auto first = TdbTime::fromCalendar({.year = 1900, .month = 1, .day = 1});
     REQUIRE(first.has_value());
-    REQUIRE(fixture->rows.front().epoch == *first);
-    for (std::size_t i = 1; i < fixture->rows.size(); ++i) {
+    REQUIRE(fixture.rows.front().epoch == *first);
+    for (std::size_t i = 1; i < fixture.rows.size(); ++i) {
         CAPTURE(i);
-        REQUIRE_THAT((fixture->rows.at(i).epoch - fixture->rows.at(i - 1).epoch).value(),
+        REQUIRE_THAT((fixture.rows.at(i).epoch - fixture.rows.at(i - 1).epoch).value(),
                      WithinAbsOf(37.0 * 86'400.0, Tolerance{0.0}));
     }
+}
 
-    // In seconds: the term's amplitude is about 1.7 ms, so every value lies
-    // inside 2 ms and the largest reaches past 1.5 ms. Milliseconds read as
-    // seconds would put them near 1.7, and microseconds near 1e-9.
+// In seconds: the term's amplitude is about 1.7 ms, so every value lies inside
+// 2 ms and the largest reaches past 1.5 ms. Milliseconds read as seconds would
+// put them near 1.7, and microseconds near 1e-9.
+void requireTheCommittedTdbInSeconds(const TdbMinusTtFixture& fixture) {
     f64 largest = 0.0;
-    for (const TdbMinusTtAtEpoch& row : fixture->rows) {
+    for (const TdbMinusTtAtEpoch& row : fixture.rows) {
         const f64 seconds = row.tdbMinusTt.value();
         CAPTURE(seconds);
         REQUIRE(absOf(seconds) < 2e-3);
@@ -616,6 +686,25 @@ TEST_CASE("the committed TDB - TT fixture reads, in seconds", "[fixture][tdb]") 
     }
     CAPTURE(largest);
     REQUIRE(largest > 1.5e-3);
+}
+
+} // namespace
+
+// The committed file itself. Not skipped when absent, unlike the Horizons
+// fixtures: it is in the repository (register decision 55), so its absence is
+// a broken checkout. A plausibility check on its shape and its unit, not an
+// accuracy claim -- that is test_astro_time.cpp's, against these same rows.
+TEST_CASE("the committed TDB - TT fixture reads, in seconds", "[fixture][tdb]") {
+    const auto fixture =
+        readTdbMinusTt(std::filesystem::path{dataFile("skyfield/tdb-minus-tt.txt")});
+    INFO(errorName(fixture) << " at line " << (fixture ? std::size_t{0} : fixture.error().line));
+    REQUIRE(fixture.has_value());
+    REQUIRE(headerValue(fixture->header, "source") ==
+            "Skyfield 1.55 (Brandon Rhodes, MIT licence)");
+    REQUIRE(headerValue(fixture->header, "model") == "USNO Circular 179 (Kaplan 2005), eq. 2.6");
+
+    requireTheCommittedTdbStride(*fixture);
+    requireTheCommittedTdbInSeconds(*fixture);
 }
 
 // --- the Sun fixture itself ---------------------------------------------------
@@ -677,22 +766,14 @@ constexpr std::string_view kGoodOrientationFixture =
 // The two instants against the calendar and against the literals themselves,
 // and the nine elements against the compiler's own reading of each: the reader
 // owes the test nothing.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
-TEST_CASE("an Earth-orientation fixture arrives as two instants and a rotation",
-          "[fixture][orientation]") {
-    const auto fixture = parseEarthOrientation(kGoodOrientationFixture);
-    INFO(errorName(fixture));
-    REQUIRE(fixture.has_value());
-    REQUIRE(fixture->rows.size() == 2);
-    REQUIRE(headerValue(fixture->header, "function") == "skyfield.framelib.itrs.rotation_at");
-    REQUIRE(headerValue(fixture->header, "polar motion") == "none");
+namespace {
 
-    // JD 2415020.5 is 1900-01-01T00:00 exactly, and the UT1 of that row is
-    // 69.2138671875 s earlier -- 23:58:50.7861328125 of 1899-12-31.
+// JD 2415020.5 is 1900-01-01T00:00 exactly, and the UT1 of that row is
+// 69.2138671875 s earlier -- 23:58:50.7861328125 of 1899-12-31.
+void requireTheFirstOrientationInstants(const RotationAtEpoch& first) {
     const auto midnight = TtTime::fromCalendar({.year = 1900, .month = 1, .day = 1});
     REQUIRE(midnight.has_value());
-    REQUIRE(fixture->rows.front().tt == *midnight);
+    REQUIRE(first.tt == *midnight);
     const auto ut1 = Ut1Time::fromCalendar({
         .year = 1899,
         .month = 12,
@@ -702,15 +783,31 @@ TEST_CASE("an Earth-orientation fixture arrives as two instants and a rotation",
         .second = Seconds{50.7861328125},
     });
     REQUIRE(ut1.has_value());
-    REQUIRE(fixture->rows.front().ut1 == *ut1);
+    REQUIRE(first.ut1 == *ut1);
+}
 
-    // Row-major, in the order the columns name: c2t_11 first, c2t_33 last.
-    const RotationMatrix& m = fixture->rows.front().celestialToTerrestrial;
+// Row-major, in the order the columns name: c2t_11 first, c2t_33 last.
+void requireTheFirstRotation(const RotationMatrix& m) {
     REQUIRE_THAT(m.rows.at(0).at(0), WithinAbsOf(-0.19380523262618962, Tolerance{0.0}));
     REQUIRE_THAT(m.rows.at(0).at(2), WithinAbsOf(-0.0017602144238795104, Tolerance{0.0}));
     REQUIRE_THAT(m.rows.at(1).at(1), WithinAbsOf(-0.1938131894709629, Tolerance{0.0}));
     REQUIRE_THAT(m.rows.at(2).at(2), WithinAbsOf(0.999953103943651, Tolerance{0.0}));
     REQUIRE(isRotation(m, kRotationTolerance));
+}
+
+} // namespace
+
+TEST_CASE("an Earth-orientation fixture arrives as two instants and a rotation",
+          "[fixture][orientation]") {
+    const auto fixture = parseEarthOrientation(kGoodOrientationFixture);
+    INFO(errorName(fixture));
+    REQUIRE(fixture.has_value());
+    REQUIRE(fixture->rows.size() == 2);
+    REQUIRE(headerValue(fixture->header, "function") == "skyfield.framelib.itrs.rotation_at");
+    REQUIRE(headerValue(fixture->header, "polar motion") == "none");
+
+    requireTheFirstOrientationInstants(fixture->rows.front());
+    requireTheFirstRotation(fixture->rows.front().celestialToTerrestrial);
 
     // The second row's time of day is a whole number of 2^-19 days, which is
     // what keeps every instant exact: 0.6180648803710938 * 2^19 = 324044.
@@ -792,46 +889,92 @@ TEST_CASE("an Earth-orientation fixture in the wrong frame or scale is refused",
     }
 }
 
+namespace {
+
+// 1900-01-01 to 2100-01-01 on a 71-day stride: MJD 15020 to 88069 holds
+// floor((88069 - 15020) / 71) + 1 = 1029 epochs.
+void requireTheCommittedOrientationStart(const EarthOrientationFixture& fixture) {
+    REQUIRE(fixture.rows.size() == 1029);
+    const auto first = TtTime::fromCalendar({.year = 1900, .month = 1, .day = 1});
+    REQUIRE(first.has_value());
+    REQUIRE(fixture.rows.front().tt == *first);
+}
+
+// Row i: a rotation, a UT1 its TT less the header's DeltaT, and 71 days after
+// the row before it.
+void requireTheCommittedOrientationRow(const EarthOrientationFixture& fixture, std::size_t i) {
+    constexpr std::int64_t kDeltaTPicoseconds = 69'213'867'187'500; // 420 / 2^19 day
+    const RotationAtEpoch& row = fixture.rows.at(i);
+    CAPTURE(i, row.tt, row.ut1);
+    REQUIRE(isRotation(row.celestialToTerrestrial, kRotationTolerance));
+    // Every UT1 is its TT less the DeltaT the header names, exactly.
+    REQUIRE(ttFromUt1(row.ut1, DeltaT::fromPicoseconds(kDeltaTPicoseconds).value()) == row.tt);
+    if (i == 0) return;
+    REQUIRE_THAT(row.tt.modifiedJulianDay() - fixture.rows.at(i - 1).tt.modifiedJulianDay(),
+                 WithinAbsOf(71.0, Tolerance{1.0}));
+}
+
+} // namespace
+
 // The committed file itself: its shape, its stride, and that every row really
 // is a rotation. The accuracy claim against it is
 // tests/test_earth_orientation.cpp's.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("the committed Earth-orientation fixture reads, as rotations", "[fixture][orientation]") {
-    const auto fixture = readEarthOrientation(std::filesystem::path{dataDirectory()} / "skyfield" /
-                                              "earth-orientation.txt");
+    const auto fixture =
+        readEarthOrientation(std::filesystem::path{dataFile("skyfield/earth-orientation.txt")});
     INFO(errorName(fixture) << " at line " << (fixture ? std::size_t{0} : fixture.error().line));
     REQUIRE(fixture.has_value());
 
-    // 1900-01-01 to 2100-01-01 on a 71-day stride: MJD 15020 to 88069 holds
-    // floor((88069 - 15020) / 71) + 1 = 1029 epochs.
-    REQUIRE(fixture->rows.size() == 1029);
-    const auto first = TtTime::fromCalendar({.year = 1900, .month = 1, .day = 1});
-    REQUIRE(first.has_value());
-    REQUIRE(fixture->rows.front().tt == *first);
-
-    constexpr std::int64_t kDeltaTPicoseconds = 69'213'867'187'500; // 420 / 2^19 day
+    requireTheCommittedOrientationStart(*fixture);
     std::set<std::int64_t> timesOfDay;
     for (std::size_t i = 0; i < fixture->rows.size(); ++i) {
-        const RotationAtEpoch& row = fixture->rows.at(i);
-        CAPTURE(i, row.tt, row.ut1);
-        REQUIRE(isRotation(row.celestialToTerrestrial, kRotationTolerance));
-        timesOfDay.insert(row.tt.picosecondOfDay());
-        // Every UT1 is its TT less the DeltaT the header names, exactly.
-        REQUIRE(ttFromUt1(row.ut1, DeltaT::fromPicoseconds(kDeltaTPicoseconds).value()) == row.tt);
-        if (i == 0) continue;
-        REQUIRE_THAT(row.tt.modifiedJulianDay() - fixture->rows.at(i - 1).tt.modifiedJulianDay(),
-                     WithinAbsOf(71.0, Tolerance{1.0}));
+        timesOfDay.insert(fixture->rows.at(i).tt.picosecondOfDay());
+        requireTheCommittedOrientationRow(*fixture, i);
     }
     // Every row at a different time of day, which is what makes the Earth
     // rotation angle sweep rather than repeat.
     REQUIRE(timesOfDay.size() == fixture->rows.size());
 }
 
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
+namespace {
+
+void requireTheSunFixturesHeader(const StateVectorFixture& fixture) {
+    REQUIRE(headerValue(fixture.header, "target") == "Sun (10)");
+    REQUIRE(headerValue(fixture.header, "center") == "Earth (399)");
+    REQUIRE(headerValue(fixture.header, "ephemeris") == "DE441");
+    REQUIRE(fixture.states.size() == 40);
+}
+
+// Strictly increasing, from J2000.0.
+void requireTheSunEpochsFromJ2000(const StateVectorFixture& fixture) {
+    const auto j2000 = TdbTime::fromCalendar({.year = 2000, .month = 1, .day = 1, .hour = 12});
+    REQUIRE(j2000.has_value());
+    REQUIRE(fixture.states.front().epoch == *j2000);
+    for (std::size_t i = 1; i < fixture.states.size(); ++i) {
+        CAPTURE(i);
+        REQUIRE(fixture.states.at(i - 1).epoch < fixture.states.at(i).epoch);
+    }
+}
+
+// In metres: every distance between 0.98 and 1.02 AU. Kilometres read as
+// metres would put the Sun 150,000 m away, and the other mistake 1.5e14 m. A
+// plausibility check on the unit, not an accuracy claim -- that is M1-08's,
+// against these same rows.
+void requireEverySunDistanceNearOneAu(const StateVectorFixture& fixture) {
+    constexpr f64 kAstronomicalUnitMetres = 149'597'870'700.0; // IAU 2012 B2, exact
+    for (const StateAtEpoch& state : fixture.states) {
+        const f64 distance = length(state.position).value() / kAstronomicalUnitMetres;
+        CAPTURE(distance);
+        REQUIRE(distance > 0.98);
+        REQUIRE(distance < 1.02);
+    }
+}
+
+} // namespace
+
 TEST_CASE("the generated Sun fixture reads, in metres", "[fixture][horizons]") {
-    const auto fixture = readStateVectors(std::filesystem::path{dataDirectory()} / "horizons" /
-                                          "sun-geocentric.txt");
+    const auto fixture =
+        readStateVectors(std::filesystem::path{dataFile("horizons/sun-geocentric.txt")});
     if (!fixture.has_value() && fixture.error().kind == FixtureErrorKind::FileNotFound) {
         SKIP("data/horizons/sun-geocentric.txt has not been generated on this machine: "
              "see data/horizons/README.md");
@@ -839,29 +982,7 @@ TEST_CASE("the generated Sun fixture reads, in metres", "[fixture][horizons]") {
     INFO(errorName(fixture) << " at line " << (fixture ? std::size_t{0} : fixture.error().line));
     REQUIRE(fixture.has_value());
 
-    REQUIRE(headerValue(fixture->header, "target") == "Sun (10)");
-    REQUIRE(headerValue(fixture->header, "center") == "Earth (399)");
-    REQUIRE(headerValue(fixture->header, "ephemeris") == "DE441");
-    REQUIRE(fixture->states.size() == 40);
-
-    // Strictly increasing, from J2000.0.
-    const auto j2000 = TdbTime::fromCalendar({.year = 2000, .month = 1, .day = 1, .hour = 12});
-    REQUIRE(j2000.has_value());
-    REQUIRE(fixture->states.front().epoch == *j2000);
-    for (std::size_t i = 1; i < fixture->states.size(); ++i) {
-        CAPTURE(i);
-        REQUIRE(fixture->states.at(i - 1).epoch < fixture->states.at(i).epoch);
-    }
-
-    // In metres: every distance between 0.98 and 1.02 AU. Kilometres read as
-    // metres would put the Sun 150,000 m away, and the other mistake 1.5e14 m.
-    // A plausibility check on the unit, not an accuracy claim -- that is
-    // M1-08's, against these same rows.
-    constexpr f64 kAstronomicalUnitMetres = 149'597'870'700.0; // IAU 2012 B2, exact
-    for (const StateAtEpoch& state : fixture->states) {
-        const f64 distance = length(state.position).value() / kAstronomicalUnitMetres;
-        CAPTURE(distance);
-        REQUIRE(distance > 0.98);
-        REQUIRE(distance < 1.02);
-    }
+    requireTheSunFixturesHeader(*fixture);
+    requireTheSunEpochsFromJ2000(*fixture);
+    requireEverySunDistanceNearOneAu(*fixture);
 }

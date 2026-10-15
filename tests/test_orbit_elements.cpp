@@ -12,10 +12,10 @@
 #include "tests/OrbitTestSupport.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 
 #include "tests/OrbitSweepSupport.hpp"
+#include "tests/TestCase.hpp"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -29,22 +29,9 @@ using namespace orb::literals;
 using namespace orb::test;
 using namespace orb::test::scales;
 
-// A note on the readability-function-cognitive-complexity suppressions below.
-//
-// Catch2's REQUIRE and REQUIRE_THAT each expand to a do-while wrapping a
-// try/catch, so a case scores roughly three points per assertion whether or
-// not it branches at all: the cases suppressed here contain no `if`, and the
-// only loops are the ones walking a table of cases. The score measures the
-// framework, not the code.
-//
-// Ruled by the project owner on 2026-09-09, with the alternatives measured
-// first: the check offers an IgnoreMacros option that clears every one of
-// these while still scoring hand-written control flow (a probe function still
-// reported 35), and a NOLINTBEGIN/NOLINTEND region would cover a whole file in
-// one line. Both were rejected in favour of a suppression per function,
-// because that is the only one of the three that still reports a genuinely
-// over-complex helper added to this file later. Each new TEST_CASE that
-// crosses the threshold gets its own line, deliberately.
+// Each test case here is held to clang-tidy's size and complexity limits, and
+// one with more than a few checks names groups of them as helpers above it --
+// tests/TestCase.hpp says why (register decisions 578 and 581).
 
 // --- what the round trip through the elements is worth -----------------------
 
@@ -591,6 +578,173 @@ void checkEveryElement(const ElementCase& test) {
 
 } // namespace
 
+namespace {
+
+constexpr ElementCase kRadialSlr{
+    .name = "radial/slr",
+    .symptom = "slr was out by 1.1e-5, lan by 1.8e-6 rad",
+    .state =
+        {
+            .pos = {98115305.6517241, -36899386.05634015, -63434678.16796173},
+            .vel = {35263.74015082627, -13262.052775336871, -22799.134065214468},
+        },
+    .mu = gravParam(1.26686534e17),
+    .want =
+        {
+            .sma = Metres{984109853.7716752},
+            .ecc = eccentricity(1.0),
+            .inc = Radians{1.6530067199888987},
+            .lan = Radians{5.873583714414224},
+            .aop = Radians{2.595342089300744},
+            // kPi plus the exact offset rather than the decimal, which
+            // is the same double: a nearly radial orbit sits at its far
+            // apsis, so the reference is always within a nanoradian of
+            // pi, and `modernize-use-std-numbers` reports any literal
+            // that close to a named constant. Written this way it also
+            // says what it means.
+            .tra = Radians{kPi + -2.4008794952123935e-11},
+            .slr = Metres{3.765682093767872e-14},
+        },
+};
+
+constexpr ElementCase kRadialAop{
+    .name = "radial/aop",
+    .symptom = "aop was out by 7.5e-6 rad, lan by 8.3e-6, inc by 2.5e-6, slr by 1.1e-5",
+    .state =
+        {
+            .pos = {41748328800.00065, 50413494846.746025, 28790214535.44694},
+            .vel = {95.73084603298135, 115.60047196533479, 66.01729156934707},
+        },
+    .mu = gravParam(398600441800000.0),
+    .want =
+        {
+            .sma = Metres{-25327823861.335873},
+            .ecc = eccentricity(1.0),
+            .inc = Radians{2.7026987962183653},
+            .lan = Radians{2.0930065922253807},
+            .aop = Radians{4.3868367873725855},
+            .tra = Radians{kPi + -5.193623309196482e-11},
+            .slr = Metres{3.999035826672676e-11},
+        },
+};
+
+constexpr ElementCase kParabolicSma{
+    .name = "parabolic/sma",
+    .symptom = "sma was out by 7.1e-4, at |alpha r| = 1.2e-9, outside the 1e-12 band",
+    .state =
+        {
+            .pos = {-640755300159.4368, 29100549031.838127, 346946167705.056},
+            .vel = {-2.2807014201260682, 32.969662883052614, -0.9995679123141444},
+        },
+    .mu = gravParam(398600441800000.0),
+    .want =
+        {
+            .sma = Metres{6.583308070576134e+23},
+            .ecc = eccentricity(0.9999999999989005),
+            .inc = Radians{2.6396867135064164},
+            .lan = Radians{4.836596791006594},
+            .aop = Radians{1.5475516847830715},
+            .tra = Radians{0.1722502705583468},
+            .slr = Metres{1447681396713.5178},
+        },
+};
+
+constexpr ElementCase kAsymptoteSlr{
+    .name = "asymptote/slr",
+    .symptom = "slr was out by 3.7e-8",
+    .state =
+        {
+            .pos = {184933078210043.56, 12227088438166.695, 154761708918660.75},
+            .vel = {515460.5071996036, 34080.33415690606, 431364.41700335406},
+        },
+    .mu = gravParam(1.32712440018e20),
+    .want =
+        {
+            .sma = Metres{-293005379.96767074},
+            .ecc = eccentricity(1.0000034505920776),
+            .inc = Radians{1.7765735746548228},
+            .lan = Radians{0.24121218097744143},
+            .aop = Radians{3.858093101748927},
+            .tra = Radians{3.138965643681166},
+            .slr = Metres{2022.0875743110084},
+        },
+};
+
+constexpr ElementCase kSmallEccentricity{
+    .name = "smalle/ecc",
+    .symptom = "ecc was out by 1.7e-7 at a true e of 2.4e-9",
+    .state =
+        {
+            .pos = {89977497286.24823, 325806749198.3961, -6363974265.222106},
+            .vel = {-33.02472617867604, 9.071987671541756, -2.4776024906511935},
+        },
+    .mu = gravParam(398600441800000.0),
+    .want =
+        {
+            .sma = Metres{338062845427.7559},
+            .ecc = eccentricity(2.410249444739502e-09),
+            .inc = Radians{0.07463870595147103},
+            .lan = Radians{4.18840882891478},
+            .aop = Radians{0.26957632809726984},
+            .tra = Radians{3.1272246403208896},
+            .slr = Metres{338062845427.7559},
+        },
+};
+
+constexpr ElementCase kTinySlr{
+    .name = "tiny/slr",
+    .symptom = "slr was out by 0.98 and aop by 0.31 rad -- the squares went subnormal",
+    .state =
+        {
+            .pos =
+                {
+                    1.1255796242117575e-112,
+                    -2.335524288160757e-112,
+                    -1.7843712448117626e-112,
+                },
+            .vel =
+                {
+                    -5.622784877953291e-51,
+                    1.129129308921512e-52,
+                    2.0383290377229924e-51,
+                },
+        },
+    .mu = gravParam(6.762040535602958e-213),
+    .want =
+        {
+            .sma = Metres{9.408723759066775e-112},
+            .ecc = eccentricity(0.7793327632486454),
+            .inc = Radians{2.537170817576543},
+            .lan = Radians{3.673972445843512},
+            .aop = Radians{6.126893603302964},
+            .tra = Radians{4.9372615743387795},
+            .slr = Metres{3.6942454754304065e-112},
+        },
+};
+
+constexpr ElementCase kSmallMuSma{
+    .name = "muwide/sma",
+    .symptom = "sma was out by 1.2e-11 with mu = 7.3e7",
+    .state =
+        {
+            .pos = {33533205800013.06, 17263837004043.322, -2700443730722.6323},
+            .vel = {0.001461083271751538, 0.0011796325768950588, -0.00055901478564361},
+        },
+    .mu = gravParam(72579463.2331308),
+    .want =
+        {
+            .sma = Metres{8.272163997668141e+17},
+            .ecc = eccentricity(0.9999961169100106),
+            .inc = Radians{0.844951349416489},
+            .lan = Radians{3.5534480537245505},
+            .aop = Radians{0.6871285419999764},
+            .tra = Radians{2.550093699048564},
+            .slr = Metres{6424298968899.643},
+        },
+};
+
+} // namespace
+
 // Seven measured states, one per failure mechanism. Before the double-double
 // conversion these were out by up to 1.1e-5 in the semi-latus rectum of a
 // nearly radial orbit, 7.1e-4 in the semi-major axis of a near-parabolic one,
@@ -599,193 +753,34 @@ TEST_CASE("elementsFromState is accurate to the resolution of a double", "[orbit
     // Nearly radial. |h| is the difference of two products that agree to
     // fifteen digits, so |h|^2/mu keeps almost none of them, and every angle
     // measured from the node goes with it.
-    SECTION("a nearly radial orbit, semi-latus rectum") {
-        checkEveryElement({
-            .name = "radial/slr",
-            .symptom = "slr was out by 1.1e-5, lan by 1.8e-6 rad",
-            .state =
-                {
-                    .pos = {98115305.6517241, -36899386.05634015, -63434678.16796173},
-                    .vel = {35263.74015082627, -13262.052775336871, -22799.134065214468},
-                },
-            .mu = gravParam(1.26686534e17),
-            .want =
-                {
-                    .sma = Metres{984109853.7716752},
-                    .ecc = eccentricity(1.0),
-                    .inc = Radians{1.6530067199888987},
-                    .lan = Radians{5.873583714414224},
-                    .aop = Radians{2.595342089300744},
-                    // kPi plus the exact offset rather than the decimal, which
-                    // is the same double: a nearly radial orbit sits at its far
-                    // apsis, so the reference is always within a nanoradian of
-                    // pi, and `modernize-use-std-numbers` reports any literal
-                    // that close to a named constant. Written this way it also
-                    // says what it means.
-                    .tra = Radians{kPi + -2.4008794952123935e-11},
-                    .slr = Metres{3.765682093767872e-14},
-                },
-        });
-    }
+    SECTION("a nearly radial orbit, semi-latus rectum") { checkEveryElement(kRadialSlr); }
 
-    SECTION("a nearly radial orbit, in-plane angles") {
-        checkEveryElement({
-            .name = "radial/aop",
-            .symptom = "aop was out by 7.5e-6 rad, lan by 8.3e-6, inc by 2.5e-6, slr by 1.1e-5",
-            .state =
-                {
-                    .pos = {41748328800.00065, 50413494846.746025, 28790214535.44694},
-                    .vel = {95.73084603298135, 115.60047196533479, 66.01729156934707},
-                },
-            .mu = gravParam(398600441800000.0),
-            .want =
-                {
-                    .sma = Metres{-25327823861.335873},
-                    .ecc = eccentricity(1.0),
-                    .inc = Radians{2.7026987962183653},
-                    .lan = Radians{2.0930065922253807},
-                    .aop = Radians{4.3868367873725855},
-                    .tra = Radians{kPi + -5.193623309196482e-11},
-                    .slr = Metres{3.999035826672676e-11},
-                },
-        });
-    }
+    SECTION("a nearly radial orbit, in-plane angles") { checkEveryElement(kRadialAop); }
 
     // Outside the parabolic band, so an infinite sma is not the answer here:
     // v^2/2 and mu/r agree to twelve digits and the energy keeps four.
     SECTION("a near-parabolic orbit outside the band, semi-major axis") {
-        checkEveryElement({
-            .name = "parabolic/sma",
-            .symptom = "sma was out by 7.1e-4, at |alpha r| = 1.2e-9, outside the 1e-12 band",
-            .state =
-                {
-                    .pos = {-640755300159.4368, 29100549031.838127, 346946167705.056},
-                    .vel = {-2.2807014201260682, 32.969662883052614, -0.9995679123141444},
-                },
-            .mu = gravParam(398600441800000.0),
-            .want =
-                {
-                    .sma = Metres{6.583308070576134e+23},
-                    .ecc = eccentricity(0.9999999999989005),
-                    .inc = Radians{2.6396867135064164},
-                    .lan = Radians{4.836596791006594},
-                    .aop = Radians{1.5475516847830715},
-                    .tra = Radians{0.1722502705583468},
-                    .slr = Metres{1447681396713.5178},
-                },
-        });
+        checkEveryElement(kParabolicSma);
     }
 
     // Far out along a hyperbola's asymptote, where the eccentricity vector
     // cancels for the other reason.
-    SECTION("a hyperbola far out along its asymptote") {
-        checkEveryElement({
-            .name = "asymptote/slr",
-            .symptom = "slr was out by 3.7e-8",
-            .state =
-                {
-                    .pos = {184933078210043.56, 12227088438166.695, 154761708918660.75},
-                    .vel = {515460.5071996036, 34080.33415690606, 431364.41700335406},
-                },
-            .mu = gravParam(1.32712440018e20),
-            .want =
-                {
-                    .sma = Metres{-293005379.96767074},
-                    .ecc = eccentricity(1.0000034505920776),
-                    .inc = Radians{1.7765735746548228},
-                    .lan = Radians{0.24121218097744143},
-                    .aop = Radians{3.858093101748927},
-                    .tra = Radians{3.138965643681166},
-                    .slr = Metres{2022.0875743110084},
-                },
-        });
-    }
+    SECTION("a hyperbola far out along its asymptote") { checkEveryElement(kAsymptoteSlr); }
 
     // Nearly circular: the eccentricity vector is the difference of two
     // vectors agreeing to nine digits, and its length is what is left.
-    SECTION("a nearly circular orbit, eccentricity") {
-        checkEveryElement({
-            .name = "smalle/ecc",
-            .symptom = "ecc was out by 1.7e-7 at a true e of 2.4e-9",
-            .state =
-                {
-                    .pos = {89977497286.24823, 325806749198.3961, -6363974265.222106},
-                    .vel = {-33.02472617867604, 9.071987671541756, -2.4776024906511935},
-                },
-            .mu = gravParam(398600441800000.0),
-            .want =
-                {
-                    .sma = Metres{338062845427.7559},
-                    .ecc = eccentricity(2.410249444739502e-09),
-                    .inc = Radians{0.07463870595147103},
-                    .lan = Radians{4.18840882891478},
-                    .aop = Radians{0.26957632809726984},
-                    .tra = Radians{3.1272246403208896},
-                    .slr = Metres{338062845427.7559},
-                },
-        });
-    }
+    SECTION("a nearly circular orbit, eccentricity") { checkEveryElement(kSmallEccentricity); }
 
     // A whole orbit at 1e-112 m around a mu of 1e-213. Nothing here is
     // physical; it is the scale at which every squared quantity falls into the
     // subnormals, and the elements are still a well-posed function of the
     // input doubles.
-    SECTION("an orbit far below any physical scale") {
-        checkEveryElement({
-            .name = "tiny/slr",
-            .symptom = "slr was out by 0.98 and aop by 0.31 rad -- the squares went subnormal",
-            .state =
-                {
-                    .pos =
-                        {
-                            1.1255796242117575e-112,
-                            -2.335524288160757e-112,
-                            -1.7843712448117626e-112,
-                        },
-                    .vel =
-                        {
-                            -5.622784877953291e-51,
-                            1.129129308921512e-52,
-                            2.0383290377229924e-51,
-                        },
-                },
-            .mu = gravParam(6.762040535602958e-213),
-            .want =
-                {
-                    .sma = Metres{9.408723759066775e-112},
-                    .ecc = eccentricity(0.7793327632486454),
-                    .inc = Radians{2.537170817576543},
-                    .lan = Radians{3.673972445843512},
-                    .aop = Radians{6.126893603302964},
-                    .tra = Radians{4.9372615743387795},
-                    .slr = Metres{3.6942454754304065e-112},
-                },
-        });
-    }
+    SECTION("an orbit far below any physical scale") { checkEveryElement(kTinySlr); }
 
     // A small mu with a large state: the division by mu in the eccentricity
     // vector is where this one loses its digits.
     SECTION("an orbit around a very small gravitational parameter") {
-        checkEveryElement({
-            .name = "muwide/sma",
-            .symptom = "sma was out by 1.2e-11 with mu = 7.3e7",
-            .state =
-                {
-                    .pos = {33533205800013.06, 17263837004043.322, -2700443730722.6323},
-                    .vel = {0.001461083271751538, 0.0011796325768950588, -0.00055901478564361},
-                },
-            .mu = gravParam(72579463.2331308),
-            .want =
-                {
-                    .sma = Metres{8.272163997668141e+17},
-                    .ecc = eccentricity(0.9999961169100106),
-                    .inc = Radians{0.844951349416489},
-                    .lan = Radians{3.5534480537245505},
-                    .aop = Radians{0.6871285419999764},
-                    .tra = Radians{2.550093699048564},
-                    .slr = Metres{6424298968899.643},
-                },
-        });
+        checkEveryElement(kSmallMuSma);
     }
 }
 

@@ -262,16 +262,6 @@ parseEarthOrientation(std::string_view text);
 [[nodiscard]] std::expected<EarthOrientationFixture, FixtureError>
 readEarthOrientation(const std::filesystem::path& path);
 
-// data/ in the source tree. The build names it, as it names ORBSIM_ASSET_DIR
-// for the application.
-//
-// Its text rather than a std::filesystem::path: libstdc++ tags path with its
-// "cxx11" ABI, and a function returning one draws gcc's -Wabi-tag. A view of
-// the string literal the build supplies -- static storage, so it never
-// dangles -- avoids that without switching anything off, and a caller builds
-// the path from it at no cost.
-[[nodiscard]] std::string_view dataDirectory();
-
 } // namespace orb::test
 
 #endif // ORBSIM_TESTS_FIXTUREFILE_HPP

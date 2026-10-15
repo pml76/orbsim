@@ -33,11 +33,11 @@
 // is the arithmetic, run at run time, and every refusal asked for by name.
 //
 #include "core/Scalar.hpp"
+#include "tests/TestCase.hpp"
 #include "view/PushConstants.hpp"
 #include "view/VertexLayout.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 
 #include <array>
 #include <cstdint>

@@ -33,11 +33,11 @@
 // **No seed.** The sweeps are fixed logarithmic grids.
 //
 #include "core/Scalar.hpp"
+#include "tests/TestCase.hpp"
 #include "view/Srgb.hpp"
 #include "view/Tonemap.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
 #include <array>

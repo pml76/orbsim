@@ -20,12 +20,13 @@
 // odd, so a swapped channel, a swapped byte, a transposed row or a dropped
 // column each changes the answer.
 //
+#include "tests/TestCase.hpp"
+#include "tests/TestReads.hpp"
 #include "view/ImageCompare.hpp"
 #include "view/ImageFiles.hpp"
 #include "view/ProbeImage.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 
 #include <openexr_attr.h>
 #include <openexr_chunkio.h>
@@ -44,9 +45,6 @@
 #include <cstdlib>
 #include <expected>
 #include <filesystem>
-#include <fstream>
-#include <ios>
-#include <iterator>
 #include <memory>
 #include <ranges>
 #include <span>
@@ -195,6 +193,13 @@ template <typename Sample>
     return rgb;
 }
 
+// What a decoder read back: three channels, the RGB given, and no alpha.
+template <typename Sample>
+void requireTheRgbWithoutAlpha(const Decoded<Sample>& decoded, const std::vector<Sample>& rgba) {
+    REQUIRE(decoded.channels == 3);
+    REQUIRE(decoded.samples == withoutAlpha(rgba));
+}
+
 } // namespace
 
 TEST_CASE("an 8-bit PNG holds the RGB it was given, and no alpha") {
@@ -208,9 +213,7 @@ TEST_CASE("an 8-bit PNG holds the RGB it was given, and no alpha") {
     REQUIRE(header.bitDepth == 8U);
     REQUIRE(header.colourType == 2U); // truecolour: RGB, no alpha
 
-    const Decoded<stbi_uc> decoded = decodePng<stbi_uc>(*png);
-    REQUIRE(decoded.channels == 3);
-    REQUIRE(decoded.samples == withoutAlpha(rgba));
+    requireTheRgbWithoutAlpha(decodePng<stbi_uc>(*png), rgba);
 }
 
 // --- reading a golden (M1-17, register decision 235) ----------------------------
@@ -348,9 +351,7 @@ TEST_CASE("a 16-bit PNG holds the RGB it was given, most significant byte first"
     REQUIRE(header.bitDepth == 16U);
     REQUIRE(header.colourType == 2U);
 
-    const Decoded<stbi_us> decoded = decodePng<stbi_us>(*png);
-    REQUIRE(decoded.channels == 3);
-    REQUIRE(decoded.samples == withoutAlpha(rgba));
+    requireTheRgbWithoutAlpha(decodePng<stbi_us>(*png), rgba);
 }
 
 // --- reading a 16-bit PNG (M1-18, register decision 260) ----------------------
@@ -446,10 +447,13 @@ namespace {
     return utf8;
 }
 
-[[nodiscard]] std::vector<char> bytesOf(const std::filesystem::path& path) {
-    std::ifstream file(path, std::ios::binary);
-    REQUIRE(file.good());
-    return {std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
+// Through the tests' own scratch reader (M1-129, register decision 530).
+[[nodiscard]] std::vector<std::byte> bytesOf(const std::filesystem::path& path) {
+    auto bytes = orb::test::readScratchFile(path);
+    INFO("reading " << path.string() << ": "
+                    << (bytes.has_value() ? "ok" : orb::test::describe(bytes.error())));
+    REQUIRE(bytes.has_value());
+    return *std::move(bytes);
 }
 
 struct ExrRelease {
@@ -683,19 +687,30 @@ TEST_CASE("an EXR holds the HDR target's bits, as R, G and B, with its colours a
     requireExrPixels(decodeExr(context.get(), kSize), rgbaHalf);
 }
 
-TEST_CASE("each encoder writes the same bytes twice") {
-    // Determinism is a tested property (VERIFICATION.md rule 16): a probe's
-    // files depend on the frame alone.
+namespace {
+
+void requireThePngEncodersRepeatThemselves() {
     const auto png8 = encodePng8(kSize, rgba8Pattern());
     const auto png16 = encodePng16(kSize, rgba16Pattern());
     REQUIRE(png8.has_value());
     REQUIRE(png16.has_value());
     REQUIRE(*png8 == encodePng8(kSize, rgba8Pattern()).value());
     REQUIRE(*png16 == encodePng16(kSize, rgba16Pattern()).value());
+}
 
+void requireTheExrEncoderRepeatsItself() {
     const std::filesystem::path first = scratchFile("twice-1.exr");
     const std::filesystem::path second = scratchFile("twice-2.exr");
     REQUIRE(writeExr(first, kSize, halfPattern(), "x").has_value());
     REQUIRE(writeExr(second, kSize, halfPattern(), "x").has_value());
     REQUIRE(bytesOf(first) == bytesOf(second));
+}
+
+} // namespace
+
+TEST_CASE("each encoder writes the same bytes twice") {
+    // Determinism is a tested property (VERIFICATION.md rule 16): a probe's
+    // files depend on the frame alone.
+    requireThePngEncodersRepeatThemselves();
+    requireTheExrEncoderRepeatsItself();
 }

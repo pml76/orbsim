@@ -20,9 +20,9 @@
 #include "core/Units.hpp"
 #include "orbit/Orbit.hpp"
 #include "tests/OrbitTestSupport.hpp"
+#include "tests/TestCase.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 
 #include "tests/OrbitSweepSupport.hpp"
@@ -55,28 +55,72 @@ constexpr GravParam kFuzzerMu = gravParam(4.3333423748712802e-35);
 
 } // namespace
 
-// A note on the readability-function-cognitive-complexity suppressions below.
-//
-// Catch2's REQUIRE and REQUIRE_THAT each expand to a do-while wrapping a
-// try/catch, so a case scores roughly three points per assertion whether or
-// not it branches at all: the cases suppressed here contain no `if`, and the
-// only loops are the ones walking a table of cases. The score measures the
-// framework, not the code.
-//
-// Ruled by the project owner on 2026-09-09, with the alternatives measured
-// first: the check offers an IgnoreMacros option that clears every one of
-// these while still scoring hand-written control flow (a probe function still
-// reported 35), and a NOLINTBEGIN/NOLINTEND region would cover a whole file in
-// one line. Both were rejected in favour of a suppression per function,
-// because that is the only one of the three that still reports a genuinely
-// over-complex helper added to this file later. Each new TEST_CASE that
-// crosses the threshold gets its own line, deliberately.
+// Each test case here is held to clang-tidy's size and complexity limits, and
+// one with more than a few checks names groups of them as helpers above it --
+// tests/TestCase.hpp says why (register decisions 578 and 581).
+
+namespace {
+
+// A circular heliocentric orbit and its period.
+struct CircularOrbit {
+    StateVector start;
+    Metres radius;
+    Seconds period;
+};
+
+void requireAQuarterPeriodIsAQuarterTurn(const CircularOrbit& orbit) {
+    const auto quarter = propagate(orbit.start, kMuSun, orbit.period * 0.25);
+    INFO(errorName(quarter));
+    REQUIRE(quarter.has_value());
+
+    INFO("a quarter period is a quarter turn");
+    REQUIRE_THAT(wrapPi(angleBetween(orbit.start.pos, quarter->pos) - Radians{kPi / 2}).value(),
+                 WithinAbsOf(0.0, Tolerance{1e-9}));
+    REQUIRE_THAT(length(quarter->pos).value(), WithinRelTo(orbit.radius.value(), Tolerance{1e-12}));
+}
+
+void requireOnePeriodReturnsToTheStart(const CircularOrbit& orbit) {
+    const auto whole = propagate(orbit.start, kMuSun, orbit.period);
+    INFO(errorName(whole));
+    REQUIRE(whole.has_value());
+    INFO("one period returns to the start");
+    REQUIRE_THAT(whole->pos, WithinRelVec(orbit.start.pos, Tolerance{1e-9}));
+}
+
+// Half a turn after many whole ones: the fold and the solve together.
+void requireManyPeriodsAndAHalfIsAHalfTurn(const CircularOrbit& orbit) {
+    const auto many = propagate(orbit.start, kMuSun, orbit.period * 500.5);
+    INFO(errorName(many));
+    REQUIRE(many.has_value());
+    INFO("500.5 periods is a half turn");
+    REQUIRE_THAT(wrapPi(angleBetween(orbit.start.pos, many->pos) - Radians{kPi}).value(),
+                 WithinAbsOf(0.0, Tolerance{1e-8}));
+}
+
+// The element propagator shares no code with the universal-variable one;
+// agreement out here is the same evidence it is in Earth orbit.
+void requireThePropagatorsAgreeOnTheOrbit(const CircularOrbit& orbit) {
+    const auto el = elementsFromState(orbit.start, kMuSun);
+    INFO(errorName(el));
+    REQUIRE(el.has_value());
+
+    const auto viaUniversal = propagate(orbit.start, kMuSun, orbit.period * 0.3);
+    const auto viaElements = propagateElements(*el, kMuSun, orbit.period * 0.3);
+    INFO(errorName(viaUniversal));
+    REQUIRE(viaUniversal.has_value());
+    INFO(errorName(viaElements));
+    REQUIRE(viaElements.has_value());
+
+    INFO("the propagators agree");
+    REQUIRE_THAT(viaUniversal->pos,
+                 WithinRelVec(stateOf(*viaElements, kMuSun).pos, Tolerance{1e-9}));
+}
+
+} // namespace
 
 // Circular heliocentric orbits at the distances of Earth, Jupiter and Neptune.
 // 1/a spans 6.7e-12 to 2.2e-13 per metre here, which is exactly the range the
 // old 1e-12 threshold cut through.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("heliocentric circular orbits", "[orbit][scales]") {
     struct Case {
         std::string_view name;
@@ -91,111 +135,76 @@ TEST_CASE("heliocentric circular orbits", "[orbit][scales]") {
     for (const auto& c : kCases) {
         CAPTURE(c.name);
         const StateVector sv0 = circularState(kMuSun, c.radius);
-        const Seconds period = kTau * (c.radius / length(sv0.vel));
-
-        const auto quarter = propagate(sv0, kMuSun, period * 0.25);
-        INFO(errorName(quarter));
-        REQUIRE(quarter.has_value());
-
-        INFO("a quarter period is a quarter turn");
-        REQUIRE_THAT(wrapPi(angleBetween(sv0.pos, quarter->pos) - Radians{kPi / 2}).value(),
-                     WithinAbsOf(0.0, Tolerance{1e-9}));
-        REQUIRE_THAT(length(quarter->pos).value(), WithinRelTo(c.radius.value(), Tolerance{1e-12}));
-
-        const auto whole = propagate(sv0, kMuSun, period);
-        INFO(errorName(whole));
-        REQUIRE(whole.has_value());
-        INFO("one period returns to the start");
-        REQUIRE_THAT(whole->pos, WithinRelVec(sv0.pos, Tolerance{1e-9}));
-
-        // Half a turn after many whole ones: the fold and the solve together.
-        const auto many = propagate(sv0, kMuSun, period * 500.5);
-        INFO(errorName(many));
-        REQUIRE(many.has_value());
-        INFO("500.5 periods is a half turn");
-        REQUIRE_THAT(wrapPi(angleBetween(sv0.pos, many->pos) - Radians{kPi}).value(),
-                     WithinAbsOf(0.0, Tolerance{1e-8}));
-
-        // The element propagator shares no code with the universal-variable
-        // one; agreement out here is the same evidence it is in Earth orbit.
-        const auto el = elementsFromState(sv0, kMuSun);
-        INFO(errorName(el));
-        REQUIRE(el.has_value());
-
-        const auto viaUniversal = propagate(sv0, kMuSun, period * 0.3);
-        const auto viaElements = propagateElements(*el, kMuSun, period * 0.3);
-        INFO(errorName(viaUniversal));
-        REQUIRE(viaUniversal.has_value());
-        INFO(errorName(viaElements));
-        REQUIRE(viaElements.has_value());
-
-        INFO("the propagators agree");
-        REQUIRE_THAT(viaUniversal->pos,
-                     WithinRelVec(stateOf(*viaElements, kMuSun).pos, Tolerance{1e-9}));
+        const CircularOrbit orbit{
+            .start = sv0,
+            .radius = c.radius,
+            .period = kTau * (c.radius / length(sv0.vel)),
+        };
+        requireAQuarterPeriodIsAQuarterTurn(orbit);
+        requireOnePeriodReturnsToTheStart(orbit);
+        requireManyPeriodsAndAHalfIsAHalfTurn(orbit);
+        requireThePropagatorsAgreeOnTheOrbit(orbit);
     }
 }
 
-// Exactly escape speed: the conic the universal-variable formulation was
-// chosen to make ordinary.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
-TEST_CASE("parabolic trajectories", "[orbit][scales]") {
-    const f64 r0 = 7.0e6;
-    const StateVector para{
-        .pos = {r0, 0.0, 0.0},
-        .vel = {0.0, std::sqrt(2.0 * kMuEarth.value() / r0), 0.0},
-    };
+namespace {
 
-    const auto el = elementsFromState(para, kMuEarth);
-    INFO(errorName(el));
-    REQUIRE(el.has_value());
+// A parabola through periapsis at r0, at exactly escape speed.
+struct Parabola {
+    f64 r0{};
+    StateVector state;
+};
 
-    REQUIRE_THAT(el->ecc.value(), WithinAbsOf(1.0, Tolerance{1e-12}));
+void requireTheParabolasElements(const Elements& el, const Parabola& para) {
+    REQUIRE_THAT(el.ecc.value(), WithinAbsOf(1.0, Tolerance{1e-12}));
     INFO("the semi-major axis is infinite");
-    REQUIRE(std::isinf(el->sma.value()));
+    REQUIRE(std::isinf(el.sma.value()));
     INFO("the semi-latus rectum is 2 r0");
-    REQUIRE_THAT(el->slr.value(), WithinRelTo(2.0 * r0, Tolerance{1e-12}));
+    REQUIRE_THAT(el.slr.value(), WithinRelTo(2.0 * para.r0, Tolerance{1e-12}));
+}
 
-    const OrbitInfo info = orbitInfo(*el, kMuEarth);
+void requireTheParabolaIsOpenWithNoEnergy(const Elements& el, const Parabola& para) {
+    const OrbitInfo info = orbitInfo(el, kMuEarth);
     REQUIRE(!info.closed);
     INFO("the period is infinite");
     REQUIRE(std::isinf(info.period.value()));
     INFO("the energy is zero");
-    REQUIRE_THAT(info.energy.value(), WithinAbsOf(0.0, Tolerance{1e-6 * kMuEarth.value() / r0}));
+    REQUIRE_THAT(info.energy.value(),
+                 WithinAbsOf(0.0, Tolerance{1e-6 * kMuEarth.value() / para.r0}));
+}
 
-    // The trajectory is time-reversible and conserves energy at every dt,
-    // including zero, where the Barker starting guess divides by the time.
-    for (const f64 dt : {0.0, 1.0, 100.0, 3600.0, 1.0e6}) {
-        CAPTURE(dt);
-        const auto fwd = propagate(para, kMuEarth, Seconds{dt});
-        INFO(errorName(fwd));
-        REQUIRE(fwd.has_value());
+// Time-reversible and conserving energy over one dt.
+void requireReversibleAndConservingOver(const Parabola& para, Seconds dt) {
+    const auto fwd = propagate(para.state, kMuEarth, dt);
+    INFO(errorName(fwd));
+    REQUIRE(fwd.has_value());
 
-        INFO("the position stays finite");
-        REQUIRE(std::isfinite(length(fwd->pos).value()));
-        INFO("the energy stays zero");
-        REQUIRE_THAT(specificEnergy(*fwd, kMuEarth).value(),
-                     WithinAbsOf(0.0, Tolerance{1e-9 * kMuEarth.value() / r0}));
+    INFO("the position stays finite");
+    REQUIRE(std::isfinite(length(fwd->pos).value()));
+    INFO("the energy stays zero");
+    REQUIRE_THAT(specificEnergy(*fwd, kMuEarth).value(),
+                 WithinAbsOf(0.0, Tolerance{1e-9 * kMuEarth.value() / para.r0}));
 
-        const auto back = propagate(*fwd, kMuEarth, Seconds{-dt});
-        INFO(errorName(back));
-        REQUIRE(back.has_value());
+    const auto back = propagate(*fwd, kMuEarth, -dt);
+    INFO(errorName(back));
+    REQUIRE(back.has_value());
 
-        INFO("forward then back");
-        REQUIRE_THAT(back->pos, WithinRelVec(para.pos, Tolerance{1e-9}));
-        REQUIRE_THAT(back->vel, WithinRelVec(para.vel, Tolerance{1e-9}));
-    }
+    INFO("forward then back");
+    REQUIRE_THAT(back->pos, WithinRelVec(para.state.pos, Tolerance{1e-9}));
+    REQUIRE_THAT(back->vel, WithinRelVec(para.state.vel, Tolerance{1e-9}));
+}
 
-    // Element propagation used to refuse this element set: no finite semi-major
-    // axis, and the classical Kepler equation has no parabolic branch. Since
-    // 2026-09-12 it runs the same universal solve propagate() does, where a
-    // parabola is the case psi = 0 rather than a special one, so it answers --
-    // and the two propagators must land in the same place.
-    const auto viaElements = propagateElements(*el, kMuEarth, 100.0_s);
+// Element propagation used to refuse this element set: no finite semi-major
+// axis, and the classical Kepler equation has no parabolic branch. Since
+// 2026-09-12 it runs the same universal solve propagate() does, where a
+// parabola is the case psi = 0 rather than a special one, so it answers -- and
+// the two propagators must land in the same place.
+void requireThePropagatorsAgreeOnTheParabola(const Elements& el, const Parabola& para) {
+    const auto viaElements = propagateElements(el, kMuEarth, 100.0_s);
     INFO("propagateElements on a parabola -> " << errorName(viaElements));
     REQUIRE(viaElements.has_value());
 
-    const auto viaState = propagate(para, kMuEarth, 100.0_s);
+    const auto viaState = propagate(para.state, kMuEarth, 100.0_s);
     INFO(errorName(viaState));
     REQUIRE(viaState.has_value());
     INFO("the two propagators agree on a parabola");
@@ -203,13 +212,42 @@ TEST_CASE("parabolic trajectories", "[orbit][scales]") {
                  WithinRelVec(viaState->pos, Tolerance{1e-12}));
 }
 
-// NaN and infinity are what a corrupt scenario file produces. They must be
-// refused by name, not reported as a solver that failed to converge.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
-TEST_CASE("non-finite inputs are refused by name", "[orbit][scales]") {
-    const StateVector leo{.pos = {7000e3, 0.0, 0.0}, .vel = {0.0, 7546.0, 0.0}};
+} // namespace
 
+// Exactly escape speed: the conic the universal-variable formulation was
+// chosen to make ordinary.
+TEST_CASE("parabolic trajectories", "[orbit][scales]") {
+    const f64 r0 = 7.0e6;
+    const Parabola para{
+        .r0 = r0,
+        .state =
+            {
+                .pos = {r0, 0.0, 0.0},
+                .vel = {0.0, std::sqrt(2.0 * kMuEarth.value() / r0), 0.0},
+            },
+    };
+
+    const auto el = elementsFromState(para.state, kMuEarth);
+    INFO(errorName(el));
+    REQUIRE(el.has_value());
+
+    requireTheParabolasElements(*el, para);
+    requireTheParabolaIsOpenWithNoEnergy(*el, para);
+
+    // The trajectory is time-reversible and conserves energy at every dt,
+    // including zero, where the Barker starting guess divides by the time.
+    for (const f64 dt : {0.0, 1.0, 100.0, 3600.0, 1.0e6}) {
+        CAPTURE(dt);
+        requireReversibleAndConservingOver(para, Seconds{dt});
+    }
+
+    requireThePropagatorsAgreeOnTheParabola(*el, para);
+}
+
+namespace {
+
+// A NaN position, an infinite velocity and a NaN time step, each refused.
+void requireNonFiniteStatesAndStepsRefused(const StateVector& leo) {
     const auto nanPosition = elementsFromState({.pos = {kNaN, 0.0, 0.0}, .vel = leo.vel}, kMuEarth);
     const bool nanPositionRefused =
         !nanPosition.has_value() && nanPosition.error() == OrbitError::NotFinite;
@@ -226,12 +264,10 @@ TEST_CASE("non-finite inputs are refused by name", "[orbit][scales]") {
     const bool nanTimeRefused = !nanTime.has_value() && nanTime.error() == OrbitError::NotFinite;
     INFO("NaN time step -> " << errorName(nanTime));
     REQUIRE(nanTimeRefused);
+}
 
-    // A NaN gravitational parameter was refused here until M1-87 (decision
-    // 112). It cannot be built now -- GravParam::from reports NotFinite and
-    // there is no other door -- so the case lives against the factory in
-    // test_units_validated.cpp instead, where a NaN can still be handed in.
-
+// An infinite time step for the element propagator, refused.
+void requireAnInfiniteElementStepRefused(const StateVector& leo) {
     const auto el = elementsFromState(leo, kMuEarth);
     INFO(errorName(el));
     REQUIRE(el.has_value());
@@ -240,13 +276,33 @@ TEST_CASE("non-finite inputs are refused by name", "[orbit][scales]") {
     const bool infTimeRefused = !infTime.has_value() && infTime.error() == OrbitError::NotFinite;
     INFO("infinite time step for propagateElements -> " << errorName(infTime));
     REQUIRE(infTimeRefused);
+}
 
-    // A finite but zero time step is ordinary, and returns the input exactly.
+// A finite but zero time step is ordinary, and returns the input exactly.
+void requireAZeroStepIsTheIdentity(const StateVector& leo) {
     const auto still = propagate(leo, kMuEarth, 0.0_s);
     INFO(errorName(still));
     REQUIRE(still.has_value());
     INFO("a zero time step is the identity");
     REQUIRE_THAT(still->pos, WithinRelVec(leo.pos, Tolerance{0.0}));
+}
+
+} // namespace
+
+// NaN and infinity are what a corrupt scenario file produces. They must be
+// refused by name, not reported as a solver that failed to converge.
+TEST_CASE("non-finite inputs are refused by name", "[orbit][scales]") {
+    const StateVector leo{.pos = {7000e3, 0.0, 0.0}, .vel = {0.0, 7546.0, 0.0}};
+
+    requireNonFiniteStatesAndStepsRefused(leo);
+
+    // A NaN gravitational parameter was refused here until M1-87 (decision
+    // 112). It cannot be built now -- GravParam::from reports NotFinite and
+    // there is no other door -- so the case lives against the factory in
+    // test_units_validated.cpp instead, where a NaN can still be handed in.
+
+    requireAnInfiniteElementStepRefused(leo);
+    requireAZeroStepIsTheIdentity(leo);
 
     REQUIRE(!describe(OrbitError::NotFinite).empty());
     REQUIRE(!describe(OrbitError::DegenerateState).empty());
@@ -290,18 +346,15 @@ TEST_CASE("states that are finite but are not orbits", "[orbit][scales]") {
     REQUIRE(overflowSpeedRefused);
 }
 
-// The other half: states with no orbital plane at all. Both of these came from
-// the fuzzer rather than from anyone sitting down to think of them, which is
-// the argument for rule 13 in one paragraph.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
-TEST_CASE("states with no orbital plane", "[orbit][scales]") {
-    // A radial trajectory: velocity parallel to position, so the specific
-    // angular momentum is zero and there is no orbital plane to incline. The
-    // inclination was acos(h.z / |h|) = acos(0/0) = NaN, returned as a success.
-    // Physically reachable -- a probe released with no horizontal velocity
-    // falls straight down -- and found by the fuzzer, not by anyone's
-    // imagination (VERIFICATION.md rule 13).
+namespace {
+
+// A radial trajectory: velocity parallel to position, so the specific angular
+// momentum is zero and there is no orbital plane to incline. The inclination
+// was acos(h.z / |h|) = acos(0/0) = NaN, returned as a success. Physically
+// reachable -- a probe released with no horizontal velocity falls straight
+// down -- and found by the fuzzer, not by anyone's imagination
+// (VERIFICATION.md rule 13). And a body at rest, likewise.
+void requireRadialAndRestingStatesHaveNoPlane() {
     const auto straightDown =
         elementsFromState({.pos = {7000e3, 0.0, 0.0}, .vel = {-100.0, 0.0, 0.0}}, kMuEarth);
     const bool straightDownRefused =
@@ -315,6 +368,15 @@ TEST_CASE("states with no orbital plane", "[orbit][scales]") {
         !atRest.has_value() && atRest.error() == OrbitError::RectilinearOrbit;
     INFO("a body at rest likewise -> " << errorName(atRest));
     REQUIRE(atRestRefused);
+}
+
+} // namespace
+
+// The other half: states with no orbital plane at all. Both of these came from
+// the fuzzer rather than from anyone sitting down to think of them, which is
+// the argument for rule 13 in one paragraph.
+TEST_CASE("states with no orbital plane", "[orbit][scales]") {
+    requireRadialAndRestingStatesHaveNoPlane();
 
     // Magnitudes finite, mu positive, trajectory not radial -- and the derived
     // elements still overflow, because mu is tiny relative to the state and the
@@ -397,6 +459,64 @@ TEST_CASE("length is exact at every binary scale", "[core][scales]") {
     REQUIRE(inexact == 0);
 }
 
+namespace {
+
+// The eccentricity above 1, as the energy says, and within 8 ulp of the
+// reference computed here.
+void requireTheFuzzersEccentricity(const Elements& el) {
+    const StateVector state = kFuzzerHyperbola;
+    const GravParam mu = kFuzzerMu;
+    const f64 r = std::hypot(state.pos.x.value(), state.pos.y.value(), state.pos.z.value());
+    const f64 v = std::hypot(state.vel.x.value(), state.vel.y.value(), state.vel.z.value());
+    const SpecificAngularMomentum h = cross(state.pos, state.vel);
+    const f64 hOverMu = std::hypot(h.x.value(), h.y.value(), h.z.value()) / mu.value();
+    const f64 energy = (0.5 * v * v) - (mu.value() / r);
+    const f64 eSquaredMinusOne = 2.0 * energy * hOverMu * hOverMu;
+    const f64 eReference = 1.0 + (eSquaredMinusOne / (1.0 + std::sqrt(1.0 + eSquaredMinusOne)));
+    INFO(std::format("ecc {:.17g}, reference {:.17g}", el.ecc.value(), eReference));
+    INFO("the energy is positive, so the eccentricity exceeds 1");
+    REQUIRE(el.ecc.value() > 1.0);
+    constexpr Tolerance kEccentricityBudget{8.0 * std::numeric_limits<f64>::epsilon()};
+    REQUIRE_THAT(el.ecc.value(), WithinAbsOf(eReference, kEccentricityBudget));
+}
+
+// Open, with an infinite period and a zero mean motion rather than NaN, and a
+// semi-major axis on the eccentricity's side of the parabola.
+void requireTheFuzzersOrbitIsOpen(const Elements& el, const OrbitInfo& info) {
+    // Formatted by hand: Catch2 prints -4.2e-159 as "-0.0", and 17 significant
+    // digits round-trip, so a failure can be pasted back in as a case.
+    INFO(std::format("sma {:.17g} m, ecc {:.17g}, period {:.17g} s, mean motion {:.17g} rad/s",
+                     el.sma.value(),
+                     el.ecc.value(),
+                     info.period.value(),
+                     info.meanMotion.value()));
+    INFO("the energy is positive, so the orbit is open");
+    REQUIRE_FALSE(info.closed);
+    INFO("an open orbit's period and mean motion are infinite and zero, not NaN");
+    REQUIRE_FALSE(std::isnan(info.period.value()));
+    REQUIRE_FALSE(std::isnan(info.meanMotion.value()));
+    INFO("a negative semi-major axis belongs to a hyperbola, so e > 1");
+    const bool agreeOnTheConic = !(el.sma.value() < 0.0) || el.ecc.value() > 1.0;
+    REQUIRE(agreeOnTheConic);
+}
+
+// And the hyperbola's size and energy, which the band |e - 1| <= 1e-9 hid: see
+// the nearly radial cases below.
+void requireTheFuzzersHyperbolaSize(const Elements& el, const OrbitInfo& info) {
+    const ConicReference want = conicReference(kFuzzerHyperbola, kFuzzerMu);
+    INFO(std::format("sma {:.17g} m, want {:.17g}; energy {:.17g} J/kg, want {:.17g}",
+                     el.sma.value(),
+                     want.sma.value(),
+                     info.energy.value(),
+                     want.energy.value()));
+    REQUIRE(relativeError({.got = el.sma.value(), .want = want.sma.value()}) <=
+            kConicBudget.value());
+    REQUIRE(relativeError({.got = info.energy.value(), .want = want.energy.value()}) <=
+            kConicBudget.value());
+}
+
+} // namespace
+
 // The fuzzer's finding of 2026-09-11 (VERIFICATION.md rule 13), as it found it.
 // Position about 1e-158 m, velocity about 9e61 m/s, mu 4.3e-35: an open orbit
 // -- the kinetic term of the energy is 2.5 times the potential -- and a nearly
@@ -414,60 +534,57 @@ TEST_CASE("length is exact at every binary scale", "[core][scales]") {
 // units where e is 1, each good to an ulp or two, so its length is good to a
 // few ulp of 1; 8 ulp sits above that and four million times below the error
 // the fuzzer found.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("a nearly radial hyperbola at a tiny scale is not reported as closed",
           "[orbit][scales]") {
-    const StateVector state = kFuzzerHyperbola;
-    const GravParam mu = kFuzzerMu;
-
-    const auto el = elementsFromState(state, mu);
+    const auto el = elementsFromState(kFuzzerHyperbola, kFuzzerMu);
     INFO("elementsFromState -> " << errorName(el));
     REQUIRE(el.has_value());
 
-    const f64 r = std::hypot(state.pos.x.value(), state.pos.y.value(), state.pos.z.value());
-    const f64 v = std::hypot(state.vel.x.value(), state.vel.y.value(), state.vel.z.value());
-    const SpecificAngularMomentum h = cross(state.pos, state.vel);
-    const f64 hOverMu = std::hypot(h.x.value(), h.y.value(), h.z.value()) / mu.value();
-    const f64 energy = (0.5 * v * v) - (mu.value() / r);
-    const f64 eSquaredMinusOne = 2.0 * energy * hOverMu * hOverMu;
-    const f64 eReference = 1.0 + (eSquaredMinusOne / (1.0 + std::sqrt(1.0 + eSquaredMinusOne)));
-    INFO(std::format("ecc {:.17g}, reference {:.17g}", el->ecc.value(), eReference));
-    INFO("the energy is positive, so the eccentricity exceeds 1");
-    REQUIRE(el->ecc.value() > 1.0);
-    constexpr Tolerance kEccentricityBudget{8.0 * std::numeric_limits<f64>::epsilon()};
-    REQUIRE_THAT(el->ecc.value(), WithinAbsOf(eReference, kEccentricityBudget));
+    requireTheFuzzersEccentricity(*el);
+    const OrbitInfo info = orbitInfo(*el, kFuzzerMu);
+    requireTheFuzzersOrbitIsOpen(*el, info);
+    requireTheFuzzersHyperbolaSize(*el, info);
+}
 
-    const OrbitInfo info = orbitInfo(*el, mu);
-    // Formatted by hand: Catch2 prints -4.2e-159 as "-0.0", and 17 significant
-    // digits round-trip, so a failure can be pasted back in as a case.
-    INFO(std::format("sma {:.17g} m, ecc {:.17g}, period {:.17g} s, mean motion {:.17g} rad/s",
-                     el->sma.value(),
-                     el->ecc.value(),
-                     info.period.value(),
-                     info.meanMotion.value()));
-    INFO("the energy is positive, so the orbit is open");
-    REQUIRE_FALSE(info.closed);
-    INFO("an open orbit's period and mean motion are infinite and zero, not NaN");
-    REQUIRE_FALSE(std::isnan(info.period.value()));
-    REQUIRE_FALSE(std::isnan(info.meanMotion.value()));
-    INFO("a negative semi-major axis belongs to a hyperbola, so e > 1");
-    const bool agreeOnTheConic = !(el->sma.value() < 0.0) || el->ecc.value() > 1.0;
-    REQUIRE(agreeOnTheConic);
+namespace {
 
-    // And the hyperbola's size and energy, which the band |e - 1| <= 1e-9 hid:
-    // see the nearly radial cases below.
-    const ConicReference want = conicReference(state, mu);
-    INFO(std::format("sma {:.17g} m, want {:.17g}; energy {:.17g} J/kg, want {:.17g}",
-                     el->sma.value(),
-                     want.sma.value(),
-                     info.energy.value(),
-                     want.energy.value()));
-    REQUIRE(relativeError({.got = el->sma.value(), .want = want.sma.value()}) <=
-            kConicBudget.value());
-    REQUIRE(relativeError({.got = info.energy.value(), .want = want.energy.value()}) <=
+// The drifting probe's elements and orbit, and the references to hold them to.
+struct DriftingProbe {
+    Elements el;
+    OrbitInfo info;
+    ConicReference want;
+    f64 a{};
+    f64 period{};
+};
+
+// An ellipse, so e < 1 and closed, of the reference's size and energy.
+void requireTheDriftingProbesEllipse(const DriftingProbe& probe) {
+    INFO("the energy is negative: an ellipse, so e < 1 and the orbit is closed");
+    REQUIRE(probe.el.ecc.value() < 1.0);
+    REQUIRE(probe.info.closed);
+    REQUIRE(relativeError({.got = probe.el.sma.value(), .want = probe.a}) <= kConicBudget.value());
+    REQUIRE(relativeError({.got = probe.info.energy.value(), .want = probe.want.energy.value()}) <=
             kConicBudget.value());
 }
+
+// Its period and mean motion, and the apoapsis it is at.
+void requireTheDriftingProbesPeriodAndApoapsis(const DriftingProbe& probe) {
+    REQUIRE(relativeError({.got = probe.info.period.value(), .want = probe.period}) <=
+            kConicBudget.value());
+    REQUIRE(relativeError({.got = probe.info.meanMotion.value(), .want = kTau / probe.period}) <=
+            kConicBudget.value());
+
+    // The velocity is square to the position and slower than circular, so the
+    // probe is at apoapsis: the apoapsis is where it is. p / (1 - e) divided by
+    // a 1 - e known only to its last bits; a(1 + e) does not.
+    INFO(std::format("apoapsis {:.17g} m, want {:.17g}",
+                     probe.info.apoapsis.value(),
+                     probe.want.radius.value()));
+    REQUIRE(relativeError({.got = probe.info.apoapsis.value(),
+                           .want = probe.want.radius.value()}) <= kConicBudget.value());
+}
+
+} // namespace
 
 // Nearly radial orbits at an ordinary scale: the conic is the energy's to
 // decide, not the eccentricity's (2026-09-11).
@@ -499,34 +616,15 @@ TEST_CASE("a nearly radial ellipse is closed, with its period", "[orbit][scales]
                      want.energy.value(),
                      info.period.value(),
                      period));
-    INFO("the energy is negative: an ellipse, so e < 1 and the orbit is closed");
-    REQUIRE(el->ecc.value() < 1.0);
-    REQUIRE(info.closed);
-    REQUIRE(relativeError({.got = el->sma.value(), .want = a}) <= kConicBudget.value());
-    REQUIRE(relativeError({.got = info.energy.value(), .want = want.energy.value()}) <=
-            kConicBudget.value());
-    REQUIRE(relativeError({.got = info.period.value(), .want = period}) <= kConicBudget.value());
-    REQUIRE(relativeError({.got = info.meanMotion.value(), .want = kTau / period}) <=
-            kConicBudget.value());
-
-    // The velocity is square to the position and slower than circular, so the
-    // probe is at apoapsis: the apoapsis is where it is. p / (1 - e) divided by
-    // a 1 - e known only to its last bits; a(1 + e) does not.
-    INFO(std::format(
-        "apoapsis {:.17g} m, want {:.17g}", info.apoapsis.value(), want.radius.value()));
-    REQUIRE(relativeError({.got = info.apoapsis.value(), .want = want.radius.value()}) <=
-            kConicBudget.value());
+    const DriftingProbe probe{.el = *el, .info = info, .want = want, .a = a, .period = period};
+    requireTheDriftingProbesEllipse(probe);
+    requireTheDriftingProbesPeriodAndApoapsis(probe);
 }
 
-// Closer still to radial, the eccentricity is 1 as a double. A probe falling at
-// 100 m/s with a sideways drift of 1 um/s has e = 1 - 1.8e-20, and leaving at
-// 20 km/s with the same drift, e = 1 + 4.4e-20: both round to exactly 1.0,
-// which is neither an ellipse's eccentricity nor a hyperbola's, and every
-// consumer that branches on e < 1 would have guessed. The energy knows which,
-// so e is kept on its side of 1: the nearest double below for an ellipse and
-// above for a hyperbola.
-TEST_CASE("an eccentricity that rounds to 1 keeps the side of 1 its energy says",
-          "[orbit][scales]") {
+namespace {
+
+// Falling at 100 m/s: an ellipse, e just below 1.
+void requireTheFallingProbeIsAnEllipse() {
     const StateVector falling{.pos = {7000e3, 0.0, 0.0}, .vel = {-100.0, 1.0e-6, 0.0}};
     const auto ellipse = elementsFromState(falling, kMuEarth);
     INFO("the falling probe -> " << errorName(ellipse));
@@ -537,7 +635,10 @@ TEST_CASE("an eccentricity that rounds to 1 keeps the side of 1 its energy says"
     REQUIRE(relativeError({.got = ellipse->sma.value(),
                            .want = conicReference(falling, kMuEarth).sma.value()}) <=
             kConicBudget.value());
+}
 
+// Leaving at 20 km/s: a hyperbola, e just above 1.
+void requireTheLeavingProbeIsAHyperbola() {
     const StateVector leaving{.pos = {7000e3, 0.0, 0.0}, .vel = {20.0e3, 1.0e-6, 0.0}};
     const auto hyperbola = elementsFromState(leaving, kMuEarth);
     INFO("the leaving probe -> " << errorName(hyperbola));
@@ -548,6 +649,21 @@ TEST_CASE("an eccentricity that rounds to 1 keeps the side of 1 its energy says"
     REQUIRE(relativeError({.got = hyperbola->sma.value(),
                            .want = conicReference(leaving, kMuEarth).sma.value()}) <=
             kConicBudget.value());
+}
+
+} // namespace
+
+// Closer still to radial, the eccentricity is 1 as a double. A probe falling at
+// 100 m/s with a sideways drift of 1 um/s has e = 1 - 1.8e-20, and leaving at
+// 20 km/s with the same drift, e = 1 + 4.4e-20: both round to exactly 1.0,
+// which is neither an ellipse's eccentricity nor a hyperbola's, and every
+// consumer that branches on e < 1 would have guessed. The energy knows which,
+// so e is kept on its side of 1: the nearest double below for an ellipse and
+// above for a hyperbola.
+TEST_CASE("an eccentricity that rounds to 1 keeps the side of 1 its energy says",
+          "[orbit][scales]") {
+    requireTheFallingProbeIsAnEllipse();
+    requireTheLeavingProbeIsAHyperbola();
 }
 
 // orbitInfo's radius and speed come from the elements, and near the radial
@@ -628,6 +744,23 @@ TEST_CASE("orbitInfo's radius and speed hold near the radial limit", "[orbit][sc
     }
 }
 
+namespace {
+
+void requireNoDistanceOrSpeedIsNaN(const OrbitInfo& info) {
+    REQUIRE_FALSE(std::isnan(info.radius.value()));
+    REQUIRE_FALSE(std::isnan(info.speed.value()));
+    REQUIRE_FALSE(std::isnan(info.periapsis.value()));
+    REQUIRE_FALSE(std::isnan(info.apoapsis.value()));
+}
+
+void requireNoTimeOrEnergyIsNaN(const OrbitInfo& info) {
+    REQUIRE_FALSE(std::isnan(info.period.value()));
+    REQUIRE_FALSE(std::isnan(info.meanMotion.value()));
+    REQUIRE_FALSE(std::isnan(info.energy.value()));
+}
+
+} // namespace
+
 // libFuzzer, 2026-09-12, against the fix above: a hyperbola so energetic that
 // -mu/(2E) underflows and `sma` comes back -0. Rebuilding e - 1 from p/a then
 // divides by that zero, and the factor, the radius and the speed all came back
@@ -673,13 +806,8 @@ TEST_CASE("an underflowing semi-major axis is not a NaN radius", "[orbit][scales
                      info.radius.value(),
                      info.speed.value(),
                      info.energy.value()));
-    REQUIRE_FALSE(std::isnan(info.radius.value()));
-    REQUIRE_FALSE(std::isnan(info.speed.value()));
-    REQUIRE_FALSE(std::isnan(info.periapsis.value()));
-    REQUIRE_FALSE(std::isnan(info.apoapsis.value()));
-    REQUIRE_FALSE(std::isnan(info.period.value()));
-    REQUIRE_FALSE(std::isnan(info.meanMotion.value()));
-    REQUIRE_FALSE(std::isnan(info.energy.value()));
+    requireNoDistanceOrSpeedIsNaN(info);
+    requireNoTimeOrEnergyIsNaN(info);
 
     const ConicReference want = conicReference(state, mu);
     INFO("the speed still means something");
@@ -948,13 +1076,40 @@ TEST_CASE("a zero time step is the identity on every conic", "[orbit][scales]") 
     }
 }
 
+namespace {
+
+// A state and the two steps it is propagated by, one after the other.
+struct TwoSteps {
+    GravParam mu;
+    StateVector state;
+    Seconds first;
+    Seconds second;
+};
+
+// propagate(s, a + b) agrees with propagate(propagate(s, a), b).
+void requireTwoStepsMakeOne(const TwoSteps& c) {
+    const auto together = propagate(c.state, c.mu, c.first + c.second);
+    const auto once = propagate(c.state, c.mu, c.first);
+    INFO(errorName(together));
+    REQUIRE(together.has_value());
+    INFO(errorName(once));
+    REQUIRE(once.has_value());
+
+    const auto twice = propagate(*once, c.mu, c.second);
+    INFO(errorName(twice));
+    REQUIRE(twice.has_value());
+
+    REQUIRE_THAT(twice->pos, WithinRelVec(together->pos, Tolerance{1e-9}));
+    REQUIRE_THAT(twice->vel, WithinRelVec(together->vel, Tolerance{1e-9}));
+}
+
+} // namespace
+
 // propagate(s, a + b) must agree with propagate(propagate(s, a), b). This is a
 // property rather than an example: it holds for every state and every pair of
 // steps, it says nothing about what the right answer is, and it therefore
 // cannot be satisfied by a propagator that is consistently wrong in one
 // direction. VERIFICATION.md rule 11.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("propagation composes: one long step equals two short ones", "[orbit][scales]") {
     struct Case {
         std::string_view name;
@@ -1004,19 +1159,8 @@ TEST_CASE("propagation composes: one long step equals two short ones", "[orbit][
 
     for (const Case& c : kCases) {
         CAPTURE(c.name);
-        const auto together = propagate(c.state, c.mu, c.first + c.second);
-        const auto once = propagate(c.state, c.mu, c.first);
-        INFO(errorName(together));
-        REQUIRE(together.has_value());
-        INFO(errorName(once));
-        REQUIRE(once.has_value());
-
-        const auto twice = propagate(*once, c.mu, c.second);
-        INFO(errorName(twice));
-        REQUIRE(twice.has_value());
-
-        REQUIRE_THAT(twice->pos, WithinRelVec(together->pos, Tolerance{1e-9}));
-        REQUIRE_THAT(twice->vel, WithinRelVec(together->vel, Tolerance{1e-9}));
+        requireTwoStepsMakeOne(
+            {.mu = c.mu, .state = c.state, .first = c.first, .second = c.second});
     }
 }
 
@@ -1199,23 +1343,10 @@ TEST_CASE("near-rectilinear orbits, e approaching 1", "[orbit][scales]") {
     }
 }
 
-// The same inputs must produce bit-identical outputs, every time.
-//
-// VERIFICATION.md rule 16, and the one place this codebase compares floating
-// point exactly: bit identity is the actual claim, and a tolerance here would
-// hide precisely the drift being tested for. It says so by name, through
-// bitIdentical(), which also tells +0.0 from -0.0; CAPTURE prints both sides
-// of a failure, round-trippably. It catches a class of accidental
-// nondeterminism that no other test can see -- iteration over an unordered
-// container, uninitialised padding, a branch on wall-clock time, a solver that
-// reads a global. None of those exist today, which is the point: this test is
-// what notices when one arrives.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
-TEST_CASE("propagation is bit-identical across runs", "[orbit][scales]") {
-    const StateVector start = circularState(kMuEarth, Metres{7000e3});
+namespace {
 
-    // A single step, twice.
+// A single step, twice.
+void requireOneStepIsBitIdentical(const StateVector& start) {
     const auto first = propagate(start, kMuEarth, 1234.5_s);
     const auto second = propagate(start, kMuEarth, 1234.5_s);
     INFO("first run -> " << errorName(first));
@@ -1229,10 +1360,12 @@ TEST_CASE("propagation is bit-identical across runs", "[orbit][scales]") {
     CAPTURE(first->vel, second->vel);
     INFO("single step: velocity bit-identical");
     REQUIRE(first->vel.bitIdentical(second->vel));
+}
 
-    // A long chain, where any drift would compound rather than cancel. A
-    // failed step ends the chain at the zero state, which two runs that agree
-    // reach together; the one variable returned keeps the copy elided.
+// A long chain, where any drift would compound rather than cancel. A failed
+// step ends the chain at the zero state, which two runs that agree reach
+// together; the one variable returned keeps the copy elided.
+void requireAHundredStepsAreBitIdentical(const StateVector& start) {
     const auto chain = [&] -> StateVector {
         StateVector s = start;
         for (int i = 0; i < 100; ++i) {
@@ -1253,8 +1386,10 @@ TEST_CASE("propagation is bit-identical across runs", "[orbit][scales]") {
     CAPTURE(chainA.vel, chainB.vel);
     INFO("100 steps: velocity bit-identical");
     REQUIRE(chainA.vel.bitIdentical(chainB.vel));
+}
 
-    // The conversions too, since a scenario reload goes through them.
+// The conversions too, since a scenario reload goes through them.
+void requireTheConversionsAreBitIdentical(const StateVector& start) {
     const auto elA = elementsFromState(start, kMuEarth);
     const auto elB = elementsFromState(start, kMuEarth);
     INFO("elements first -> " << errorName(elA));
@@ -1273,6 +1408,26 @@ TEST_CASE("propagation is bit-identical across runs", "[orbit][scales]") {
     CAPTURE(backA, backB);
     INFO("stateFromElements is bit-identical");
     REQUIRE(backA.bitIdentical(backB));
+}
+
+} // namespace
+
+// The same inputs must produce bit-identical outputs, every time.
+//
+// VERIFICATION.md rule 16, and the one place this codebase compares floating
+// point exactly: bit identity is the actual claim, and a tolerance here would
+// hide precisely the drift being tested for. It says so by name, through
+// bitIdentical(), which also tells +0.0 from -0.0; CAPTURE prints both sides
+// of a failure, round-trippably. It catches a class of accidental
+// nondeterminism that no other test can see -- iteration over an unordered
+// container, uninitialised padding, a branch on wall-clock time, a solver that
+// reads a global. None of those exist today, which is the point: this test is
+// what notices when one arrives.
+TEST_CASE("propagation is bit-identical across runs", "[orbit][scales]") {
+    const StateVector start = circularState(kMuEarth, Metres{7000e3});
+    requireOneStepIsBitIdentical(start);
+    requireAHundredStepsAreBitIdentical(start);
+    requireTheConversionsAreBitIdentical(start);
 }
 
 // Both halves share one Sampler, drawn from in this order: the closed cases

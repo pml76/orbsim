@@ -20,8 +20,6 @@
 // (rule 5), and pairs that with bounding every loop (rule 2). A bounded loop
 // that stays silent when it fails to converge has done only half the job.
 //
-#include <cassert>
-
 // The condition must be free of side effects.
 //
 // Assertions vanish under NDEBUG and take anything inside them along, which
@@ -38,11 +36,63 @@
 // macros: a function cannot capture the source text of its own argument, which
 // is the whole value of an assertion message, and it would evaluate the
 // condition even under NDEBUG. C++26 contracts replace them; until then the
-// suppression sits here, on the two definitions, rather than in .clang-tidy
-// where it would silently cover the next macro somebody adds.
+// suppression sits here, on their definitions -- one with assertions live and
+// one without, for each -- rather than in .clang-tidy where it would silently
+// cover the next macro somebody adds.
+//
+// **What a failure says, and what it does not carry** (M1-129, register
+// decisions 549, 556 and 557). It names the condition, the function and the
+// file -- none of which moves when a line is added above the assertion -- and
+// prints the chain of calls, which reads the line from the debug information.
+// The line is not a number in the compiled code, as `assert`'s is: that number
+// changes the code of every function below an edit, and the test selection
+// reruns a test whenever a function it entered changed. The chain of calls is
+// taken here, at the failing line, and not in the handler: taken there, an
+// unoptimised build names the line after the assertion (measured 2026-10-15).
+// Where a tree has no debug information -- MSVC's links without it, register
+// decision 511 -- the chain names only the program and an offset, and the
+// condition, function and file stand alone. "precondition violated" stays in
+// the message: cmake/VerifyAssertionProbe.cmake requires it of an abort.
+#ifdef NDEBUG
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define ORBSIM_EXPECTS(condition) assert((condition) && "precondition violated")
+#define ORBSIM_EXPECTS(expression) static_cast<void>(0)
 // NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
-#define ORBSIM_ENSURES(condition) assert((condition) && "postcondition violated")
+#define ORBSIM_ENSURES(expression) static_cast<void>(0)
+#else
+#include <stacktrace>
+
+namespace orb::detail {
+
+enum class Contract : unsigned char { Precondition, Postcondition };
+
+// Where a contract failed, each text named at the call so that none can be
+// passed in another's place (bugprone-easily-swappable-parameters).
+struct ContractSite {
+    const char* condition;
+    const char* file;
+    const char* function;
+};
+
+// Writes what failed and the chain of calls to stderr, then aborts.
+[[noreturn]] void
+contractViolated(Contract kind, ContractSite site, const std::stacktrace& calls) noexcept;
+
+} // namespace orb::detail
+
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define ORBSIM_EXPECTS(expression)                                                                 \
+    ((expression) ? static_cast<void>(0)                                                           \
+                  : ::orb::detail::contractViolated(                                               \
+                        ::orb::detail::Contract::Precondition,                                     \
+                        {.condition = #expression, .file = __FILE__, .function = __func__},        \
+                        std::stacktrace::current()))
+// NOLINTNEXTLINE(cppcoreguidelines-macro-usage)
+#define ORBSIM_ENSURES(expression)                                                                 \
+    ((expression) ? static_cast<void>(0)                                                           \
+                  : ::orb::detail::contractViolated(                                               \
+                        ::orb::detail::Contract::Postcondition,                                    \
+                        {.condition = #expression, .file = __FILE__, .function = __func__},        \
+                        std::stacktrace::current()))
+#endif
 
 #endif // ORBSIM_CORE_CONTRACT_HPP

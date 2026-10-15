@@ -141,6 +141,14 @@ note that exists only on one of them is a note that does not exist.
    between them means something. `gcc-14` is the second *implementation* and
    stays where it is. Versions: [`docs/STATUS.md`](docs/STATUS.md). Recipe:
    `docs/PROJECT_STATE.md` section 2.
+9. **No unnecessary work** (added 2026-10-15). This holds for the project's
+   code and equally for the build and test process: no code that is not
+   needed, and no build, test, lint or mutation step that cannot change its
+   result. A safety net -- the full run before every push -- is not
+   unnecessary: it exists for the case where a skip was wrong, so it can
+   change the result. Accuracy still outranks speed (agreement 3). The test
+   selection of M1-129 and its function-level follow-on are this rule applied
+   to the tests.
 
 ## The definition of done
 

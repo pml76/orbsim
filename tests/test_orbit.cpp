@@ -11,9 +11,9 @@
 #include "core/Units.hpp"
 #include "orbit/Orbit.hpp"
 #include "tests/OrbitTestSupport.hpp"
+#include "tests/TestCase.hpp"
 
 #include <catch2/catch_message.hpp>
-#include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers.hpp>
 
 #include <algorithm>
@@ -26,27 +26,38 @@ using namespace orb;
 using namespace orb::literals;
 using namespace orb::test;
 
-// A note on the readability-function-cognitive-complexity suppressions below.
-//
-// Catch2's REQUIRE and REQUIRE_THAT each expand to a do-while wrapping a
-// try/catch, so a case scores roughly three points per assertion whether or
-// not it branches at all: the cases suppressed here contain no `if`, and the
-// only loops are the ones walking a table of cases. The score measures the
-// framework, not the code.
-//
-// Ruled by the project owner on 2026-09-09, with the alternatives measured
-// first: the check offers an IgnoreMacros option that clears every one of
-// these while still scoring hand-written control flow (a probe function still
-// reported 35), and a NOLINTBEGIN/NOLINTEND region would cover a whole file in
-// one line. Both were rejected in favour of a suppression per function,
-// because that is the only one of the three that still reports a genuinely
-// over-complex helper added to this file later. Each new TEST_CASE that
-// crosses the threshold gets its own line, deliberately.
+// Each test case here is held to clang-tidy's size and complexity limits, and
+// one with more than a few checks names groups of them as helpers above it --
+// tests/TestCase.hpp says why (register decisions 578 and 581).
+
+namespace {
+
+// An element set and the one a state built from it gave back.
+struct ElementsRoundTrip {
+    Elements original;
+    Elements back;
+};
+
+void requireTheShapeAndPlaneSurvive(const ElementsRoundTrip& trip) {
+    const Elements& el = trip.original;
+    const Elements& back = trip.back;
+    REQUIRE_THAT(back.sma.value(), WithinRelTo(el.sma.value(), Tolerance{1e-12}));
+    REQUIRE_THAT(back.ecc.value(), WithinAbsOf(el.ecc.value(), Tolerance{1e-12}));
+    REQUIRE_THAT(wrapPi(back.inc - el.inc).value(), WithinAbsOf(0.0, Tolerance{1e-12}));
+    REQUIRE_THAT(wrapPi(back.lan - el.lan).value(), WithinAbsOf(0.0, Tolerance{1e-12}));
+}
+
+void requireTheAnglesInThePlaneSurvive(const ElementsRoundTrip& trip) {
+    const Elements& el = trip.original;
+    const Elements& back = trip.back;
+    REQUIRE_THAT(wrapPi(back.aop - el.aop).value(), WithinAbsOf(0.0, Tolerance{1e-11}));
+    REQUIRE_THAT(wrapPi(back.tra - el.tra).value(), WithinAbsOf(0.0, Tolerance{1e-11}));
+}
+
+} // namespace
 
 // Elements -> state -> elements must be the identity for a well-conditioned
 // orbit (non-circular, non-equatorial), where every element is meaningful.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("elements <-> state round trip", "[orbit]") {
     struct Case {
         const char* name{};
@@ -107,69 +118,80 @@ TEST_CASE("elements <-> state round trip", "[orbit]") {
         INFO(errorName(back));
         REQUIRE(back.has_value());
 
-        REQUIRE_THAT(back->sma.value(), WithinRelTo(c.el.sma.value(), Tolerance{1e-12}));
-        REQUIRE_THAT(back->ecc.value(), WithinAbsOf(c.el.ecc.value(), Tolerance{1e-12}));
-        REQUIRE_THAT(wrapPi(back->inc - c.el.inc).value(), WithinAbsOf(0.0, Tolerance{1e-12}));
-        REQUIRE_THAT(wrapPi(back->lan - c.el.lan).value(), WithinAbsOf(0.0, Tolerance{1e-12}));
-        REQUIRE_THAT(wrapPi(back->aop - c.el.aop).value(), WithinAbsOf(0.0, Tolerance{1e-11}));
-        REQUIRE_THAT(wrapPi(back->tra - c.el.tra).value(), WithinAbsOf(0.0, Tolerance{1e-11}));
+        requireTheShapeAndPlaneSurvive({.original = c.el, .back = *back});
+        requireTheAnglesInThePlaneSurvive({.original = c.el, .back = *back});
     }
 }
+
+namespace {
+
+void requireACircularOrbitFoldsItsPeriapsis() {
+    const Elements el = makeElements({
+        .sma = Metres{7000e3},
+        .ecc = eccentricity(0.0),
+        .inc = Degrees{30.0},
+        .lan = Degrees{70.0},
+        .aop = Degrees{40.0},
+        .tra = Degrees{25.0},
+    });
+    const StateVector sv = stateOf(el, kMuEarth);
+    const auto back = elementsFromState(sv, kMuEarth);
+
+    INFO(errorName(back));
+    REQUIRE(back.has_value());
+
+    INFO("aop folded to zero");
+    REQUIRE_THAT(back->aop.value(), WithinAbsOf(0.0, Tolerance{1e-12}));
+    // aop + tra is the argument of latitude, and that is preserved.
+    INFO("argument of latitude");
+    REQUIRE_THAT(wrapPi(back->tra - (el.aop + el.tra)).value(), WithinAbsOf(0.0, Tolerance{1e-10}));
+    REQUIRE_THAT(stateOf(*back, kMuEarth).pos, WithinRelVec(sv.pos, Tolerance{1e-12}));
+}
+
+void requireAnEquatorialOrbitFoldsItsNode() {
+    const Elements el = makeElements({
+        .sma = Metres{42164e3},
+        .ecc = eccentricity(0.001),
+        .inc = Degrees{0.0},
+        .lan = Degrees{0.0},
+        .aop = Degrees{60.0},
+        .tra = Degrees{15.0},
+    });
+    const StateVector sv = stateOf(el, kMuEarth);
+    const auto back = elementsFromState(sv, kMuEarth);
+
+    INFO(errorName(back));
+    REQUIRE(back.has_value());
+
+    INFO("lan folded to zero");
+    REQUIRE_THAT(back->lan.value(), WithinAbsOf(0.0, Tolerance{1e-12}));
+    REQUIRE_THAT(back->inc.value(), WithinAbsOf(0.0, Tolerance{1e-12}));
+    INFO("aop from the x-axis");
+    REQUIRE_THAT(wrapPi(back->aop - el.aop).value(), WithinAbsOf(0.0, Tolerance{1e-10}));
+    REQUIRE_THAT(stateOf(*back, kMuEarth).pos, WithinRelVec(sv.pos, Tolerance{1e-12}));
+}
+
+} // namespace
 
 // A circular orbit has no periapsis. The canonical form must fold aop into the
 // true anomaly rather than producing NaN, and still reproduce the same state.
 TEST_CASE("degenerate orbits stay finite", "[orbit]") {
-    SECTION("circular inclined") {
-        const Elements el = makeElements({
-            .sma = Metres{7000e3},
-            .ecc = eccentricity(0.0),
-            .inc = Degrees{30.0},
-            .lan = Degrees{70.0},
-            .aop = Degrees{40.0},
-            .tra = Degrees{25.0},
-        });
-        const StateVector sv = stateOf(el, kMuEarth);
-        const auto back = elementsFromState(sv, kMuEarth);
+    SECTION("circular inclined") { requireACircularOrbitFoldsItsPeriapsis(); }
 
-        INFO(errorName(back));
-        REQUIRE(back.has_value());
-
-        INFO("aop folded to zero");
-        REQUIRE_THAT(back->aop.value(), WithinAbsOf(0.0, Tolerance{1e-12}));
-        // aop + tra is the argument of latitude, and that is preserved.
-        INFO("argument of latitude");
-        REQUIRE_THAT(wrapPi(back->tra - (el.aop + el.tra)).value(),
-                     WithinAbsOf(0.0, Tolerance{1e-10}));
-        REQUIRE_THAT(stateOf(*back, kMuEarth).pos, WithinRelVec(sv.pos, Tolerance{1e-12}));
-    }
-
-    SECTION("equatorial (geostationary)") {
-        const Elements el = makeElements({
-            .sma = Metres{42164e3},
-            .ecc = eccentricity(0.001),
-            .inc = Degrees{0.0},
-            .lan = Degrees{0.0},
-            .aop = Degrees{60.0},
-            .tra = Degrees{15.0},
-        });
-        const StateVector sv = stateOf(el, kMuEarth);
-        const auto back = elementsFromState(sv, kMuEarth);
-
-        INFO(errorName(back));
-        REQUIRE(back.has_value());
-
-        INFO("lan folded to zero");
-        REQUIRE_THAT(back->lan.value(), WithinAbsOf(0.0, Tolerance{1e-12}));
-        REQUIRE_THAT(back->inc.value(), WithinAbsOf(0.0, Tolerance{1e-12}));
-        INFO("aop from the x-axis");
-        REQUIRE_THAT(wrapPi(back->aop - el.aop).value(), WithinAbsOf(0.0, Tolerance{1e-10}));
-        REQUIRE_THAT(stateOf(*back, kMuEarth).pos, WithinRelVec(sv.pos, Tolerance{1e-12}));
-    }
+    SECTION("equatorial (geostationary)") { requireAnEquatorialOrbitFoldsItsNode(); }
 }
 
-// Known closed-form values, independent of any of the code under test.
-TEST_CASE("known analytic values", "[orbit]") {
-    // 400 km circular orbit: period from the elements must match 2*pi*r/v.
+namespace {
+
+// A 400 km circular orbit, built from its radius and speed.
+struct CircularAt400Km {
+    f64 r{};
+    f64 v{};
+    Elements el;
+    OrbitInfo info;
+};
+
+[[nodiscard]] CircularAt400Km theCircularOrbitAt400Km() {
     const f64 r = kEarthRadius.value() + 400e3;
     const f64 v = std::sqrt(kMuEarth.value() / r);
     const StateVector sv{.pos = {r, 0, 0}, .vel = {0, v, 0}};
@@ -177,16 +199,33 @@ TEST_CASE("known analytic values", "[orbit]") {
 
     INFO(errorName(el));
     REQUIRE(el.has_value());
+    return {.r = r, .v = v, .el = *el, .info = orbitInfo(*el, kMuEarth)};
+}
 
-    const OrbitInfo info = orbitInfo(*el, kMuEarth);
+void requireTheCircleAt400Km(const CircularAt400Km& orbit) {
+    REQUIRE_THAT(orbit.el.sma.value(), WithinRelTo(orbit.r, Tolerance{1e-12}));
+    REQUIRE_THAT(orbit.el.ecc.value(), WithinAbsOf(0.0, Tolerance{1e-12}));
+}
 
-    REQUIRE_THAT(el->sma.value(), WithinRelTo(r, Tolerance{1e-12}));
-    REQUIRE_THAT(el->ecc.value(), WithinAbsOf(0.0, Tolerance{1e-12}));
-    REQUIRE_THAT(info.period.value(), WithinRelTo(kTau * r / v, Tolerance{1e-10}));
+// The period from the elements must match 2*pi*r/v, and both apsides are r.
+void requireThePeriodAndApsidesAt400Km(const CircularAt400Km& orbit) {
+    const OrbitInfo& info = orbit.info;
+    const f64 r = orbit.r;
+    REQUIRE_THAT(info.period.value(), WithinRelTo(kTau * r / orbit.v, Tolerance{1e-10}));
     REQUIRE_THAT(info.periapsis.value(), WithinRelTo(r, Tolerance{1e-12}));
     REQUIRE_THAT(info.apoapsis.value(), WithinRelTo(r, Tolerance{1e-12}));
     // Sanity anchor: a 400 km orbit takes a bit over 92 minutes.
     REQUIRE_THAT(info.period.value(), WithinAbsOf(5554.0, Tolerance{5.0}));
+}
+
+} // namespace
+
+// Known closed-form values, independent of any of the code under test.
+TEST_CASE("known analytic values", "[orbit]") {
+    // 400 km circular orbit: period from the elements must match 2*pi*r/v.
+    const CircularAt400Km orbit = theCircularOrbitAt400Km();
+    requireTheCircleAt400Km(orbit);
+    requireThePeriodAndApsidesAt400Km(orbit);
 
     // Vis-viva on an eccentric orbit, checked at periapsis.
     const Elements e2 = makeElements({
@@ -205,10 +244,31 @@ TEST_CASE("known analytic values", "[orbit]") {
     REQUIRE_THAT(length(p.vel).value(), WithinRelTo(vp, Tolerance{1e-12}));
 }
 
+namespace {
+
+// An orbit as elements and as the state they give.
+struct OrbitTwoWays {
+    Elements el;
+    StateVector start;
+};
+
+void requireThePropagatorsAgree(const OrbitTwoWays& orbit, Seconds dt) {
+    const auto viaUniversal = propagate(orbit.start, kMuEarth, dt);
+    const auto viaElementSet = propagateElements(orbit.el, kMuEarth, dt);
+    INFO(errorName(viaUniversal));
+    REQUIRE(viaUniversal.has_value());
+    INFO(errorName(viaElementSet));
+    REQUIRE(viaElementSet.has_value());
+
+    const StateVector viaElements = stateOf(*viaElementSet, kMuEarth);
+    REQUIRE_THAT(viaUniversal->pos, WithinRelVec(viaElements.pos, Tolerance{1e-9}));
+    REQUIRE_THAT(viaUniversal->vel, WithinRelVec(viaElements.vel, Tolerance{1e-9}));
+}
+
+} // namespace
+
 // The two propagators share no code. Agreeing to 1e-9 over a range of orbits
 // and time steps is strong evidence both are right.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("universal-variable vs Kepler-element propagation", "[orbit]") {
     struct Case {
         const char* name{};
@@ -256,37 +316,23 @@ TEST_CASE("universal-variable vs Kepler-element propagation", "[orbit]") {
 
         for (const f64 frac : {0.05, 0.25, 0.5, 0.77, 0.99}) {
             CAPTURE(c.name, frac);
-            const Seconds dt = info.period * frac;
-
-            const auto viaUniversal = propagate(sv0, kMuEarth, dt);
-            const auto viaElementSet = propagateElements(c.el, kMuEarth, dt);
-            INFO(errorName(viaUniversal));
-            REQUIRE(viaUniversal.has_value());
-            INFO(errorName(viaElementSet));
-            REQUIRE(viaElementSet.has_value());
-
-            const StateVector viaElements = stateOf(*viaElementSet, kMuEarth);
-            REQUIRE_THAT(viaUniversal->pos, WithinRelVec(viaElements.pos, Tolerance{1e-9}));
-            REQUIRE_THAT(viaUniversal->vel, WithinRelVec(viaElements.vel, Tolerance{1e-9}));
+            requireThePropagatorsAgree({.el = c.el, .start = sv0}, info.period * frac);
         }
     }
 }
 
-// Propagation must be time-reversible and must conserve the orbit itself.
-TEST_CASE("propagation invariants", "[orbit]") {
-    const Elements el = makeElements({
-        .sma = Metres{12000e3},
-        .ecc = eccentricity(0.4),
-        .inc = Degrees{35.0},
-        .lan = Degrees{140.0},
-        .aop = Degrees{25.0},
-        .tra = Degrees{80.0},
-    });
-    const StateVector sv0 = stateOf(el, kMuEarth);
-    const OrbitInfo info = orbitInfo(el, kMuEarth);
+namespace {
 
-    const Seconds dt = info.period * 0.37;
-    const auto fwd = propagate(sv0, kMuEarth, dt);
+// The orbit the invariants are checked on, and what orbitInfo says of it.
+struct InvariantOrbit {
+    Elements el;
+    StateVector start;
+    OrbitInfo info;
+};
+
+void requireForwardThenBackReturns(const InvariantOrbit& orbit) {
+    const Seconds dt = orbit.info.period * 0.37;
+    const auto fwd = propagate(orbit.start, kMuEarth, dt);
     INFO(errorName(fwd));
     REQUIRE(fwd.has_value());
 
@@ -295,12 +341,15 @@ TEST_CASE("propagation invariants", "[orbit]") {
     REQUIRE(back.has_value());
 
     INFO("forward then back returns the start");
-    REQUIRE_THAT(back->pos, WithinRelVec(sv0.pos, Tolerance{1e-10}));
-    REQUIRE_THAT(back->vel, WithinRelVec(sv0.vel, Tolerance{1e-10}));
+    REQUIRE_THAT(back->pos, WithinRelVec(orbit.start.pos, Tolerance{1e-10}));
+    REQUIRE_THAT(back->vel, WithinRelVec(orbit.start.vel, Tolerance{1e-10}));
+}
 
-    // Energy and angular momentum are constants of the two-body motion, so a
-    // long propagation must not move them.
-    const auto distant = propagate(sv0, kMuEarth, info.period * 500.0);
+// Energy and angular momentum are constants of the two-body motion, so a long
+// propagation must not move them.
+void requireConservedOver500Revolutions(const InvariantOrbit& orbit) {
+    const Elements& el = orbit.el;
+    const auto distant = propagate(orbit.start, kMuEarth, orbit.info.period * 500.0);
     INFO(errorName(distant));
     REQUIRE(distant.has_value());
 
@@ -312,18 +361,23 @@ TEST_CASE("propagation invariants", "[orbit]") {
     REQUIRE_THAT(far->sma.value(), WithinRelTo(el.sma.value(), Tolerance{1e-9}));
     REQUIRE_THAT(far->ecc.value(), WithinRelTo(el.ecc.value(), Tolerance{1e-9}));
     REQUIRE_THAT(wrapPi(far->inc - el.inc).value(), WithinAbsOf(0.0, Tolerance{1e-9}));
+}
 
-    // Half a period from periapsis lands exactly on apoapsis.
-    Elements atPeri = el;
+// Half a period from periapsis lands exactly on apoapsis.
+void requireHalfAPeriodFromPeriapsisReachesApoapsis(const InvariantOrbit& orbit) {
+    Elements atPeri = orbit.el;
     atPeri.tra = Radians{0.0};
-    const auto apo = propagate(stateOf(atPeri, kMuEarth), kMuEarth, info.period * 0.5);
+    const auto apo = propagate(stateOf(atPeri, kMuEarth), kMuEarth, orbit.info.period * 0.5);
     INFO(errorName(apo));
     REQUIRE(apo.has_value());
 
     INFO("half a period from periapsis reaches apoapsis");
-    REQUIRE_THAT(length(apo->pos).value(), WithinRelTo(info.apoapsis.value(), Tolerance{1e-9}));
+    REQUIRE_THAT(length(apo->pos).value(),
+                 WithinRelTo(orbit.info.apoapsis.value(), Tolerance{1e-9}));
+}
 
-    // A quarter period on a circular orbit is a quarter turn.
+// A quarter period on a circular orbit is a quarter turn.
+void requireAQuarterPeriodIsAQuarterTurnOnACircle() {
     const f64 rc = 7500e3;
     const StateVector c0{.pos = {rc, 0, 0}, .vel = {0, std::sqrt(kMuEarth.value() / rc), 0}};
     const auto circular = elementsFromState(c0, kMuEarth);
@@ -341,6 +395,84 @@ TEST_CASE("propagation invariants", "[orbit]") {
     REQUIRE_THAT(length(c1->pos).value(), WithinRelTo(rc, Tolerance{1e-12}));
 }
 
+} // namespace
+
+// Propagation must be time-reversible and must conserve the orbit itself.
+TEST_CASE("propagation invariants", "[orbit]") {
+    const Elements el = makeElements({
+        .sma = Metres{12000e3},
+        .ecc = eccentricity(0.4),
+        .inc = Degrees{35.0},
+        .lan = Degrees{140.0},
+        .aop = Degrees{25.0},
+        .tra = Degrees{80.0},
+    });
+    const StateVector sv0 = stateOf(el, kMuEarth);
+    const InvariantOrbit orbit{.el = el, .start = sv0, .info = orbitInfo(el, kMuEarth)};
+
+    requireForwardThenBackReturns(orbit);
+    requireConservedOver500Revolutions(orbit);
+    requireHalfAPeriodFromPeriapsisReachesApoapsis(orbit);
+    requireAQuarterPeriodIsAQuarterTurnOnACircle();
+}
+
+namespace {
+
+// The escape trajectory: its state and its elements.
+struct Escape {
+    StateVector state;
+    Elements el;
+};
+
+void requireTheEscapeIsAHyperbola(const Elements& el) {
+    const OrbitInfo info = orbitInfo(el, kMuEarth);
+
+    REQUIRE(el.ecc.value() > 1.0);
+    REQUIRE(el.sma.value() < 0.0);
+    REQUIRE(std::isinf(info.apoapsis.value()));
+    REQUIRE(info.energy.value() > 0.0);
+}
+
+// Round trip through the elements.
+void requireTheEscapesElementsReproduceIt(const Escape& escape) {
+    const StateVector rebuilt = stateOf(escape.el, kMuEarth);
+    INFO("the elements reproduce the state");
+    REQUIRE_THAT(rebuilt.pos, WithinRelVec(escape.state.pos, Tolerance{1e-11}));
+    REQUIRE_THAT(rebuilt.vel, WithinRelVec(escape.state.vel, Tolerance{1e-11}));
+}
+
+// The departure and where an hour of coasting takes it.
+struct HourOutbound {
+    StateVector departure;
+    StateVector outbound;
+};
+
+// An hour of coasting outbound, from the departure: reversible, and receding.
+void requireAnHourOutboundReturns(const HourOutbound& leg) {
+    const auto returned = propagate(leg.outbound, kMuEarth, -3600.0_s);
+    INFO(errorName(returned));
+    REQUIRE(returned.has_value());
+
+    INFO("outbound then back");
+    REQUIRE_THAT(returned->pos, WithinRelVec(leg.departure.pos, Tolerance{1e-9}));
+
+    INFO("the trajectory is receding");
+    REQUIRE(length(leg.outbound.pos) > length(leg.departure.pos));
+}
+
+// And the two propagators must still agree out here.
+void requireThePropagatorsAgreeOnTheEscape(const Elements& el, const StateVector& outbound) {
+    const auto viaElementSet = propagateElements(el, kMuEarth, 3600.0_s);
+    INFO(errorName(viaElementSet));
+    REQUIRE(viaElementSet.has_value());
+
+    INFO("the propagators agree on a hyperbola");
+    REQUIRE_THAT(outbound.pos,
+                 WithinRelVec(stateOf(*viaElementSet, kMuEarth).pos, Tolerance{1e-8}));
+}
+
+} // namespace
+
 // Escape trajectories are not a special case in this code, so they need the
 // same coverage as closed orbits.
 TEST_CASE("hyperbolic trajectories", "[orbit]") {
@@ -353,85 +485,86 @@ TEST_CASE("hyperbolic trajectories", "[orbit]") {
     INFO(errorName(el));
     REQUIRE(el.has_value());
 
-    const OrbitInfo info = orbitInfo(*el, kMuEarth);
-
-    REQUIRE(el->ecc.value() > 1.0);
-    REQUIRE(el->sma.value() < 0.0);
-    REQUIRE(std::isinf(info.apoapsis.value()));
-    REQUIRE(info.energy.value() > 0.0);
-
-    // Round trip through the elements.
-    const StateVector rebuilt = stateOf(*el, kMuEarth);
-    INFO("the elements reproduce the state");
-    REQUIRE_THAT(rebuilt.pos, WithinRelVec(sv.pos, Tolerance{1e-11}));
-    REQUIRE_THAT(rebuilt.vel, WithinRelVec(sv.vel, Tolerance{1e-11}));
+    requireTheEscapeIsAHyperbola(*el);
+    requireTheEscapesElementsReproduceIt({.state = sv, .el = *el});
 
     // Reversibility, over an hour of coasting outbound.
     const auto out = propagate(sv, kMuEarth, 3600.0_s);
     INFO(errorName(out));
     REQUIRE(out.has_value());
-
-    const auto returned = propagate(*out, kMuEarth, -3600.0_s);
-    INFO(errorName(returned));
-    REQUIRE(returned.has_value());
-
-    INFO("outbound then back");
-    REQUIRE_THAT(returned->pos, WithinRelVec(sv.pos, Tolerance{1e-9}));
-
-    INFO("the trajectory is receding");
-    REQUIRE(length(out->pos) > length(sv.pos));
-
-    // And the two propagators must still agree out here.
-    const auto viaElementSet = propagateElements(*el, kMuEarth, 3600.0_s);
-    INFO(errorName(viaElementSet));
-    REQUIRE(viaElementSet.has_value());
-
-    INFO("the propagators agree on a hyperbola");
-    REQUIRE_THAT(out->pos, WithinRelVec(stateOf(*viaElementSet, kMuEarth).pos, Tolerance{1e-8}));
+    requireAnHourOutboundReturns({.departure = sv, .outbound = *out});
+    requireThePropagatorsAgreeOnTheEscape(*el, *out);
 }
+
+namespace {
+
+// Every whole degree of mean anomaly solves, and comes back to within 1e-11.
+void requireKeplerSolvesEveryMeanAnomaly(f64 ecc) {
+    f64 worst = 0.0;
+    bool allSolved = true;
+
+    for (int i = 0; i < 360; ++i) {
+        const Radians meanAnomaly = toRadians(Degrees{static_cast<f64>(i)});
+        const auto solved = meanToEccentricAnomaly(meanAnomaly, eccentricityOf(ecc));
+        if (!solved) {
+            allSolved = false;
+            break;
+        }
+        const auto backAgain = eccentricToMeanAnomaly(*solved, eccentricityOf(ecc));
+        if (!backAgain) {
+            allSolved = false;
+            break;
+        }
+        worst = std::max(worst, std::abs(wrapPi(*backAgain - meanAnomaly).value()));
+    }
+
+    INFO("every mean anomaly solved");
+    REQUIRE(allSolved);
+    INFO("elliptic round trip");
+    REQUIRE_THAT(worst, WithinAbsOf(0.0, Tolerance{1e-11}));
+}
+
+void requireTheEllipticAnomalyRoundTrip(Radians nu, f64 ecc) {
+    const auto eccAnomaly = trueToEccentricAnomaly(nu, eccentricityOf(ecc));
+    REQUIRE(eccAnomaly.has_value());
+    const auto back = eccentricToTrueAnomaly(*eccAnomaly, eccentricityOf(ecc));
+    REQUIRE(back.has_value());
+    INFO("true <-> eccentric (elliptic)");
+    REQUIRE_THAT(wrapPi(*back - nu).value(), WithinAbsOf(0.0, Tolerance{1e-10}));
+}
+
+void requireTheHyperbolicAnomalyRoundTrips(Radians nu, f64 ecc) {
+    const auto hyperbolic = trueToEccentricAnomaly(nu, eccentricityOf(ecc));
+    REQUIRE(hyperbolic.has_value());
+    const auto back = eccentricToTrueAnomaly(*hyperbolic, eccentricityOf(ecc));
+    REQUIRE(back.has_value());
+    INFO("true <-> eccentric (hyperbolic)");
+    REQUIRE_THAT(wrapPi(*back - nu).value(), WithinAbsOf(0.0, Tolerance{1e-9}));
+
+    const auto meanAnomaly = eccentricToMeanAnomaly(*hyperbolic, eccentricityOf(ecc));
+    REQUIRE(meanAnomaly.has_value());
+    const auto solved = meanToEccentricAnomaly(*meanAnomaly, eccentricityOf(ecc));
+    INFO(errorName(solved));
+    REQUIRE(solved.has_value());
+    INFO("hyperbolic Kepler round trip");
+    REQUIRE_THAT(solved->value(), WithinAbsOf(hyperbolic->value(), Tolerance{1e-9}));
+}
+
+} // namespace
 
 // Kepler's equation is solved by Newton iteration; it has to converge for every
 // eccentricity the sim can produce, including near-parabolic ones.
-// Catch2 macro expansion, not written complexity. See the note above.
-// NOLINTNEXTLINE(readability-function-cognitive-complexity)
 TEST_CASE("Kepler equation solver", "[orbit]") {
     for (const f64 ecc : {0.0, 0.1, 0.5, 0.9, 0.99, 0.999}) {
         CAPTURE(ecc);
-        f64 worst = 0.0;
-        bool allSolved = true;
-
-        for (int i = 0; i < 360; ++i) {
-            const Radians meanAnomaly = toRadians(Degrees{static_cast<f64>(i)});
-            const auto solved = meanToEccentricAnomaly(meanAnomaly, eccentricityOf(ecc));
-            if (!solved) {
-                allSolved = false;
-                break;
-            }
-            const auto backAgain = eccentricToMeanAnomaly(*solved, eccentricityOf(ecc));
-            if (!backAgain) {
-                allSolved = false;
-                break;
-            }
-            worst = std::max(worst, std::abs(wrapPi(*backAgain - meanAnomaly).value()));
-        }
-
-        INFO("every mean anomaly solved");
-        REQUIRE(allSolved);
-        INFO("elliptic round trip");
-        REQUIRE_THAT(worst, WithinAbsOf(0.0, Tolerance{1e-11}));
+        requireKeplerSolvesEveryMeanAnomaly(ecc);
     }
 
     // True <-> eccentric anomaly, elliptic and hyperbolic.
     for (const f64 ecc : {0.0, 0.3, 0.85, 0.999}) {
         for (int i = 0; i < 360; i += 7) {
             CAPTURE(ecc, i);
-            const Radians nu = toRadians(Degrees{static_cast<f64>(i)});
-            const auto eccAnomaly = trueToEccentricAnomaly(nu, eccentricityOf(ecc));
-            REQUIRE(eccAnomaly.has_value());
-            const auto back = eccentricToTrueAnomaly(*eccAnomaly, eccentricityOf(ecc));
-            REQUIRE(back.has_value());
-            INFO("true <-> eccentric (elliptic)");
-            REQUIRE_THAT(wrapPi(*back - nu).value(), WithinAbsOf(0.0, Tolerance{1e-10}));
+            requireTheEllipticAnomalyRoundTrip(toRadians(Degrees{static_cast<f64>(i)}), ecc);
         }
     }
 
@@ -440,21 +573,7 @@ TEST_CASE("Kepler equation solver", "[orbit]") {
         const f64 nuMax = std::acos(-1.0 / ecc) * 0.95;
         for (int i = -20; i <= 20; ++i) {
             CAPTURE(ecc, i);
-            const Radians nu{nuMax * static_cast<f64>(i) / 20.0};
-            const auto hyperbolic = trueToEccentricAnomaly(nu, eccentricityOf(ecc));
-            REQUIRE(hyperbolic.has_value());
-            const auto back = eccentricToTrueAnomaly(*hyperbolic, eccentricityOf(ecc));
-            REQUIRE(back.has_value());
-            INFO("true <-> eccentric (hyperbolic)");
-            REQUIRE_THAT(wrapPi(*back - nu).value(), WithinAbsOf(0.0, Tolerance{1e-9}));
-
-            const auto meanAnomaly = eccentricToMeanAnomaly(*hyperbolic, eccentricityOf(ecc));
-            REQUIRE(meanAnomaly.has_value());
-            const auto solved = meanToEccentricAnomaly(*meanAnomaly, eccentricityOf(ecc));
-            INFO(errorName(solved));
-            REQUIRE(solved.has_value());
-            INFO("hyperbolic Kepler round trip");
-            REQUIRE_THAT(solved->value(), WithinAbsOf(hyperbolic->value(), Tolerance{1e-9}));
+            requireTheHyperbolicAnomalyRoundTrips(Radians{nuMax * static_cast<f64>(i) / 20.0}, ecc);
         }
     }
 }
@@ -798,20 +917,14 @@ TEST_CASE("Braeunig's elliptic worked example", "[orbit][anomaly][published]") {
 // seconds, as the page has them; the numbers only are used (decision 470).
 constexpr f64 kWeberMu = 3.986004418e5; // km^3/s^2, the page's value
 
-TEST_CASE("Weber's elliptic worked example", "[orbit][anomaly][published]") {
-    constexpr f64 kPerigee = 9600.0; // km
-    constexpr f64 kApogee = 21000.0; // km
-    const f64 ecc = (kApogee - kPerigee) / (kApogee + kPerigee);
-    REQUIRE_THAT(ecc, WithinAbsOf(0.3725, kOneDecimalInTheFourth));
-    const Eccentricity e = eccentricityOrFail(ecc);
+namespace {
 
-    const Radians eccentric = requireAnomaly(trueToEccentricAnomaly(toRadians(Degrees{120.0}), e));
-    REQUIRE_THAT(eccentric.value(), WithinAbsOf(1.73, kTwoDecimals));
-    const Radians mean = requireAnomaly(eccentricToMeanAnomaly(eccentric, e));
-    REQUIRE_THAT(mean.value(), WithinAbsOf(1.36, kTwoDecimals));
+constexpr f64 kWeberPerigee = 9600.0; // km
+constexpr f64 kWeberApogee = 21000.0; // km
 
+void requireThreeHoursAfterWebersPerigee(Eccentricity e) {
     INFO("three hours after perigee: M = 3.60, E = 3.48, v = 193.16 degrees");
-    const f64 sma = (kApogee + kPerigee) / 2.0;
+    const f64 sma = (kWeberApogee + kWeberPerigee) / 2.0;
     const f64 period = kTau / std::sqrt(kWeberMu) * std::pow(sma, 1.5);
     const f64 meanLater = kTau * 3.0 * 3600.0 / period;
     REQUIRE_THAT(meanLater, WithinAbsOf(3.60, kTwoDecimals));
@@ -820,6 +933,21 @@ TEST_CASE("Weber's elliptic worked example", "[orbit][anomaly][published]") {
     REQUIRE_THAT(wrapTau(*solved).value(), WithinAbsOf(3.48, kTwoDecimals));
     const Radians later = requireAnomaly(eccentricToTrueAnomaly(*solved, e));
     REQUIRE_THAT(toDegrees(later).value(), WithinAbsOf(193.16, kTwoDecimals));
+}
+
+} // namespace
+
+TEST_CASE("Weber's elliptic worked example", "[orbit][anomaly][published]") {
+    const f64 ecc = (kWeberApogee - kWeberPerigee) / (kWeberApogee + kWeberPerigee);
+    REQUIRE_THAT(ecc, WithinAbsOf(0.3725, kOneDecimalInTheFourth));
+    const Eccentricity e = eccentricityOrFail(ecc);
+
+    const Radians eccentric = requireAnomaly(trueToEccentricAnomaly(toRadians(Degrees{120.0}), e));
+    REQUIRE_THAT(eccentric.value(), WithinAbsOf(1.73, kTwoDecimals));
+    const Radians mean = requireAnomaly(eccentricToMeanAnomaly(eccentric, e));
+    REQUIRE_THAT(mean.value(), WithinAbsOf(1.36, kTwoDecimals));
+
+    requireThreeHoursAfterWebersPerigee(e);
 }
 
 TEST_CASE("Weber's hyperbolic worked example", "[orbit][anomaly][published]") {

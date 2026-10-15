@@ -572,6 +572,7 @@ set(ORBSIM_CORE_SOURCES
         src/astro/EarthOrientation.cpp
         src/astro/Sun.cpp
         src/astro/Tdb.cpp
+        src/core/Contract.cpp
         src/core/LeapSeconds.cpp
         src/orbit/Orbit.cpp
 )
@@ -581,6 +582,13 @@ target_link_libraries(orbsim_core
         PUBLIC orbsim_fp mp-units::mp-units
         PRIVATE orbsim_warnings orbsim_sanitizers orbsim_erfa
 )
+# std::stacktrace, which a failed precondition prints (register decisions 549
+# and 556), lives in libstdc++'s separate library, stdc++exp, in gcc 14's
+# standard library -- the one both compilers use on Linux. Microsoft's standard
+# library carries it itself.
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(orbsim_core PUBLIC stdc++exp)
+endif()
 
 # ---------------------------------------------------------------------------
 # Image files: stb, lodepng and OpenEXR (M1-16; register decisions 195-197).
@@ -785,6 +793,7 @@ set(ORBSIM_TEST_SUPPORT_SOURCES
         tests/FixtureFile.cpp
         tests/HdrDumpFile.cpp
         tests/OrbitTestSupport.cpp
+        tests/TestReads.cpp
 )
 add_library(orbsim_test_support STATIC ${ORBSIM_TEST_SUPPORT_SOURCES})
 target_include_directories(orbsim_test_support PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
@@ -795,13 +804,29 @@ target_link_libraries(orbsim_test_support PUBLIC
         orbsim_stb_image
         Catch2::Catch2WithMain
 )
-# Where the suites find reference data: data/ in the source tree, named by the
-# build exactly as ORBSIM_ASSET_DIR names it for the application. Private,
-# because only tests/FixtureFile.cpp reads it -- dataDirectory() is the one
-# place the path enters C++, and every suite asks that function.
+# Where probes write by default -- the build tree, register decision 192 --
+# named here rather than with the application, because the suites read from
+# it too.
+set(ORBSIM_PROBE_DIR "${CMAKE_CURRENT_BINARY_DIR}/probes")
+# Where the suites find what they read, and where each test case records what
+# it read (M1-129, register decisions 498 and 527-530): data/ in the source
+# tree, named exactly as ORBSIM_ASSET_DIR names it for the application; the
+# probes' folder; and test-reads/ in the build tree, which scripts/run-tests.py
+# reads. Private, because only tests/TestReads.cpp reads them -- dataFile() and
+# probeFile() are the one place a folder a test reads from enters C++, and the
+# CTest test test_reads fails if another file under tests/ names one.
 target_compile_definitions(orbsim_test_support PRIVATE
         ORBSIM_DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data"
+        ORBSIM_PROBE_DIR="${ORBSIM_PROBE_DIR}"
+        ORBSIM_READ_RECORD_DIR="${CMAKE_CURRENT_BINARY_DIR}/test-reads"
 )
+# Optimised in every clang and gcc tree (register decision 538): each test case
+# hashes the files it read as it ends, and unoptimised SHA-256 runs at about
+# 10 MB/s -- a port check took 7.9 s in the Debug tree against 2.4 s without
+# hashing, and 2.8-2.9 s with this. The standard library's Debug checks stay
+# on. Not for MSVC, whose Debug run-time checks cl refuses beside /O2 (D8016).
+set_source_files_properties(tests/TestReads.cpp PROPERTIES
+        COMPILE_OPTIONS "$<$<CXX_COMPILER_ID:Clang,GNU>:-O2>")
 
 set(ORBSIM_TESTS
         test_astro_time
@@ -830,10 +855,12 @@ set(ORBSIM_TESTS
         test_planetary_grid
         test_probe_sidecar
         test_projection
+        test_read_records
         test_render_quality
         test_srgb
         test_statistics
         test_sun
+        test_test_case
         test_time
         test_time_leap
         test_time_ut1
@@ -844,6 +871,18 @@ set(ORBSIM_TESTS
 # The suites, each with the abort listener (M1-90): cmake/TestSuites.cmake.
 orbsim_configure_input("${CMAKE_CURRENT_SOURCE_DIR}/cmake/TestSuites.cmake")
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/TestSuites.cmake)
+
+# What test_read_records holds a recorded file's bytes to (register decision
+# 554): the SHA-256 CMake computes of the same file, a second implementation
+# beside tests/Sha256.hpp and every byte rather than the size --
+# std::filesystem::file_size, which would give the size, is where
+# clang-analyzer reports a false finding inside MSVC's own header. A configure
+# dependency, so that an edit of the file configures the tree again.
+set(orbsim_read_back_file "${CMAKE_CURRENT_SOURCE_DIR}/data/skyfield/README.md")
+file(SHA256 "${orbsim_read_back_file}" orbsim_read_back_sha256)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${orbsim_read_back_file}")
+target_compile_definitions(test_read_records PRIVATE
+        ORBSIM_READ_BACK_SHA256="${orbsim_read_back_sha256}")
 
 # The suites that link orbsim_view. Named here rather than added to
 # orbsim_test_support, so that the other suites still cannot see the
@@ -929,6 +968,43 @@ add_test(NAME angle_between_zero_aborts
 set_tests_properties(angle_between_zero_aborts PROPERTIES
         SKIP_REGULAR_EXPRESSION "SKIPPED:"
 )
+
+# What a failed precondition or postcondition says (M1-129, register decisions
+# 549, 556 and 557): the condition, the function and the file, and the line
+# from the chain of calls wherever the tree has debug information to read it
+# from -- every tree but MSVC's, which links without it (decision 511).
+# cmake/VerifyAssertionMessage.cmake finds the line in the probe's own source.
+add_executable(assertion_message_probe tests/assertion_message_probe.cpp)
+target_include_directories(assertion_message_probe PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+target_link_libraries(assertion_message_probe PRIVATE
+        orbsim_core
+        orbsim_warnings
+        orbsim_sanitizers
+)
+if(MSVC)
+    set(orbsim_message_lines OFF)
+else()
+    set(orbsim_message_lines ON)
+endif()
+foreach(kind precondition postcondition)
+    if(kind STREQUAL "precondition")
+        set(orbsim_tripped provokedPrecondition)
+    else()
+        set(orbsim_tripped provokedPostcondition)
+    endif()
+    add_test(NAME assertion_message_${kind}
+            COMMAND ${CMAKE_COMMAND}
+                    -DPROBE=$<TARGET_FILE:assertion_message_probe>
+                    -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/assertion_message_probe.cpp
+                    -DKIND=${kind}
+                    -DFUNCTION=${orbsim_tripped}
+                    -DLINES=${orbsim_message_lines}
+                    -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/VerifyAssertionMessage.cmake
+    )
+    set_tests_properties(assertion_message_${kind} PROPERTIES
+            SKIP_REGULAR_EXPRESSION "SKIPPED:"
+    )
+endforeach()
 
 # -Wfloat-equal is live after core/Units.hpp (M1-117, register decisions 451
 # and 454): mp-units v2.5.0 left it switched off there, and core/Units.hpp now
@@ -1265,11 +1341,10 @@ target_link_libraries(orbsim PRIVATE
         ${Vulkan_LIBRARY}
 )
 
-# Where probes write by default -- the build tree, register decision 192 --
-# where a benchmark writes by default, the same way (M1-22, decision 373),
-# and which configuration built the binary, for the probe's sidecar and the
-# benchmark's report.
-set(ORBSIM_PROBE_DIR "${CMAKE_CURRENT_BINARY_DIR}/probes")
+# Where probes write by default -- ORBSIM_PROBE_DIR, set beside the test
+# support library -- where a benchmark writes by default, the same way (M1-22,
+# decision 373), and which configuration built the binary, for the probe's
+# sidecar and the benchmark's report.
 set(ORBSIM_BENCH_DIR "${CMAKE_CURRENT_BINARY_DIR}/bench")
 target_compile_definitions(orbsim PRIVATE
         ORBSIM_SHADER_DIR="${SHADER_OUT_DIR}"
@@ -1369,7 +1444,6 @@ set_tests_properties(probe_clear_determinism PROPERTIES
 # probe_clear has written the dump. The pattern M1-18's numeric probes copy.
 add_executable(test_probe_clear tests/test_probe_clear.cpp)
 target_link_libraries(test_probe_clear PRIVATE orbsim_abort_behaviour orbsim_test_support)
-target_compile_definitions(test_probe_clear PRIVATE ORBSIM_PROBE_DIR="${ORBSIM_PROBE_DIR}")
 catch_discover_tests(test_probe_clear
         PROPERTIES FIXTURES_REQUIRED probe_clear_frame LABELS gpu RESOURCE_LOCK gpu)
 
@@ -1432,7 +1506,6 @@ endforeach()
 foreach(suite IN ITEMS test_radiometry test_tonemap_port)
     add_executable(${suite} tests/${suite}.cpp)
     target_link_libraries(${suite} PRIVATE orbsim_abort_behaviour orbsim_test_support orbsim_view)
-    target_compile_definitions(${suite} PRIVATE ORBSIM_PROBE_DIR="${ORBSIM_PROBE_DIR}")
 endforeach()
 catch_discover_tests(test_radiometry
         PROPERTIES FIXTURES_REQUIRED probe_data LABELS gpu RESOURCE_LOCK gpu)
@@ -1450,7 +1523,6 @@ catch_discover_tests(test_tonemap_port
 # leaves the number check running.
 add_executable(test_probe_lines tests/test_probe_lines.cpp)
 target_link_libraries(test_probe_lines PRIVATE orbsim_abort_behaviour orbsim_test_support)
-target_compile_definitions(test_probe_lines PRIVATE ORBSIM_PROBE_DIR="${ORBSIM_PROBE_DIR}")
 catch_discover_tests(test_probe_lines
         PROPERTIES FIXTURES_REQUIRED probe_data LABELS gpu RESOURCE_LOCK gpu)
 add_test(NAME probe_lines_golden
@@ -1475,7 +1547,6 @@ set_tests_properties(probe_lines_golden PROPERTIES LABELS gpu RESOURCE_LOCK gpu)
 # have none: they are judged by number, and by the owner flipping through them.
 add_executable(test_probe_grid tests/test_probe_grid.cpp)
 target_link_libraries(test_probe_grid PRIVATE orbsim_abort_behaviour orbsim_test_support)
-target_compile_definitions(test_probe_grid PRIVATE ORBSIM_PROBE_DIR="${ORBSIM_PROBE_DIR}")
 catch_discover_tests(test_probe_grid
         PROPERTIES FIXTURES_REQUIRED probe_data LABELS gpu RESOURCE_LOCK gpu)
 add_test(NAME probe_grid-400km_golden
@@ -1801,7 +1872,8 @@ list(APPEND ORBSIM_LINT_SOURCES ${ORBSIM_VIEW_SOURCES} ${ORBSIM_STB_IMAGE_SOURCE
 foreach(operation IN LISTS ORBSIM_COUNT_WRAPAROUND_OPERATIONS)
     list(APPEND ORBSIM_LINT_SOURCES tests/count_wraparound_${operation}.cpp)
 endforeach()
-list(APPEND ORBSIM_LINT_SOURCES tests/angle_between_zero_probe.cpp tests/reproducible_build_probe.cpp)
+list(APPEND ORBSIM_LINT_SOURCES tests/angle_between_zero_probe.cpp tests/assertion_message_probe.cpp
+        tests/reproducible_build_probe.cpp)
 if(ORBSIM_BUILD_APP)
     list(APPEND ORBSIM_LINT_SOURCES ${ORBSIM_APP_SOURCES} tests/test_probe_clear.cpp
             tests/test_radiometry.cpp tests/test_tonemap_port.cpp tests/make_broken_goldens.cpp
@@ -1920,18 +1992,39 @@ else()
 endif()
 set_tests_properties(horizons_fixture_converter PROPERTIES LABELS fixtures)
 
+# `check` runs the tests whose inputs changed since their last passing run,
+# and `check-full` runs every one (M1-129, register decisions 483, 484, 496
+# and 503): scripts/run-tests.py decides from fingerprints which tests to hand
+# to CTest, prints how many it skipped, and after a full run from a clean
+# working tree stamps the commit, which the pre-push hook requires in both
+# trees. A plain `ctest` still runs everything it is given. Python is already
+# required by doc-links; without it both fail rather than passing by doing
+# nothing.
+if(ORBSIM_PYTHON)
+    set(orbsim_run_tests ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run-tests.py
+            ${CMAKE_BINARY_DIR} --ctest ${CMAKE_CTEST_COMMAND} --jobs ${ORBSIM_TEST_JOBS})
+else()
+    set(orbsim_run_tests ${CMAKE_COMMAND} -E false)
+endif()
 add_custom_target(check
-        COMMAND ${CMAKE_CTEST_COMMAND} --output-on-failure -j ${ORBSIM_TEST_JOBS}
+        COMMAND ${orbsim_run_tests}
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-        COMMENT "ctest: every suite, and the GPU smoke test where there is a GPU"
+        COMMENT "run-tests: the suites whose inputs changed, and the GPU tests where there is a GPU"
         VERBATIM
 )
-add_dependencies(check
+add_custom_target(check-full
+        COMMAND ${orbsim_run_tests} --full
+        WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+        COMMENT "run-tests --full: every test, none skipped, and the commit stamped for the push"
+        VERBATIM
+)
+set(ORBSIM_CHECK_DEPENDENCIES
         ${ORBSIM_TESTS}
         count_wraparound_subtraction
         count_wraparound_addition
         count_wraparound_multiplication
         angle_between_zero_probe
+        assertion_message_probe
         reproducible_build_probe
         t_erfa_c
         t_erfa_c_extra
@@ -1948,6 +2041,8 @@ add_dependencies(check
         mutant-anchors
         configure-current
 )
+add_dependencies(check ${ORBSIM_CHECK_DEPENDENCIES})
+add_dependencies(check-full ${ORBSIM_CHECK_DEPENDENCIES})
 if(ORBSIM_BUILD_APP)
     # test_probe_clear with the application it checks: a suite `check` does
     # not build is one ctest reports as NOT_BUILT (M1-16, found the first time
@@ -1955,9 +2050,11 @@ if(ORBSIM_BUILD_APP)
     # make_broken_goldens for the golden tests' fixture (M1-17), the two
     # suites that read the numeric probes' frames (M1-18), and the `lines`
     # probe's number check (M1-19).
-    add_dependencies(check orbsim orbsim_render_header_selfcheck test_probe_clear
-            test_radiometry test_tonemap_port make_broken_goldens test_probe_lines
-            test_probe_grid)
+    foreach(orbsim_check IN ITEMS check check-full)
+        add_dependencies(${orbsim_check} orbsim orbsim_render_header_selfcheck test_probe_clear
+                test_radiometry test_tonemap_port make_broken_goldens test_probe_lines
+                test_probe_grid)
+    endforeach()
 endif()
 
 # Every library and program this file defines compiles in the memory pool

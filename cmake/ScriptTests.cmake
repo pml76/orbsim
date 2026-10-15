@@ -406,3 +406,80 @@ else()
     add_test(NAME lint_deps_self_test COMMAND ${CMAKE_COMMAND} -E false)
 endif()
 set_tests_properties(lint_deps lint_deps_self_test PROPERTIES LABELS fixtures)
+
+# Every file a test reads is named through tests/TestReads.hpp (M1-129,
+# register decisions 499 and 530): no folder macro outside the helper, and no
+# test opening a file itself, so that each test's read record names all it
+# read and the driver, scripts/run-tests.py, never skips a test whose input
+# changed. Read from the source tree; and its self-test, which runs it on
+# small trees of its own.
+if(ORBSIM_PYTHON)
+    add_test(NAME test_reads
+            COMMAND ${ORBSIM_PYTHON}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-test-reads.py ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    add_test(NAME test_reads_self_test
+            COMMAND ${ORBSIM_PYTHON}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-test-reads.py --self-test
+    )
+else()
+    add_test(NAME test_reads COMMAND ${CMAKE_COMMAND} -E false)
+    add_test(NAME test_reads_self_test COMMAND ${CMAKE_COMMAND} -E false)
+endif()
+set_tests_properties(test_reads test_reads_self_test PROPERTIES LABELS fixtures)
+
+# Every test case is written through tests/TestCase.hpp, so that its compiled
+# code is keyed by its own name and carries no line numbers (M1-129, register
+# decisions 558 and 573-575): only the header includes Catch2's macros, every
+# file writing a TEST_CASE includes the header, none of Catch2's other
+# registering macros appears, and no two sections of a test case share a
+# name. Read from the source tree, given whole on the command line so that the
+# driver reruns it on any change there; and its self-test.
+if(ORBSIM_PYTHON)
+    add_test(NAME test_cases
+            COMMAND ${ORBSIM_PYTHON}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-test-cases.py ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+    add_test(NAME test_cases_self_test
+            COMMAND ${ORBSIM_PYTHON}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-test-cases.py --self-test
+    )
+else()
+    add_test(NAME test_cases COMMAND ${CMAKE_COMMAND} -E false)
+    add_test(NAME test_cases_self_test COMMAND ${CMAKE_COMMAND} -E false)
+endif()
+set_tests_properties(test_cases test_cases_self_test PROPERTIES LABELS fixtures)
+
+# The test driver `check` calls (M1-129, register decisions 483-537): its
+# decision rules on made-up tests and fingerprints, and the driver itself on a
+# scratch project this cmake configures with this ninja and this ctest runs, where each change
+# must run exactly the tests it should, a full run must run all and stamp its
+# commit, and a full run from a working tree with changes must stamp nothing
+# (decision 537).
+if(ORBSIM_PYTHON)
+    add_test(NAME run_tests_self_test
+            COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run-tests.py --self-test
+    )
+    add_test(NAME run_tests_end_to_end
+            COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run-tests.py
+                    --end-to-end ${CMAKE_COMMAND} ${CMAKE_CTEST_COMMAND} ${CMAKE_MAKE_PROGRAM}
+    )
+else()
+    add_test(NAME run_tests_self_test COMMAND ${CMAKE_COMMAND} -E false)
+    add_test(NAME run_tests_end_to_end COMMAND ${CMAKE_COMMAND} -E false)
+endif()
+set_tests_properties(run_tests_self_test run_tests_end_to_end PROPERTIES LABELS fixtures)
+
+# One real read record held to what it must say, by a second implementation
+# of each part -- the escaped name spelled out by hand, the hash by CMake's
+# own file(SHA256) (M1-129, register decisions 498, 527 and 528):
+# cmake/VerifyReadRecord.cmake says what it checks.
+orbsim_configure_input("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VerifyReadRecord.cmake")
+add_test(NAME read_record_written
+        COMMAND ${CMAKE_COMMAND}
+                -DPROGRAM=$<TARGET_FILE:test_read_records>
+                -DRECORDS=${CMAKE_BINARY_DIR}/test-reads
+                -DDATA=${CMAKE_CURRENT_SOURCE_DIR}/data
+                -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/VerifyReadRecord.cmake
+)
+set_tests_properties(read_record_written PROPERTIES LABELS fixtures)
