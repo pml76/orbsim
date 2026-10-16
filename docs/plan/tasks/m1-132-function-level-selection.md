@@ -1,0 +1,159 @@
+# M1-132 — Tests chosen function by function
+
+Phase: B | Status: not started
+Prerequisites: M1-131
+Decided by: register decisions 543-553, 556-561, 564, 567, 569 and 570, ruled
+2026-10-15, and 582-595, ruled 2026-10-16; split out of M1-129 as its item 9's
+step D by decision 596.
+Reads what [M1-131](m1-131-coverage-hook.md) records; proved by
+[M1-133](m1-133-selection-proved.md).
+
+## Purpose
+
+`scripts/run-tests.py` skips a test only when its whole program is unchanged
+(decision 525). This task makes it rerun a test only when a function the test
+entered at its last passing run has changed in its compiled code -- in the
+trees carrying the hook; the others keep whole-program fingerprints (548).
+
+A function's **digest** is a hash of its compiled bytes, the names of the
+functions it points at, and the contents of the data it uses, followed through
+data that points at other data (545).
+
+## What to do
+
+1. **compiled-code.py under scripts/** (594), loaded by `scripts/run-tests.py`
+   as `scripts/mutate.py` loads `scripts/mutants-due.py`: a reader of Windows
+   object files (COFF) and of the libraries that hold them, read directly
+   (546), and of the linker's map; and the digests (545), each object's
+   summary kept in the build tree under the file's hash if reading them all
+   takes more than a few seconds (567).
+2. **Each recorded address turned into a function through the linker's map**
+   (582, amending 560), never through the debug information's names; checked
+   against the procedure ranges over a full run before it is relied on (560).
+3. **A program carrying the hook is fingerprinted as decision 583 lays out:
+   our own code by the hook, everyone else's code by its binary.**
+   - Function by function: the digests of the functions the test entered,
+     stored per test, a removed function counting as changed (547), and only
+     the test's own registrar among the start-up functions (550) -- since
+     decision 573 the one named after the test's own name.
+   - A module is known to carry the hook by its content: it holds the hook's
+     address table (584).
+   - A function in such a module that carries no flag counts as entered by
+     every test of every program that links it (586).
+   - An added start-up function counts as a change for every test of its
+     program, test registrations excepted (587).
+   - Everyone else's code, per program: the bytes of each library or object
+     file, and the list of modules the program took from it, from the map
+     (585) -- the code compiled in the tree without the hook, the libraries
+     built in their own folders, and those from outside the tree, Visual
+     Studio's and the Windows SDK's among them.
+   - The program's link command, from Ninja, and lld-link.exe in the machine
+     part (583).
+   - The libraries the program loads at start (525, 539), and for a GPU test
+     the card (532), as now.
+4. **Which test a record belongs to** (564): a test starting a program of the
+   tree directly, by its command line; a test defined in `CMakeLists.txt`, by
+   `ORBSIM_TEST_NAME`, every record carrying it combined.
+5. **A wrong or missing record fails `check`, naming the program** (590): the
+   recorder finding its flags and table out of line, a test that starts a
+   hooked program directly passing without a record, a record naming an
+   address the map gives no function. The probes that pass by aborting have
+   no record and always run (559).
+6. **Self-tests** (591): the decision rules on made-up inputs; the reader on
+   small samples compiled with the tree's own clang as the test runs, among
+   them that a test inserted before others leaves their digests unchanged;
+   and `compiled_code_self_test` and `run_tests_function_level`, the second
+   on a small scratch project carrying the hook, beside
+   `run_tests_end_to_end` -- each about 20-30 s, estimated.
+
+## Mutants
+
+At least: a digest ignoring a relocation; data not followed; a removed function
+not counted; another test's registrar counted; an address mapped to the wrong
+function; a function without a flag left out; an added start-up function
+ignored; a library from outside the tree left out of the binary part; a missing
+record passed over -- each caught by its self-test.
+
+## Done when
+
+- [ ] Every question the design raised ruled, and the rulings in the register.
+- [ ] `check` passes in both trees, the digest cost measured (567).
+- [ ] The task's mutant file has run after the commit and its record is
+      committed. A commit at the end; the push only on the owner's go-ahead
+      (595).
+
+## Background, moved from M1-129 on 2026-10-16 (decision 596)
+
+The section below is M1-129's item 9 as it stood, word for word: the spike, and
+the rulings of 2026-10-15 the three tasks rest on.
+
+## 9. Function-level test selection (decision 543)
+
+Added 2026-10-15, to be done **before this task's commit**. Whole-program
+fingerprints (decision 525) rerun every test of a program whose bytes changed;
+nearly every program links the core library, so a one-function fix to
+`Orbit.cpp` reran 507 tests. Function level reruns a test only when a function
+it entered, at its last run, changed in its compiled code.
+
+**The spike, 2026-10-15** (`build/wtfn`, machine-local, removed with the
+task's scratch): a clang Debug tree with `-ffunction-sections` and
+`-fsanitize-coverage=func,trace-pc-guard`, a recorder linked into every
+program, replayed over M1-118's 16 commits; C++ tests only, the rest being
+judged alike either way.
+
+| | Whole program | Function level | Function level, strict |
+|---|---|---|---|
+| test runs | 4,646 | 840 (18%) | 1,988 (43%) |
+| test time, summed | 6,158 s | 1,997 s (32%) | -- |
+
+Per commit, whole program against function level: `wrapTau` 505/121; mean
+motion 507/30; `propagateElements` 508/183; angular velocity 511/22; anomaly
+converters 521/209; period 522/38; double-double 523/35; `angleBetween`
+524/166; `stateFromElements` 525/36; the docs-only commits and the fuzz
+commit 0/0. "Strict" counts added and removed functions as changed too; a
+function that did not exist cannot have been entered, and its caller changed.
+
+How a function is compared, as the spike settled it on four known edits: its
+raw instruction bytes and the names its relocations point at, labels starting
+with `$` inside it; a data item -- a data section, named by its symbols --
+whose contents changed makes every function referring to it changed. A comment
+changed nothing; a `constexpr` table value changed exactly the function
+reading it.
+
+**The 18% is probably too low** (found 2026-10-15, decision 561): the spike
+turned each recorded address into a name through the debug information, which
+gave 2,813 of the 15,962 names in one record in their readable form, and
+those never matched a digest, filed under the object file's names. A change
+to such a function could select no test. Step 1c measures the real figure.
+
+What the remaining 18% is: tests whose own file was edited (Catch2 registers
+every case at start-up, so the whole program reruns -- 147 runs); the GPU
+chain, one probe entering a changed function rerunning the probe suites
+through decision 508; line numbers in assertion messages shifting functions
+below an edit; and probably an artefact of the spike's keying of unnamed data
+sections by position, which makes 18% an upper bound.
+
+**The design questions were ruled on 2026-10-15** (1a, decisions 544-553):
+the hook in both `check` trees if it measures cheap (544); a function's digest
+its code, the names it points at and the contents of the data it uses,
+followed through data, with no data named by position (545); the object files
+read by a COFF reader in Python (546); a removed function that was entered
+counts as changed (547); trees without the hook keep whole-program
+fingerprints (548); the project's assertions print a stack trace from the
+debug information instead of carrying a line number (549); Catch2's line
+information fixed in one project header, and a test counting only its own
+registrar (550); folding checked before addresses are named (551); and the
+selection proved safe by `m1-118.json`'s mutants (552). The order (553): first
+`check` passing in both trees with items 2-5, then the measurements those
+rulings call for, then the build (1b) and M1-118's commits measured with the
+real implementation (1c).
+
+**Measured and ruled further on 2026-10-15** (decisions 554-563): `check`
+passed in both trees with items 2-5 after the fixes of 554 and 555; the
+assertion message names file, function and condition and adds a stack trace
+taken inside the macro (556), `ORBSIM_ENSURES` alike (557); two same-named
+sections in a test case are refused (558); the hook is `inline-bool-flag`
+with `pc-table`, no measurable cost in either tree, where a call at every
+entry cost about 30% of the Debug tests (559); an address becomes a function
+through its object-file section, never through the debug information's names
+(560); and the split by cause is measured in step 1c (561).

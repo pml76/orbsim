@@ -4,8 +4,10 @@ Phase: B | Status: in progress
 Prerequisites: M1-118
 Decided by: register decisions 483-491, 495-506 and 508-510, ruled
 2026-10-12, 511-519, ruled 2026-10-13, 520-524 and 525-542, ruled
-2026-10-14, 543, 544-568 and 569-581, ruled 2026-10-15, and 582-595, ruled
-2026-10-16.
+2026-10-14, 543, 544-568 and 569-581, ruled 2026-10-15, and 582-596, ruled
+2026-10-16. **Split on 2026-10-16** (decision 596): item 9's steps C, D and E
+are [M1-131](m1-131-coverage-hook.md), [M1-132](m1-132-function-level-selection.md)
+and [M1-133](m1-133-selection-proved.md), after this task.
 Continues [ADR 0024](../../adr/0024-verification-costs-what-changed.md); its
 sibling, the code as modules, is [M1-130](m1-130-code-as-modules.md).
 
@@ -136,15 +138,19 @@ restoring the text and the time but not the outputs; a recorded read left out
 ## Done when
 
 - [ ] Every question the design raised ruled, and the rulings in the register.
-- [ ] Item 9, function-level selection, built, and M1-118's 16 commits
-      measured with it against the spike's 18% (decision 543).
-- [ ] M1-118's 16 commits measured again with the real implementation,
-      against the simulation's 26%.
 - [ ] Before and after for a clean `check`, a one-file change, a header change
       and a mutation pass, written in `STATUS.md`.
 - [ ] `check` passes in both trees.
 - [ ] The task's mutant file has run after the commit and its record is
-      committed.
+      committed, and so has every mutant file `scripts/mutants-due.py` lists
+      (decision 580); then `check-full` in both trees, and the push on the
+      owner's go-ahead (decisions 535 and 595).
+
+*Moved by decision 596 (2026-10-16):* item 9's steps C to E, and M1-118's 16
+commits measured with them against the spike's 18% (decision 543), are
+M1-131 to M1-133; and M1-118's commits measured with this task's
+whole-program fingerprints, against the simulation's 26%, are measured in the
+same replay, in M1-133.
 
 ## Where it stands (2026-10-15, third session's end)
 
@@ -215,136 +221,30 @@ Item 9, **step B done** (decisions 569-581, 2026-10-15):
 
 Decisions 525-581 in the register; working agreement 9 in `CLAUDE.md`.
 
-**Every question steps C to E raised was ruled on 2026-10-16** (decisions
-582-595), before any of their code, after three measurements in the spike's
-hooked trees: the debug information's list of code pieces cannot tell apart
-two functions with the same bytes -- 53% of the pieces in five Debug programs
-matched two or more -- so an address becomes a function through the linker's
-map (582); the system's own libraries put code into every program, which
-neither Ninja's graph nor a digest sees, so **our own code goes by the hook and
-everyone else's code by its binary** (583-585); 2.2% of the functions in
-hooked Debug objects carry no flag, all standard-library code (586); and a
-file with start-up code, as `tests/ReadRecordListener.cpp` was, changes every
-test while changing no function a test entered (587).
+**Item 9's steps C to E are tasks of their own since 2026-10-16** (decision
+596): [M1-131](m1-131-coverage-hook.md), the coverage hook and the recorder;
+[M1-132](m1-132-function-level-selection.md), tests chosen function by
+function; [M1-133](m1-133-selection-proved.md), the selection proved and
+measured -- estimated at 10-12 hours together. Every question they raised was
+ruled the same day, before any of their code (decisions 582-595); the spike
+and the rulings of 2026-10-15 behind them are in M1-132's last section.
 
-**Next, item 9's remaining steps**, in this order, with a commit at the end of
-each and the push only on the owner's go-ahead (595):
-
-- **C** -- `ORBSIM_COVERAGE_HOOK` on in the `debug` and `relwithdebinfo`
-  presets (566), on the project's own targets only (569) and on none that
-  compiles someone else's code (588), with `-ffunction-sections` and
-  `-fdata-sections` (545), and each program linked with the linker's map
-  (582); the recorder, CoverageRecorder.cpp under tests/, in the OBJECT
-  library `orbsim_coverage_recorder` (594), with the `inline-bool-flag` and
-  `pc-table` hook and its section markers (559), its suppressions (565), one
-  file per process named by number and start time, written after every static
-  destructor has run so that code running at exit is recorded too, and only
-  into the folder `ORBSIM_COVERAGE_RECORDS` names (570, 594); and the test's
-  name, `ORBSIM_TEST_NAME`, in the environment of every test `CMakeLists.txt`
-  defines (564, 594). Measured before it is switched on: the build time, the
-  maps' size, `reproducible_build`, no two functions at one address (551), the
-  optimised tree's functions without a flag (586), and the benchmark with and
-  without the hook (589).
-- **D** -- the driver, with compiled-code.py under scripts/ (594): a reader
-  of object files and libraries and of the linker's map, each recorded address
-  turned into a function through the map (582, amending 560); the digests
-  (545), stored per test with removed functions counting as changed (547) and
-  only a test's own registrar (550) -- since decision 573 the start-up function
-  named after the test's own name; a hooked program fingerprinted as decision
-  583 lays out -- our own code by the hook, everyone else's by its binary, a
-  module known to carry the hook by its content (584), a binary meaning its
-  file's bytes and the modules the program took from it (585), the link
-  command, and lld-link.exe in the machine part; a function without a flag
-  counted as entered by every test (586); an added start-up function counted
-  as a change for every test of its program, test registrations excepted
-  (587); a wrong or missing coverage record failing `check` (590);
-  whole-program fingerprints where there is no hook (548); the digest cost
-  measured (567). Self-tests that compile their samples as they run, and
-  `run_tests_function_level` beside `run_tests_end_to_end` (591), among them
-  that a test inserted before others leaves their digests unchanged.
-- **E** -- `check` in both trees, then step 1c, with steps A to C laid over
-  each of M1-118's commits in a scratch worktree (592) and the split by cause
-  (561), and the mutant check of the selection on today's tree (552).
-
-Then the rest of the order below; before the push, every mutant file
-`scripts/mutants-due.py` lists (decision 580). Steps C to E estimated at 10-12
-hours. The measurements behind decisions 544-581 were taken in scratch trees
-and folders on the machine they were taken on; `STATUS.md` names them.
-
-## 9. Function-level test selection (decision 543)
-
-Added 2026-10-15, to be done **before this task's commit**. Whole-program
-fingerprints (decision 525) rerun every test of a program whose bytes changed;
-nearly every program links the core library, so a one-function fix to
-`Orbit.cpp` reran 507 tests. Function level reruns a test only when a function
-it entered, at its last run, changed in its compiled code.
-
-**The spike, 2026-10-15** (`build/wtfn`, machine-local, removed with the
-task's scratch): a clang Debug tree with `-ffunction-sections` and
-`-fsanitize-coverage=func,trace-pc-guard`, a recorder linked into every
-program, replayed over M1-118's 16 commits; C++ tests only, the rest being
-judged alike either way.
-
-| | Whole program | Function level | Function level, strict |
-|---|---|---|---|
-| test runs | 4,646 | 840 (18%) | 1,988 (43%) |
-| test time, summed | 6,158 s | 1,997 s (32%) | -- |
-
-Per commit, whole program against function level: `wrapTau` 505/121; mean
-motion 507/30; `propagateElements` 508/183; angular velocity 511/22; anomaly
-converters 521/209; period 522/38; double-double 523/35; `angleBetween`
-524/166; `stateFromElements` 525/36; the docs-only commits and the fuzz
-commit 0/0. "Strict" counts added and removed functions as changed too; a
-function that did not exist cannot have been entered, and its caller changed.
-
-How a function is compared, as the spike settled it on four known edits: its
-raw instruction bytes and the names its relocations point at, labels starting
-with `$` inside it; a data item -- a data section, named by its symbols --
-whose contents changed makes every function referring to it changed. A comment
-changed nothing; a `constexpr` table value changed exactly the function
-reading it.
-
-**The 18% is probably too low** (found 2026-10-15, decision 561): the spike
-turned each recorded address into a name through the debug information, which
-gave 2,813 of the 15,962 names in one record in their readable form, and
-those never matched a digest, filed under the object file's names. A change
-to such a function could select no test. Step 1c measures the real figure.
-
-What the remaining 18% is: tests whose own file was edited (Catch2 registers
-every case at start-up, so the whole program reruns -- 147 runs); the GPU
-chain, one probe entering a changed function rerunning the probe suites
-through decision 508; line numbers in assertion messages shifting functions
-below an edit; and probably an artefact of the spike's keying of unnamed data
-sections by position, which makes 18% an upper bound.
-
-**The design questions were ruled on 2026-10-15** (1a, decisions 544-553):
-the hook in both `check` trees if it measures cheap (544); a function's digest
-its code, the names it points at and the contents of the data it uses,
-followed through data, with no data named by position (545); the object files
-read by a COFF reader in Python (546); a removed function that was entered
-counts as changed (547); trees without the hook keep whole-program
-fingerprints (548); the project's assertions print a stack trace from the
-debug information instead of carrying a line number (549); Catch2's line
-information fixed in one project header, and a test counting only its own
-registrar (550); folding checked before addresses are named (551); and the
-selection proved safe by `m1-118.json`'s mutants (552). The order (553): first
-`check` passing in both trees with items 2-5, then the measurements those
-rulings call for, then the build (1b) and M1-118's commits measured with the
-real implementation (1c).
-
-**Measured and ruled further on 2026-10-15** (decisions 554-563): `check`
-passed in both trees with items 2-5 after the fixes of 554 and 555; the
-assertion message names file, function and condition and adds a stack trace
-taken inside the macro (556), `ORBSIM_ENSURES` alike (557); two same-named
-sections in a test case are refused (558); the hook is `inline-bool-flag`
-with `pc-table`, no measurable cost in either tree, where a call at every
-entry cost about 30% of the Debug tests (559); an address becomes a function
-through its object-file section, never through the debug information's names
-(560); and the split by cause is measured in step 1c (561).
+**Next, to finish this task** (point 2 of the order below): its mutants for
+items 2-5 and item 9's step A, which have none yet in
+`scripts/mutants/m1-129.json` (35 mutants on 2026-10-16: items 6 and 7, and
+step B); the before-and-after measurements in `STATUS.md`; the documents,
+item 8 among them (decision 593); `check` in both trees; the commit; the
+task's own mutant file and every file `scripts/mutants-due.py` lists (decision
+580), and their record; `check-full` in both trees; and the push, on the
+owner's go-ahead (decisions 535 and 595). The measurements behind decisions
+544-581 were taken in scratch trees and folders on the machine they were
+taken on; `STATUS.md` names them.
 
 ## The order from here (ruled 2026-10-15, decision 543)
 
 1. **Item 9, function-level selection** -- design questions, build, measure.
+   **Since 2026-10-16 (decision 596) steps C to E are M1-131 to M1-133, taken
+   after point 2.**
 2. **Finish this task**: its mutants; the before-and-after measurements in
    `STATUS.md`; the documents (`CLAUDE.md`'s definition of done with
    `check-full` and the pre-push hook, `VERIFICATION.md`, `HISTORY.md`,

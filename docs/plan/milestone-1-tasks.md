@@ -44,7 +44,9 @@ include-what-you-use in `check`: **M1-128**, after M1-121 -- decision 455. 128
 until 2026-10-12, when M1-118's test times led to **M1-129**, tests run only
 when what they read has changed, and **M1-130**, the code as modules, both
 after M1-118; and the review's remaining tasks were reordered so that the
-lower levels of the code change first -- decisions 483-495.)
+lower levels of the code change first -- decisions 483-495. 130 until
+2026-10-16, when M1-129's item 9 left it as **M1-131 to M1-133**, after it --
+decision 596.)
 Which of them are done is in [`../STATUS.md`](../STATUS.md), not here.
 
 This is the working document for [milestone 1](milestone-1-earth.md): Earth, an
@@ -271,7 +273,10 @@ compilers' included -- passing.
 | [117](tasks/m1-117-float-equal-restored.md) | `-Wfloat-equal` back on, and the eight comparisons it hid | 116 | A warning that fires again |
 | [118](tasks/m1-118-core-fixes.md) | The simulation core's review findings | 117 | Every promise kept, tested |
 | [129](tasks/m1-129-tests-by-fingerprint.md) | Tests that run only when what they read has changed | 118 | A full run before a push, and a fraction of it otherwise |
-| [127](tasks/m1-127-asan-and-refactors.md) | The `asan` preset and four unasked-for refactors, reviewed | 129 | Two open sections ruled |
+| [131](tasks/m1-131-coverage-hook.md) | The coverage hook and the recorder | 129 | Each test's entered functions, recorded |
+| [132](tasks/m1-132-function-level-selection.md) | Tests chosen function by function | 131 | A test reruns when what it ran changed |
+| [133](tasks/m1-133-selection-proved.md) | The selection proved, and measured | 132 | No failing test ever skipped |
+| [127](tasks/m1-127-asan-and-refactors.md) | The `asan` preset and four unasked-for refactors, reviewed | 133 | Two open sections ruled |
 | [130](tasks/m1-130-code-as-modules.md) | The code as C++20 modules, bottom up, with libraries as the fallback | 127 | Levels a change cannot cross |
 | [119](tasks/m1-119-tests-that-can-fail.md) | Tests that can fail for what they claim | 130 | Each planted fault caught |
 | [121](tasks/m1-121-tools-build-fixes.md) | The checking tools' and the build's review findings | 119 | Tools seen failing |
