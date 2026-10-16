@@ -15,8 +15,8 @@ about to do.** They are one level deep from here, deliberately.
 
 | If you are… | Read |
 |---|---|
-| picking this up cold, or after a gap | [`docs/STATUS.md`](docs/STATUS.md), then [`docs/PROJECT_STATE.md`](docs/PROJECT_STATE.md) |
-| looking for a version, a count, or what is next | [`docs/STATUS.md`](docs/STATUS.md) — the only place any of them lives |
+| starting any session, or picking this up cold | [`docs/BRIEFING.md`](docs/BRIEFING.md), then [`docs/STATUS.md`](docs/STATUS.md) and the next task's document. The briefing condenses everything below and points to it; open a long document only for the section you are about to apply |
+| looking for a version, a count, or what is next | [`docs/STATUS.md`](docs/STATUS.md), and the suites one by one in [`docs/TEST_SUITES.md`](docs/TEST_SUITES.md) — the only places any of them lives |
 | writing or changing C++ | [`CODING_GUIDELINES.md`](CODING_GUIDELINES.md), and copy the shape in [`coding-guidelines-example/`](coding-guidelines-example/) |
 | writing a test, or touching anything numerical | [`docs/VERIFICATION.md`](docs/VERIFICATION.md) — **before** the test, not after |
 | doing a milestone 1 task | [`docs/plan/milestone-1-tasks.md`](docs/plan/milestone-1-tasks.md), its [decision register](docs/plan/milestone-1-decisions.md), and the one task document |

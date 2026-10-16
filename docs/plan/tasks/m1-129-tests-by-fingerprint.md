@@ -272,7 +272,11 @@ taken on; `STATUS.md` names them.
      `doc-links`, `run_tests_end_to_end` -- running in both `check` trees;
    - clang-tidy reading every file once per tree.
 5. **Whether agreement 9 covers the documentation too**: `STATUS.md` is
-   146 KB, read at the start of every session.
+   146 KB, read at the start of every session. **Begun 2026-10-16**
+   (decisions 597 and 598): `docs/BRIEFING.md` for a session's start, and
+   `STATUS.md` down to about 18 KB, its logs moved word for word into
+   `HISTORY.md` and `docs/TEST_SUITES.md`. Whether more follows is still this
+   point's question.
 
 Points 3-5 may become tasks of their own; that is decided when each is taken
 up. **Settled along the way**: the MSVC exception of decision 538, confirmed

@@ -40,10 +40,12 @@ numbers so existing references still resolve:
 
 ## 1. Where the project is
 
-**In [`STATUS.md`](STATUS.md).** What is built, what each directory contains,
-the test suites and their counts, the current milestone and the next task all
-live there, because they are the facts that change most often and they must
-change in exactly one place.
+**In [`STATUS.md`](STATUS.md).** What is built, the test suites' totals, the
+current milestone and the next task all live there, because they are the facts
+that change most often and they must change in exactly one place. Since
+2026-10-16 (register decision 598) the suites one by one are in
+[`TEST_SUITES.md`](TEST_SUITES.md), and what each directory contained, task by
+task, is [`HISTORY.md`](HISTORY.md) section 7.
 
 ---
 
@@ -1312,6 +1314,10 @@ catch this class of thing. Run all six before pushing a change to `core/`.
 
 Read in this order:
 
+0. [`BRIEFING.md`](BRIEFING.md) — since 2026-10-16, everything below
+   condensed, each line pointing at its full text. For a session's start it
+   is enough with `STATUS.md` and the task's document; the rest of this list
+   is for when a section is needed.
 1. [`STATUS.md`](STATUS.md) — where things stand, and what is next. Short.
 2. [`CLAUDE.md`](../CLAUDE.md) — how to work here, and the definition of done.
 3. This file, sections 7 and 8 — what is undecided, and what is known to bite.
