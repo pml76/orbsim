@@ -37,6 +37,18 @@ measurement. Whether a figure should span a set time rather than a set
 number of frames, or simply more frames on that machine, is the owner's
 decision, and it is put before the first run here.
 
+**Run both ways, with and without the coverage hook** *(added 2026-10-16,
+register decision 589)*. Since M1-129 the `relwithdebinfo` tree the benchmark
+runs in carries a coverage hook: every function sets a flag of its own as it
+is entered, so that `check` can rerun only the tests whose functions changed.
+The hook was measured to cost nothing in the test times, but the frame time
+was not measured with it. So the run here is taken on the RX 7900 XTX both in that tree and in
+one configured with `-DORBSIM_COVERAGE_HOOK=OFF`, and both figures are
+recorded, which also says how this phase's figures compare with M1-22's
+baseline, taken without the hook. M1-129 measures the same on the RTX A2000
+machine in its step C, where the processor's figures swing too much to show
+a small effect.
+
 ## What to record
 
 In `PROJECT_STATE.md`, as a table beside the phase A and phase B baselines:

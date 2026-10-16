@@ -4,7 +4,8 @@ Phase: B | Status: in progress
 Prerequisites: M1-118
 Decided by: register decisions 483-491, 495-506 and 508-510, ruled
 2026-10-12, 511-519, ruled 2026-10-13, 520-524 and 525-542, ruled
-2026-10-14, and 543, 544-568 and 569-581, ruled 2026-10-15.
+2026-10-14, 543, 544-568 and 569-581, ruled 2026-10-15, and 582-595, ruled
+2026-10-16.
 Continues [ADR 0024](../../adr/0024-verification-costs-what-changed.md); its
 sibling, the code as modules, is [M1-130](m1-130-code-as-modules.md).
 
@@ -95,7 +96,10 @@ changed, keeps a full run before every push, and removes two fixed costs every
    and makes its file due; a file's own mutants, not its note, are its input.
 8. **The working loop** written into `CLAUDE.md`'s definition of done: the
    quick targets -- `lint`, `format-check`, `doc-links` -- and the affected
-   suites before a full `check`.
+   suites before a full `check`. **Amended by decision 593** (2026-10-16):
+   `check` now runs only the affected tests itself, so the loop is the quick
+   targets while working, then `check`; and `check-full` and the pre-push
+   hook join the definition of done.
 
 **Items 2-5 as one step** (decisions 525-537, ruled 2026-10-14): a program
 is fingerprinted by its own bytes and those of every library it loads (525);
@@ -211,25 +215,56 @@ Item 9, **step B done** (decisions 569-581, 2026-10-15):
 
 Decisions 525-581 in the register; working agreement 9 in `CLAUDE.md`.
 
-**Next, item 9's remaining steps**, in this order:
+**Every question steps C to E raised was ruled on 2026-10-16** (decisions
+582-595), before any of their code, after three measurements in the spike's
+hooked trees: the debug information's list of code pieces cannot tell apart
+two functions with the same bytes -- 53% of the pieces in five Debug programs
+matched two or more -- so an address becomes a function through the linker's
+map (582); the system's own libraries put code into every program, which
+neither Ninja's graph nor a digest sees, so **our own code goes by the hook and
+everyone else's code by its binary** (583-585); 2.2% of the functions in
+hooked Debug objects carry no flag, all standard-library code (586); and a
+file with start-up code, as `tests/ReadRecordListener.cpp` was, changes every
+test while changing no function a test entered (587).
+
+**Next, item 9's remaining steps**, in this order, with a commit at the end of
+each and the push only on the owner's go-ahead (595):
 
 - **C** -- `ORBSIM_COVERAGE_HOOK` on in the `debug` and `relwithdebinfo`
-  presets (566); the recorder, CoverageRecorder.cpp under tests/, with the
-  `inline-bool-flag` and `pc-table` hook and its section markers (559), its
-  suppressions (565), one file per process named by number and start time,
-  writing only into the folder the driver names (570), and the test's name in
-  the environment of every test `CMakeLists.txt` defines (564); the hook on
-  the project's own targets only (569).
-- **D** -- the driver: a COFF reader, each address turned into a function
-  through its object-file section (560), the digests (545), stored per test
-  with removed functions counting as changed (547) and only a test's own
-  registrar (550) -- since decision 573 the start-up function named after the
-  test's own name -- the code without the hook fingerprinted whole per
-  program (569), whole-program fingerprints where there is no hook (548), the
-  digest cost measured (567); self-tests and the end-to-end test, among them
+  presets (566), on the project's own targets only (569) and on none that
+  compiles someone else's code (588), with `-ffunction-sections` and
+  `-fdata-sections` (545), and each program linked with the linker's map
+  (582); the recorder, CoverageRecorder.cpp under tests/, in the OBJECT
+  library `orbsim_coverage_recorder` (594), with the `inline-bool-flag` and
+  `pc-table` hook and its section markers (559), its suppressions (565), one
+  file per process named by number and start time, written after every static
+  destructor has run so that code running at exit is recorded too, and only
+  into the folder `ORBSIM_COVERAGE_RECORDS` names (570, 594); and the test's
+  name, `ORBSIM_TEST_NAME`, in the environment of every test `CMakeLists.txt`
+  defines (564, 594). Measured before it is switched on: the build time, the
+  maps' size, `reproducible_build`, no two functions at one address (551), the
+  optimised tree's functions without a flag (586), and the benchmark with and
+  without the hook (589).
+- **D** -- the driver, with compiled-code.py under scripts/ (594): a reader
+  of object files and libraries and of the linker's map, each recorded address
+  turned into a function through the map (582, amending 560); the digests
+  (545), stored per test with removed functions counting as changed (547) and
+  only a test's own registrar (550) -- since decision 573 the start-up function
+  named after the test's own name; a hooked program fingerprinted as decision
+  583 lays out -- our own code by the hook, everyone else's by its binary, a
+  module known to carry the hook by its content (584), a binary meaning its
+  file's bytes and the modules the program took from it (585), the link
+  command, and lld-link.exe in the machine part; a function without a flag
+  counted as entered by every test (586); an added start-up function counted
+  as a change for every test of its program, test registrations excepted
+  (587); a wrong or missing coverage record failing `check` (590);
+  whole-program fingerprints where there is no hook (548); the digest cost
+  measured (567). Self-tests that compile their samples as they run, and
+  `run_tests_function_level` beside `run_tests_end_to_end` (591), among them
   that a test inserted before others leaves their digests unchanged.
-- **E** -- `check` in both trees, then step 1c with the split by cause (561)
-  and the mutant check of the selection (552).
+- **E** -- `check` in both trees, then step 1c, with steps A to C laid over
+  each of M1-118's commits in a scratch worktree (592) and the split by cause
+  (561), and the mutant check of the selection on today's tree (552).
 
 Then the rest of the order below; before the push, every mutant file
 `scripts/mutants-due.py` lists (decision 580). Steps C to E estimated at 10-12
@@ -340,6 +375,8 @@ through its object-file section, never through the debug information's names
    146 KB, read at the start of every session.
 
 Points 3-5 may become tasks of their own; that is decided when each is taken
-up. **Still owed to the owner along the way**: confirmation of the MSVC
-exception in decision 538, and when to bring the proposal to build the Linux
-trees on WSL's own disk (recommended: after this task).
+up. **Settled along the way**: the MSVC exception of decision 538, confirmed
+(decision 562), and the proposal to build the Linux trees on WSL's own disk,
+to be brought after this task (decision 563). Item 8's text is decision 593:
+the quick targets while working, then `check`, with `check-full` and the
+pre-push hook in the definition of done.
