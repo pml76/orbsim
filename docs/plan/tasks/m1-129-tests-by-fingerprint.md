@@ -4,8 +4,8 @@ Phase: B | Status: in progress
 Prerequisites: M1-118
 Decided by: register decisions 483-491, 495-506 and 508-510, ruled
 2026-10-12, 511-519, ruled 2026-10-13, 520-524 and 525-542, ruled
-2026-10-14, 543, 544-568 and 569-581, ruled 2026-10-15, and 582-596, ruled
-2026-10-16. **Split on 2026-10-16** (decision 596): item 9's steps C, D and E
+2026-10-14, 543, 544-568 and 569-581, ruled 2026-10-15, and 582-596 and 601-613,
+ruled 2026-10-16. **Split on 2026-10-16** (decision 596): item 9's steps C, D and E
 are [M1-131](m1-131-coverage-hook.md), [M1-132](m1-132-function-level-selection.md)
 and [M1-133](m1-133-selection-proved.md), after this task.
 Continues [ADR 0024](../../adr/0024-verification-costs-what-changed.md); its
@@ -67,7 +67,9 @@ changed, keeps a full run before every push, and removes two fixed costs every
    probes already do for shaders; until a test records, **a conservative rule
    covers it** -- any change under `data/`, `tests/golden/` or the build files
    reruns every test that could read them. M1-124's item (a), the shader files
-   a test read, is done here (decision 495).
+   a test read, came here (decision 495) and was not built; it moved on to
+   [M1-131](m1-131-coverage-hook.md), which names the test each process
+   belongs to (decision 601).
 4. **The 63 GPU tests fingerprinted too** (decision 490): their programs, the
    shaders, the driver version and the card.
 5. **A full, unskipped run before every push** (decision 484), and a
@@ -135,11 +137,29 @@ that should have run; the full run before a push skipped; `mutate.py`
 restoring the text and the time but not the outputs; a recorded read left out
 -- each caught by its self-test.
 
+**As written** (decisions 602-606): `scripts/mutants/m1-129.json` holds
+items 1-7 and step B, judged in `build/relwithdebinfo`, and
+`scripts/mutants/m1-129-debug.json` step A, judged in `build/debug`, where
+assertions are live. Before they were written, a spike on a scratch copy of
+the driver found eight of its parts that no test could see broken -- a
+program's libraries, the card, the listener, the machine part, the
+environment, the definition, the shaders, a folder named on a command line --
+because the self-test checked which parts a fingerprint has, never that each
+moves with its input (decision 602). Each now has a self-test case that
+changes its input, `run_tests_in_tree` asks the real tools again, and every
+one of the eight was seen caught. The enforcement of the full run -- `--full`
+on `check-full`, the pre-push hook -- is tested by `parallel_tests` and by
+`run_tests_end_to_end` pushing through the real hook (decision 603); and a
+read before the first test case, by a listener in `test_read_records`
+(decision 604).
+
 ## Done when
 
 - [ ] Every question the design raised ruled, and the rulings in the register.
 - [ ] Before and after for a clean `check`, a one-file change, a header change
-      and a mutation pass, written in `STATUS.md`.
+      and a mutation pass, written in
+      [`docs/measurements/m1-129-before-after.md`](../../measurements/m1-129-before-after.md)
+      and linked from `STATUS.md` (decision 607).
 - [ ] `check` passes in both trees.
 - [ ] The task's mutant file has run after the commit and its record is
       committed, and so has every mutant file `scripts/mutants-due.py` lists
@@ -152,7 +172,40 @@ M1-131 to M1-133; and M1-118's commits measured with this task's
 whole-program fingerprints, against the simulation's 26%, are measured in the
 same replay, in M1-133.
 
-## Where it stands (2026-10-15, third session's end)
+## Where it stands (2026-10-16, the finish's first commit)
+
+**Every question the finish raised ruled, decisions 601-613**, and built:
+
+- **The gaps closed, each test seen failing first.** A spike on a scratch copy
+  of the driver found eight parts of a fingerprint no test could see broken
+  (decision 602); each now has a self-test case that changes its input --
+  91 cases where there were 69 -- and `run_tests_in_tree` asks the real tools
+  again. `check-parallel-tests.py` requires `--full` on `check-full` alone,
+  and `run_tests_end_to_end` pushes through the real pre-push hook, 15 steps
+  where there were 12 (603). A listener in `test_read_records` reads a file
+  before the first test case, and `read_record_written` requires it (604).
+  `mutate.py --verify` accepts a git hook's mutant that builds nothing (613).
+- **The mutants**: 51 new -- `m1-129.json` 79, items 1-7 and step B, and the
+  new `m1-129-debug.json` 7, step A, judged where assertions are live
+  (605, 606).
+- **ADR 0027** (608), and the documents of decision 609; item (a) moved to
+  M1-131 (601).
+- **Both fuzzers clean on the new assertion handler**, which the fuzz tree
+  had not yet been built with: on an otherwise idle machine `fuzz_orbit`
+  14,223,942 runs in 241 s, `fuzz_time` 18,320,819 in 901 s, no finding;
+  `fuzz_time` found 11 new inputs, of which `-merge=1` kept 9 (52 features),
+  committed. A first pair of runs made while the machine was building gave
+  4,924,932 and 13,163,555 runs, also clean; on an idle machine
+  `fuzz_orbit` runs about 60,000 inputs a second from either the present
+  corpus or M1-118's, so the low counts were the load.
+- **`check` passes in both trees**, 580 tests, 147 run and 433 skipped as
+  unchanged in each; the suites hold 3,941,219 assertions in 479 test cases.
+
+**Left**: the Process Monitor comparison (612), the timings (607), the
+mutation passes of decision 580, `check-full` in both trees, and the push on
+the owner's go-ahead.
+
+## Where it stood (2026-10-15, third session's end)
 
 **Committed as a checkpoint on `master`, not pushed** -- at the owner's
 request, to continue the next day. A push waits for the whole task:

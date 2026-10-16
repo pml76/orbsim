@@ -1429,7 +1429,10 @@ real thing.
 ## Before you push
 
 - [ ] Builds clean. Zero warnings. Not "only the usual ones" — zero.
-- [ ] `ctest` is green.
+- [ ] `check-full` is green in both trees, at the commit you push. `check`
+      skips the tests whose inputs did not change; this runs every one, and
+      the pre-push hook will not let the push through without it
+      ([ADR 0027](docs/adr/0027-tests-run-when-their-inputs-change.md)).
 - [ ] New logic has a test, and ideally one that checks it against something
       independent.
 - [ ] Everything that can be `const` is `const`.

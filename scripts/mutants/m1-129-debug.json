@@ -1,0 +1,108 @@
+{
+  "task": "M1-129 (Debug tree)",
+  "tree": "build/debug",
+  "note": "Item 9's step A, the assertion message (register decisions 549, 556, 557 and 605), in a file of its own and judged in build/debug: its judges, assertion_message_precondition and _postcondition, skip themselves where assertions are not live, so in the RelWithDebInfo tree m1-129.json is judged in every one would survive -- the split of m1-12.json and m1-12-release.json (VERIFICATION.md rule 19). Each mutant takes one thing from the message -- the condition, the function, the file, the chain of calls -- or takes the chain in the handler, where an unoptimised build names the line after the failing one (measured 2026-10-15), or makes ORBSIM_ENSURES report a precondition, or lets the handler return.",
+  "mutants": [
+    {
+      "name": "the precondition's message leaves out the condition",
+      "file": "src/core/Contract.hpp",
+      "find": "                        ::orb::detail::Contract::Precondition,                                     \\\n                        {.condition = #expression, .file = __FILE__, .function = __func__},        \\\n",
+      "replace": "                        ::orb::detail::Contract::Precondition,                                     \\\n                        {.condition = \"\", .file = __FILE__, .function = __func__},        \\\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "assertion_message_probe"
+      ],
+      "ctest": [
+        "assertion_message_precondition"
+      ]
+    },
+    {
+      "name": "the precondition's message leaves out the function",
+      "file": "src/core/Contract.hpp",
+      "find": "                        ::orb::detail::Contract::Precondition,                                     \\\n                        {.condition = #expression, .file = __FILE__, .function = __func__},        \\\n",
+      "replace": "                        ::orb::detail::Contract::Precondition,                                     \\\n                        {.condition = #expression, .file = __FILE__, .function = \"\"},        \\\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "assertion_message_probe"
+      ],
+      "ctest": [
+        "assertion_message_precondition"
+      ]
+    },
+    {
+      "name": "the postcondition's message leaves out the file",
+      "file": "src/core/Contract.hpp",
+      "find": "                        ::orb::detail::Contract::Postcondition,                                    \\\n                        {.condition = #expression, .file = __FILE__, .function = __func__},        \\\n",
+      "replace": "                        ::orb::detail::Contract::Postcondition,                                    \\\n                        {.condition = #expression, .file = \"\", .function = __func__},        \\\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "assertion_message_probe"
+      ],
+      "ctest": [
+        "assertion_message_postcondition"
+      ]
+    },
+    {
+      "name": "ORBSIM_ENSURES reports a precondition",
+      "file": "src/core/Contract.hpp",
+      "find": "                        ::orb::detail::Contract::Postcondition,                                    \\\n",
+      "replace": "                        ::orb::detail::Contract::Precondition,                                     \\\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "assertion_message_probe"
+      ],
+      "ctest": [
+        "assertion_message_postcondition"
+      ]
+    },
+    {
+      "name": "the chain of calls is not printed",
+      "file": "src/core/Contract.cpp",
+      "find": "        static_cast<void>(std::fputs(chain.c_str(), stderr));",
+      "replace": "        static_cast<void>(chain.size());",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "assertion_message_probe"
+      ],
+      "ctest": [
+        "assertion_message_precondition",
+        "assertion_message_postcondition"
+      ]
+    },
+    {
+      "name": "the chain of calls is taken in the handler, not at the failing line",
+      "file": "src/core/Contract.cpp",
+      "find": "        const std::string chain = std::to_string(calls);",
+      "replace": "        const std::string chain =\n            std::to_string(calls.empty() ? std::stacktrace::current() : std::stacktrace::current());",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "assertion_message_probe"
+      ],
+      "ctest": [
+        "assertion_message_precondition",
+        "assertion_message_postcondition"
+      ]
+    },
+    {
+      "name": "the handler returns instead of aborting",
+      "file": "src/core/Contract.cpp",
+      "find": "    std::abort();",
+      "replace": "    std::_Exit(0);",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "assertion_message_probe"
+      ],
+      "ctest": [
+        "assertion_message_precondition",
+        "assertion_message_postcondition"
+      ]
+    }
+  ]
+}

@@ -470,6 +470,33 @@ else()
 endif()
 set_tests_properties(run_tests_self_test run_tests_end_to_end PROPERTIES LABELS fixtures)
 
+# The driver on this tree's own programs (M1-129, register decision 602): the
+# self-test reads what llvm-readobj, ldd and --list-listeners answered once,
+# and this is where they are asked again. A suite carries the read-record
+# listener and assertion_message_probe does not; and where the tree builds the
+# application, the libraries its fingerprint follows include SDL3's, by the
+# file name CMake gives it -- SDL3_d.dll in Debug -- and the Vulkan loader.
+if(ORBSIM_PYTHON)
+    set(orbsim_in_tree_application "")
+    if(ORBSIM_BUILD_APP)
+        if(WIN32)
+            set(orbsim_vulkan_loader vulkan-1.dll)
+        else()
+            set(orbsim_vulkan_loader libvulkan.so.1)
+        endif()
+        set(orbsim_in_tree_application --application $<TARGET_FILE:orbsim>
+                --library $<TARGET_FILE_NAME:SDL3::SDL3> --library ${orbsim_vulkan_loader})
+    endif()
+    add_test(NAME run_tests_in_tree
+            COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run-tests.py ${CMAKE_BINARY_DIR}
+                    --in-tree --ctest ${CMAKE_CTEST_COMMAND} --suite $<TARGET_FILE:test_math>
+                    --without-listener $<TARGET_FILE:assertion_message_probe> ${orbsim_in_tree_application}
+    )
+else()
+    add_test(NAME run_tests_in_tree COMMAND ${CMAKE_COMMAND} -E false)
+endif()
+set_tests_properties(run_tests_in_tree PROPERTIES LABELS fixtures)
+
 # One real read record held to what it must say, by a second implementation
 # of each part -- the escaped name spelled out by hand, the hash by CMake's
 # own file(SHA256) (M1-129, register decisions 498, 527 and 528):

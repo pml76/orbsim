@@ -4,6 +4,9 @@
     run-tests.py <build tree> --ctest <ctest> [--jobs <n>] [--full]
     run-tests.py --pre-push <repository root>      (reads git's pre-push lines)
     run-tests.py --self-test
+    run-tests.py --end-to-end <cmake> <ctest> <ninja>
+    run-tests.py <build tree> --in-tree --ctest <ctest> --suite <program> --without-listener <program>
+                 [--application <program> --library <file name>...]
 
 Why this exists: CTest remembers nothing, so every `check` reran all 560
 tests whatever had changed -- on M1-118's 16 commits, 8,771 test runs where a
@@ -70,8 +73,13 @@ a listener lost, or a name escaped differently here and there.
 
 Proven able to fail before it was trusted: --self-test gives the decision
 rules made-up tests and fingerprints, and exits non-zero unless each is
-judged right; the CTest test run_tests_end_to_end runs the driver on a
-scratch project, and requires exactly the expected tests to run.
+judged right -- and, since register decision 602, changes each part's input
+and requires the fingerprint to move, and reads what llvm-readobj, ldd, the
+clear probe and --list-listeners answered on this project's programs; the
+CTest test run_tests_end_to_end runs the driver on a scratch project,
+requires exactly the expected tests to run, and pushes through the real
+pre-push hook (decision 603); and run_tests_in_tree asks the real tools
+again, on the tree's own programs.
 """
 
 import argparse
@@ -433,10 +441,7 @@ class World:
         while level:
             names = {}
             for chunk in chunks(list(level.values())):
-                command = [self.readobj(), "--coff-imports" if FOLLOW_DELAY_LOADED else "--needed-libs", *chunk]
-                out = subprocess.run(command, capture_output=True, text=True, encoding="utf-8",
-                                     errors="replace", check=False).stdout
-                names.update(imports_by_file(out))
+                names.update(imports_by_file(self.import_text(chunk)))
             following = {}
             for key, path in level.items():
                 edges = []
@@ -452,6 +457,14 @@ class World:
                         following[norm(target)] = target
                 self._edges[key] = edges
             level = following
+
+    def import_text(self, files: list) -> str:
+        """llvm-readobj's account of the libraries `files` load. The one place
+        the driver runs it, so that the self-test can hand learn_imports
+        recorded output in its place (register decision 602)."""
+        command = [self.readobj(), "--coff-imports" if FOLLOW_DELAY_LOADED else "--needed-libs", *files]
+        return subprocess.run(command, capture_output=True, text=True, encoding="utf-8",
+                              errors="replace", check=False).stdout
 
     def _find_library(self, name: str, beside: str):
         """Where Windows finds a library: beside the program, then the system
@@ -528,6 +541,13 @@ def elf_libraries(program: pathlib.Path) -> list:
     them, through ldd: the transitive list, with paths."""
     out = subprocess.run(["ldd", str(program)], capture_output=True, text=True, encoding="utf-8",
                          errors="replace", check=False).stdout
+    return ldd_libraries(out)
+
+
+def ldd_libraries(out: str) -> list:
+    """The libraries in ldd's account of a program: each with the path the
+    loader found, `<not found: name>` for one it did not, and the kernel's
+    vdso, which has no file, left out."""
     found = set()
     for line in out.splitlines():
         match = re.search(r"=>\s*(\S+)\s*\(", line) or re.match(r"\s*(/\S+)\s*\(", line)
@@ -627,9 +647,12 @@ class Run:
                     found.append(pathlib.Path(candidate))
         return found
 
-    def parts(self, test: dict, reads) -> dict:
+    def parts(self, test: dict, reads, env: dict) -> dict:
+        """What `test` is fingerprinted on, part by part. The environment is
+        handed in rather than read here, so that the self-test can give it
+        one (register decision 602)."""
         tree, root = norm(self.tree), norm(self.root)
-        found = {"definition": definition(test), "environment": environment(dict(os.environ)),
+        found = {"definition": definition(test), "environment": environment(env),
                  "machine": self.machine()}
         files, programs, built_program = [], [], False
         command = test.get("command", [])
@@ -676,8 +699,14 @@ class Run:
         if key not in known:
             run = subprocess.run([str(program), "--list-listeners"], capture_output=True, text=True,
                                  encoding="utf-8", errors="replace", check=False, timeout=60)
-            known[key] = run.returncode == 0 and LISTENER in run.stdout
+            known[key] = lists_listener(run.returncode, run.stdout)
         return known[key]
+
+
+def lists_listener(code: int, out: str) -> bool:
+    """Whether a program's answer to --list-listeners names the listener that
+    writes read records."""
+    return code == 0 and LISTENER in out
 
 
 def read_card(app: pathlib.Path, out: pathlib.Path, tree: pathlib.Path):
@@ -691,6 +720,13 @@ def read_card(app: pathlib.Path, out: pathlib.Path, tree: pathlib.Path):
         text = (out / "clear.txt").read_text(encoding="utf-8", errors="replace")
     except (OSError, subprocess.TimeoutExpired):
         return None
+    return card_values(text)
+
+
+def card_values(text: str):
+    """The card, its driver and the Vulkan versions from a clear probe's
+    sidecar, or None where one is missing or the probe ran without the
+    validation layer -- whose version is part of what judges a GPU test."""
     values = {}
     for line in text.splitlines():
         key, equals, value = line.partition("=")
@@ -755,7 +791,8 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
         forced = {n for n, t in run.tests.items() if GPU_LABEL in labels(t)}
     began = time.monotonic()
     run.learn_all_imports()
-    parts = {name: run.parts(test, (stored.get(name) or {}).get("reads"))
+    env = dict(os.environ)
+    parts = {name: run.parts(test, (stored.get(name) or {}).get("reads"), env)
              for name, test in run.tests.items()}
     chosen = selection(run.tests, stored, parts, run.world.file, forced)
     decided = time.monotonic()
@@ -798,7 +835,7 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
                 for name in sorted(missing_records)]
     for name in order:
         if name in passed and name not in missing_records:
-            stored[name] = {"parts": run.parts(run.tests[name], reads[name]), "reads": reads[name]}
+            stored[name] = {"parts": run.parts(run.tests[name], reads[name], env), "reads": reads[name]}
         else:
             stored.pop(name, None)
     for name in list(stored):
@@ -855,6 +892,39 @@ def pre_push(root: pathlib.Path, lines: list) -> int:
               "build/relwithdebinfo, at the commit you push, from a clean working tree "
               "(register decisions 503 and 535)", file=sys.stderr)
         return 1
+    return 0
+
+
+# --- the driver on this tree's own programs (decision 602) ----------------------
+
+def in_tree(tree: pathlib.Path, ctest: str, suite: pathlib.Path, other: pathlib.Path,
+            application, libraries: list) -> int:
+    """What the self-test cannot see, because it reads recorded answers: that
+    the tools still answer as recorded, on this tree's own programs. A suite
+    carries the read-record listener and a program without it does not; and
+    where the tree builds the application, its libraries, read through
+    llvm-readobj or ldd and followed as a fingerprint follows them, include
+    the ones CMake names."""
+    run = Run(tree, ctest)
+    known = {}
+    problems = []
+    if not run.carries_listener(suite, known):
+        problems.append(f"{suite} does not report {LISTENER}, which every suite carries")
+    if run.carries_listener(other, known):
+        problems.append(f"{other} reports {LISTENER}, which it does not carry")
+    if application is None:
+        print("run-tests in-tree: this tree builds no application; its libraries were not checked")
+    else:
+        found = {pathlib.Path(p).name.lower() for p in run.world.libraries(pathlib.Path(application))
+                 if not p.startswith("<")}
+        problems += [f"{application}: {name} is not among the {len(found)} libraries found for it"
+                     for name in libraries if name.lower() not in found]
+    for line in problems:
+        print(f"run-tests in-tree: {line}")
+    if problems:
+        return 1
+    print(f"run-tests in-tree: the listener found where it is and not where it is not"
+          + ("" if application is None else f"; {', '.join(libraries)} among the application's libraries"))
     return 0
 
 
@@ -991,6 +1061,7 @@ def end_to_end(cmake: str, ctest: str, ninja: str) -> int:
             failures.append(f"a full run from a clean working tree stamped {written}, not {head}, "
                             f"or failed\n{done.stdout}{done.stderr}")
         step("after a full run, nothing changed", always)
+        failures += push_through_the_hook(root, pathlib.Path(scratch) / "remote.git", head, steps)
 
     for failure in failures:
         print(f"end-to-end FAILED: {failure}")
@@ -998,21 +1069,70 @@ def end_to_end(cmake: str, ctest: str, ninja: str) -> int:
     return 1 if failures else 0
 
 
+def push_through_the_hook(root: pathlib.Path, remote: pathlib.Path, head: str, steps: list) -> list:
+    """The pre-push hook as git runs it (register decision 603): this
+    repository's scripts/git-hooks/pre-push, on the scratch repository, whose
+    scripts/ gets a copy of this driver -- the hook runs the one beside the
+    repository it guards. A push is refused without both trees' stamps and
+    with stamps at another commit, and goes through with stamps at the commit
+    pushed."""
+    failures = []
+    quiet = {"capture_output": True, "text": True, "encoding": "utf-8", "errors": "replace", "check": False}
+    subprocess.run(["git", "init", "-q", "--bare", str(remote)], **quiet)
+    shutil.copy(__file__, root / "scripts" / "run-tests.py")
+    hooks = (ROOT / "scripts" / "git-hooks").as_posix()
+
+    def stamp(commit) -> None:
+        for tree in CHECK_TREES:
+            state = root / tree / STATE
+            state.mkdir(parents=True, exist_ok=True)
+            if commit is None:
+                (state / FULL_STAMP).unlink(missing_ok=True)
+            else:
+                (state / FULL_STAMP).write_text(json.dumps({"commit": commit}), encoding="utf-8")
+
+    def push(name: str, commit, through: bool) -> None:
+        stamp(commit)
+        done = subprocess.run(["git", "-c", f"core.hooksPath={hooks}", "push", str(remote), "HEAD:refs/heads/master"],
+                              cwd=root, **quiet)
+        landed = subprocess.run(["git", "--git-dir", str(remote), "rev-parse", "--verify", "-q", "refs/heads/master"],
+                                **quiet).stdout.strip()
+        steps.append(name)
+        if (done.returncode == 0) != through or (landed == head) != through:
+            failures.append(f"{name}: the push {'went through' if done.returncode == 0 else 'was refused'} and "
+                            f"the remote holds {landed or 'nothing'}\n{done.stdout}{done.stderr}")
+
+    push("a push with no full check stamped", None, through=False)
+    push("a push with full checks stamped at another commit", "3" * 40, through=False)
+    push("a push with full checks stamped at the commit pushed", head, through=True)
+    return failures
+
+
 # --- the self-test -------------------------------------------------------------------
 
 class StandInWorld:
     """Hashing as the self-test sees it: a digest of each file's bytes and
-    path, and no git, no import tables -- so that Run.parts() can be judged
-    on a tree of a few files."""
+    path, and no git, no import tables -- each program's libraries are what
+    `library_map` says -- so that Run.parts() can be judged on a tree of a
+    few files."""
+
+    def __init__(self):
+        self.library_map = {}
 
     def file(self, path) -> str:
-        return digest(f"{norm(path)} {pathlib.Path(path).read_text(encoding='utf-8')}")
+        try:
+            return digest(f"{norm(path)} {hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest()}")
+        except OSError:
+            return MISSING
 
     def files(self, paths) -> str:
         return digest("\n".join(sorted(self.file(p) for p in paths if pathlib.Path(p).is_file())))
 
     def program(self, path) -> str:
         return self.file(path)
+
+    def libraries(self, program) -> list:
+        return self.library_map.get(norm(program), [])
 
     def unignored_under(self, folder) -> list:
         return self.everything_under(folder)
@@ -1035,6 +1155,210 @@ def stand_in_run(tree: pathlib.Path, root: pathlib.Path) -> "Run":
     run.app = tree / (APPLICATION + (".exe" if os.name == "nt" else ""))
     run._machine, run._card, run._card_read, run._shared = "machine", {"gpu": "a card"}, True, {}
     return run
+
+
+# The environment the self-test hands Run.parts().
+STAND_IN_ENVIRONMENT = {"PATH": "/stand-in/bin", "VK_LAYER_PATH": "/stand-in/layers", "ORBSIM_X": "x",
+                        "HOME": "/stand-in/home"}
+
+# What the tools the driver reads answered on this project's own programs,
+# recorded 2026-10-16 (register decision 602), so that the self-test reads
+# their real layout. llvm-readobj 23.1.2 --needed-libs, on the Debug tree's
+# application and SDL3.dll:
+SAMPLE_READOBJ = """File: build/debug/orbsim.exe
+Format: COFF-x86-64
+Arch: x86_64
+AddressSize: 64bit
+NeededLibraries [
+  KERNEL32.dll
+  MSVCP140D.dll
+  SDL3_d.dll
+  VCRUNTIME140D.dll
+  VCRUNTIME140_1D.dll
+  ucrtbased.dll
+  vulkan-1.dll
+]
+
+File: build/debug/SDL3.dll
+Format: COFF-x86-64
+Arch: x86_64
+AddressSize: 64bit
+NeededLibraries [
+  ADVAPI32.dll
+  GDI32.dll
+  IMM32.dll
+  KERNEL32.dll
+  OLEAUT32.dll
+  SETUPAPI.dll
+  SHELL32.dll
+  USER32.dll
+  VCRUNTIME140D.dll
+  VERSION.dll
+  WINMM.dll
+  ole32.dll
+  ucrtbased.dll
+]
+"""
+# ldd on the linux-gcc tree's test_math, under WSL's Ubuntu 26.04:
+SAMPLE_LDD = """\tlinux-vdso.so.1 (0x00007efd0130e000)
+\tlibstdc++.so.6 => /usr/lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007efd00e00000)
+\tlibm.so.6 => /usr/lib/x86_64-linux-gnu/libm.so.6 (0x00007efd00cda000)
+\tlibgcc_s.so.1 => /usr/lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007efd01114000)
+\tlibc.so.6 => /usr/lib/x86_64-linux-gnu/libc.so.6 (0x00007efd00a00000)
+\t/lib64/ld-linux-x86-64.so.2 (0x00007efd01310000)
+"""
+# The clear probe's sidecar in the Debug tree, its lines from the card on:
+SAMPLE_SIDECAR = """# orbsim probe sidecar (M1-16): what produced the files beside it
+probe                = clear
+outcome              = rendered
+gpu                  = NVIDIA RTX A2000 8GB Laptop GPU
+gpu.vendor           = 0x10de
+gpu.device           = 0x25ba
+driver.name          = NVIDIA
+driver.info          = 582.53
+driver.version       = 0x918d4000
+vulkan.api           = 1.4.312 (variant 0)
+validation.layer     = 1.4.357 (variant 0), implementation 1
+build.configuration  = Debug
+shaders              = fullscreen.vert.spv probe_gradient.frag.spv tonemap.frag.spv
+"""
+# test_math --list-listeners in the Debug tree:
+SAMPLE_LISTENERS = """Registered listeners:
+  AbortWithoutADialog:     (No description provided)
+  RecordWhatEachCaseRead:  (No description provided)
+
+"""
+
+
+def readobj_text(path, names: list) -> str:
+    """llvm-readobj --needed-libs's answer for one file, in SAMPLE_READOBJ's layout."""
+    listed = "".join(f"  {name}\n" for name in names)
+    return f"File: {path}\nFormat: COFF-x86-64\nArch: x86_64\nAddressSize: 64bit\nNeededLibraries [\n{listed}]\n\n"
+
+
+def each_part_moves_with_its_input(expect) -> None:
+    """Each part of a fingerprint moves when its input changes (register
+    decision 602). The self-test's other cases check which parts a test has;
+    a part computed from the wrong input, or from none, has them all and is
+    caught only here -- eight such faults passed both of the driver's tests
+    in a spike on 2026-10-16."""
+    with tempfile.TemporaryDirectory() as scratch:
+        base = pathlib.Path(scratch)
+        root, outside = base / "repo", base / "tools"
+        tree = root / "build"
+        exe = ".exe" if os.name == "nt" else ""
+        suite_program, cmake, compiler = tree / f"suite{exe}", outside / f"cmake{exe}", outside / f"clang{exe}"
+        compiler_library, suite_library = outside / "clang-support.dll", outside / "suite-support.dll"
+        shader, document = tree / "shaders" / "sky.frag.spv", root / "docs" / "a.md"
+        for path in (suite_program, tree / f"{APPLICATION}{exe}", shader, cmake, compiler, compiler_library,
+                     suite_library, root / "cmake" / "RunProbe.cmake", document):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("x", encoding="utf-8")
+            if os.name != "nt":
+                path.chmod(0o755)
+        (tree / "CMakeCache.txt").write_text(
+            f"CMAKE_COMMAND:INTERNAL={cmake}\nCMAKE_CXX_COMPILER:FILEPATH={compiler}\n", encoding="utf-8")
+        suite = {"name": "s", "command": [str(suite_program), "s"]}
+        probe = {"name": "p", "command": [str(cmake), f"-DORBSIM={tree / (APPLICATION + exe)}", "-P",
+                                          str(root / "cmake" / "RunProbe.cmake")],
+                 "properties": [{"name": "LABELS", "value": [GPU_LABEL]}]}
+        folder = {"name": "f", "command": [str(cmake), "-P", str(root / "cmake" / "RunProbe.cmake"),
+                                           str(root / "docs")]}
+
+        def part(test, name, env=None):
+            # A fresh Run each time, so that nothing it computed earlier is
+            # reused; the machine part computed rather than stood in for.
+            run = stand_in_run(tree, root)
+            run.ctest, run._machine = str(cmake), None
+            run.world.library_map = {norm(compiler): [str(compiler_library)]}
+            return run.parts(test, [], STAND_IN_ENVIRONMENT if env is None else env).get(name)
+
+        definition_before = part(suite, "definition")
+        expect("another command line moves the definition",
+               part({**suite, "command": suite["command"] + ["--order", "rand"]}, "definition") != definition_before,
+               True)
+        expect("another property moves the definition",
+               part({**suite, "properties": [{"name": "TIMEOUT", "value": 60.0}]}, "definition") != definition_before,
+               True)
+
+        environment_before = part(suite, "environment")
+        for name, value in (("PATH", "/elsewhere"), ("VK_ICD_FILENAMES", "a.json"), ("ORBSIM_X", "y")):
+            expect(f"{name} moves the environment",
+                   part(suite, "environment", {**STAND_IN_ENVIRONMENT, name: value}) != environment_before, True)
+        expect("HOME leaves the environment alone",
+               part(suite, "environment", {**STAND_IN_ENVIRONMENT, "HOME": "/elsewhere"}), environment_before)
+
+        machine_before = part(suite, "machine")
+        compiler.write_text("another compiler", encoding="utf-8")
+        machine_after_compiler = part(suite, "machine")
+        expect("another compiler moves the machine part", machine_after_compiler != machine_before, True)
+        compiler_library.write_text("another library", encoding="utf-8")
+        expect("another library of the compiler moves the machine part",
+               part(suite, "machine") != machine_after_compiler, True)
+
+        shaders_before = part(probe, "shaders")
+        shader.write_text("another shader", encoding="utf-8")
+        expect("a changed shader moves the application's tests", part(probe, "shaders") != shaders_before, True)
+
+        folder_before = part(folder, "files")
+        document.write_text("another document", encoding="utf-8")
+        expect("a changed file in a folder on the command line moves the test",
+               part(folder, "files") != folder_before, True)
+
+        # The real World, its library list stood in for: a program is its own
+        # bytes and those of every library it loads (decision 525).
+        def program_part():
+            world = World(tree, root)
+            world.libraries = lambda program: [str(suite_library)]
+            return world.program(suite_program)
+
+        program_before = program_part()
+        suite_library.write_text("another library", encoding="utf-8")
+        expect("a changed library moves its program's fingerprint", program_part() != program_before, True)
+
+
+def tools_read_as_they_answer(expect) -> None:
+    """The driver's readings of llvm-readobj, ldd, the clear probe's sidecar
+    and --list-listeners, on what each answered on this project's programs
+    (register decision 602)."""
+    found = imports_by_file(SAMPLE_READOBJ)
+    expect("llvm-readobj's answer, read", found.get(norm("build/debug/orbsim.exe")),
+           ["KERNEL32.dll", "MSVCP140D.dll", "SDL3_d.dll", "VCRUNTIME140D.dll", "VCRUNTIME140_1D.dll",
+            "ucrtbased.dll", "vulkan-1.dll"])
+    expect("llvm-readobj's second file, read", len(found.get(norm("build/debug/SDL3.dll")) or []), 13)
+
+    with tempfile.TemporaryDirectory() as scratch:
+        folder = pathlib.Path(scratch)
+        program, first, second = folder / "prog.exe", folder / "first.dll", folder / "second.dll"
+        for path in (program, first, second):
+            path.write_text("x", encoding="utf-8")
+        answers = {norm(program): ["first.dll", "api-ms-win-crt-runtime-l1-1-0.dll", "orbsim-no-such-library.dll"],
+                   norm(first): ["second.dll"], norm(second): []}
+        world = World(folder, folder)
+        world.import_text = lambda files: "".join(readobj_text(f, answers[norm(f)]) for f in files)
+        world.learn_imports([program])
+        closure = sorted(p if p.startswith("<") else norm(p) for p in world._windows_closure(program))
+        expect("libraries are followed through the libraries they load, an API set left out", closure,
+               sorted([norm(first), norm(second), "<not found: orbsim-no-such-library.dll>"]))
+
+    expect("ldd's answer, read", ldd_libraries(SAMPLE_LDD + "\tlibgone.so.1 => not found\n"),
+           sorted(["/usr/lib/x86_64-linux-gnu/libstdc++.so.6", "/usr/lib/x86_64-linux-gnu/libm.so.6",
+                   "/usr/lib/x86_64-linux-gnu/libgcc_s.so.1", "/usr/lib/x86_64-linux-gnu/libc.so.6",
+                   "/lib64/ld-linux-x86-64.so.2", "<not found: libgone.so.1>"]))
+
+    card = card_values(SAMPLE_SIDECAR)
+    expect("the card, read from the sidecar", (card or {}).get("gpu.device"), "0x25ba")
+    expect("the card's eight lines, read", sorted(card or {}), sorted(CARD_LINES))
+    without_layer = SAMPLE_SIDECAR.replace("validation.layer     = 1.4.357 (variant 0), implementation 1",
+                                           "validation.layer     = none: not requested")
+    expect("a card judged without the validation layer is not taken", card_values(without_layer), None)
+    without_device = "".join(line + "\n" for line in SAMPLE_SIDECAR.splitlines() if not line.startswith("gpu.device"))
+    expect("a sidecar that does not name the device is not taken", card_values(without_device), None)
+
+    expect("the listener, found", lists_listener(0, SAMPLE_LISTENERS), True)
+    expect("no listener, none found",
+           lists_listener(0, SAMPLE_LISTENERS.replace("RecordWhatEachCaseRead", "SomethingElse")), False)
+    expect("a program that failed lists nothing", lists_listener(1, SAMPLE_LISTENERS), False)
 
 
 def self_test() -> int:
@@ -1174,9 +1498,10 @@ def self_test() -> int:
                  "properties": [{"name": "LABELS", "value": [GPU_LABEL]}]}
         reader = {"name": "r", "command": [str(outside / f"cmake{exe}"), str(root / "scripts" / "check.py"), str(tree)]}
         recorded = [(h, str(tree / "probes" / "x"))]
+        env = dict(STAND_IN_ENVIRONMENT)
 
         def keys(test, reads=recorded):
-            return sorted(run.parts(test, reads))
+            return sorted(run.parts(test, reads, env))
 
         always = ["definition", "environment", "machine"]
         expect("a suite: its program", keys(suite), sorted(always + ["programs"]))
@@ -1190,21 +1515,24 @@ def self_test() -> int:
                sorted(always + ["programs", "files", "scripts", "shaders", "card"]))
         expect("a test naming the tree: the tree's own files", keys(reader),
                sorted(always + ["programs", "files", "scripts", "build tree"]))
-        before = run.parts(probe, recorded)
+        before = run.parts(probe, recorded, env)
         run._card = {"gpu": "another card"}
-        expect("another card moves a GPU test's fingerprint", run.parts(probe, recorded) != before, True)
-        suite_before = stand_in_run(tree, root).parts(suite, recorded)
-        expect("another card leaves a suite's alone", run.parts(suite, recorded), suite_before)
+        expect("another card moves a GPU test's fingerprint", run.parts(probe, recorded, env) != before, True)
+        suite_before = stand_in_run(tree, root).parts(suite, recorded, env)
+        expect("another card leaves a suite's alone", run.parts(suite, recorded, env), suite_before)
         (tree / f"suite{exe}").write_text("rebuilt", encoding="utf-8")
         expect("a rebuilt program moves its fingerprint",
-               stand_in_run(tree, root).parts(suite, recorded)["programs"] != suite_before["programs"], True)
+               stand_in_run(tree, root).parts(suite, recorded, env)["programs"] != suite_before["programs"], True)
         (root / "scripts" / "check.py").write_text("edited", encoding="utf-8")
         expect("an edited script moves a script test's fingerprint",
-               stand_in_run(tree, root).parts(script, recorded)["scripts"] != run.parts(script, recorded)["scripts"],
-               True)
+               stand_in_run(tree, root).parts(script, recorded, env)["scripts"]
+               != run.parts(script, recorded, env)["scripts"], True)
         (tree / "probes" / "x").write_text("rewritten", encoding="utf-8")
-        expect("a test's output folder is never hashed", stand_in_run(tree, root).parts(probe, recorded).get("files"),
-               before.get("files"))
+        expect("a test's output folder is never hashed",
+               stand_in_run(tree, root).parts(probe, recorded, env).get("files"), before.get("files"))
+
+    each_part_moves_with_its_input(expect)
+    tools_read_as_they_answer(expect)
 
     for failure in failures:
         print(f"self-test FAILED: {failure}")
@@ -1222,11 +1550,24 @@ def main() -> int:
     parser.add_argument("--pre-push", metavar="ROOT")
     parser.add_argument("--self-test", action="store_true")
     parser.add_argument("--end-to-end", nargs=3, metavar=("CMAKE", "CTEST", "NINJA"))
+    parser.add_argument("--in-tree", action="store_true", help="the driver on the tree's own programs")
+    parser.add_argument("--suite", help="--in-tree: a program that carries the read-record listener")
+    parser.add_argument("--without-listener", help="--in-tree: a program that does not")
+    parser.add_argument("--application", help="--in-tree: the application, where the tree builds it")
+    parser.add_argument("--library", action="append", default=[],
+                        help="--in-tree: a library the application loads, by file name")
     args = parser.parse_args()
     if args.self_test:
         return self_test()
     if args.end_to_end:
         return end_to_end(*args.end_to_end)
+    if args.in_tree:
+        if not (args.tree and args.ctest and args.suite and args.without_listener):
+            parser.error("--in-tree needs the tree, --ctest, --suite and --without-listener")
+        if bool(args.application) != bool(args.library):
+            parser.error("--application and --library come together")
+        return in_tree(pathlib.Path(args.tree).resolve(), args.ctest, pathlib.Path(args.suite),
+                       pathlib.Path(args.without_listener), args.application, args.library)
     if args.pre_push:
         return pre_push(pathlib.Path(args.pre_push), sys.stdin.read().splitlines())
     if not args.tree or not args.ctest:

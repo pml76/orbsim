@@ -142,12 +142,18 @@ aid, not part of the project. Run it as `iwyu_tool.py -p build\debug <files>
 ```
 git clone git@github.com:pml76/orbsim.git
 cd orbsim
-git config core.hooksPath scripts/git-hooks      # enables the pre-commit format check
+git config core.hooksPath scripts/git-hooks      # the pre-commit format check and the pre-push full-run check
 cmake --preset relwithdebinfo
 cmake --preset debug
 cmake --build build/relwithdebinfo --target check
 cmake --build build/debug --target check
 ```
+
+`check` runs only the tests whose inputs changed since their last pass, and
+on a new tree that is every test. **Before a push, `check-full` in both
+trees** -- every test, none skipped, at the commit pushed -- or the pre-push
+hook refuses it ([ADR 0027](adr/0027-tests-run-when-their-inputs-change.md)).
+The stamp it leaves is kept in the build tree, so each machine runs its own.
 
 Needs clang 17+ (23 here), CMake 3.28+, Ninja, Python 3, and a Vulkan SDK for
 the loader and `glslc`. Everything else is fetched and pinned by CMake. Without
@@ -229,10 +235,14 @@ Then, from inside the distribution, in the repository:
 cmake --preset linux-sanitize && cmake --build build/linux-sanitize   # ASan + UBSan
 cmake --preset linux-gcc      && cmake --build build/linux-gcc        # the second compiler
 cmake --preset linux-fuzz     && cmake --build build/linux-fuzz       # libFuzzer, for leaks
-ctest --test-dir build/linux-sanitize --output-on-failure
-ctest --test-dir build/linux-gcc      --output-on-failure
+cmake --build build/linux-sanitize --target check-full
+cmake --build build/linux-gcc      --target check-full
 ./build/linux-fuzz/fuzz_orbit -max_total_time=240
 ```
+
+`check-full` rather than `ctest` since M1-129 (register decision 534): every
+test, none skipped, with the format, lint and document checks. It has not yet
+run in these trees; the first gate that runs it there confirms that it does.
 
 Fuzzing itself moved to Windows on 2026-09-12 (`windows-fuzz`, VERIFICATION.md
 rule 13). The Linux build above is kept only for LeakSanitizer, which has no
@@ -257,8 +267,7 @@ file every clone shares. Run it from a Developer Command Prompt, or:
 
 ```
 call "C:\Program Files\Microsoft Visual Studio\18\Insiders\VC\Auxiliary\Build\vcvars64.bat"
-cmake --preset windows-msvc && cmake --build build/windows-msvc
-ctest --test-dir build/windows-msvc --output-on-failure
+cmake --preset windows-msvc && cmake --build build/windows-msvc --target check-full
 ```
 
 The path above is this machine's; `vswhere -latest -property installationPath`

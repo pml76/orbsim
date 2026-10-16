@@ -15,7 +15,7 @@ category the day-to-day `check` does not fully cover.
 The full sweep, as in M1-23, **plus** what phase B introduced:
 
 ```
-cmake --preset asan && cmake --build build/asan && ctest --test-dir build/asan --output-on-failure
+cmake --preset asan && cmake --build build/asan --target check-full
 
 wsl … --preset linux-sanitize   # ASan + UBSan
 wsl … --preset linux-gcc        # the second compiler
@@ -23,6 +23,14 @@ wsl … --preset linux-tsan       # the first thread, new in M1-33
 wsl … --preset linux-fuzz && for t in fuzz_orbit fuzz_time fuzz_ktx2 fuzz_ztree; do
     ./build/linux-fuzz/$t tests/corpus/$t -max_total_time=$(budget of $t); done   # VERIFICATION.md rule 13
 ```
+
+**Every tree of the sweep -- `asan`, `windows-msvc` and the Linux ones --
+builds and runs the target `check-full`**: every test, none skipped, with the
+format, lint and document checks (register decision 534). `check` would skip
+the tests whose inputs are unchanged, which in a gate tree is the wrong
+economy. `check-full` has not yet run in those trees; this gate's first run
+confirms that it does, and anything it refuses goes to the owner. *(Added
+2026-10-16 by M1-129, which added the target.)*
 
 ## What to check, beyond "it passed"
 

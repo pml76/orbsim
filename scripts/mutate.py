@@ -533,9 +533,10 @@ def run_mutant(root: Path, cmake: str, tree: str, mutant: dict) -> tuple:
                     encoding="utf-8", newline="\n")
 
     targets = built_by(mutant)
-    # A mutant of a Python script names nothing to build (M1-109, register
-    # decision 392): the script is read when its test runs, and `--verify`
-    # refuses a mutant of anything else that names no build.
+    # A mutant of a Python script or a git hook names nothing to build
+    # (M1-109 and M1-129, register decisions 392 and 613): the script is read
+    # when its test runs, and `--verify` refuses a mutant of anything else
+    # that names no build.
     try:
         build = subprocess.run([cmake, "--build", tree, "--target", *targets],
                                cwd=root, capture_output=True, text=True, encoding="utf-8", errors="replace",
@@ -850,17 +851,25 @@ def card_here(root: Path, tree: str):
     return (found, "") if found else (None, f"the card reads '{identity.get('card')}'")
 
 
+# The git hooks, which git runs as it finds them, as Python runs a script
+# (M1-129, register decision 613).
+GIT_HOOKS = "scripts/git-hooks/"
+
+
 def build_problem(mutant: dict):
     """Why a mutant cannot go without a build, or None (M1-109, register
-    decision 392). Only a Python script is read as it stands when its test
-    runs; a C++ file must be compiled, and a CMake file is read by a configure
-    that only a build triggers -- `build.ninja` is the target that does that
-    and nothing else. A mutant of either that builds nothing changes nothing,
-    and would survive as a hole that is not there."""
+    decision 392). Only a script is read as it stands when its test runs -- a
+    Python script, or a git hook under scripts/git-hooks/ (decision 613); a
+    C++ file must be compiled, and a CMake file is read by a configure that
+    only a build triggers -- `build.ninja` is the target that does that and
+    nothing else. A mutant of either that builds nothing changes nothing, and
+    would survive as a hole that is not there."""
     if built_by(mutant) or mutant["file"].endswith(".py"):
         return None
-    return (f"names nothing to build, but {mutant['file']} is not a Python script: name the "
-            "targets it reaches, or build.ninja for a CMake file")
+    if mutant["file"].startswith(GIT_HOOKS):
+        return None
+    return (f"names nothing to build, but {mutant['file']} is not a script read as its test runs: "
+            "name the targets it reaches, or build.ninja for a CMake file")
 
 
 def built_by(mutant: dict) -> list:
@@ -1135,6 +1144,12 @@ def self_test(tools: list) -> int:
         dict(script, file="cmake/ScriptTests.cmake")) is not None
     record_cases["a CMake mutant that builds build.ninja is accepted"] = build_problem(
         dict(script, file="CMakeLists.txt", targets=["build.ninja"])) is None
+    # A git hook is read as it stands, like a Python script (decision 613);
+    # a shell script anywhere else is not taken to be.
+    record_cases["a git hook's mutant may build nothing"] = build_problem(
+        dict(script, file="scripts/git-hooks/pre-push")) is None
+    record_cases["a shell script elsewhere that builds nothing is refused"] = build_problem(
+        dict(script, file="scripts/run.sh")) is not None
     # An expectation that differs by graphics card (the phase A gate, register
     # decision 410): a map from card to verdict, with no default.
     per_card = {"expect": {"1002-744c": "survives", "10de-25ba": "caught"}}

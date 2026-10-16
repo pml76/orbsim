@@ -18,7 +18,8 @@ that makes the next machine, or the next month, cheap.
 
 **The full sweep**, as at every gate, now at its largest:
 
-- `check` in both Windows trees.
+- `check-full` in both Windows trees, and in every tree below: every test,
+  none skipped (register decision 534; M1-38 says why).
 - The `asan` preset, all suites.
 - **`windows-msvc`** (the third implementation, and the only preset that builds
   the renderer against a second compiler). *(Added 2026-09-24: it joined the

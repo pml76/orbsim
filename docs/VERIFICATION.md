@@ -759,9 +759,13 @@ How to run them again, from Windows:
 
 ```
 wsl -d Ubuntu -u root -- bash -c "cd /mnt/c/Users/U439644/Projects/untitled && \
-    cmake --preset linux-sanitize && cmake --build build/linux-sanitize && \
-    ctest --test-dir build/linux-sanitize --output-on-failure"
+    cmake --preset linux-sanitize && cmake --build build/linux-sanitize --target check-full"
 ```
+
+`check-full` rather than `ctest` since M1-129 (register decision 534): every
+test, none skipped, with the format, lint and document checks around them.
+It has not yet run in the Linux trees; the first gate that runs it there
+confirms that it does.
 
 Worth doing before a milestone lands, and mandatory the day the physics is
 threaded off the render loop — that is when ThreadSanitizer, also only
@@ -803,6 +807,21 @@ the same act as running one command.
 The corollary, from the guidelines' Toolbox: **a tool you do not run is a tool
 you do not have.** A rule in this document that is not reachable from `check` is
 a good intention.
+
+**Since M1-129 `check` skips a test whose inputs are unchanged, and
+`check-full` runs every one** ([ADR 0027](adr/0027-tests-run-when-their-inputs-change.md)).
+A test is skipped only when a fingerprint -- a hash of its program and the
+libraries it loads, its command line, its environment, every file it read,
+and for a GPU test the card -- is what it was at its last pass. A skipped test
+looks exactly like a passing one, which is rule 23's whole warning, so three
+things stand behind the skipping: each part of a fingerprint is tested by
+changing that part's input and requiring the fingerprint to move (register
+decision 602); the files each test records as read are compared, with Process
+Monitor, against what it really opens (decisions 499 and 612); and **every
+test runs in both trees before every push**, `check-full` stamping the commit
+and the pre-push hook refusing a push without both stamps (decisions 484, 503
+and 535). The gate trees -- the sanitizers, MSVC, Linux -- run `check-full`
+(decision 534).
 
 ---
 
@@ -899,7 +918,7 @@ rules a machine checks and which depend on a person remembering.
 | 18 Coverage | By hand, at each gate. **Since the phase A gate, every suite on both platforms, renderer and application included, each program read with its own profile** -- the merged report hid unexecuted lines; [`PROJECT_STATE.md`](PROJECT_STATE.md) section 11.4 has the table and the reading | **done** |
 | 19 Mutation testing | By hand, periodically; the **anchors** are in `check` | exercised 2026-09-07, again 2026-09-19 on M1-04, M1-06 and M1-05, and 2026-09-20 on M1-86, M1-07, M1-08 and M1-09. **2026-09-21 on M1-10: fourteen of fourteen, none surviving, none invalid**, six of them at compile time -- M1-09's declared survivor died there, and the pass found that *two written-down claims about which test would catch what* had never been run, one of them in M1-09's own mutant file. **2026-09-22 on M1-87: twelve mutants, and the pass ran twice** -- 11 caught and 1 surviving first, because the *test* was wrong rather than the code, then twelve of twelve, none surviving, none invalid, seven of them at compile time |
 | 20 WSL, UBSan, second compiler | By hand, before a milestone | **done** |
-| 21 `check` is the definition of done | The build, both trees | **done** |
+| 21 `check` is the definition of done | The build, both trees; since M1-129 `check` skips unchanged tests and `check-full`, every test in both trees, is required by the pre-push hook | **done** |
 | 22–24 The human rules | A person | discipline |
 
 Rule 14 is *weakened* rather than done or to build, and it is the only row that

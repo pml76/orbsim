@@ -1,7 +1,7 @@
 {
   "task": "M1-129",
   "tree": "build/relwithdebinfo",
-  "note": "The snapshot a pass restores the build tree from (register decisions 506 and 512-519). Each mutant takes away one part of the put-back -- the outputs, what the tests wrote, the second listing, the source's time, the check of git's bytes, the build's check, the second restore after it -- or one of the rules around it: a leftover snapshot, --restore, and the main loop putting the tree back after each mutant. All are judged by mutate.py's self-test, which runs the put-back on a tree of plain files and on a scratch project CMake configures and Ninja builds, and a whole two-mutant pass shaped as m1-95.json is. Two survive, declared: the order of the put-back's steps, and the check of the snapshot's copies. Since item 7 (register decisions 520-524) also Ninja's stored answers and their key, the fingerprints check's fresh reading, a judge the tree does not have -- run by ctest, at the start of a pass, in --verify and in the due-list -- a file with no mutants, and a mutant file's own mutants as its input: judged by mutants-due.py's self-test, mutate.py's, and the CTest test mutants_due_mutant_file. Since item 9's step B (register decisions 573-577): tests/TestCase.hpp's fixed line, its registration's line, its tags and the file it reports, each judged by test_test_case, each of whose cases kills one; and check-test-cases.py's rules -- a repeated section name, a section outside a test case, a computed name, a TEST_CASE without the header, a suite including Catch2's macros, and its reading of a comment -- judged by its self-test.",
+  "note": "The snapshot a pass restores the build tree from (register decisions 506 and 512-519). Each mutant takes away one part of the put-back -- the outputs, what the tests wrote, the second listing, the source's time, the check of git's bytes, the build's check, the second restore after it -- or one of the rules around it: a leftover snapshot, --restore, and the main loop putting the tree back after each mutant. All are judged by mutate.py's self-test, which runs the put-back on a tree of plain files and on a scratch project CMake configures and Ninja builds, and a whole two-mutant pass shaped as m1-95.json is. Two survive, declared: the order of the put-back's steps, and the check of the snapshot's copies. Since item 7 (register decisions 520-524) also Ninja's stored answers and their key, the fingerprints check's fresh reading, a judge the tree does not have -- run by ctest, at the start of a pass, in --verify and in the due-list -- a file with no mutants, and a mutant file's own mutants as its input: judged by mutants-due.py's self-test, mutate.py's, and the CTest test mutants_due_mutant_file. Since item 9's step B (register decisions 573-577): tests/TestCase.hpp's fixed line, its registration's line, its tags and the file it reports, each judged by test_test_case, each of whose cases kills one; and check-test-cases.py's rules -- a repeated section name, a section outside a test case, a computed name, a TEST_CASE without the header, a suite including Catch2's macros, and its reading of a comment -- judged by its self-test. Since the task's finish (register decisions 601-606): item 1's reproducible builds -- the clang settings taken out, judged by reproducible_build, and its script's two refusals, by that script's self-test -- and items 2-5: what the driver skips; what a fingerprint is made of, part by part, each judged by a self-test case that changes that part's input (decision 602); the read records the driver reads and the tests write, a read before the first test case among them (decision 604); and the full run and the push (decisions 484, 503, 535, 542 and 603). Judged by run_tests_self_test, run_tests_end_to_end, run_tests_in_tree, read_record_written, test_read_records, parallel_tests and the self-tests of parallel_tests and test_reads. The pre-push hook itself is mutated too: --verify accepts a mutant of a git hook that builds nothing, since git reads it as it stands, as Python reads a script (decision 613).",
   "mutants": [
     {
       "name": "the outputs are not put back",
@@ -419,6 +419,550 @@
       "targets": [],
       "ctest": [
         "test_cases_self_test"
+      ]
+    },
+    {
+      "name": "the clang settings for reproducible builds are taken out",
+      "file": "CMakeLists.txt",
+      "find": "    add_compile_options($<$<COMPILE_LANGUAGE:C,CXX>:-mno-incremental-linker-compatible>)\n    add_link_options(LINKER:/Brepro)\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "build.ninja"
+      ],
+      "ctest": [
+        "reproducible_build"
+      ]
+    },
+    {
+      "name": "a rebuild that wrote nothing is taken as reproducible",
+      "file": "scripts/check-reproducible-build.py",
+      "find": "        if new_time <= old_time:",
+      "replace": "        if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "reproducible_build_self_test"
+      ]
+    },
+    {
+      "name": "different bytes are taken as the same",
+      "file": "scripts/check-reproducible-build.py",
+      "find": "        elif new_hash != old_hash:",
+      "replace": "        elif False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "reproducible_build_self_test"
+      ]
+    },
+    {
+      "name": "a file a test read is not compared",
+      "file": "scripts/run-tests.py",
+      "find": "return all(current_hash(path) == stamp for stamp, path in stored.get(\"reads\") or [])",
+      "replace": "return True",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test",
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "a test depending on one that runs is skipped",
+      "file": "scripts/run-tests.py",
+      "find": "    return with_dependents(chosen, tests)",
+      "replace": "    return chosen",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test",
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "the cautious rule forgets tests/golden/",
+      "file": "scripts/run-tests.py",
+      "find": "CAUTIOUS = (\"data\", \"tests/golden\") + BUILD_FILES",
+      "replace": "CAUTIOUS = (\"data\",) + BUILD_FILES",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a test without a record escapes the cautious rule",
+      "file": "scripts/run-tests.py",
+      "find": "    if reads is None:\n        return True",
+      "replace": "    if reads is None:\n        return False",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test",
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "a test that skipped itself is remembered as passed",
+      "file": "scripts/run-tests.py",
+      "find": "not children & {\"failure\", \"error\", \"skipped\"}",
+      "replace": "not children & {\"failure\", \"error\"}",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test",
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "a GPU test is skipped though the card cannot be read",
+      "file": "scripts/run-tests.py",
+      "find": "        forced = {n for n, t in run.tests.items() if GPU_LABEL in labels(t)}",
+      "replace": "        forced = set()",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "a program's libraries are not followed",
+      "file": "scripts/run-tests.py",
+      "find": "found = [str(path)] + self.libraries(pathlib.Path(path))",
+      "replace": "found = [str(path)]",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "libraries are not followed through the libraries they load",
+      "file": "scripts/run-tests.py",
+      "find": "                    queue.append(target)",
+      "replace": "                    pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "llvm-readobj's list of libraries is not read",
+      "file": "scripts/run-tests.py",
+      "find": "            found[current].append(line.strip())",
+      "replace": "            pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a library ldd did not find is dropped",
+      "file": "scripts/run-tests.py",
+      "find": "            found.add(f\"<not found: {line.split()[0]}>\")",
+      "replace": "            pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "the card is taken from a probe run without the validation layer",
+      "file": "scripts/run-tests.py",
+      "find": "if set(values) != set(CARD_LINES) or values[\"validation.layer\"].startswith(\"none\"):",
+      "replace": "if set(values) != set(CARD_LINES):",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "the machine part leaves out its programs",
+      "file": "scripts/run-tests.py",
+      "find": "            for program in self.machine_programs():\n                found += ",
+      "replace": "            for program in []:\n                found += ",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "the environment part ignores the environment",
+      "file": "scripts/run-tests.py",
+      "find": "\"environment\": environment(env)",
+      "replace": "\"environment\": environment({})",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "the definition part ignores the test's definition",
+      "file": "scripts/run-tests.py",
+      "find": "\"definition\": definition(test)",
+      "replace": "\"definition\": \"\"",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "no shader is hashed",
+      "file": "scripts/run-tests.py",
+      "find": "self.world.files(self.world.everything_under(self.tree / \"shaders\"))",
+      "replace": "self.world.files([])",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a folder on a command line is hashed as one file",
+      "file": "scripts/run-tests.py",
+      "find": "files += self.world.unignored_under(path) if path.is_dir() else [path]",
+      "replace": "files += [path]",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a record without its last line is taken as whole",
+      "file": "scripts/run-tests.py",
+      "find": "if len(lines) < 2 or lines[-1] != \"\" or lines[-2] != \"end\":",
+      "replace": "if len(lines) < 2:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "the record's name lets a colon through",
+      "file": "scripts/run-tests.py",
+      "find": "c in '<>:\"/\\\\|?*%'",
+      "replace": "c in '<>\"/\\\\|?*%'",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a test that passed without its record is accepted",
+      "file": "scripts/run-tests.py",
+      "find": "    return [name for name in passed if carries.get(name) and not recorded.get(name)]",
+      "replace": "    return []",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "the listener is found in any answer",
+      "file": "scripts/run-tests.py",
+      "find": "    return code == 0 and LISTENER in out",
+      "replace": "    return code == 0",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "no program is taken to carry the listener",
+      "file": "scripts/run-tests.py",
+      "find": "            known[key] = lists_listener(run.returncode, run.stdout)",
+      "replace": "            known[key] = False",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_in_tree"
+      ]
+    },
+    {
+      "name": "a full run forces nothing, so the run before a push skips tests",
+      "file": "scripts/run-tests.py",
+      "find": "        forced = set(run.tests)\n",
+      "replace": "        forced = set()\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "a full run that ran too few tests still stamps its commit",
+      "file": "scripts/run-tests.py",
+      "find": "    if ran != listed:",
+      "replace": "    if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a full run's refusals are not counted",
+      "file": "scripts/run-tests.py",
+      "find": "        problems += refusals",
+      "replace": "        pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "a file edited after the build does not stop the stamp",
+      "file": "scripts/run-tests.py",
+      "find": "        late = edited_after_build(times, log_time)",
+      "replace": "        late = []",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "the push check accepts a stamp for another commit",
+      "file": "scripts/run-tests.py",
+      "find": "            elif stamp.get(\"commit\") != commit:",
+      "replace": "            elif False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test",
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "the push check lets every push through",
+      "file": "scripts/run-tests.py",
+      "find": "    if problems:\n        print(\"pre-push: run",
+      "replace": "    if False:\n        print(\"pre-push: run",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "check-full runs the driver without --full",
+      "file": "CMakeLists.txt",
+      "find": "        COMMAND ${orbsim_run_tests} --full\n",
+      "replace": "        COMMAND ${orbsim_run_tests}\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "build.ninja"
+      ],
+      "ctest": [
+        "parallel_tests"
+      ]
+    },
+    {
+      "name": "a check-full without --full is accepted",
+      "file": "scripts/check-parallel-tests.py",
+      "find": "        elif full and not FULL.search(command):",
+      "replace": "        elif False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "parallel_tests_self_test"
+      ]
+    },
+    {
+      "name": "a read is left out of the record",
+      "file": "tests/TestReads.cpp",
+      "find": "            files.insert(textAt(r, i));",
+      "replace": "            static_cast<void>(textAt(r, i));",
+      "expect": "caught",
+      "suites": [
+        "test_read_records"
+      ],
+      "targets": [],
+      "ctest": [
+        "read_record_written"
+      ]
+    },
+    {
+      "name": "a read before the first test case is left out of the record",
+      "file": "tests/TestReads.cpp",
+      "find": "if (i >= r.caseStart || r.readWhen.at(i) == ReadWhen::OutsideCases) {",
+      "replace": "if (i >= r.caseStart) {",
+      "expect": "caught",
+      "suites": [
+        "test_read_records"
+      ],
+      "targets": [],
+      "ctest": [
+        "read_record_written"
+      ]
+    },
+    {
+      "name": "the record is written without its last line",
+      "file": "tests/TestReads.cpp",
+      "find": "    text += \"end\\n\";",
+      "replace": "    text += \"\";",
+      "expect": "caught",
+      "suites": [
+        "test_read_records"
+      ],
+      "targets": [],
+      "ctest": [
+        "read_record_written"
+      ]
+    },
+    {
+      "name": "a file that was read is recorded as missing",
+      "file": "tests/TestReads.cpp",
+      "find": "        line += hexText(sha256(std::string_view{chars->data(), chars->size()}));",
+      "replace": "        line += \"missing\";",
+      "expect": "caught",
+      "suites": [
+        "test_read_records"
+      ],
+      "targets": [],
+      "ctest": [
+        "read_record_written"
+      ]
+    },
+    {
+      "name": "the record's name lets % through",
+      "file": "tests/TestReads.cpp",
+      "find": "    constexpr std::string_view kForbidden = R\"(<>:\"/\\|?*%)\";",
+      "replace": "    constexpr std::string_view kForbidden = R\"(<>:\"/\\|?*)\";",
+      "expect": "caught",
+      "suites": [
+        "test_read_records"
+      ],
+      "targets": []
+    },
+    {
+      "name": "a path nothing recorded is read",
+      "file": "tests/TestReads.cpp",
+      "find": "    if (!wasRecorded(file)) return std::unexpected(FileReadError::NotRecorded);",
+      "replace": "    if (!wasRecorded(file) && file.empty()) return std::unexpected(FileReadError::NotRecorded);",
+      "expect": "caught",
+      "suites": [
+        "test_read_records"
+      ],
+      "targets": []
+    },
+    {
+      "name": "one round constant of SHA-256 is wrong",
+      "file": "tests/Sha256.hpp",
+      "find": "    0x428a2f98U, 0x71374491U,",
+      "replace": "    0x428a2f99U, 0x71374491U,",
+      "expect": "caught",
+      "suites": [
+        "test_read_records"
+      ],
+      "targets": []
+    },
+    {
+      "name": "the read-record listener is not registered",
+      "file": "tests/ReadRecordListener.cpp",
+      "find": "CATCH_REGISTER_LISTENER(RecordWhatEachCaseRead)",
+      "replace": "",
+      "expect": "caught",
+      "suites": [
+        "test_read_records"
+      ],
+      "targets": [],
+      "ctest": [
+        "read_record_written"
+      ]
+    },
+    {
+      "name": "a suite may call fopen",
+      "file": "scripts/check-test-reads.py",
+      "find": "    r\"|\\b(?:_w)?fopen(?:_s)?\\s*\\(|\\bfreopen\\s*\\(|\\bCreateFile[AW2]?\\s*\\(\"",
+      "replace": "    r\"|\\bfreopen\\s*\\(|\\bCreateFile[AW2]?\\s*\\(\"",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "test_reads_self_test"
+      ]
+    },
+    {
+      "name": "a suite may name a folder",
+      "file": "scripts/check-test-reads.py",
+      "find": "            if name != HELPER and FOLDER_MACRO.search(line):",
+      "replace": "            if name == \"\" and FOLDER_MACRO.search(line):",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "test_reads_self_test"
+      ]
+    },
+    {
+      "name": "the pre-push hook lets every push through",
+      "file": "scripts/git-hooks/pre-push",
+      "find": "exec python \"$root/scripts/run-tests.py\" --pre-push \"$root\"",
+      "replace": "exit 0",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "a git hook's mutant that builds nothing is refused",
+      "file": "scripts/mutate.py",
+      "find": "    if mutant[\"file\"].startswith(GIT_HOOKS):\n        return None\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
       ]
     }
   ]

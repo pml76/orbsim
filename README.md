@@ -117,10 +117,13 @@ error. The `check` target is the full definition of done -- build, tests,
 clang-tidy over every translation unit (after verifying that its configuration
 names only checks that exist), clang-format, a check that no document links --
 or points at in backticks -- something that is not there, and that validation
-run:
+run. It runs only the tests whose inputs changed since their last pass;
+`check-full` runs every one, and is what a push requires
+([ADR 0027](docs/adr/0027-tests-run-when-their-inputs-change.md)):
 
 ```
 cmake --build build/relwithdebinfo --target check
+cmake --build build/relwithdebinfo --target check-full
 ```
 
 `-DORBSIM_BUILD_APP=OFF` builds the simulation core and its tests without the

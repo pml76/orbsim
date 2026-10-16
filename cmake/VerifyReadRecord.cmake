@@ -6,12 +6,19 @@
 #
 # Run by CTest as `read_record_written`. It runs the hidden case
 # "record check: a/b <c>" in tests/test_read_records.cpp alone -- the case
-# names data/skyfield/README.md twice and a file that is not there once -- and
-# requires the record it leaves to be exactly:
+# names data/skyfield/README.md twice and a file that is not there once, and
+# the suite's own listener names data/horizons/README.md as the run starts,
+# before any test case (register decision 604) -- and requires the record it
+# leaves to be exactly:
 #
-#     <SHA-256 of README.md> <DATA>/skyfield/README.md
+#     <SHA-256 of horizons/README.md> <DATA>/horizons/README.md
+#     <SHA-256 of skyfield/README.md> <DATA>/skyfield/README.md
 #     missing <DATA>/skyfield/no-such-file.txt
 #     end
+#
+# The first line is the rule that a read outside any test case belongs to
+# every record written after it: whatever a program read is an input of each
+# case it runs.
 #
 # under the file name `record check%3A a%2Fb %3Cc%3E.txt`. Each part is
 # checked against a second implementation: the name spelled out here by hand
@@ -40,8 +47,10 @@ if(NOT EXISTS "${record}")
 endif()
 
 file(READ "${record}" written)
+file(SHA256 "${DATA}/horizons/README.md" read_at_start)
 file(SHA256 "${DATA}/skyfield/README.md" readme)
-set(expected "${readme} ${DATA}/skyfield/README.md\nmissing ${DATA}/skyfield/no-such-file.txt\nend\n")
+string(CONCAT expected "${read_at_start} ${DATA}/horizons/README.md\n"
+        "${readme} ${DATA}/skyfield/README.md\n" "missing ${DATA}/skyfield/no-such-file.txt\n" "end\n")
 if(NOT written STREQUAL expected)
     message(FATAL_ERROR "the record is not what the case read.\nwritten:\n${written}\nexpected:\n${expected}")
 endif()

@@ -156,6 +156,8 @@ note that exists only on one of them is a note that does not exist.
 cmake --preset relwithdebinfo && cmake --preset debug    # CLion's bundled cmake
 cmake --build build/relwithdebinfo --target check
 cmake --build build/debug --target check
+cmake --build build/relwithdebinfo --target check-full   # before a push
+cmake --build build/debug --target check-full
 ```
 
 **Nothing is done until `check` passes in both trees.** It builds everything,
@@ -164,19 +166,31 @@ names only checks that exist and then runs `clang-tidy` over every translation
 unit with headers included, checks that no document links **or
 points in backticks** at something that is not there, checks that every
 mutation-pass anchor in `scripts/mutants/` still matches its file exactly once,
-and runs `ctest` --
+and runs the tests through `scripts/run-tests.py` --
 including a two-second run of
 the application under the Vulkan validation layers (`orbsim_smoke`, label
 `gpu`) that fails on any validation error. Both trees, because assertions are
-only live in Debug. Smaller targets for the loop: `lint`, `format-check`,
-`format`, `doc-links`.
+only live in Debug. **While working, use the quick targets** -- `lint`,
+`format-check`, `doc-links`, and `format` to put the format right -- **then
+`check`.**
 
 **Since 2026-09-27 it re-does only what a change can affect**
 ([`docs/adr/0024`](docs/adr/0024-verification-costs-what-changed.md)):
 
 - it re-lints a file only when the text the linter reads for it has changed;
 - it runs clang-tidy in a pool sized from the machine's memory;
-- it runs the tests in parallel, with the GPU tests under one lock.
+- it runs the tests in parallel, with the GPU tests under one lock;
+- **since M1-129 it runs only the tests whose inputs changed**
+  ([`docs/adr/0027`](docs/adr/0027-tests-run-when-their-inputs-change.md)):
+  a test whose program, command line, environment and every file it read are
+  as they were at its last pass is skipped, and the run says how many.
+
+**Before every push, `check-full` passes in both trees**, at the commit being
+pushed, from a working tree with no change and no untracked file: it runs
+every test, skipping none, and stamps the commit in the tree. The pre-push
+hook refuses a push unless both trees hold that stamp for that commit. A
+task ends: commit, its mutation pass, commit the pass's record and
+`STATUS.md`, `check-full` in both trees, push.
 
 Run the two trees one after the other, never at once. **Two more steps**,
 outside `check` because they take minutes:
@@ -199,12 +213,14 @@ Keep CLion's automatic reload switched off on every machine;
 `docs/PROJECT_STATE.md` section 2 says where.
 
 Presets: `asan` and `windows-msvc` before a milestone lands, and `linux-sanitize` and `linux-gcc`
-for UndefinedBehaviorSanitizer and the second compiler.
+for UndefinedBehaviorSanitizer and the second compiler -- each run with
+`check-full`, so that nothing is skipped there.
 [`docs/adr/0005`](docs/adr/0005-correctness-is-enforced-by-tools.md) is why it
 is set up this way, and **this project does not use CI — do not add it.**
 `clang-format` also runs on every C++ file Claude Code edits
-(`.claude/settings.json`), and a pre-commit hook refuses an unformatted commit
-once enabled per clone:
+(`.claude/settings.json`); a pre-commit hook refuses an unformatted commit,
+and the pre-push hook a push without `check-full` in both trees, once enabled
+per clone:
 `git config core.hooksPath scripts/git-hooks`.
 
 ## Non-negotiables

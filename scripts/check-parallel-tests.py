@@ -29,12 +29,18 @@ fail on some, which is the worst kind of test. So:
     second implementation of the rule rather than a copy of it. Since M1-129
     they run the tests through scripts/run-tests.py, which takes it as
     `--jobs N` and hands it to ctest as `-j N` (register decision 555); before
-    that they called `ctest -j N` themselves.
+    that they called `ctest -j N` themselves;
+  * and `check-full`'s command must carry `--full`, and `check`'s must not
+    (register decision 603): without it `check-full` would skip tests like
+    `check`, and the full run the pre-push hook requires would never happen.
+    Each target's command is read from its own `build` statement in
+    build.ninja.
 
 Proven able to fail before it was trusted: --self-test feeds it a GPU test
-without the lock, no GPU tests, no driver command, a command without --jobs
-and one with the wrong N, and exits non-zero unless each is reported -- and,
-for a core-only tree, a GPU test, no --jobs and the wrong N, and requires that
+without the lock, no GPU tests, no driver command, a command without --jobs,
+one with the wrong N, a `check-full` without `--full`, a `check` with it and
+a target missing, and exits non-zero unless each is reported -- and, for a
+core-only tree, a GPU test, no --jobs and the wrong N, and requires that
 tree's correct listing to be accepted.
 """
 
@@ -54,13 +60,31 @@ GPU_TESTS = ("expected", "none")
 NINJA_QUERIES = ("mutants-due.py",)
 # The driver `check` and `check-full` run the tests through (M1-129).
 RUN_TESTS = "run-tests.py"
+# The targets that run it, and whether each runs every test (decision 603).
+CHECK_TARGETS = {"check": False, "check-full": True}
+FULL = re.compile(r"\s--full\b")
+
+
+def driver_commands(ninja: str) -> dict:
+    """{target: command} for each custom target in build.ninja whose command
+    runs the driver: the `COMMAND =` line after the target's `build` line."""
+    found, target = {}, None
+    for line in ninja.splitlines():
+        match = re.match(r"build CMakeFiles/([^\s:|]+)[\s:|].*CUSTOM_COMMAND", line)
+        if match:
+            target = match.group(1)
+        elif line.startswith("  COMMAND = ") and target is not None and RUN_TESTS in line:
+            found[target] = line.strip()
+        elif not line.startswith(" "):
+            target = None
+    return found
 
 
 def expected_jobs(threads: int) -> int:
     return max(1, threads // 2)
 
 
-def problems(tests: list, check_commands: list, jobs: int, gpu_tests: str) -> list:
+def problems(tests: list, check_commands: dict, jobs: int, gpu_tests: str) -> list:
     found = []
     gpu = [t for t in tests
            if any(p["name"] == "LABELS" and "gpu" in p["value"] for p in t.get("properties", []))]
@@ -80,12 +104,21 @@ def problems(tests: list, check_commands: list, jobs: int, gpu_tests: str) -> li
             found.append(f"a test that asks Ninja for the header record without the ninja_deps lock: {test['name']}")
     if not check_commands:
         found.append("no target runs the tests through run-tests.py")
-    for command in check_commands:
+    for command in check_commands.values():
         match = re.search(r"--jobs\s+(\d+)", command)
         if not match:
             found.append(f"a check command runs the tests one at a time (no --jobs): {command}")
         elif int(match.group(1)) != jobs:
             found.append(f"a check command runs --jobs {match.group(1)}, the rule gives {jobs}: {command}")
+    for target, full in CHECK_TARGETS.items():
+        command = check_commands.get(target)
+        if command is None:
+            if check_commands:
+                found.append(f"the target {target} does not run the tests through run-tests.py")
+        elif full and not FULL.search(command):
+            found.append(f"{target} runs the driver without --full, so it skips tests: {command}")
+        elif not full and FULL.search(command):
+            found.append(f"{target} runs the driver with --full, so it never skips a test: {command}")
     return found
 
 
@@ -93,8 +126,7 @@ def check(build: pathlib.Path, ctest: str, gpu_tests: str) -> int:
     listing = subprocess.run([ctest, "--show-only=json-v1"], cwd=build, capture_output=True,
                              text=True, encoding="utf-8", errors="replace", check=True).stdout
     tests = json.loads(listing)["tests"]
-    ninja = (build / "build.ninja").read_text(encoding="utf-8", errors="replace")
-    commands = [line.strip() for line in ninja.splitlines() if RUN_TESTS in line]
+    commands = driver_commands((build / "build.ninja").read_text(encoding="utf-8", errors="replace"))
     found = problems(tests, commands, expected_jobs(os.cpu_count() or 1), gpu_tests)
     for line in found:
         print(f"check-parallel-tests: {line}")
@@ -102,7 +134,7 @@ def check(build: pathlib.Path, ctest: str, gpu_tests: str) -> int:
         return 1
     gpu_line = "every GPU test holds the gpu lock" if gpu_tests == "expected" else "no test needs the GPU"
     print(f"check-parallel-tests: --jobs {expected_jobs(os.cpu_count() or 1)} in {len(commands)} commands, "
-          f"and {gpu_line}")
+          f"--full on check-full alone, and {gpu_line}")
     return 0
 
 
@@ -121,17 +153,24 @@ def self_test() -> int:
                 "properties": props}
 
     good_tests = [test("smoke", True, True), test("probe", True, True), test("math", False, False)]
-    good_cmd = ["python scripts/run-tests.py build/tree --ctest ctest.exe --jobs 10",
-                "python scripts/run-tests.py build/tree --ctest ctest.exe --jobs 10 --full"]
-    no_jobs = [good_cmd[0], "python scripts/run-tests.py build/tree --ctest ctest.exe --full"]
+    driver = "python scripts/run-tests.py build/tree --ctest ctest.exe"
+    good_cmd = {"check": f"{driver} --jobs 10", "check-full": f"{driver} --jobs 10 --full"}
+    no_jobs = {**good_cmd, "check-full": f"{driver} --full"}
     core_tests = [test("math", False, False)]
     cases = {
         "all correct": (good_tests, good_cmd, 10, "expected", False),
         "a GPU test without the lock": (good_tests[:1] + [test("probe", True, False)], good_cmd, 10, "expected", True),
         "no GPU tests": (core_tests, good_cmd, 10, "expected", True),
-        "no driver command": (good_tests, [], 10, "expected", True),
+        "no driver command": (good_tests, {}, 10, "expected", True),
         "no --jobs in one command": (good_tests, no_jobs, 10, "expected", True),
         "the wrong N": (good_tests, good_cmd, 8, "expected", True),
+        # check-full runs every test and check skips (decision 603).
+        "check-full without --full": (good_tests, {**good_cmd, "check-full": f"{driver} --jobs 10"}, 10,
+                                      "expected", True),
+        "check with --full": (good_tests, {**good_cmd, "check": f"{driver} --jobs 10 --full"}, 10, "expected", True),
+        "no check-full target": (good_tests, {"check": good_cmd["check"]}, 10, "expected", True),
+        "--fuller is not --full": (good_tests, {**good_cmd, "check-full": f"{driver} --jobs 10 --fuller"}, 10,
+                                   "expected", True),
         # A tree that builds the core only (M1-100): no GPU test is what is right
         # there, a GPU test is what is wrong, and -j is checked as everywhere.
         "core only, all correct": (core_tests, good_cmd, 10, "none", False),

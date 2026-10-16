@@ -16,6 +16,10 @@
 #include "tests/TestReads.hpp"
 
 #include <catch2/catch_message.hpp>
+#include <catch2/catch_test_run_info.hpp>
+#include <catch2/interfaces/catch_interfaces_reporter.hpp>
+#include <catch2/reporters/catch_reporter_event_listener.hpp>
+#include <catch2/reporters/catch_reporter_registrars.hpp>
 
 #include <array>
 #include <cstddef>
@@ -137,12 +141,36 @@ TEST_CASE("nothing outside the scratch folder reads back", "[read-records][scrat
     }
 }
 
+namespace {
+
+// A read made outside any test case belongs to every record written after it
+// (tests/TestReads.cpp): whatever a program read is an input of each case it
+// runs. No test reads outside a case, so this listener does -- as the run
+// starts, before the first case -- for read_record_written to find in the
+// record of the case it runs (register decision 604). A listener rather than
+// a namespace-scope constant, which needs a global constructor that may throw
+// and draws -Wglobal-constructors and bugprone-throwing-static-initialization,
+// measured 2026-10-16; Catch2's registration carries its own suppression.
+class ReadBeforeTheFirstCase final : public Catch::EventListenerBase {
+public:
+    using Catch::EventListenerBase::EventListenerBase;
+
+    void testRunStarting(const Catch::TestRunInfo& /*info*/) override {
+        static_cast<void>(dataFile("horizons/README.md"));
+    }
+};
+
+} // namespace
+
+CATCH_REGISTER_LISTENER(ReadBeforeTheFirstCase)
+
 // Run alone by the CTest test read_record_written (cmake/VerifyReadRecord.cmake),
 // which then reads the record this case leaves and holds it to what it must
 // say: the file name escaped as register decision 528 spells it, each file
 // once, the hash CMake's own file(SHA256) gives, `missing` for a file that is
-// not there, and the last line `end`. Hidden from discovery by its tag, so
-// that no other process ever writes the same record at the same time.
+// not there, the listener's read from before the case, and the last line
+// `end`. Hidden from discovery by its tag, so that no other process ever
+// writes the same record at the same time.
 TEST_CASE("record check: a/b <c>", "[.read-record-check]") {
     static_cast<void>(dataFile("skyfield/README.md"));
     static_cast<void>(dataFile("skyfield/no-such-file.txt"));

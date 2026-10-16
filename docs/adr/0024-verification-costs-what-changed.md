@@ -213,3 +213,14 @@ read.**
   benchmark, the golden-acceptance script -- counts every shader, and a real
   toolchain change, or a second machine's, still makes every file it
   reaches due.
+
+## Update, 2026-10-16: selecting tests adopted, by ADR 0027
+
+**[ADR 0027](0027-tests-run-when-their-inputs-change.md) supersedes this record's "Selecting tests by
+what changed. Not adopted."** ([M1-129](../plan/tasks/m1-129-tests-by-fingerprint.md), register
+decisions 483-542 and 608). Its reason still stands -- a selector that misses one input lets a bug
+through silently -- and 0027 answers it rather than setting it aside: `check` skips a test only when a
+fingerprint of everything it reads is unchanged, each part of that fingerprint is tested by changing
+its input, and every test runs in both trees, enforced by a pre-push hook, before a commit leaves the
+machine. Point 4 of the decision, `check` running the tests in parallel, is unchanged: the driver hands
+CTest the same job count.

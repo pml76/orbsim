@@ -3,8 +3,8 @@
 Phase: B | Status: not started
 Prerequisites: M1-129
 Decided by: register decisions 544, 551, 559, 564-566, 569 and 570, ruled
-2026-10-15, and 582-595, ruled 2026-10-16; split out of M1-129 as its item 9's
-step C by decision 596.
+2026-10-15, and 582-595 and 601, ruled 2026-10-16; split out of M1-129 as its
+item 9's step C by decision 596.
 The selection that reads what this records is [M1-132](m1-132-function-level-selection.md),
 and [M1-133](m1-133-selection-proved.md) proves it. The spike and the design
 behind all three are in M1-132's last section.
@@ -62,6 +62,15 @@ cost about 30% of the Debug tests (decision 559).
      2.2%, all standard-library code);
    - the benchmark with and without the hook on this machine (589), written
      down; M1-47 takes the same both ways on the RX 7900 XTX.
+5. **The shader files a test read** (M1-124's item (a); moved here from
+   M1-129 by decision 601). Today every test that starts the application is
+   fingerprinted on every compiled shader: 50 tests, about 149 s of test time
+   in Debug and 89 s in RelWithDebInfo, rerun by any shader edit, and six
+   mutant files stay due on any shader change (decision 394). The application
+   records the shaders it loaded for the test `ORBSIM_TEST_NAME` names -- the
+   naming item 3 builds -- and `scripts/run-tests.py` and
+   `scripts/mutants-due.py` fingerprint each such test on those alone. How
+   the record is written and read is put to the owner before it is built.
 
 ## Mutants
 

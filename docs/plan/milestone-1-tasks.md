@@ -92,7 +92,12 @@ These are not repeated in the 96 documents. They apply to all of them.
    ```
    That is the definition of done, not "the tests pass" — it builds everything,
    runs `clang-format --dry-run --Werror`, runs `clang-tidy` over every
-   translation unit with headers included, and runs `ctest`.
+   translation unit with headers included, and runs every test whose inputs
+   changed since its last pass ([ADR 0027](../adr/0027-tests-run-when-their-inputs-change.md)).
+   **Before the push, `check-full` passes in both trees** at the commit
+   pushed: every test, none skipped, which the pre-push hook requires. The
+   gate trees -- the sanitizers, MSVC, Linux -- run `check-full` too
+   (register decision 534).
 3. **Zero warnings, zero clang-tidy findings.** No new entry in `.clang-tidy`
    and no `NOLINT` without an explicit go-ahead from the owner.
 4. **Anything numerical states its budget as a number**, in the document, in the
