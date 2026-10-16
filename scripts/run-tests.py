@@ -41,11 +41,12 @@ skipped when every part of its fingerprint is what it was at its last
   * for a test that starts the application, every compiled shader; for a test
     labelled gpu, the graphics card, its driver and the Vulkan versions, read
     from a clear probe this script runs before CTest (decisions 490 and 532);
-  * the "machine" part, in every test (decisions 509 and 533): the
-    time-zone data the leap-second test compares against -- on Windows the five
-    files of C:\\Windows\\Globalization\\ICU\\, elsewhere the two files of
-    /usr/share/zoneinfo/ that libstdc++ reads, measured 2026-10-14 -- and the
-    Python, CMake, CTest and compiler programs, each with its libraries.
+  * the "machine" part, in every test (decisions 509, 533 and 615): the
+    leap seconds the leap-second test compares against -- on Windows the
+    registry value Microsoft's library reads them from, and the five files of
+    C:\\Windows\\Globalization\\ICU\\ for time zones; elsewhere the two files
+    of /usr/share/zoneinfo/ that libstdc++ reads, measured 2026-10-14 -- and
+    the Python, CMake, CTest and compiler programs, each with its libraries.
 
 **Every file is hashed in full on every run** (decision 526): no size and
 date are trusted.
@@ -126,6 +127,13 @@ TREE_FILES = ("build.ninja", "CMakeFiles/rules.ninja", ".ninja_deps")
 TIME_ZONES_WINDOWS = pathlib.Path(r"C:\Windows\Globalization\ICU")
 TIME_ZONES_ELSEWHERE = (pathlib.Path("/usr/share/zoneinfo/tzdata.zi"),
                         pathlib.Path("/usr/share/zoneinfo/leapseconds"))
+# Where Microsoft's standard library reads the leap seconds Windows adds to
+# its own table: tzdb.cpp's __std_tzdb_get_leap_seconds, in the 14.51.36231
+# sources this project builds with, reads this value and no file -- and
+# test_time_leap, compared with Process Monitor on 2026-10-16, opened no file
+# under the ICU folder (register decision 615).
+LEAP_SECONDS_KEY = r"SYSTEM\CurrentControlSet\Control\LeapSecondInformation"
+LEAP_SECONDS_VALUE = "LeapSeconds"
 # The clear probe that names the card runs in about 4.4 s (decision 502); an
 # order of magnitude clear of that, as mutants-due.py allows.
 CARD_PROBE_SECONDS = 120
@@ -223,6 +231,22 @@ def is_program(path: pathlib.Path) -> bool:
     if os.name == "nt":
         return path.suffix.lower() == ".exe"
     return path.is_file() and os.access(path, os.X_OK)
+
+
+def leap_seconds_value() -> str:
+    """The registry value Windows' leap seconds are read from, as text for a
+    fingerprint: its type and its bytes, `missing` where there is none, and
+    nothing at all off Windows, where libstdc++ reads the files in
+    TIME_ZONES_ELSEWHERE instead."""
+    if os.name != "nt":
+        return ""
+    import winreg  # Windows only, and only here
+    try:
+        with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, LEAP_SECONDS_KEY) as key:
+            value, kind = winreg.QueryValueEx(key, LEAP_SECONDS_VALUE)
+    except OSError:
+        return MISSING
+    return f"{kind} {bytes(value or b'').hex()}"
 
 
 def cache_value(tree: pathlib.Path, key: str):
@@ -571,6 +595,9 @@ class Run:
                                  text=True, encoding="utf-8", errors="replace", check=True).stdout
         self.tests = {t["name"]: t for t in json.loads(listing)["tests"]}
         self.app = tree / (APPLICATION + (".exe" if os.name == "nt" else ""))
+        # The registry's leap seconds, read through this so that the
+        # self-test can hand the machine part another table.
+        self.leap_seconds = leap_seconds_value
         self._machine = None
         self._card = None
         self._card_read = False
@@ -601,7 +628,7 @@ class Run:
             found = [str(p) for p in zones]
             for program in self.machine_programs():
                 found += [str(program)] + self.world.libraries(program)
-            self._machine = self.world.files(sorted(set(found)))
+            self._machine = digest(f"{self.world.files(sorted(set(found)))}\n{self.leap_seconds()}")
         return self._machine
 
     def card(self):
@@ -1154,6 +1181,7 @@ def stand_in_run(tree: pathlib.Path, root: pathlib.Path) -> "Run":
     run.tests = {}
     run.app = tree / (APPLICATION + (".exe" if os.name == "nt" else ""))
     run._machine, run._card, run._card_read, run._shared = "machine", {"gpu": "a card"}, True, {}
+    run.leap_seconds = lambda: "3 "
     return run
 
 
@@ -1265,11 +1293,12 @@ def each_part_moves_with_its_input(expect) -> None:
         folder = {"name": "f", "command": [str(cmake), "-P", str(root / "cmake" / "RunProbe.cmake"),
                                            str(root / "docs")]}
 
-        def part(test, name, env=None):
+        def part(test, name, env=None, leap_seconds="3 "):
             # A fresh Run each time, so that nothing it computed earlier is
             # reused; the machine part computed rather than stood in for.
             run = stand_in_run(tree, root)
             run.ctest, run._machine = str(cmake), None
+            run.leap_seconds = lambda: leap_seconds
             run.world.library_map = {norm(compiler): [str(compiler_library)]}
             return run.parts(test, [], STAND_IN_ENVIRONMENT if env is None else env).get(name)
 
@@ -1293,8 +1322,13 @@ def each_part_moves_with_its_input(expect) -> None:
         machine_after_compiler = part(suite, "machine")
         expect("another compiler moves the machine part", machine_after_compiler != machine_before, True)
         compiler_library.write_text("another library", encoding="utf-8")
+        machine_after_library = part(suite, "machine")
         expect("another library of the compiler moves the machine part",
-               part(suite, "machine") != machine_after_compiler, True)
+               machine_after_library != machine_after_compiler, True)
+        # Decision 615: Windows' leap seconds, from the registry, as the
+        # value reads -- here a table of one second where there was none.
+        expect("another leap-second table in the registry moves the machine part",
+               part(suite, "machine", leap_seconds="3 1e00000000000000ff") != machine_after_library, True)
 
         shaders_before = part(probe, "shaders")
         shader.write_text("another shader", encoding="utf-8")

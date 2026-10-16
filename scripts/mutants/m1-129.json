@@ -964,6 +964,18 @@
       "ctest": [
         "mutate_self_test"
       ]
+    },
+    {
+      "name": "the machine part leaves out Windows' leap seconds",
+      "file": "scripts/run-tests.py",
+      "find": "            self._machine = digest(f\"{self.world.files(sorted(set(found)))}\\n{self.leap_seconds()}\")",
+      "replace": "            self._machine = digest(f\"{self.world.files(sorted(set(found)))}\")",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
     }
   ]
 }

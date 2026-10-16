@@ -27,7 +27,8 @@ does -- of:
   `cmake/` and the build files (decision 531); for a test that starts the
   application, every compiled shader; for a GPU test, the card, its driver
   and the Vulkan versions (decisions 490 and 532);
-- and the machine's own tools and time-zone data (decisions 509 and 533).
+- and the machine's own tools, its time-zone data, and on Windows the
+  registry value its leap seconds are read from (decisions 509, 533 and 615).
 
 A test runs whenever a test it depends on runs (decision 508), and only a
 passed test is remembered (decision 536). The skipping lives in a driver that
@@ -69,7 +70,10 @@ commits, 2,284 of its 8,771 test runs were needed (26%, decision 483).
 
 **An input that is on no list is caught only by the full run before the
 push.** The Process Monitor recording, repeated at each phase gate, keeps the
-list of files outside the repository current (decision 509).
+list of files outside the repository current (decision 509). Its first
+comparison with the records, on 2026-10-16, found one read left out in 480
+test processes, now recorded, and that the leap-second test reads a registry
+value rather than the ICU files (decisions 612, 614 and 615).
 
 **Every test that starts the application is fingerprinted on every shader**
 until [M1-131](../plan/tasks/m1-131-coverage-hook.md) records which shaders a

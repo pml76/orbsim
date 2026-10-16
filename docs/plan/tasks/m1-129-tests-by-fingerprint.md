@@ -4,7 +4,7 @@ Phase: B | Status: in progress
 Prerequisites: M1-118
 Decided by: register decisions 483-491, 495-506 and 508-510, ruled
 2026-10-12, 511-519, ruled 2026-10-13, 520-524 and 525-542, ruled
-2026-10-14, 543, 544-568 and 569-581, ruled 2026-10-15, and 582-596 and 601-613,
+2026-10-14, 543, 544-568 and 569-581, ruled 2026-10-15, and 582-596 and 601-615,
 ruled 2026-10-16. **Split on 2026-10-16** (decision 596): item 9's steps C, D and E
 are [M1-131](m1-131-coverage-hook.md), [M1-132](m1-132-function-level-selection.md)
 and [M1-133](m1-133-selection-proved.md), after this task.
@@ -174,7 +174,7 @@ same replay, in M1-133.
 
 ## Where it stands (2026-10-16, the finish's first commit)
 
-**Every question the finish raised ruled, decisions 601-613**, and built:
+**Every question the finish raised ruled, decisions 601-615**, and built:
 
 - **The gaps closed, each test seen failing first.** A spike on a scratch copy
   of the driver found eight parts of a fingerprint no test could see broken
@@ -185,7 +185,7 @@ same replay, in M1-133.
   where there were 12 (603). A listener in `test_read_records` reads a file
   before the first test case, and `read_record_written` requires it (604).
   `mutate.py --verify` accepts a git hook's mutant that builds nothing (613).
-- **The mutants**: 51 new -- `m1-129.json` 79, items 1-7 and step B, and the
+- **The mutants**: 52 new -- `m1-129.json` 80, items 1-7 and step B, and the
   new `m1-129-debug.json` 7, step A, judged where assertions are live
   (605, 606).
 - **ADR 0027** (608), and the documents of decision 609; item (a) moved to
@@ -200,10 +200,17 @@ same replay, in M1-133.
   corpus or M1-118's, so the low counts were the load.
 - **`check` passes in both trees**, 580 tests, 147 run and 433 skipped as
   unchanged in each; the suites hold 3,941,219 assertions in 479 test cases.
+- **The records compared with what the tests open** (612): Process Monitor
+  over one full Debug run, each of the 480 test processes that wrote a
+  record compared path for path. One read was left out -- `test_hdr_dump`'s
+  missing file, a literal path -- now named through `probeFile()` (614).
+  And `test_time_leap` opened no ICU file: Microsoft's library reads the
+  leap seconds from the registry, whose value now joins the machine part
+  (615). The comparison was seen to report a planted fault, after its first
+  version had silently matched nothing.
 
-**Left**: the Process Monitor comparison (612), the timings (607), the
-mutation passes of decision 580, `check-full` in both trees, and the push on
-the owner's go-ahead.
+**Left**: the timings (607), the mutation passes of decision 580,
+`check-full` in both trees, and the push on the owner's go-ahead.
 
 ## Where it stood (2026-10-15, third session's end)
 

@@ -18,6 +18,7 @@
 #include "HdrDumpFile.hpp"
 #include "core/Scalar.hpp"
 #include "tests/TestCase.hpp"
+#include "tests/TestReads.hpp"
 #include "view/ProbeImage.hpp"
 
 #include <catch2/catch_message.hpp>
@@ -182,7 +183,11 @@ TEST_CASE("data too short or too long is refused by name") {
 }
 
 TEST_CASE("a missing file is refused by name") {
-    const auto dump = readHdrDump(std::filesystem::path{"no/such/directory/clear.hdr.f32"});
+    // Named through probeFile(), so that its record says the file is
+    // `missing` and the case runs again should one ever appear there -- a
+    // literal path read here went unrecorded, as Process Monitor showed on
+    // 2026-10-16 (register decision 614). No probe writes this name.
+    const auto dump = readHdrDump(std::filesystem::path{probeFile("no-such-dump.hdr.f32")});
     REQUIRE_FALSE(dump.has_value());
     REQUIRE(dump.error() == HdrDumpError::FileNotFound);
 }
