@@ -1,6 +1,6 @@
 # M1-129 — Tests that run only when what they read has changed
 
-Phase: B | Status: in progress
+Phase: B | Status: done 2026-10-17, its push waiting for `check-full` in both trees and the owner's go-ahead
 Prerequisites: M1-118
 Decided by: register decisions 483-491, 495-506 and 508-510, ruled
 2026-10-12, 511-519, ruled 2026-10-13, 520-524 and 525-542, ruled
@@ -155,16 +155,18 @@ read before the first test case, by a listener in `test_read_records`
 
 ## Done when
 
-- [ ] Every question the design raised ruled, and the rulings in the register.
-- [ ] Before and after for a clean `check`, a one-file change, a header change
+- [x] Every question the design raised ruled, and the rulings in the register.
+- [x] Before and after for a clean `check`, a one-file change, a header change
       and a mutation pass, written in
       [`docs/measurements/m1-129-before-after.md`](../../measurements/m1-129-before-after.md)
       and linked from `STATUS.md` (decision 607).
-- [ ] `check` passes in both trees.
+- [x] `check` passes in both trees.
 - [ ] The task's mutant file has run after the commit and its record is
       committed, and so has every mutant file `scripts/mutants-due.py` lists
       (decision 580); then `check-full` in both trees, and the push on the
-      owner's go-ahead (decisions 535 and 595).
+      owner's go-ahead (decisions 535 and 595). *The passes are done,
+      2026-10-17, and their record committed with this document; `check-full`
+      and the push follow.*
 
 *Moved by decision 596 (2026-10-16):* item 9's steps C to E, and M1-118's 16
 commits measured with them against the spike's 18% (decision 543), are
@@ -172,7 +174,30 @@ M1-131 to M1-133; and M1-118's commits measured with this task's
 whole-program fingerprints, against the simulation's 26%, are measured in the
 same replay, in M1-133.
 
-## Where it stands (2026-10-17, the second session's end)
+## Where it stands (2026-10-17, the finish)
+
+**Steps 1-3 of the list below are done** (decisions 617-623):
+
+- **The "after" timings** (607, 619) and **scenario 4**, the mutation pass and
+  the `check` after it, are in
+  [the record](../../measurements/m1-129-before-after.md): with nothing
+  changed, `check` takes about 6 s in each tree.
+- **Every mutant file passed after the task's commits** (580, 617, 618): 41
+  files, 532 mutants, 504 caught, the 28 survivors all declared, in 4 h
+  33 min. `m1-129-debug.json`'s first pass found its check,
+  `cmake/VerifyAssertionMessage.cmake`, blind to three of its mutants; the
+  check now looks for each part where it belongs, measured on Windows and
+  Linux before it was committed (622). Windows refused four writes during
+  the passes, and each such file ran again (623; `STATUS.md`'s open item
+  (g)).
+- **The records**: this document, `HISTORY.md` section 7, `STATUS.md` and
+  `BRIEFING.md` section 7.
+
+**Left**: step 4, `check-full` in both trees from a clean working tree, then
+the push on the owner's go-ahead and a fetch to confirm it; and step 5,
+after the push.
+
+## Where it stood (2026-10-17, the second session's end)
 
 **Every question the finish raised ruled, decisions 601-616**, and built:
 
@@ -232,7 +257,7 @@ what the tests open), and the commit that writes this section (decision
    `after-relwithdebinfo`. Write the table into the record, and add the raw
    lines to `docs/measurements/m1-129/timings.jsonl`, after the first
    attempt's three (619).
-2. **The mutation passes** (580, 610, 617, 618): `m1-129.json`
+2. *Done 2026-10-17.* **The mutation passes** (580, 610, 617, 618): `m1-129.json`
    (RelWithDebInfo, 83 mutants) and `m1-129-debug.json` (Debug, 7), then
    `m1-118.json` with the Debug `check` after it, timed for the record's
    scenario 4, then the other files
@@ -244,7 +269,7 @@ what the tests open), and the commit that writes this section (decision
    survives or does not compile goes to the owner before anything changes.
    Commit the records and `STATUS.md`, each commit's changes listed for the
    owner (621).
-3. **The records of the finish**: M1-129's entry under `HISTORY.md` section
+3. *Done 2026-10-17.* **The records of the finish**: M1-129's entry under `HISTORY.md` section
    7, `STATUS.md`'s last-task and next-task rows, `BRIEFING.md` section 7,
    this document's status.
 4. **`check-full` in both trees**, from a clean working tree, then the push
@@ -259,9 +284,9 @@ what the tests open), and the commit that writes this section (decision
 probes last ran, needs its probes to run once before
 `mutants_due_probe_shaders` can pass: `ctest -R "^mutants_due_probe_shaders$"`
 runs them as its setup tests (decision 616). Both trees have the memory
-since 2026-10-17. Decision 612's Process Monitor files,
-`build/procmon-m1-129.pml` (1.3 GB) and `.csv` (0.9 GB), are kept until the
-task ends, then deleted on the owner's word.
+since 2026-10-17. Decision 612's Process Monitor files in
+`build/`, `procmon-m1-129.pml` (1.3 GB) and its `.csv` (0.9 GB), are deleted
+after the push (decision 620).
 
 ## Where it stood (2026-10-15, third session's end)
 
