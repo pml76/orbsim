@@ -3,8 +3,8 @@
 Phase: B | Status: not started
 Prerequisites: M1-131
 Decided by: register decisions 543-553, 556-561, 564, 567, 569 and 570, ruled
-2026-10-15, and 582-595, ruled 2026-10-16; split out of M1-129 as its item 9's
-step D by decision 596.
+2026-10-15, 582-595, ruled 2026-10-16, and 624, ruled 2026-10-17; split out of
+M1-129 as its item 9's step D by decision 596.
 Reads what [M1-131](m1-131-coverage-hook.md) records; proved by
 [M1-133](m1-133-selection-proved.md).
 
@@ -33,15 +33,17 @@ data that points at other data (545).
 3. **A program carrying the hook is fingerprinted as decision 583 lays out:
    our own code by the hook, everyone else's code by its binary.**
    - Function by function: the digests of the functions the test entered,
-     stored per test, a removed function counting as changed (547), and only
-     the test's own registrar among the start-up functions (550) -- since
-     decision 573 the one named after the test's own name.
+     stored per test, a removed function counting as changed (547), and no
+     start-up function among them, a test's own registration included (624,
+     amending 550 and 587).
    - A module is known to carry the hook by its content: it holds the hook's
      address table (584).
    - A function in such a module that carries no flag counts as entered by
      every test of every program that links it (586).
-   - An added start-up function counts as a change for every test of its
-     program, test registrations excepted (587).
+   - **No start-up function in an object compiled from `src/`** (624):
+     `check` fails, naming the object, where one carries a start-up entry, so
+     that the rule above stays safe; an exception to `-Wglobal-constructors`
+     there comes back to the owner with this ruling.
    - Everyone else's code, per program: the bytes of each library or object
      file, and the list of modules the program took from it, from the map
      (585) -- the code compiled in the tree without the hook, the libraries
@@ -69,10 +71,11 @@ data that points at other data (545).
 ## Mutants
 
 At least: a digest ignoring a relocation; data not followed; a removed function
-not counted; another test's registrar counted; an address mapped to the wrong
-function; a function without a flag left out; an added start-up function
-ignored; a library from outside the tree left out of the binary part; a missing
-record passed over -- each caught by its self-test.
+not counted; a start-up function left in a record; an address mapped to the
+wrong function; a function without a flag left out; a start-up entry in an
+object from `src/` passed by the check of decision 624; a library from outside
+the tree left out of the binary part; a missing record passed over -- each
+caught by its self-test.
 
 ## Done when
 

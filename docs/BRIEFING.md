@@ -340,5 +340,5 @@ decisions 601-623 -- and its push waits for `check-full` in both trees and
 the owner's go-ahead; then
 [M1-131](plan/tasks/m1-131-coverage-hook.md) to
 [M1-133](plan/tasks/m1-133-selection-proved.md) (tests chosen function by
-function, every question already ruled, decisions 582-596), then M1-127 and
+function, every question already ruled, decisions 582-596 and 624), then M1-127 and
 M1-130 (the code as modules), lower levels first (decision 495).
