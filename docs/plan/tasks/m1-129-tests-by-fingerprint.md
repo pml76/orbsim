@@ -223,7 +223,7 @@ what the tests open), and the commit that writes this section (decision
 
 **Next, in this order:**
 
-1. **The "after" timings** (607), both trees, the machine otherwise idle and
+1. *Done 2026-10-17, in the record.* **The "after" timings** (607), both trees, the machine otherwise idle and
    the repository untouched while they run: copy
    `docs/measurements/m1-129/timings.py` to a scratch folder first -- it
    writes its logs and `timings.jsonl` beside itself, which inside the

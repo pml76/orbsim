@@ -13,3 +13,15 @@
 {"label": "after-debug", "scenario": "warm", "exit": 0, "wall_s": 7.7, "test_s": 0.16, "ran": 1, "skipped": 579, "compiles": 0, "links": 0, "lints": 0, "when": "2026-10-16T19:13:29"}
 {"label": "after-debug", "scenario": "nothing", "exit": 0, "wall_s": 7.1, "test_s": 0.11, "ran": 1, "skipped": 579, "compiles": 0, "links": 0, "lints": 0, "when": "2026-10-16T19:13:36"}
 {"label": "after-debug", "scenario": "one-file", "exit": 1, "wall_s": 62.0, "test_s": 34.13, "ran": 76, "skipped": 504, "compiles": 1, "links": 52, "lints": 1, "when": "2026-10-16T19:14:38"}
+{"label": "after-debug", "scenario": "warm", "exit": 0, "wall_s": 30.0, "test_s": 23.52, "ran": 21, "skipped": 559, "compiles": 0, "links": 0, "lints": 0, "when": "2026-10-17T07:33:33"}
+{"label": "after-debug", "scenario": "nothing", "exit": 0, "wall_s": 6.3, "test_s": 0.1, "ran": 1, "skipped": 579, "compiles": 0, "links": 0, "lints": 0, "when": "2026-10-17T07:33:39"}
+{"label": "after-debug", "scenario": "one-file", "exit": 0, "wall_s": 58.2, "test_s": 32.62, "ran": 76, "skipped": 504, "compiles": 1, "links": 52, "lints": 1, "when": "2026-10-17T07:34:38"}
+{"label": "after-debug", "scenario": "one-file-revert", "exit": 0, "wall_s": 58.0, "test_s": 31.9, "ran": 76, "skipped": 504, "compiles": 1, "links": 52, "lints": 1, "when": "2026-10-17T07:35:36"}
+{"label": "after-debug", "scenario": "header", "exit": 0, "wall_s": 488.2, "test_s": 174.65, "ran": 454, "skipped": 126, "compiles": 92, "links": 54, "lints": 57, "when": "2026-10-17T07:43:44"}
+{"label": "after-debug", "scenario": "header-revert", "exit": 0, "wall_s": 467.4, "test_s": 171.37, "ran": 454, "skipped": 126, "compiles": 92, "links": 54, "lints": 57, "when": "2026-10-17T07:51:31"}
+{"label": "after-relwithdebinfo", "scenario": "warm", "exit": 0, "wall_s": 341.2, "test_s": 30.89, "ran": 27, "skipped": 553, "compiles": 91, "links": 54, "lints": 56, "when": "2026-10-17T07:57:26"}
+{"label": "after-relwithdebinfo", "scenario": "nothing", "exit": 0, "wall_s": 6.1, "test_s": 0.57, "ran": 7, "skipped": 573, "compiles": 0, "links": 0, "lints": 0, "when": "2026-10-17T07:57:32"}
+{"label": "after-relwithdebinfo", "scenario": "one-file", "exit": 0, "wall_s": 58.8, "test_s": 34.09, "ran": 82, "skipped": 498, "compiles": 1, "links": 52, "lints": 1, "when": "2026-10-17T07:58:31"}
+{"label": "after-relwithdebinfo", "scenario": "one-file-revert", "exit": 0, "wall_s": 56.9, "test_s": 31.27, "ran": 82, "skipped": 498, "compiles": 1, "links": 52, "lints": 1, "when": "2026-10-17T07:59:28"}
+{"label": "after-relwithdebinfo", "scenario": "header", "exit": 0, "wall_s": 402.5, "test_s": 77.66, "ran": 459, "skipped": 121, "compiles": 91, "links": 54, "lints": 56, "when": "2026-10-17T08:06:10"}
+{"label": "after-relwithdebinfo", "scenario": "header-revert", "exit": 0, "wall_s": 417.1, "test_s": 90.81, "ran": 459, "skipped": 121, "compiles": 91, "links": 54, "lints": 56, "when": "2026-10-17T08:13:07"}

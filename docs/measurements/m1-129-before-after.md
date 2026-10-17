@@ -61,14 +61,58 @@ include that tree's catching up.
 | RelWithDebInfo | header, `Units.hpp` | 473.1 s | 117.6 s | 559 | 91 | 51 | 56 |
 | RelWithDebInfo | its revert | 447.0 s | 109.9 s | 559 | 91 | 51 | 56 |
 
-**After: to be measured again.** The first attempt, 2026-10-16 in
-`build/debug` at `a6da837`, gave a warm `check` of 7.7 s and one with
-nothing changed of 7.1 s -- 1 test run, 579 skipped -- and then **found a
-defect**: the one-file change failed `check` after 62.0 s (76 run, 504
-skipped; 1 compile, 52 links, 1 lint step), `mutants_due_probe_shaders`
-failing because the application, relinked to the same bytes, was newer than
-every probe's sidecar. Fixed by decision 616; the after run is to be taken
-again on the committed fix, both trees, with the same script.
+**After: measured 2026-10-17** in `build/debug` and `build/relwithdebinfo`
+at `aa11bc1`, with the same script, one run each, the machine otherwise idle.
+Every run passed. 580 tests in each tree, where the before tree had 559.
+
+| Tree | Scenario | Wall | Tests | Tests run | Compiles | Links | Lint steps |
+|---|---|---|---|---|---|---|---|
+| Debug | warm | 30.0 s | 23.5 s | 21 | 0 | 0 | 0 |
+| Debug | nothing changed | 6.3 s | 0.1 s | 1 | 0 | 0 | 0 |
+| Debug | one file, `Orbit.cpp` | 58.2 s | 32.6 s | 76 | 1 | 52 | 1 |
+| Debug | its revert | 58.0 s | 31.9 s | 76 | 1 | 52 | 1 |
+| Debug | header, `Units.hpp` | 488.2 s | 174.7 s | 454 | 92 | 54 | 57 |
+| Debug | its revert | 467.4 s | 171.4 s | 454 | 92 | 54 | 57 |
+| RelWithDebInfo | warm | 341.2 s | 30.9 s | 27 | 91 | 54 | 56 |
+| RelWithDebInfo | nothing changed | 6.1 s | 0.6 s | 7 | 0 | 0 | 0 |
+| RelWithDebInfo | one file, `Orbit.cpp` | 58.8 s | 34.1 s | 82 | 1 | 52 | 1 |
+| RelWithDebInfo | its revert | 56.9 s | 31.3 s | 82 | 1 | 52 | 1 |
+| RelWithDebInfo | header, `Units.hpp` | 402.5 s | 77.7 s | 459 | 91 | 54 | 56 |
+| RelWithDebInfo | its revert | 417.1 s | 90.8 s | 459 | 91 | 54 | 56 |
+
+What the figures say:
+
+- **Nothing changed: 203.8 s to 6.3 s in Debug, 111.5 s to 6.1 s in
+  RelWithDebInfo.** The tests that still run are those CTest reports as
+  skipped, which are never remembered (decision 536): the Linux-only case in
+  both trees, and in RelWithDebInfo also the six assertion probes, which skip
+  themselves where assertions are not live.
+- **One file: 253.2 s to 58.2 s in Debug, 132.9 s to 58.8 s in
+  RelWithDebInfo**, running the 76 tests `Orbit.cpp` reaches, and the same
+  six more in RelWithDebInfo. The revert runs them again, since a test is
+  remembered by its last passing run, which was the edited one.
+- **A header nearly every file includes: 526.3 s to 488.2 s in Debug, 473.1 s
+  to 402.5 s in RelWithDebInfo.** The tests fall from 204.0 s to 174.7 s and
+  from 117.6 s to 77.7 s, but 454 and 459 of 580 still run, and the compiles
+  and lint steps, which no test selection touches, take the rest. A comment
+  changes no function, so this is the case function-level selection, M1-131
+  to M1-133, is aimed at.
+- **The warm runs are not a scenario.** Both ran the 20 tests that name the
+  build tree on their command line, which are fingerprinted on every file of
+  the repository (decision 500), so `aa11bc1`'s change to two documents
+  reran them; and beside them those that always run. RelWithDebInfo's also
+  rebuilt 91 objects: the Debug run's reverts put `Units.hpp`'s bytes back
+  with a new time, and the two trees share the source. The programs it
+  relinked came out byte for byte as before, so no test of theirs ran.
+
+**The first attempt, 2026-10-16** in `build/debug` at `a6da837`, gave a warm
+`check` of 7.7 s and one with nothing changed of 7.1 s -- 1 test run, 579
+skipped -- and then **found a defect**: the one-file change failed `check`
+after 62.0 s (76 run, 504 skipped; 1 compile, 52 links, 1 lint step),
+`mutants_due_probe_shaders` failing because the application, relinked to the
+same bytes, was newer than every probe's sidecar. Fixed by decision 616. Its
+three lines stay in `timings.jsonl`, before the second attempt's, under the
+same label (decision 619).
 
 **The mutation pass (scenario 4)** is timed during decision 580's passes:
 `m1-118.json` in `build/debug`, and the `check` after it.
