@@ -4,8 +4,8 @@ Phase: B | Status: in progress
 Prerequisites: M1-118
 Decided by: register decisions 483-491, 495-506 and 508-510, ruled
 2026-10-12, 511-519, ruled 2026-10-13, 520-524 and 525-542, ruled
-2026-10-14, 543, 544-568 and 569-581, ruled 2026-10-15, and 582-596 and 601-616,
-ruled 2026-10-16. **Split on 2026-10-16** (decision 596): item 9's steps C, D and E
+2026-10-14, 543, 544-568 and 569-581, ruled 2026-10-15, 582-596 and 601-616,
+ruled 2026-10-16, and 617-621, ruled 2026-10-17. **Split on 2026-10-16** (decision 596): item 9's steps C, D and E
 are [M1-131](m1-131-coverage-hook.md), [M1-132](m1-132-function-level-selection.md)
 and [M1-133](m1-133-selection-proved.md), after this task.
 Continues [ADR 0024](../../adr/0024-verification-costs-what-changed.md); its
@@ -230,22 +230,29 @@ what the tests open), and the commit that writes this section (decision
    repository would change tracked files during "nothing changed" -- and run
    it as `timings.py after-debug <repository> <repository>/build/debug`, then
    `after-relwithdebinfo`. Write the table into the record, and add the raw
-   lines to `docs/measurements/m1-129/timings.jsonl`.
-2. **The mutation passes** (580, 610): `m1-129.json` (RelWithDebInfo, 83
-   mutants) and `m1-129-debug.json` (Debug, 7), then every file
-   `python scripts/mutants-due.py build/relwithdebinfo` lists, each in its
-   own tree, one at a time in the background, the machine kept awake and
-   CLion closed. Time `m1-118.json`'s pass and the Debug `check` after it,
-   for the record's scenario 4. A mutant that newly survives or does not
-   compile goes to the owner before anything changes. Commit the records and
-   `STATUS.md`.
+   lines to `docs/measurements/m1-129/timings.jsonl`, after the first
+   attempt's three (619).
+2. **The mutation passes** (580, 610, 617, 618): `m1-129.json`
+   (RelWithDebInfo, 83 mutants) and `m1-129-debug.json` (Debug, 7), then
+   `m1-118.json` with the Debug `check` after it, timed for the record's
+   scenario 4, then the other files
+   `python scripts/mutants-due.py build/relwithdebinfo` lists -- 41 of 41
+   due on 2026-10-17 -- each in its own tree, one at a time in the
+   background, the machine kept awake and CLion closed. About six hours, so
+   the sequence stops between two files once the session's context is 80 to
+   90 per cent used, and continues in a new session. A mutant that newly
+   survives or does not compile goes to the owner before anything changes.
+   Commit the records and `STATUS.md`, each commit's changes listed for the
+   owner (621).
 3. **The records of the finish**: M1-129's entry under `HISTORY.md` section
    7, `STATUS.md`'s last-task and next-task rows, `BRIEFING.md` section 7,
    this document's status.
 4. **`check-full` in both trees**, from a clean working tree, then the push
    on the owner's go-ahead, then a fetch to confirm it landed.
 5. **After the push**: list and delete `build/item9-reshape/` (decision
-   611); keep `build/wt129` for M1-133.
+   611); keep `build/wt129` for M1-133; delete Process Monitor's two files,
+   having first taken their names out of the documents, where `doc-links`
+   would report them missing (620).
 
 **Worth knowing for whoever continues.** A tree with no
 `mutants-due-sidecars.json`, or whose application was relinked after its
