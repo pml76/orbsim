@@ -114,8 +114,20 @@ same bytes, was newer than every probe's sidecar. Fixed by decision 616. Its
 three lines stay in `timings.jsonl`, before the second attempt's, under the
 same label (decision 619).
 
-**The mutation pass (scenario 4)** is timed during decision 580's passes:
-`m1-118.json` in `build/debug`, and the `check` after it.
+**The mutation pass (scenario 4), measured 2026-10-17** during decision 580's
+passes, at `041cd11`, in `build/debug`:
+
+| | Before (2026-10-13) | After (2026-10-17) |
+|---|---|---|
+| `m1-118.json`'s pass, 20 mutants | 10 min 1 s, with its final build | 232 s, 20 caught |
+| The Debug `check` after it | stopped for memory, with 79 lint steps due again; 18 min for both trees' `check` after a pass with no source change | 184.8 s: 0 compiles, 0 links, 0 lint steps; 127 tests run, 453 skipped |
+
+The pass leaves nothing to rebuild. The 127 tests are the 96 run through
+`cmake` or `python`, every one, since decision 531 fingerprints them on
+every file under `scripts/` and the pass writes its record there
+(`scripts/mutation-passes.json`); the 30 that read the images those probes
+wrote again; and the one that always runs. Checked against CTest's own
+list of the tree's tests (decision 618).
 
 The script and the raw figures are in [`m1-129/`](m1-129/): `timings.py`
 (run as `timings.py <label> <source root> <build tree>`), `timings.jsonl`.

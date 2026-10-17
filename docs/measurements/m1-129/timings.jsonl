@@ -25,3 +25,4 @@
 {"label": "after-relwithdebinfo", "scenario": "one-file-revert", "exit": 0, "wall_s": 56.9, "test_s": 31.27, "ran": 82, "skipped": 498, "compiles": 1, "links": 52, "lints": 1, "when": "2026-10-17T07:59:28"}
 {"label": "after-relwithdebinfo", "scenario": "header", "exit": 0, "wall_s": 402.5, "test_s": 77.66, "ran": 459, "skipped": 121, "compiles": 91, "links": 54, "lints": 56, "when": "2026-10-17T08:06:10"}
 {"label": "after-relwithdebinfo", "scenario": "header-revert", "exit": 0, "wall_s": 417.1, "test_s": 90.81, "ran": 459, "skipped": 121, "compiles": 91, "links": 54, "lints": 56, "when": "2026-10-17T08:13:07"}
+{"label": "after-debug", "scenario": "check-after-m1-118-pass", "exit": 0, "wall_s": 184.8, "test_s": 177.07, "ran": 127, "skipped": 453, "compiles": 0, "links": 0, "lints": 0, "when": "2026-10-17T10:28:58"}
