@@ -73,7 +73,7 @@ How to install and run any of it is
 |---|---|---|
 | clang / clang-tidy / clang-format | **23.1.2** | `C:\GitHub\clang+llvm-23.1.2-x86_64-pc-windows-msvc\bin` -- since 2026-10-03, when both trees were set up again with it; 23.1.0 is no longer on disk |
 | CMake (the one that works) | 4.3.1, CLion-bundled | `C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe` |
-| CMake (on PATH) | 3.31.2 | `C:\Program Files\CMake\bin` |
+| CMake (on PATH) | **4.4.4** | `C:\Program Files\CMake\bin` -- measured 2026-10-17, where this row said 3.31.2; the program is dated 2026-10-02. Strawberry Perl's `C:\Strawberry\c\bin`, which also holds Ninja, comes earlier on PATH and carries CMake 3.29.2, so a bare `cmake` finds that one; the trees are configured with CLion's, above |
 | Ninja | 1.12.0 | `C:\Strawberry\c\bin` |
 | Vulkan SDK | 1.4.357.0 | `C:\VulkanSDK\1.4.357.0` |
 | Python (for the format hook) | 3.14.0 | `C:\Program Files\PyManager` |
