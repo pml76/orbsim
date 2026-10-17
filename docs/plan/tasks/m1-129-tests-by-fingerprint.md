@@ -4,7 +4,7 @@ Phase: B | Status: in progress
 Prerequisites: M1-118
 Decided by: register decisions 483-491, 495-506 and 508-510, ruled
 2026-10-12, 511-519, ruled 2026-10-13, 520-524 and 525-542, ruled
-2026-10-14, 543, 544-568 and 569-581, ruled 2026-10-15, and 582-596 and 601-615,
+2026-10-14, 543, 544-568 and 569-581, ruled 2026-10-15, and 582-596 and 601-616,
 ruled 2026-10-16. **Split on 2026-10-16** (decision 596): item 9's steps C, D and E
 are [M1-131](m1-131-coverage-hook.md), [M1-132](m1-132-function-level-selection.md)
 and [M1-133](m1-133-selection-proved.md), after this task.
@@ -172,9 +172,9 @@ M1-131 to M1-133; and M1-118's commits measured with this task's
 whole-program fingerprints, against the simulation's 26%, are measured in the
 same replay, in M1-133.
 
-## Where it stands (2026-10-16, the finish's first commit)
+## Where it stands (2026-10-17, the second session's end)
 
-**Every question the finish raised ruled, decisions 601-615**, and built:
+**Every question the finish raised ruled, decisions 601-616**, and built:
 
 - **The gaps closed, each test seen failing first.** A spike on a scratch copy
   of the driver found eight parts of a fingerprint no test could see broken
@@ -185,7 +185,7 @@ same replay, in M1-133.
   where there were 12 (603). A listener in `test_read_records` reads a file
   before the first test case, and `read_record_written` requires it (604).
   `mutate.py --verify` accepts a git hook's mutant that builds nothing (613).
-- **The mutants**: 52 new -- `m1-129.json` 80, items 1-7 and step B, and the
+- **The mutants**: 55 new -- `m1-129.json` 83, items 1-7 and step B, and the
   new `m1-129-debug.json` 7, step A, judged where assertions are live
   (605, 606).
 - **ADR 0027** (608), and the documents of decision 609; item (a) moved to
@@ -208,9 +208,53 @@ same replay, in M1-133.
   leap seconds from the registry, whose value now joins the machine part
   (615). The comparison was seen to report a planted fault, after its first
   version had silently matched nothing.
+- **A defect the timings found** (616): a one-line comment in
+  `src/orbit/Orbit.cpp` relinked the application to the same bytes, the
+  probes were rightly skipped, and `mutants_due_probe_shaders` failed,
+  since `mutants-due.py` trusted a probe's sidecar only if it was newer
+  than the application. A sidecar the time rule trusted now stays trusted
+  while it and the application are byte for byte the same.
 
-**Left**: the timings (607), the mutation passes of decision 580,
-`check-full` in both trees, and the push on the owner's go-ahead.
+**Committed, not pushed**: `485c7ff` (fuzz_time's corpus), `97b7e13` (the
+finish's code, tests, mutants and documents), `a6da837` (the records held to
+what the tests open), and the commit that writes this section (decision
+616). `check` passes in both trees on it. The "before" timings are in
+[`docs/measurements/m1-129-before-after.md`](../../measurements/m1-129-before-after.md).
+
+**Next, in this order:**
+
+1. **The "after" timings** (607), both trees, the machine otherwise idle and
+   the repository untouched while they run: copy
+   `docs/measurements/m1-129/timings.py` to a scratch folder first -- it
+   writes its logs and `timings.jsonl` beside itself, which inside the
+   repository would change tracked files during "nothing changed" -- and run
+   it as `timings.py after-debug <repository> <repository>/build/debug`, then
+   `after-relwithdebinfo`. Write the table into the record, and add the raw
+   lines to `docs/measurements/m1-129/timings.jsonl`.
+2. **The mutation passes** (580, 610): `m1-129.json` (RelWithDebInfo, 83
+   mutants) and `m1-129-debug.json` (Debug, 7), then every file
+   `python scripts/mutants-due.py build/relwithdebinfo` lists, each in its
+   own tree, one at a time in the background, the machine kept awake and
+   CLion closed. Time `m1-118.json`'s pass and the Debug `check` after it,
+   for the record's scenario 4. A mutant that newly survives or does not
+   compile goes to the owner before anything changes. Commit the records and
+   `STATUS.md`.
+3. **The records of the finish**: M1-129's entry under `HISTORY.md` section
+   7, `STATUS.md`'s last-task and next-task rows, `BRIEFING.md` section 7,
+   this document's status.
+4. **`check-full` in both trees**, from a clean working tree, then the push
+   on the owner's go-ahead, then a fetch to confirm it landed.
+5. **After the push**: list and delete `build/item9-reshape/` (decision
+   611); keep `build/wt129` for M1-133.
+
+**Worth knowing for whoever continues.** A tree with no
+`mutants-due-sidecars.json`, or whose application was relinked after its
+probes last ran, needs its probes to run once before
+`mutants_due_probe_shaders` can pass: `ctest -R "^mutants_due_probe_shaders$"`
+runs them as its setup tests (decision 616). Both trees have the memory
+since 2026-10-17. Decision 612's Process Monitor files,
+`build/procmon-m1-129.pml` (1.3 GB) and `.csv` (0.9 GB), are kept until the
+task ends, then deleted on the owner's word.
 
 ## Where it stood (2026-10-15, third session's end)
 

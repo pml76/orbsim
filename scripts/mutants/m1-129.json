@@ -976,6 +976,42 @@
       "ctest": [
         "run_tests_self_test"
       ]
+    },
+    {
+      "name": "a remembered sidecar is trusted whatever the application's bytes",
+      "file": "scripts/mutants-due.py",
+      "find": "    return memory.get(key) == contents",
+      "replace": "    return key in memory",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "the time rule's trust is not remembered",
+      "file": "scripts/mutants-due.py",
+      "find": "        memory[key] = dict(contents)\n",
+      "replace": "        pass\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "the remembered sidecars are not kept in the tree",
+      "file": "scripts/mutants-due.py",
+      "find": "            os.replace(partial, self.tree / TRUSTED)",
+      "replace": "            pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
     }
   ]
 }

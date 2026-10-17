@@ -1,0 +1,15 @@
+{"label": "before-debug", "scenario": "warm", "exit": 0, "wall_s": 435.5, "test_s": 192.86, "ran": 559, "skipped": 0, "compiles": 0, "links": 0, "lints": 90, "when": "2026-10-16T18:11:45"}
+{"label": "before-debug", "scenario": "nothing", "exit": 0, "wall_s": 203.8, "test_s": 201.18, "ran": 559, "skipped": 0, "compiles": 0, "links": 0, "lints": 0, "when": "2026-10-16T18:15:09"}
+{"label": "before-debug", "scenario": "one-file", "exit": 0, "wall_s": 253.2, "test_s": 225.45, "ran": 559, "skipped": 0, "compiles": 1, "links": 49, "lints": 1, "when": "2026-10-16T18:19:22"}
+{"label": "before-debug", "scenario": "one-file-revert", "exit": 0, "wall_s": 230.0, "test_s": 205.22, "ran": 559, "skipped": 0, "compiles": 1, "links": 49, "lints": 1, "when": "2026-10-16T18:23:12"}
+{"label": "before-debug", "scenario": "header", "exit": 0, "wall_s": 526.3, "test_s": 204.01, "ran": 559, "skipped": 0, "compiles": 92, "links": 51, "lints": 57, "when": "2026-10-16T18:31:58"}
+{"label": "before-debug", "scenario": "header-revert", "exit": 0, "wall_s": 514.2, "test_s": 199.47, "ran": 559, "skipped": 0, "compiles": 92, "links": 51, "lints": 57, "when": "2026-10-16T18:40:32"}
+{"label": "before-relwithdebinfo", "scenario": "warm", "exit": 0, "wall_s": 645.0, "test_s": 125.76, "ran": 559, "skipped": 0, "compiles": 884, "links": 64, "lints": 90, "when": "2026-10-16T18:51:18"}
+{"label": "before-relwithdebinfo", "scenario": "nothing", "exit": 0, "wall_s": 111.5, "test_s": 108.69, "ran": 559, "skipped": 0, "compiles": 0, "links": 0, "lints": 0, "when": "2026-10-16T18:53:09"}
+{"label": "before-relwithdebinfo", "scenario": "one-file", "exit": 0, "wall_s": 132.9, "test_s": 111.07, "ran": 559, "skipped": 0, "compiles": 1, "links": 49, "lints": 1, "when": "2026-10-16T18:55:22"}
+{"label": "before-relwithdebinfo", "scenario": "one-file-revert", "exit": 0, "wall_s": 140.7, "test_s": 119.15, "ran": 559, "skipped": 0, "compiles": 1, "links": 49, "lints": 1, "when": "2026-10-16T18:57:43"}
+{"label": "before-relwithdebinfo", "scenario": "header", "exit": 0, "wall_s": 473.1, "test_s": 117.55, "ran": 559, "skipped": 0, "compiles": 91, "links": 51, "lints": 56, "when": "2026-10-16T19:05:36"}
+{"label": "before-relwithdebinfo", "scenario": "header-revert", "exit": 0, "wall_s": 447.0, "test_s": 109.86, "ran": 559, "skipped": 0, "compiles": 91, "links": 51, "lints": 56, "when": "2026-10-16T19:13:03"}
+{"label": "after-debug", "scenario": "warm", "exit": 0, "wall_s": 7.7, "test_s": 0.16, "ran": 1, "skipped": 579, "compiles": 0, "links": 0, "lints": 0, "when": "2026-10-16T19:13:29"}
+{"label": "after-debug", "scenario": "nothing", "exit": 0, "wall_s": 7.1, "test_s": 0.11, "ran": 1, "skipped": 579, "compiles": 0, "links": 0, "lints": 0, "when": "2026-10-16T19:13:36"}
+{"label": "after-debug", "scenario": "one-file", "exit": 1, "wall_s": 62.0, "test_s": 34.13, "ran": 76, "skipped": 504, "compiles": 1, "links": 52, "lints": 1, "when": "2026-10-16T19:14:38"}

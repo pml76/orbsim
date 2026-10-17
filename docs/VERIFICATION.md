@@ -648,8 +648,10 @@ changed since `scripts/mutation-passes.json` says it last passed. That covers:
   shader an input of every program built with the application;
 - for a test that starts the application, the shaders it reads: for a probe
   test, those its last sidecar names, where the sidecar comes from a run that
-  rendered and is newer than the application; every shader otherwise (M1-109,
-  decision 394);
+  rendered and is newer than the application -- or, since M1-129, where it and
+  the application are byte for byte what they were when it last was, since a
+  reproducible relink gives the application a new time and no new bytes
+  (decision 616); every shader otherwise (M1-109, decision 394);
 - every test CTest runs before a judging test -- the setup tests of the
   fixtures it requires, and the tests it is ordered after -- since `ctest -R`
   runs those too (M1-109, decision 394);

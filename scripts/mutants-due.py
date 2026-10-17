@@ -114,6 +114,13 @@ UNKNOWN_JUDGE = "<unknown ctest entry "
 # the ninja program, the tree's path, and this script's own text, so that a
 # mutant of the script is never judged by answers its unmutated self wrote.
 GRAPH = "mutants-due-graph.json"
+# The probe sidecars trusted by their contents (M1-129, register decision
+# 616): for each, its SHA-256 and the application's, taken when the time rule
+# of decision 394 last trusted it. An application relinked to the same bytes
+# -- every build is reproducible since decision 488 -- has a new time but
+# wrote nothing new for a sidecar to be read against, so the sidecar stays
+# trusted while both files are what they were.
+TRUSTED = "mutants-due-sidecars.json"
 GRAPH_FILES = ("build.ninja", "CMakeFiles/rules.ninja", ".ninja_deps")
 # Raised whenever what is stored, or how, changes.
 GRAPH_FORMAT = 1
@@ -453,6 +460,19 @@ def sidecar_shaders(text: str, written_ns: int, built_ns: int):
     return named.split()
 
 
+def sidecar_trusted(written_ns: int, built_ns: int, contents: dict, memory: dict, key: str) -> bool:
+    """Whether a probe's sidecar may be read against the application as it is
+    now (register decisions 394 and 616). Written no earlier than the
+    application was last built, it may -- and then `contents`, the sidecar's
+    and the application's SHA-256, are remembered under `key`. Written before,
+    it may only where exactly those contents were remembered: the application
+    was relinked to the bytes it had when the sidecar was trusted."""
+    if written_ns >= built_ns:
+        memory[key] = dict(contents)
+        return True
+    return memory.get(key) == contents
+
+
 def gpu_identity_from_sidecar(text: str):
     """The graphics card a probe ran on, as its sidecar records it: the card,
     the driver and the validation layer (M1-109, register decision 397); None
@@ -546,6 +566,8 @@ class Tree:
         self._fingerprints = {}
         self._tracked = None
         self._hashes = None
+        self._trusted = None
+        self._application_hash = None
 
     def _graph_key(self) -> dict:
         return graph_key(self.tree, shutil.which(self.ninja) or self.ninja, pathlib.Path(__file__).read_bytes())
@@ -675,10 +697,35 @@ class Tree:
             return None
         sidecar = pathlib.Path(found["OUT"]) / f"{found['PROBE']}.txt"
         try:
-            return sidecar_shaders(sidecar.read_text(encoding="utf-8", errors="replace"),
-                                   sidecar.stat().st_mtime_ns, self.application().stat().st_mtime_ns)
+            data = sidecar.read_bytes()
+            written, built = sidecar.stat().st_mtime_ns, self.application().stat().st_mtime_ns
+            contents = {"sidecar": hashlib.sha256(data).hexdigest(), "application": self.application_hash()}
         except OSError:
             return None
+        if not sidecar_trusted(written, built, contents, self.trusted_sidecars(), norm(sidecar)):
+            return None
+        # Trusted, by its time or by its contents: read as one written now.
+        return sidecar_shaders(data.decode("utf-8", errors="replace"), built, built)
+
+    def application_hash(self) -> str:
+        if self._application_hash is None:
+            self._application_hash = hashlib.sha256(self.application().read_bytes()).hexdigest()
+        return self._application_hash
+
+    def trusted_sidecars(self) -> dict:
+        """The sidecars remembered by their contents (decision 616)."""
+        if self._trusted is None:
+            try:
+                self._trusted = json.loads((self.tree / TRUSTED).read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                self._trusted = {}
+        return self._trusted
+
+    def save_trusted(self) -> None:
+        if self._trusted is not None:
+            partial = self.tree / (TRUSTED + ".partial")
+            partial.write_text(json.dumps(self._trusted, sort_keys=True), encoding="utf-8")
+            os.replace(partial, self.tree / TRUSTED)
 
     def shader_inputs(self, test: dict) -> set:
         nodes = self.shader_nodes()
@@ -934,6 +981,7 @@ def main_check(tree: pathlib.Path, assumed: list, only_assumed: bool, expect_due
     for t in readings.values():
         t.save_hashes()
         t.save_graph()
+        t.save_trusted()
     print(f"mutants-due: {due_count} of {len(files)} mutant files due")
     # --expect-due and --expect-current: how CTest checks the real computation
     # against this tree, in both directions (the second since M1-109).
@@ -1249,6 +1297,26 @@ def self_test() -> int:
         "outcome = rendered\nfiles = a.png\n", 2, 1) is None
     graph_cases["a sidecar naming no shader gives none"] = sidecar_shaders(
         rendered.replace("a.spv b.spv", "none"), 2, 1) is None
+    # A sidecar trusted by its contents (M1-129, register decision 616): the
+    # time rule's trust is remembered, and holds after a relink to the same
+    # bytes, and only then.
+    seen = {"sidecar": "s1", "application": "a1"}
+    memory = {}
+    graph_cases["a sidecar newer than the application is trusted"] = sidecar_trusted(2, 1, seen, memory, "k")
+    graph_cases["and remembered by both contents"] = memory == {"k": seen}
+    graph_cases["an application relinked to the same bytes keeps it trusted"] = sidecar_trusted(1, 2, seen, memory, "k")
+    graph_cases["an application of other bytes does not"] = not sidecar_trusted(
+        1, 2, {**seen, "application": "a2"}, memory, "k")
+    graph_cases["a sidecar of other bytes does not"] = not sidecar_trusted(1, 2, {**seen, "sidecar": "s2"}, memory, "k")
+    graph_cases["a sidecar never trusted by its time is not"] = not sidecar_trusted(1, 2, seen, memory, "other")
+    with tempfile.TemporaryDirectory() as scratch:
+        writer = Tree.__new__(Tree)
+        writer.tree, writer._trusted = pathlib.Path(scratch), {"k": seen}
+        writer.save_trusted()
+        reader = Tree.__new__(Tree)
+        reader.tree, reader._trusted = pathlib.Path(scratch), None
+        graph_cases["what was remembered is kept in the tree for the next reading"] = (
+            reader.trusted_sidecars() == {"k": seen})
     graph_cases["-D arguments are read as a CMake script receives them"] = defines(
         {"command": ["cmake", "-DPROBE=lambert", "-DOUT=C:/x=y", "-P", "s.cmake"]}) == {"PROBE": "lambert",
                                                                                      "OUT": "C:/x=y"}

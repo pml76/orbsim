@@ -40,4 +40,41 @@ scenario.
 
 ## Results
 
-Not yet measured.
+**Before: measured 2026-10-16** in `build/wt129`, one run each, the machine
+otherwise idle. Each tree was first built and its `clear` probe run once,
+since its `doc-links` reads `build/debug/probes/clear.png`, which a fresh
+worktree has not written yet (register decision 507); the warm runs below
+include that tree's catching up.
+
+| Tree | Scenario | Wall | Tests | Tests run | Compiles | Links | Lint steps |
+|---|---|---|---|---|---|---|---|
+| Debug | warm | 435.5 s | 192.9 s | 559 | 0 | 0 | 90 |
+| Debug | nothing changed | 203.8 s | 201.2 s | 559 | 0 | 0 | 0 |
+| Debug | one file, `Orbit.cpp` | 253.2 s | 225.5 s | 559 | 1 | 49 | 1 |
+| Debug | its revert | 230.0 s | 205.2 s | 559 | 1 | 49 | 1 |
+| Debug | header, `Units.hpp` | 526.3 s | 204.0 s | 559 | 92 | 51 | 57 |
+| Debug | its revert | 514.2 s | 199.5 s | 559 | 92 | 51 | 57 |
+| RelWithDebInfo | warm | 645.0 s | 125.8 s | 559 | 884 | 64 | 90 |
+| RelWithDebInfo | nothing changed | 111.5 s | 108.7 s | 559 | 0 | 0 | 0 |
+| RelWithDebInfo | one file, `Orbit.cpp` | 132.9 s | 111.1 s | 559 | 1 | 49 | 1 |
+| RelWithDebInfo | its revert | 140.7 s | 119.2 s | 559 | 1 | 49 | 1 |
+| RelWithDebInfo | header, `Units.hpp` | 473.1 s | 117.6 s | 559 | 91 | 51 | 56 |
+| RelWithDebInfo | its revert | 447.0 s | 109.9 s | 559 | 91 | 51 | 56 |
+
+**After: to be measured again.** The first attempt, 2026-10-16 in
+`build/debug` at `a6da837`, gave a warm `check` of 7.7 s and one with
+nothing changed of 7.1 s -- 1 test run, 579 skipped -- and then **found a
+defect**: the one-file change failed `check` after 62.0 s (76 run, 504
+skipped; 1 compile, 52 links, 1 lint step), `mutants_due_probe_shaders`
+failing because the application, relinked to the same bytes, was newer than
+every probe's sidecar. Fixed by decision 616; the after run is to be taken
+again on the committed fix, both trees, with the same script.
+
+**The mutation pass (scenario 4)** is timed during decision 580's passes:
+`m1-118.json` in `build/debug`, and the `check` after it.
+
+The script and the raw figures are in [`m1-129/`](m1-129/): `timings.py`
+(run as `timings.py <label> <source root> <build tree>`), `timings.jsonl`.
+Beside them, `procmon-compare.py`, decision 612's comparison of the read
+records with a Process Monitor CSV, kept for the audit each phase gate
+repeats (decision 509).
