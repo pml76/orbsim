@@ -1,6 +1,6 @@
 # M1-129 — Tests that run only when what they read has changed
 
-Phase: B | Status: done 2026-10-17, its push waiting for `check-full` in both trees and the owner's go-ahead
+Phase: B | Status: done 2026-10-17, and pushed the same day (`28fd3c5`)
 Prerequisites: M1-118
 Decided by: register decisions 483-491, 495-506 and 508-510, ruled
 2026-10-12, 511-519, ruled 2026-10-13, 520-524 and 525-542, ruled
@@ -161,12 +161,13 @@ read before the first test case, by a listener in `test_read_records`
       [`docs/measurements/m1-129-before-after.md`](../../measurements/m1-129-before-after.md)
       and linked from `STATUS.md` (decision 607).
 - [x] `check` passes in both trees.
-- [ ] The task's mutant file has run after the commit and its record is
+- [x] The task's mutant file has run after the commit and its record is
       committed, and so has every mutant file `scripts/mutants-due.py` lists
       (decision 580); then `check-full` in both trees, and the push on the
       owner's go-ahead (decisions 535 and 595). *The passes are done,
       2026-10-17, and their record committed with this document; `check-full`
-      and the push follow.*
+      in both trees and the push followed the same day, up to `28fd3c5`,
+      confirmed by a fetch.*
 
 *Moved by decision 596 (2026-10-16):* item 9's steps C to E, and M1-118's 16
 commits measured with them against the spike's 18% (decision 543), are
@@ -272,9 +273,9 @@ what the tests open), and the commit that writes this section (decision
 3. *Done 2026-10-17.* **The records of the finish**: M1-129's entry under `HISTORY.md` section
    7, `STATUS.md`'s last-task and next-task rows, `BRIEFING.md` section 7,
    this document's status.
-4. **`check-full` in both trees**, from a clean working tree, then the push
+4. *Done 2026-10-17, up to `28fd3c5`.* **`check-full` in both trees**, from a clean working tree, then the push
    on the owner's go-ahead, then a fetch to confirm it landed.
-5. **After the push**: list and delete `build/item9-reshape/` (decision
+5. *Done 2026-10-17.* **After the push**: list and delete `build/item9-reshape/` (decision
    611); keep `build/wt129` for M1-133; delete Process Monitor's two files,
    having first taken their names out of the documents, where `doc-links`
    would report them missing (620).
@@ -285,7 +286,7 @@ probes last ran, needs its probes to run once before
 `mutants_due_probe_shaders` can pass: `ctest -R "^mutants_due_probe_shaders$"`
 runs them as its setup tests (decision 616). Both trees have the memory
 since 2026-10-17. Decision 612's Process Monitor files in
-`build/`, `procmon-m1-129.pml` (1.3 GB) and its `.csv` (0.9 GB), are deleted
+`build/`, `procmon-m1-129.pml` (1.3 GB) and its `.csv` (0.9 GB), were deleted
 after the push (decision 620).
 
 ## Where it stood (2026-10-15, third session's end)
