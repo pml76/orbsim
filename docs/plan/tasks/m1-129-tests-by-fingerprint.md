@@ -5,7 +5,7 @@ Prerequisites: M1-118
 Decided by: register decisions 483-491, 495-506 and 508-510, ruled
 2026-10-12, 511-519, ruled 2026-10-13, 520-524 and 525-542, ruled
 2026-10-14, 543, 544-568 and 569-581, ruled 2026-10-15, 582-596 and 601-616,
-ruled 2026-10-16, and 617-621, ruled 2026-10-17. **Split on 2026-10-16** (decision 596): item 9's steps C, D and E
+ruled 2026-10-16, and 617-622, ruled 2026-10-17. **Split on 2026-10-16** (decision 596): item 9's steps C, D and E
 are [M1-131](m1-131-coverage-hook.md), [M1-132](m1-132-function-level-selection.md)
 and [M1-133](m1-133-selection-proved.md), after this task.
 Continues [ADR 0024](../../adr/0024-verification-costs-what-changed.md); its
