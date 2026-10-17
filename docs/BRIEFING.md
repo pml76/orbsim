@@ -339,6 +339,7 @@ fingerprint) is finished and pushed -- every mutant file passed after its
 commits, decisions 601-623. Next,
 [M1-131](plan/tasks/m1-131-coverage-hook.md) to
 [M1-133](plan/tasks/m1-133-selection-proved.md) (tests chosen function by
-function, every question already ruled, decisions 582-596 and 624, but the
-one M1-131's item 5 puts to the owner before it is built), then M1-127 and
-M1-130 (the code as modules), lower levels first (decision 495).
+function, every question already ruled, decisions 582-596 and 624, and
+M1-131's own, item 5's among them, 625-632 on the evening of 2026-10-17,
+before its work began), then M1-127 and M1-130 (the code as modules), lower
+levels first (decision 495).

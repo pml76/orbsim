@@ -24,9 +24,9 @@ data that points at other data (545).
 1. **compiled-code.py under scripts/** (594), loaded by `scripts/run-tests.py`
    as `scripts/mutate.py` loads `scripts/mutants-due.py`: a reader of Windows
    object files (COFF) and of the libraries that hold them, read directly
-   (546), and of the linker's map; and the digests (545), each object's
-   summary kept in the build tree under the file's hash if reading them all
-   takes more than a few seconds (567).
+   (546), and of the linker's map, whose reader M1-131 begins (632); and the
+   digests (545), each object's summary kept in the build tree under the
+   file's hash if reading them all takes more than a few seconds (567).
 2. **Each recorded address turned into a function through the linker's map**
    (582, amending 560), never through the debug information's names; checked
    against the procedure ranges over a full run before it is relied on (560).
