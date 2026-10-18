@@ -1,6 +1,6 @@
 # Milestone 1 — the task queue
 
-Status: **planned 2026-09-08.** 135 tasks, in one order. (84 until 2026-09-13,
+Status: **planned 2026-09-08.** 136 tasks, in one order. (84 until 2026-09-13,
 when an audit found phase F had no gate although the rule below says every
 phase ends with one. The new task is **M1-85**, sitting between 77 and 78:
 renumbering seven tasks to make it "78" would have broken the identifiers that
@@ -286,6 +286,7 @@ compilers' included -- passing.
 | [118](tasks/m1-118-core-fixes.md) | The simulation core's review findings | 117 | Every promise kept, tested |
 | [129](tasks/m1-129-tests-by-fingerprint.md) | Tests that run only when what they read has changed | 118 | A full run before a push, and a fraction of it otherwise |
 | [131](tasks/m1-131-coverage-hook.md) | The coverage hook and the recorder | 129 | Each test's entered functions, recorded |
+| [135](tasks/m1-135-every-file-linted.md) | Every compiled file linted, or named as an exception | 131 | A file left out fails `check` |
 | [136](tasks/m1-136-fuzz-trees-lint-deps.md) | The fuzz trees' lint steps re-run on the fuzzers' objects -- **proposed, its questions not yet ruled**; after M1-135 once that lands | — | `lint_deps` passing in a fuzz tree |
 | [132](tasks/m1-132-function-level-selection.md) | Tests chosen function by function | 131 | A test reruns when what it ran changed |
 | [133](tasks/m1-133-selection-proved.md) | The selection proved, and measured | 132 | No failing test ever skipped |
