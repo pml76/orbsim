@@ -1450,6 +1450,7 @@ set(ORBSIM_APP_SOURCES
         src/app/InteractiveView.cpp
         src/app/main.cpp
         src/app/ProbeMode.cpp
+        src/app/ShaderRecord.cpp
         src/render/LineRenderer.cpp
         src/render/Pipeline.cpp
         src/render/Probes.cpp
@@ -1846,6 +1847,26 @@ add_test(NAME shader_missing_is_reported
 )
 set_tests_properties(shader_missing_is_reported PROPERTIES LABELS gpu RESOURCE_LOCK gpu)
 
+# The application's own record of the shader files a run asked for (M1-131,
+# item 5; register decisions 629, 637 and 642), which the test driver
+# fingerprints a test on in place of every compiled shader. Written in every
+# tree, the hook on or not, so checked in every tree that builds the
+# application: the `clear` probe's record names exactly its three shaders, a
+# usage run's none, each ending with its `end` line, and without
+# ORBSIM_COVERAGE_RECORDS there is none. scripts/check-coverage-recorder.py
+# says what it requires; `gpu`, since the probe needs a device.
+if(ORBSIM_PYTHON)
+    add_test(NAME shader_record
+            COMMAND ${ORBSIM_PYTHON}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-coverage-recorder.py
+                    --application $<TARGET_FILE:orbsim>
+                    --shaders ${SHADER_OUT_DIR}
+    )
+else()
+    add_test(NAME shader_record COMMAND ${CMAKE_COMMAND} -E false)
+endif()
+set_tests_properties(shader_record PROPERTIES LABELS gpu RESOURCE_LOCK gpu)
+
 endif() # ORBSIM_BUILD_APP
 
 # ---------------------------------------------------------------------------
@@ -1958,8 +1979,10 @@ if(ORBSIM_BUILD_APP)
             render/VulkanContext.hpp
             app/ExitCodes.hpp
             app/InteractiveView.hpp
+            app/PathFromUtf8.hpp
             app/ProbeMode.hpp
             app/SdlHandle.hpp
+            app/ShaderRecord.hpp
     )
     add_dependencies(orbsim orbsim_render_header_selfcheck)
 endif()

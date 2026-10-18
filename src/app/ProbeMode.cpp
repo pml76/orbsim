@@ -413,7 +413,8 @@ void resolveCardGolden(RunRecord& run, const ProbeRequest& request) {
 
 ProbeOutcome runProbe(SDL_Window* window,
                       const ProbeRequest& request,
-                      std::atomic<std::uint32_t>& validationErrors) {
+                      std::atomic<std::uint32_t>& validationErrors,
+                      const gfx::ShaderRequested& shaderRequested) {
     const std::optional<gfx::Probe> probe = gfx::findProbe(request.probe);
     if (!probe) {
         std::print(stderr, "orbsim: no probe named '{}'\n", request.probe);
@@ -453,7 +454,7 @@ ProbeOutcome runProbe(SDL_Window* window,
     // Paced, as the window is: a probe presents nothing, so the choice only
     // has to be the window's, for one device path rather than two (ADR 0008).
     auto created = gfx::VulkanContext::create(
-        window, request.validation, validationErrors, gfx::Presentation::Paced);
+        window, request.validation, validationErrors, gfx::Presentation::Paced, shaderRequested);
     if (!created) return stopBeforeFrame(run, created.error().message);
     gfx::VulkanContext gfx = std::move(*created);
     run.device = gfx.deviceDescription();

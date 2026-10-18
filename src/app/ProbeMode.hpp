@@ -82,9 +82,12 @@ struct ProbeOutcome {
 
 // Renders the probe, writes its files and compares its frame with the golden,
 // if one was named. main adds the validation verdict (decision 230).
+// `shaderRequested` is told of every shader file the renderer is asked for
+// (M1-131, decision 642).
 [[nodiscard]] ProbeOutcome runProbe(SDL_Window* window,
                                     const ProbeRequest& request,
-                                    std::atomic<std::uint32_t>& validationErrors);
+                                    std::atomic<std::uint32_t>& validationErrors,
+                                    const gfx::ShaderRequested& shaderRequested);
 
 // Writes the frame to its file as the new approved frame, creating the
 // folder it goes in: to a temporary file beside it, then renamed over it, so

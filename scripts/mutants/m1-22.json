@@ -155,8 +155,8 @@
     {
       "name": "the window's paced presentation used",
       "file": "src/app/BenchMode.cpp",
-      "find": "        window, request.validation, validationErrors, gfx::Presentation::Unthrottled);",
-      "replace": "        window, request.validation, validationErrors, gfx::Presentation::Paced);",
+      "find": "                                              gfx::Presentation::Unthrottled,",
+      "replace": "                                              gfx::Presentation::Paced,",
       "suites": [],
       "targets": [
         "orbsim"

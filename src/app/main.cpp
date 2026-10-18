@@ -7,8 +7,10 @@
 #include "app/BenchMode.hpp"
 #include "app/ExitCodes.hpp"
 #include "app/InteractiveView.hpp"
+#include "app/PathFromUtf8.hpp"
 #include "app/ProbeMode.hpp"
 #include "app/SdlHandle.hpp"
+#include "app/ShaderRecord.hpp"
 #include "core/Units.hpp"
 #include "render/Pipeline.hpp"
 #include "render/Probes.hpp"
@@ -57,6 +59,7 @@ using orb::app::GoldenAction;
 using orb::app::kExitFailure;
 using orb::app::kExitUsage;
 using orb::app::kExitValidationErrors;
+using orb::app::pathFromUtf8;
 
 constexpr std::string_view kUsage =
     "usage: orbsim [--validate | --no-validate] [--seconds <n>] [--scene <name>]\n"
@@ -108,24 +111,6 @@ constexpr std::string_view kHelp =
 // about one frame at 60 Hz, long enough not to spin a core, short enough that
 // a restored window is noticed at once.
 constexpr Uint32 kIdleDelayMs = 16;
-
-// A path from the UTF-8 text SDL hands main its arguments in.
-//
-// **SDL's arguments are UTF-8 on every platform**: on Windows, where SDL
-// supplies the entry point, it re-reads the wide command line and converts it
-// (WIN_CheckDefaultArgcArgv in SDL's src/core/windows/SDL_windows.c). A
-// std::filesystem::path built from a char string reads it in the *current
-// code page* on Windows instead, which is the same text only while every
-// character is ASCII -- the failure CODING_GUIDELINES section 18 describes,
-// for a user whose account name steps outside it. Relabelling the bytes as
-// char8_t is what tells the path they are UTF-8. ORBSIM_SHADER_DIR goes through
-// here too: a string literal in this project's sources is UTF-8.
-[[nodiscard]] std::filesystem::path pathFromUtf8(std::string_view text) {
-    std::u8string utf8(text.size(), u8'\0');
-    std::ranges::transform(
-        text, utf8.begin(), [](char unit) { return static_cast<char8_t>(unit); });
-    return std::filesystem::path{utf8};
-}
 
 // What a run is for (M1-16): the interactive window, one probe's frame, the
 // list of probes, or since M1-17 the help text. An enum rather than several
@@ -633,11 +618,17 @@ struct FrameDrawing {
 // Creates the renderer, runs the frame loop, and destroys the renderer on
 // return -- which is the point of it being a separate function: the caller
 // reads the validation error count only once teardown has happened.
-[[nodiscard]] int
-runRenderer(SDL_Window* window, const Options& options, std::atomic<uint32_t>& validationErrors) {
+// `shaderRequested` is told of every shader file the renderer is asked for.
+[[nodiscard]] int runRenderer(SDL_Window* window,
+                              const Options& options,
+                              std::atomic<uint32_t>& validationErrors,
+                              const orb::gfx::ShaderRequested& shaderRequested) {
     // A factory, so there is no moment where `gfx` exists but is not usable.
-    auto created = orb::gfx::VulkanContext::create(
-        window, options.validation, validationErrors, orb::gfx::Presentation::Paced);
+    auto created = orb::gfx::VulkanContext::create(window,
+                                                   options.validation,
+                                                   validationErrors,
+                                                   orb::gfx::Presentation::Paced,
+                                                   shaderRequested);
     if (!created) {
         const std::string& message = created.error().message;
         std::print(stderr, "Renderer initialisation failed: {}\n", message);
@@ -792,7 +783,10 @@ void reportValidationErrors(uint32_t errors) {
     };
 }
 
-[[nodiscard]] int run(std::span<char* const> args) {
+// `shaderRequested` is handed to the renderer of whichever mode runs, to be
+// told of every shader file it is asked for (M1-131, decision 642).
+[[nodiscard]] int run(std::span<char* const> args,
+                      const orb::gfx::ShaderRequested& shaderRequested) {
     const auto options = parseArguments(args);
     if (!options) {
         std::print(stderr, "orbsim: {}\n{}", options.error().message, kUsage);
@@ -826,13 +820,13 @@ void reportValidationErrors(uint32_t errors) {
     // validation errors hide and the count has to survive it.
     std::atomic<uint32_t> validationErrors{0};
     if (options->mode == Mode::Bench) {
-        const int status =
-            orb::app::runBench(window->get(), benchRequestOf(*options), validationErrors);
+        const int status = orb::app::runBench(
+            window->get(), benchRequestOf(*options), validationErrors, shaderRequested);
         if (status != 0) return status;
         return validationVerdict(validationErrors.load());
     }
     if (options->mode != Mode::Probe) {
-        const int status = runRenderer(window->get(), *options, validationErrors);
+        const int status = runRenderer(window->get(), *options, validationErrors, shaderRequested);
         if (status != 0) return status;
         return validationVerdict(validationErrors.load());
     }
@@ -849,7 +843,8 @@ void reportValidationErrors(uint32_t errors) {
             .goldenLocation = options->goldenDirectory ? orb::app::GoldenLocation::CardFolders
                                                        : orb::app::GoldenLocation::File,
         },
-        validationErrors);
+        validationErrors,
+        shaderRequested);
     return finishProbe(outcome, validationErrors.load());
 }
 
@@ -899,7 +894,16 @@ int main(int argc, char** argv) {
 #endif
     const std::span<char* const> args(argv, static_cast<std::size_t>(argc));
     try {
-        return run(args);
+        // The record of the shader files this run asks for, when the test
+        // driver asks for one (M1-131, decisions 629, 637 and 642): opened
+        // before anything else, and ended once run() has returned -- every
+        // return, the error exits among them, and no abort, crash or escaping
+        // exception, so that a run cut short leaves a record counting as none.
+        orb::app::ShaderRecord shaders = orb::app::ShaderRecord::open();
+        const int status = run(
+            args, [&shaders](const std::filesystem::path& shader) { shaders.writeShader(shader); });
+        shaders.writeEnd();
+        return status;
     } catch (const std::exception& error) {
         static_cast<void>(std::fputs("orbsim: unhandled exception: ", stderr));
         static_cast<void>(std::fputs(error.what(), stderr));

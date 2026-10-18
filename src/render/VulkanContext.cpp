@@ -929,10 +929,15 @@ std::expected<VulkanContext, RenderError>
 VulkanContext::create(SDL_Window* window,
                       Validation validation,
                       std::atomic<uint32_t>& validationErrors,
-                      Presentation presentation) {
+                      Presentation presentation,
+                      ShaderRequested shaderRequested) {
+    // Only a programming error leaves it empty, and an empty one would throw
+    // at the first shader asked for (decision 659).
+    ORBSIM_EXPECTS(shaderRequested != nullptr);
     VulkanContext ctx;
     ctx.window_ = window;
     ctx.presentation_ = presentation;
+    ctx.shaderRequested_ = std::move(shaderRequested);
 
     auto instance = makeInstanceAndSurface(window, validation, validationErrors);
     if (!instance) return std::unexpected(instance.error());
@@ -1905,11 +1910,14 @@ DeviceDescription VulkanContext::deviceDescription() const {
 std::expected<UniqueShaderModule, RenderError>
 VulkanContext::loadShaderModule(const std::filesystem::path& path) const {
     // Noted before anything can fail: a run stopped by a missing shader
-    // depended on that shader as much as one that read it (M1-109).
+    // depended on that shader as much as one that read it (M1-109) -- and
+    // told to the creator in full, as given, for the same reason (M1-131,
+    // decisions 629 and 642).
     const std::string name = path.filename().string();
     if (std::ranges::find(shadersRequested_, name) == shadersRequested_.end()) {
         shadersRequested_.push_back(name);
     }
+    shaderRequested_(path);
     // Opened binary and seeked, rather than `binary | ate`: std::ios::openmode
     // is a signed bitmask type, and one seek says the same thing.
     std::ifstream file(path, std::ios::binary);

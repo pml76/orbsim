@@ -2,6 +2,7 @@
 """Check that the coverage recorder names exactly the functions a program entered, however it ends (M1-131).
 
     check-coverage-recorder.py --probe <program> --unaligned <program> --plain <program> --config <config>
+    check-coverage-recorder.py --application <orbsim> --shaders <the tree's shader folder>
 
 Why this exists: the recorder, tests/CoverageRecorder.cpp, writes the record
 M1-132 will choose tests from: the functions a program entered (register
@@ -41,6 +42,30 @@ count, cut off inside a line, out of line yet naming a function, ended in no
 way it knows -- and must read exactly the whole ones; and scripts/compiled-code.py's
 own self-test runs, which reads made-up maps. The check failed against a
 recorder that wrote nothing before the recorder was written.
+
+**--application** checks the application's own record instead, as the CTest
+test shader_record (decision 642): the shader files a run asked the renderer
+for, which the test driver fingerprints a test on in place of every compiled
+shader (decision 629). A shader missing from it is a shader whose change
+would rerun no test, so the application is run with ORBSIM_COVERAGE_RECORDS
+naming a scratch folder, and
+
+  * **the `clear` probe's record must name exactly fullscreen.vert.spv,
+    probe_gradient.frag.spv and tonemap.frag.spv**, the three its sidecar
+    names, each once and by its full path in the tree's shader folder;
+  * **a usage run's must name none**, since it is refused before a window
+    exists;
+  * **each record whole**: `test` with the name it was run for, the shader
+    files, and last `end`, without which a record counts as none (decisions
+    637 and 644); one a run, named after the process number and the start
+    time (decision 632), beside the recorder's own where the hook is on;
+  * **no record without ORBSIM_COVERAGE_RECORDS**, unset or empty.
+
+Proven able to fail before it was trusted in the same way: the record reader
+is first given made-up records -- whole, without `end`, cut off inside a
+line, `end` not last -- and must read exactly the whole ones; and the check
+failed against an application that wrote no record, and against one that
+left out its `end` line and one that left out a shader.
 """
 
 import argparse
@@ -348,13 +373,170 @@ def check(probe: pathlib.Path, unaligned: pathlib.Path, plain: pathlib.Path, con
     return 0
 
 
+# --- the application's record of its shaders (--application) ------------------------
+
+# The application's record, named as the recorder's is, beside it where the
+# hook is on (decision 632).
+SHADER_RECORD_NAME = re.compile(r"^\d+-\d+\.shaders\.txt$")
+# The shader files the `clear` probe asks for: the three its sidecar names,
+# read 2026-10-18 in the Debug tree (decision 642).
+CLEAR_SHADERS = ("fullscreen.vert.spv", "probe_gradient.frag.spv", "tonemap.frag.spv")
+# A usage run, refused before a window exists and so asking for no shader:
+# usage_bench_option_without_bench's command line. 2 is kExitUsage in
+# src/app/ExitCodes.hpp.
+USAGE_ARGUMENTS = ("--frames", "10")
+EXIT_USAGE = 2
+
+
+class ShaderRecord(NamedTuple):
+    test: str
+    shaders: list
+
+
+def read_shader_record(text: str) -> Optional[ShaderRecord]:
+    """The application's record as decision 644 lays it out -- `test`, a line
+    for each shader file, and `end` -- or None: one without its `end` line
+    last, or cut off inside a line, counts as none (decision 637)."""
+    if not text.endswith("\n"):
+        return None
+    lines = text[:-1].split("\n")
+    if len(lines) < 2 or lines[-1] != "end":
+        return None
+    if lines[0] != "test" and not lines[0].startswith("test "):
+        return None
+    shaders = lines[1:-1]
+    if not all(shaders) or "end" in shaders:
+        return None
+    return ShaderRecord(lines[0][len("test "):], shaders)
+
+
+def shader_reader_self_test() -> int:
+    whole = "test t\nC:\\shaders\\a.spv\nC:\\shaders\\b.spv\nend\n"
+    cases = {
+        "a whole shader record": (whole, True),
+        "a whole shader record of no shader": ("test t\nend\n", True),
+        "a shader record run for no test": ("test \nend\n", True),
+        "a shader record without its end line": (whole.replace("end\n", ""), False),
+        "a shader record cut off inside a line": (whole[:-2], False),
+        "a shader record whose end line is not last": ("test t\nend\nC:\\shaders\\a.spv\n", False),
+        "a shader record with an end line among the shaders": (whole.replace("a.spv\n", "a.spv\nend\n"), False),
+        "a shader record with an empty line": (whole.replace("a.spv\n", "a.spv\n\n"), False),
+        "a shader record ending with a count": (whole.replace("end\n", "end 2\n"), False),
+        "a shader record without its test line": (whole.replace("test t\n", ""), False),
+        "nothing as a shader record": ("", False),
+    }
+    failures = 0
+    for name, (text, readable) in cases.items():
+        got = read_shader_record(text) is not None
+        failures += got != readable
+        print(f"self-test: {name}: {'read' if got else 'counted as none'} ({'ok' if got == readable else 'WRONG'})")
+    record = read_shader_record(whole)
+    if record is None or record.test != "t" or record.shaders != ["C:\\shaders\\a.spv", "C:\\shaders\\b.spv"]:
+        print(f"self-test: the whole shader record's fields: WRONG, read {record}")
+        failures += 1
+    return failures
+
+
+def run_application(application: pathlib.Path, arguments: list, folder: Optional[str], test: str,
+                    cwd: pathlib.Path) -> Run:
+    """A run of the application, and the records it left in `folder` but the
+    recorder's, which the hook's own self-test judges."""
+    environment = {k: v for k, v in os.environ.items() if k not in (FOLDER, TEST_NAME)}
+    if folder is not None:
+        environment[FOLDER] = folder
+    environment[TEST_NAME] = test
+    done = subprocess.run([str(application), *arguments], capture_output=True, env=environment, cwd=cwd,
+                          timeout=RUN_SECONDS, check=False)
+    records = []
+    if folder:
+        records = [(p.name, p.read_bytes().decode("utf-8", errors="replace"))
+                   for p in sorted(pathlib.Path(folder).iterdir()) if not RECORD_NAME.match(p.name)]
+    return Run(done.returncode & 0xFFFFFFFF, done.stdout.decode("utf-8", errors="replace"),
+               done.stderr.decode("utf-8", errors="replace"), records)
+
+
+def comparable_path(text: str) -> str:
+    return os.path.normcase(os.path.normpath(text))
+
+
+def judge_shader_record(found: Run, test: str, expected_exit: int, shaders: set) -> list:
+    """The problems of a run that must exit `expected_exit` and leave one whole
+    record naming exactly `shaders`, each once."""
+    problems = []
+    if found.code != expected_exit:
+        problems.append(f"it exits {found.code:#x}, not {expected_exit}: {found.stderr[-300:]!r}")
+    if len(found.records) != 1:
+        return problems + [f"left {len(found.records)} shader records, not one: {[n for n, _ in found.records]}"]
+    name, text = found.records[0]
+    if not SHADER_RECORD_NAME.match(name):
+        problems.append(f"its record is named {name}, not <process number>-<start time>.shaders.txt")
+    record = read_shader_record(text)
+    if record is None:
+        return problems + [f"its record is not whole: {text[-300:]!r}"]
+    if record.test != test:
+        problems.append(f"its record names the test {record.test!r}, not {test!r}")
+    if len(set(record.shaders)) != len(record.shaders):
+        problems.append(f"its record names a shader file more than once: {record.shaders}")
+    if {comparable_path(shader) for shader in record.shaders} != shaders:
+        problems.append(f"its record names {sorted(record.shaders)}, not {sorted(shaders)}")
+    return problems
+
+
+def check_shader_record(application: pathlib.Path, shader_folder: pathlib.Path) -> int:
+    if shader_reader_self_test():
+        print("check-coverage-recorder: the shader record reader's self-test failed")
+        return 1
+    clear_shaders = {comparable_path(str(shader_folder / name)) for name in CLEAR_SHADERS}
+    problems = []
+    with tempfile.TemporaryDirectory() as scratch:
+        work = pathlib.Path(scratch)
+        for folder in ("records-clear", "records-usage", "probe", "without-unset", "without-empty"):
+            (work / folder).mkdir()
+        clear = ["--validate", "--probe", "clear", "--probe-out", str(work / "probe")]
+        usage = list(USAGE_ARGUMENTS)
+        for name, arguments, expected_exit, shaders in (("clear", clear, 0, clear_shaders),
+                                                         ("usage", usage, EXIT_USAGE, set())):
+            test = f"shader_record {name}"
+            found = run_application(application, arguments, str(work / f"records-{name}"), test, work)
+            problems += [f"{name}: {p}" for p in judge_shader_record(found, test, expected_exit, shaders)]
+        # Without the variable, where a record would go is nowhere it names:
+        # the working folder is the likeliest, and no record may be anywhere.
+        for name, arguments, expected_exit, folder in (("unset", clear, 0, None), ("empty", usage, EXIT_USAGE, "")):
+            cwd = work / f"without-{name}"
+            found = run_application(application, arguments, folder, "shader_record", cwd)
+            left = sorted(p.name for p in cwd.iterdir())
+            if found.code != expected_exit or left:
+                problems.append(f"with {FOLDER} {name}: exit {found.code:#x}, and it left {left}")
+        strays = [str(p.relative_to(work)) for p in work.rglob("*.shaders.txt")
+                  if p.parent.name not in ("records-clear", "records-usage")]
+        if strays:
+            problems.append(f"shader records where none was asked for: {strays}")
+    for line in problems:
+        print(f"check-coverage-recorder: {line}")
+    if problems:
+        print(f"check-coverage-recorder: {len(problems)} problem(s)")
+        return 1
+    print(f"check-coverage-recorder: the clear probe's record names exactly {', '.join(CLEAR_SHADERS)} in "
+          f"{shader_folder}, a usage run's none, each whole; no record without {FOLDER}, unset or empty")
+    return 0
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--probe", type=pathlib.Path, required=True)
-    parser.add_argument("--unaligned", type=pathlib.Path, required=True)
-    parser.add_argument("--plain", type=pathlib.Path, required=True)
-    parser.add_argument("--config", required=True)
+    parser.add_argument("--probe", type=pathlib.Path)
+    parser.add_argument("--unaligned", type=pathlib.Path)
+    parser.add_argument("--plain", type=pathlib.Path)
+    parser.add_argument("--config")
+    parser.add_argument("--application", type=pathlib.Path)
+    parser.add_argument("--shaders", type=pathlib.Path)
     arguments = parser.parse_args()
+    recorder = (arguments.probe, arguments.unaligned, arguments.plain, arguments.config)
+    if arguments.application is not None:
+        if arguments.shaders is None or any(value is not None for value in recorder):
+            parser.error("--application takes --shaders, and none of the recorder's arguments")
+        return check_shader_record(arguments.application, arguments.shaders)
+    if arguments.shaders is not None or any(value is None for value in recorder):
+        parser.error("give --probe, --unaligned, --plain and --config, or --application and --shaders")
     return check(arguments.probe, arguments.unaligned, arguments.plain, arguments.config)
 
 

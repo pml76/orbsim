@@ -178,6 +178,14 @@ struct ProbeResolves {
 // which renderOffscreen has begun and ends.
 using SceneRecorder = std::function<void(VkCommandBuffer)>;
 
+// What the context tells its creator of every shader file loadShaderModule is
+// asked for (M1-131, register decisions 629 and 642): the file's full path,
+// as it was given, at the moment it is asked for and before the file is
+// opened. The application writes it into its own record of the shaders a run
+// loaded, app/ShaderRecord.hpp, on which the test driver fingerprints the
+// run's test; the renderer only reports.
+using ShaderRequested = std::function<void(const std::filesystem::path&)>;
+
 // The device, as a probe's sidecar records it (M1-16): enough to say which
 // GPU and which driver drew a frame. The driver's own name and version text
 // come from VkPhysicalDeviceDriverProperties, core since Vulkan 1.2, because
@@ -286,11 +294,17 @@ public:
     //
     // `presentation` is how the swapchain paces frames (M1-22), kept for
     // every rebuild of it.
+    //
+    // `shaderRequested` is told of every shader file loadShaderModule is
+    // asked for (M1-131, decision 642), and kept as long as the context: what
+    // it refers to is the caller's, and must outlive the context. It must not
+    // be empty (decision 659).
     [[nodiscard]] static std::expected<VulkanContext, RenderError>
     create(SDL_Window* window,
            Validation validation,
            std::atomic<uint32_t>& validationErrors,
-           Presentation presentation);
+           Presentation presentation,
+           ShaderRequested shaderRequested);
 
     // Acquires a swapchain image and opens a command buffer with the HDR
     // target and the depth attachment already bound and cleared.
@@ -372,7 +386,8 @@ public:
     [[nodiscard]] std::expected<void, RenderError> writeMapped(UniqueBuffer& dst,
                                                                std::span<const std::byte> data);
 
-    // Loads a SPIR-V module from disk.
+    // Loads a SPIR-V module from disk, noting the file in shadersRequested()
+    // and telling create's `shaderRequested` of it first.
     //
     // std::filesystem::path, not std::string: on Windows the native encoding is
     // wchar_t, and a narrow string works right up until a user's account name
@@ -525,6 +540,11 @@ private:
     // changes no Vulkan state, and no Vulkan call depends on it. One thread
     // builds pipelines, as one thread does everything with this context.
     mutable std::vector<std::string> shadersRequested_;
+
+    // What create was given to tell of each shader file asked for (decision
+    // 642). It moves with the context out of create's std::expected, and
+    // refers to nothing in it.
+    ShaderRequested shaderRequested_;
 
     // LAST, deliberately: destroyed first, so the GPU is idle before any handle
     // above it is destroyed. See DeviceIdleGuard in render/VulkanHandle.hpp.

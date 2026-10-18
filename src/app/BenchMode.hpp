@@ -87,10 +87,12 @@ struct BenchRequest {
 
 // Runs the benchmark in `window` and writes its report. Returns 0, or
 // kExitFailure with the reason printed; main adds the validation verdict once
-// the renderer is torn down.
+// the renderer is torn down. `shaderRequested` is told of every shader file
+// the renderer is asked for (M1-131, decision 642).
 [[nodiscard]] int runBench(SDL_Window* window,
                            const BenchRequest& request,
-                           std::atomic<std::uint32_t>& validationErrors);
+                           std::atomic<std::uint32_t>& validationErrors,
+                           const gfx::ShaderRequested& shaderRequested);
 
 } // namespace orb::app
 

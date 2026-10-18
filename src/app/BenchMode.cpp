@@ -514,10 +514,16 @@ struct WarmUp {
 // --- the run -------------------------------------------------------------------
 
 // The device, checked: its image the size asked for.
-[[nodiscard]] std::expected<gfx::VulkanContext, BenchError> openDevice(
-    SDL_Window* window, const BenchRequest& request, std::atomic<std::uint32_t>& validationErrors) {
-    auto created = gfx::VulkanContext::create(
-        window, request.validation, validationErrors, gfx::Presentation::Unthrottled);
+[[nodiscard]] std::expected<gfx::VulkanContext, BenchError>
+openDevice(SDL_Window* window,
+           const BenchRequest& request,
+           std::atomic<std::uint32_t>& validationErrors,
+           const gfx::ShaderRequested& shaderRequested) {
+    auto created = gfx::VulkanContext::create(window,
+                                              request.validation,
+                                              validationErrors,
+                                              gfx::Presentation::Unthrottled,
+                                              shaderRequested);
     if (!created) return fail("renderer initialisation failed: " + created.error().message);
     const VkExtent2D extent = created->extent();
     if (extent.width != request.size.width || extent.height != request.size.height) {
@@ -546,13 +552,14 @@ std::optional<view::RenderQuality> qualityPreset(std::string_view name) noexcept
 
 int runBench(SDL_Window* window,
              const BenchRequest& request,
-             std::atomic<std::uint32_t>& validationErrors) {
+             std::atomic<std::uint32_t>& validationErrors,
+             const gfx::ShaderRequested& shaderRequested) {
     const auto stop = [](const BenchError& error) {
         std::print(stderr, "orbsim: --bench: {}\n", error.message);
         return kExitFailure;
     };
     if (auto fitted = fitWindow(window, request.size); !fitted) return stop(fitted.error());
-    auto opened = openDevice(window, request, validationErrors);
+    auto opened = openDevice(window, request, validationErrors, shaderRequested);
     if (!opened) return stop(opened.error());
     gfx::VulkanContext gfx = std::move(*opened);
     const std::optional<view::GpuClock> clock = gfx.gpuClock();
