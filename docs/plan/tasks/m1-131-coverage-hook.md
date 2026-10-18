@@ -6,7 +6,11 @@ Decided by: register decisions 544, 551, 559, 564-566, 569 and 570, ruled
 2026-10-15, 582-595 and 601, ruled 2026-10-16, 625-632, ruled 2026-10-17
 before the task began -- every question it raised, item 5's among them -- and
 634, ruled 2026-10-18 after a spike, the record written however a program
-ends, and 635, shaders judged alike by both scripts; split
+ends, and 635, shaders judged alike by both scripts; and 636-644, ruled
+2026-10-18 before the work began -- the self-test's plain program, the `end`
+line, the writers taking turns, the 51 programs, Windows only, the `check`
+trees for the measurements, the names, a supposed shader change, and four
+smaller choices; split
 out of M1-129 as its item 9's step C by decision 596.
 The selection that reads what this records is [M1-132](m1-132-function-level-selection.md),
 and [M1-133](m1-133-selection-proved.md) proves it. The spike and the design
@@ -35,16 +39,21 @@ cost about 30% of the Debug tests (decision 559).
    two hidden presets holding today's settings instead, `debug-base` and
    `relwithdebinfo-base`, each checked to resolve to the settings it has now,
    and the configure step refuses the option with a compiler other than
-   clang (625). With it on:
+   clang (625) or on a system other than Windows (640). Loops at the end of
+   `CMakeLists.txt` over the top directory's targets give them what follows,
+   as `orbsim_pool_top_level_compiles` gives them their pool (644). With it on:
    - the hook, with `-ffunction-sections` and `-fdata-sections` (545), on the
      project's own targets only (569) and on none that compiles someone
      else's code (588): not `orbsim_erfa` or ERFA's validation programs, not
-     `orbsim_lodepng`, `orbsim_stb_image` or `vma_impl`;
+     `orbsim_lodepng`, `orbsim_stb_image` or `vma_impl` -- nor the recorder,
+     `coverage_recorder_probe_plain` (636) or the four header self-check
+     targets, compiled from generated files (644);
    - every program linked with the linker's map, lld-link's `/map` (582).
 2. **The recorder**, CoverageRecorder.cpp under tests/, in the OBJECT library
-   `orbsim_coverage_recorder`, so that it is linked into every program, the
-   application included, as `orbsim_abort_behaviour` is (566, 594); compiled
-   without the hook. It:
+   `orbsim_coverage_recorder`, so that it is linked into every program
+   carrying the hook, the application included -- 51 in each `check` tree,
+   not ERFA's two validation programs (639) -- as `orbsim_abort_behaviour`
+   is into the suites (566, 594); compiled without the hook. It:
    - supplies the four section markers lld-link does not, and checks that the
      flags line up with the address table, and that the pointers the hook
      hands over match its own markers, before writing anything (559, 627);
@@ -53,8 +62,11 @@ cost about 30% of the Debug tests (decision 559).
    - writes one file per process, named after its process number and start
      time (564) -- the number from the C runtime, the time from the C++ clock
      at the hook's first start-up call (627) -- ending `.functions.txt` (632):
-     the program, its command line, the value of `ORBSIM_TEST_NAME`, and the
-     functions entered;
+     the program, its command line, the value of `ORBSIM_TEST_NAME`, how the
+     program ended, the flags' count, and the functions entered, each as its
+     address less the program's base address, in hexadecimal (644); and last
+     a line `end` with the number of functions, without which, or with
+     another number, the record counts as none (637);
    - writes after every static destructor has run, so that code running at
      exit is recorded too: the hook's first start-up call registers the
      writer with `atexit` (626);
@@ -65,7 +77,9 @@ cost about 30% of the Debug tests (decision 559).
      on a bad argument to the C runtime, through its invalid-parameter
      handler, which then ends the program with the runtime's own
      `__fastfail` -- each leaving the exit code and the output as they were,
-     and no record written twice at once;
+     and no record written twice at once: the writers take turns, one on
+     another thread waiting, boundedly, and one on the same thread giving up
+     (638);
    - carries the suppressions of decision 565 as decision 627 narrows it, and
      627's and 634's, and no others: any other finding comes back to the
      owner.
@@ -86,7 +100,12 @@ cost about 30% of the Debug tests (decision 559).
      which now holds the maps (631);
    - how often, over a full run of each tree, the crash handler acts in a
      program that goes on to end normally -- an exception some code catches,
-     which it sees first (634).
+     which it sees first (634);
+   - the longest a record's write takes, which sets the bound of decision
+     638's wait.
+
+   They are measured in the two `check` trees, the option set by hand when
+   they are configured and the figures without the hook taken first (641).
 5. **The shader files a test read** (M1-124's item (a); moved here from
    M1-129 by decision 601). Today every test that starts the application is
    fingerprinted on every compiled shader: 50 tests, about 149 s of test time
@@ -101,7 +120,9 @@ cost about 30% of the Debug tests (decision 559).
    `ORBSIM_COVERAGE_RECORDS` names, ending `.shaders.txt` (632), opened at
    start with the test's name and given each shader file's full path as the
    renderer is asked for it, through a callback handed to
-   `VulkanContext::create`; the driver fingerprints a test on the shaders of
+   `VulkanContext::create`, and ended with a line `end` after `run()`
+   returns, a record without it counting as none (637); the two variables
+   read through `SDL_getenv` (644); the driver fingerprints a test on the shaders of
    every record carrying its name and stores the list, a test that left none
    keeping every shader; `mutants-due.py` takes the stored list while the
    application is byte for byte what it was then (616), otherwise a probe's
@@ -111,7 +132,9 @@ cost about 30% of the Debug tests (decision 559).
    read the shader sources' text through `git diff` -- so a comment-only
    shader edit makes no test run and no file due -- the shader a file's own
    mutants change included, where every other mutated file stays on its
-   source text.
+   source text; `--assume-changed`, given a shader's source, treats its
+   compiled file as changed, so that the three tests that suppose such a
+   change keep their command lines and expectations (643).
 
 **The names** (632): coverage_recorder_probe.cpp under tests/, the self-test's
 program, and coverage_recorder_unaligned.cpp under tests/, flags without the
@@ -122,7 +145,15 @@ scripts/, with the CTest tests `coverage_hook` and `coverage_hook_self_test`
 every test `CMakeLists.txt` defines carrying its name; and the map's reader
 begun in compiled-code.py under scripts/, which M1-132 extends. The
 self-test's program holds one global object with a destructor, the two
-warnings that refuse one switched off at that declaration alone (628).
+warnings that refuse one switched off at that declaration alone (628). And
+(642): `coverage_recorder_probe_plain`, the self-test's program built again
+with neither the hook nor the recorder (636); `<tree>/coverage-records/`, the
+folder the driver names; ShaderRecord.hpp and ShaderRecord.cpp under src/app/,
+the type `ShaderRecord`, the application's writer; `ShaderRequested`, the
+callback's type in `src/render/VulkanContext.hpp`; and the CTest test
+`shader_record`, requiring the `clear` probe's record to name exactly
+`fullscreen.vert.spv`, `probe_gradient.frag.spv` and `tonemap.frag.spv`, and a
+usage run's to name none.
 
 ## Mutants
 
@@ -131,7 +162,9 @@ set; writing before the static destructors; the flags-and-table check removed;
 the hook on a target compiling someone else's code; a test defined in
 `CMakeLists.txt` without its name in the environment; no record on an abort,
 on a crash, or on a bad argument to the C runtime; a handler that changes the
-exit code -- each caught by a test.
+exit code; a record without its `end` line, or a shader record without it
+taken as complete; a writer that gives up where it should wait -- each caught
+by a test.
 
 ## Done when
 
@@ -143,7 +176,9 @@ exit code -- each caught by a test.
       `noexcept` function, a crash, the debug library's check, a bad argument
       to the C runtime -- requiring each record to name the functions entered
       up to the stop, and the exit code and the output to be those the
-      program has without the handlers.
+      program has without the handlers: those of
+      `coverage_recorder_probe_plain`, the same program built with neither
+      the hook nor the recorder (636).
 - [ ] The measurements of item 4 are written down, with the owner's word on
       any that contradicted its ruling.
 - [ ] `check` passes in both trees.
