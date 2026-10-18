@@ -1669,6 +1669,11 @@ add_test(NAME probe_grid-400km_golden
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/RunProbe.cmake)
 set_tests_properties(probe_grid-400km_golden PROPERTIES LABELS gpu RESOURCE_LOCK gpu)
 
+# The Catch2 suites outside ORBSIM_TESTS: today the five above that read the
+# probes' frames. `check` builds them, and `mutant-anchors` waits for them, so
+# that a suite is named once for both (register decisions 653 and 657).
+set(ORBSIM_APP_TESTS test_probe_clear test_radiometry test_tonemap_port test_probe_lines test_probe_grid)
+
 # A golden mismatch, caught end to end (M1-17, register decision 236).
 #
 # make_broken_goldens writes three altered copies of the run's own `clear`
@@ -2081,6 +2086,16 @@ if(ORBSIM_PYTHON)
             COMMENT "mutant-anchors: every mutation-pass anchor still matches once, every judge exists"
             VERBATIM
     )
+    # The judges are checked against CTest's list of this tree's tests, and a
+    # Catch2 suite's part of that list is written after the suite links, by
+    # its POST_BUILD discovery. Read while a suite was relinked, the list
+    # lacked its tests, and two judges were reported "not a test in this
+    # tree" (register decision 653). So the step waits for every suite whose
+    # tests are discovered -- each one catch_discover_tests is called for;
+    # the rest of the list is written by the configure.
+    if(ORBSIM_BUILD_APP)
+        add_dependencies(mutant-anchors ${ORBSIM_TESTS} ${ORBSIM_APP_TESTS})
+    endif()
 else()
     add_custom_target(mutant-anchors
             COMMAND ${CMAKE_COMMAND} -E false
@@ -2168,16 +2183,15 @@ endif()
 add_dependencies(check ${ORBSIM_CHECK_DEPENDENCIES})
 add_dependencies(check-full ${ORBSIM_CHECK_DEPENDENCIES})
 if(ORBSIM_BUILD_APP)
-    # test_probe_clear with the application it checks: a suite `check` does
-    # not build is one ctest reports as NOT_BUILT (M1-16, found the first time
-    # a fresh tree ran it).
-    # make_broken_goldens for the golden tests' fixture (M1-17), the two
-    # suites that read the numeric probes' frames (M1-18), and the `lines`
-    # probe's number check (M1-19).
+    # The application with the suites that check it, ORBSIM_APP_TESTS: a suite
+    # `check` does not build is one ctest reports as NOT_BUILT (M1-16, found
+    # the first time a fresh tree ran it) -- test_probe_clear, the two suites
+    # that read the numeric probes' frames (M1-18), the `lines` probe's number
+    # check (M1-19) and the grid probes' (M1-20). make_broken_goldens for the
+    # golden tests' fixture (M1-17).
     foreach(orbsim_check IN ITEMS check check-full)
-        add_dependencies(${orbsim_check} orbsim orbsim_render_header_selfcheck test_probe_clear
-                test_radiometry test_tonemap_port make_broken_goldens test_probe_lines
-                test_probe_grid)
+        add_dependencies(${orbsim_check} orbsim orbsim_render_header_selfcheck make_broken_goldens
+                ${ORBSIM_APP_TESTS})
     endforeach()
 endif()
 
