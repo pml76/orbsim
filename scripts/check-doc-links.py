@@ -10,7 +10,9 @@ looks exactly like a step that passes.
 
 So this is wired into the `check` target rather than left as a good intention.
 
-It checks four things across every Markdown file that is ours:
+It checks four things across every Markdown file that is ours -- since
+register decision 652, one git does not ignore, outside the folders SKIP_DIRS
+and SKIP_PREFIXES name:
 
   * a relative link resolves to a file or directory that exists;
   * an `#anchor` resolves to a heading that exists, in this file or the one
@@ -75,13 +77,18 @@ Exit codes: 0 clean, 1 broken references found, 2 usage.
 
 from __future__ import annotations
 
-import glob
+import fnmatch
 import os
 import re
+import subprocess
 import sys
 import tempfile
 
 # Directories that are not ours: build output, fetched dependencies, git.
+# Since register decision 652 only the files git does not ignore are read
+# (`unignored`), and these are still passed over among them: a folder of this
+# kind that no ignore rule names -- an untracked `node_modules`, a `buildx` --
+# is no more ours for that.
 SKIP_DIRS = {".git", ".idea", "_deps", "node_modules"}
 SKIP_PREFIXES = ("build", "cmake-build")
 
@@ -148,27 +155,63 @@ def is_ours(root: str, path: str) -> bool:
     )
 
 
-def markdown_files(root: str) -> list[str]:
-    found = []
-    for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [
-            d
-            for d in dirnames
-            if d not in SKIP_DIRS and not d.lower().startswith(SKIP_PREFIXES)
-        ]
-        for name in filenames:
-            if name.lower().endswith(".md"):
-                found.append(os.path.join(dirpath, name))
-    return sorted(found)
+def unignored(root: str) -> list[str]:
+    """Every file under `root` git does not ignore -- those it tracks, and the
+    untracked ones it does not ignore -- as scripts/run-tests.py reads a folder
+    (register decision 652). Until 2026-10-18 this script walked every folder
+    but SKIP_DIRS and SKIP_PREFIXES, and so read the documents of a session's
+    git worktree under `.claude/worktrees/`, which git's exclude file ignores:
+    79 broken references, all inside that copy, failing `check` in both trees
+    though nothing of the project was broken. A folder skipped by name would
+    have been broken again by the next one git ignores."""
+    out = subprocess.run(["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+                         cwd=root, capture_output=True, check=True).stdout
+    listed = {os.path.normpath(os.path.join(root, n)) for n in out.decode("utf-8").split("\0") if n}
+    # A tracked file deleted from the disk is still in the index.
+    return sorted(p for p in listed if os.path.isfile(p))
 
 
-def top_level_dirs(root: str) -> set[str]:
+class Listing:
+    """The files under a root git does not ignore, and the folders holding
+    them: what the documents are read from (register decision 652), and what
+    a reference must name (decision 656), so that a document may point only at
+    what every clone has. A folder counts when the list holds a file under it,
+    since git keeps no folder of its own; and as every listed file is on the
+    disk, so is everything this holds."""
+
+    def __init__(self, root: str) -> None:
+        self.files = unignored(root)
+        self._files = {os.path.normcase(f) for f in self.files}
+        self._folders = {os.path.normcase(root)}
+        for path in self.files:
+            folder = os.path.normcase(os.path.dirname(path))
+            while folder not in self._folders and os.path.dirname(folder) != folder:
+                self._folders.add(folder)
+                folder = os.path.dirname(folder)
+
+    def file(self, path: str) -> bool:
+        return os.path.normcase(os.path.normpath(path)) in self._files
+
+    def folder(self, path: str) -> bool:
+        return os.path.normcase(os.path.normpath(path)) in self._folders
+
+    def holds(self, path: str) -> bool:
+        return self.file(path) or self.folder(path)
+
+
+def markdown_files(files: list[str]) -> list[str]:
+    return [f for f in files if f.lower().endswith(".md")]
+
+
+def top_level_dirs(root: str, listing: Listing) -> set[str]:
     """Directory names at the repository root, which is what makes a backticked
-    path a claim about *this* repository rather than about a dependency."""
+    path a claim about *this* repository rather than about a dependency -- the
+    ones holding a file git does not ignore (register decision 656)."""
+    names = {os.path.relpath(f, root).replace("\\", "/").split("/")[0] for f in listing.files}
     return {
         name
-        for name in os.listdir(root)
-        if os.path.isdir(os.path.join(root, name))
+        for name in names
+        if listing.folder(os.path.join(root, name))
         and name not in SKIP_DIRS
         and not name.lower().startswith(SKIP_PREFIXES)
     }
@@ -258,34 +301,32 @@ def line_count(path: str) -> int:
         return sum(1 for _ in handle)
 
 
-def resolve_code_line_ref(root: str, target: str) -> list[str]:
+def resolve_code_line_ref(root: str, target: str, listing: Listing) -> list[str]:
     """Every file a `file:line` citation could mean.
 
     A citation carrying a directory is resolved from the root, exactly as the
     path scan does. A bare basename is searched for under the directories that
     hold source, because that is how all four of the citations this check was
-    written for were spelled.
+    written for were spelled -- among the files git does not ignore (register
+    decision 652), since a copy in an ignored folder made the name ambiguous,
+    and an ambiguous one is skipped. Either way the file is one git does not
+    ignore (decision 656).
     """
     if "/" in target:
         candidate = os.path.join(root, target.replace("/", os.sep))
-        return [candidate] if os.path.isfile(candidate) else []
+        return [candidate] if listing.file(candidate) else []
     found = []
     for base in CODE_LINE_SEARCH_DIRS:
-        start = os.path.join(root, base)
-        if not os.path.isdir(start):
-            continue
-        for dirpath, dirnames, filenames in os.walk(start):
-            dirnames[:] = [
-                d
-                for d in dirnames
-                if d not in SKIP_DIRS and not d.lower().startswith(SKIP_PREFIXES)
-            ]
-            if target in filenames:
-                found.append(os.path.join(dirpath, target))
+        start = os.path.normcase(os.path.join(root, base)) + os.sep
+        found += [
+            f
+            for f in listing.files
+            if os.path.normcase(f).startswith(start) and os.path.basename(f) == target and is_ours(root, f)
+        ]
     return found
 
 
-def check_code_line_refs(root: str, rel: str, lines: list[str]) -> list[str]:
+def check_code_line_refs(root: str, rel: str, lines: list[str], listing: Listing) -> list[str]:
     """A backticked `file:line` citation is reported, because we do not write them.
 
     Existence-and-length was the obvious check and it was measured first: of the
@@ -308,7 +349,7 @@ def check_code_line_refs(root: str, rel: str, lines: list[str]) -> list[str]:
         target = match.group("path")
         cited = int(match.group("line"))
         if (rel, body.strip()) in LINE_REFS_ON_PURPOSE:
-            candidates = resolve_code_line_ref(root, target)
+            candidates = resolve_code_line_ref(root, target, listing)
             if not candidates:
                 problems.append(f"{rel}:{number}: no such file: {target}")
             elif len(candidates) == 1 and not 1 <= cited <= line_count(candidates[0]):
@@ -331,6 +372,7 @@ def check_code_paths(
     roots: set[str],
     absent: set[tuple[str, str]],
     used: set[tuple[str, str]],
+    listing: Listing,
 ) -> list[str]:
     """A backticked path naming a file in this repository must resolve."""
     rel = os.path.relpath(path, root).replace("\\", "/")
@@ -338,29 +380,40 @@ def check_code_paths(
     # FORWARD_LOOKING exemption below exists because naming a file a task will
     # create is that document's job -- which is no reason at all to cite a line
     # number, in a file that exists or one that does not.
-    problems = check_code_line_refs(root, rel, lines)
+    problems = check_code_line_refs(root, rel, lines, listing)
     if rel.startswith(FORWARD_LOOKING):
         return problems
+    # A record is searched for among the files git does not ignore (register
+    # decision 652), as `docs/adr/*` matched on the disk was until then.
+    adr_folder = os.path.normcase(os.path.join(root, "docs", "adr"))
+    records = [
+        os.path.basename(f) for f in listing.files if os.path.normcase(os.path.dirname(f)) == adr_folder
+    ]
     for number, body in code_spans(lines):
         target = body.rstrip("/")
         if "/" not in target:
             continue
         adr = ADR_REF.match(target)
         if adr:
-            if not glob.glob(os.path.join(root, "docs", "adr", adr.group(1) + "-*.md")):
+            if not fnmatch.filter(records, adr.group(1) + "-*.md"):
                 problems.append(f"{rel}:{number}: no ADR numbered {adr.group(1)}")
             continue
         if not CODE_PATH.match(target):
             continue
         # A claim about this repository when its first folder is a top-level
         # one, or a folder beside the document, above it, or in a `src/` there;
-        # otherwise a dependency's or a build's, and nobody's promise.
+        # otherwise a dependency's or a build's, and nobody's promise. The
+        # folder and the file are held to git's list (register decision 656),
+        # so the answer is the one a fresh clone gives: there a folder holding
+        # only what git ignores is not there at all. path_bases finds its
+        # `src/` folders on the disk, which cannot change that answer, since
+        # whatever is looked for under them is asked of the list.
         bases = path_bases(root, path)
         first = target.split("/")[0]
-        if first not in roots and not any(os.path.isdir(os.path.join(b, first)) for b in bases):
+        if first not in roots and not any(listing.folder(os.path.join(b, first)) for b in bases):
             continue
         native = target.replace("/", os.sep)
-        exists = any(os.path.exists(os.path.join(b, native)) for b in bases)
+        exists = any(listing.holds(os.path.join(b, native)) for b in bases)
         if (rel, target) in absent:
             used.add((rel, target))
             if exists:
@@ -375,8 +428,9 @@ def scan(root: str, absent: set[tuple[str, str]]) -> tuple[int, list[str]]:
     """Every document under `root`, checked: how many there were, and what is
     broken. `absent` is ABSENT_ON_PURPOSE, a parameter so the self-test can
     hand in its own."""
-    files = [f for f in markdown_files(root) if is_ours(root, f)]
-    roots = top_level_dirs(root)
+    listing = Listing(root)
+    files = [f for f in markdown_files(listing.files) if is_ours(root, f)]
+    roots = top_level_dirs(root, listing)
     cache: dict[str, set[str]] = {}
     problems: list[str] = []
     used: set[tuple[str, str]] = set()
@@ -390,7 +444,7 @@ def scan(root: str, absent: set[tuple[str, str]]) -> tuple[int, list[str]]:
         with open(path, encoding="utf-8", errors="replace") as handle:
             raw = handle.read().split("\n")
         here = os.path.dirname(path)
-        problems.extend(check_code_paths(root, path, raw, roots, absent, used))
+        problems.extend(check_code_paths(root, path, raw, roots, absent, used, listing))
         for number, line in enumerate(strip_code(raw), start=1):
             for target in LINK.findall(line):
                 if target.startswith(("http://", "https://", "mailto:", "<")):
@@ -398,7 +452,9 @@ def scan(root: str, absent: set[tuple[str, str]]) -> tuple[int, list[str]]:
                 file_part, _, anchor = target.partition("#")
                 if file_part:
                     resolved = os.path.normpath(os.path.join(here, file_part))
-                    if not os.path.exists(resolved):
+                    # A file or folder git does not ignore (register decision
+                    # 656), so that a document points only at what every clone has.
+                    if not listing.holds(resolved):
                         problems.append(
                             f"{os.path.relpath(path, root)}:{number}: "
                             f"no such file: {file_part}"
@@ -452,6 +508,10 @@ def self_test() -> int:
     failures = 0
     for name, (text, absent, want) in cases.items():
         with tempfile.TemporaryDirectory() as scratch:
+            # A repository of git's own, since the script reads the files git
+            # does not ignore (register decision 652); every file here is one
+            # it does not ignore, as before.
+            git_repository(scratch, {}, ())
             for made in ("src/core/A.hpp", "docs/m/compare.py"):
                 os.makedirs(os.path.dirname(os.path.join(scratch, made)), exist_ok=True)
                 with open(os.path.join(scratch, made), "w", encoding="utf-8") as handle:
@@ -462,7 +522,89 @@ def self_test() -> int:
         ok = len(problems) == want
         failures += not ok
         print(f"self-test: {name}: {'ok' if ok else f'WRONG, got {problems}'}")
-    return 1 if failures else 0
+    return 1 if failures + git_cases() else 0
+
+
+def git_repository(scratch: str, files: dict[str, str], tracked: tuple[str, ...]) -> None:
+    """A scratch repository of git's own holding `files`, of which `tracked`
+    are added to its index -- without a commit, so that no identity is needed
+    -- and the rest are left for git's ignore rules to sort."""
+    subprocess.run(["git", "init", "-q"], cwd=scratch, capture_output=True, check=True)
+    for made, text in files.items():
+        full = os.path.join(scratch, made)
+        os.makedirs(os.path.dirname(full) or scratch, exist_ok=True)
+        with open(full, "w", encoding="utf-8", newline="\n") as handle:
+            handle.write(text)
+    if tracked:
+        subprocess.run(["git", "add", "--", *tracked], cwd=scratch, capture_output=True, check=True)
+
+
+def git_cases() -> int:
+    """The files git ignores are passed over, and the ones it does not are
+    still read (register decision 652). Found 2026-10-18: a session's git
+    worktree under `.claude/worktrees/`, which git's exclude file ignores, put
+    79 broken references in `check`, all inside that copy. Each case is a
+    repository holding a folder git ignores, with a broken link in it, and a
+    tracked document with a good one; since decision 656 some also hold a
+    reference to what git ignores. Returns how many cases failed."""
+    base = {
+        ".gitignore": "ignored/\ndocs/adr/0002-draft.md\n",
+        "ignored/copy.md": "# Copy\n\nSee [x](gone.md).\n",
+        "guide.md": "# Guide\n\nSee [x](other.md).\n",
+        "other.md": "# Other\n",
+    }
+    base_tracked = (".gitignore", "guide.md", "other.md")
+    # Each case: the files it adds, those of them tracked, the citations it
+    # allows on purpose, and the documents its problems must name.
+    cases = {
+        "a document in a folder git ignores is passed over": ({}, (), set(), []),
+        "a broken link in a tracked document is still reported":
+            ({"bad.md": "# Bad\n\nSee [x](gone.md).\n"}, ("bad.md",), set(), ["bad.md"]),
+        "a broken link in an untracked document git does not ignore is still reported":
+            ({"loose.md": "# Loose\n\nSee [x](gone.md).\n"}, (), set(), ["loose.md"]),
+        "an ADR only a file git ignores holds is reported":
+            ({"docs/adr/0001-kept.md": "# Kept\n", "docs/adr/0002-draft.md": "# Draft\n",
+              "names.md": "# Names\n\n`docs/adr/0001` and `docs/adr/0002`.\n"},
+             ("docs/adr/0001-kept.md", "names.md"), set(), ["names.md"]),
+        # Ambiguous until the ignored copy is passed over, and an ambiguous
+        # basename is skipped rather than reported -- so the citation's range
+        # went unchecked.
+        "a citation's file is searched for among the files git does not ignore":
+            ({"src/A.cpp": "\n", "src/ignored/A.cpp": "\n", "cites.md": "# Cites\n\n`A.cpp:5`.\n"},
+             ("src/A.cpp", "cites.md"), {("cites.md", "A.cpp:5")}, ["cites.md"]),
+        # A reference names only what every clone has (register decision 656):
+        # until then a file git ignores, present on one machine only, passed
+        # there and would fail on a fresh clone.
+        "a link to, and a path naming, a file git ignores are reported":
+            ({".gitignore": base[".gitignore"] + "src/secret.hpp\n", "src/kept.hpp": "\n",
+              "src/secret.hpp": "\n", "points.md": "# Points\n\nSee [x](src/secret.hpp) and `src/secret.hpp`.\n"},
+             ("src/kept.hpp", "points.md"), set(), ["points.md", "points.md"]),
+        "a link to a folder holding only files git ignores is reported":
+            ({"folder.md": "# Folder\n\nSee [x](ignored/).\n"}, ("folder.md",), set(), ["folder.md"]),
+        # As a fresh clone sees it: there the folder is not there at all.
+        "a path into a folder holding only files git ignores is nobody's promise":
+            ({"into.md": "# Into\n\n`ignored/thing.py`.\n"}, ("into.md",), set(), []),
+        "a citation's file named with its folder must be one git does not ignore":
+            ({".gitignore": base[".gitignore"] + "src/secret.hpp\n", "src/kept.hpp": "\n",
+              "src/secret.hpp": "\n", "cites.md": "# Cites\n\n`src/secret.hpp:1`.\n"},
+             ("src/kept.hpp", "cites.md"), {("cites.md", "src/secret.hpp:1")}, ["cites.md"]),
+    }
+    failures = 0
+    for name, (files, tracked, line_refs, want) in cases.items():
+        with tempfile.TemporaryDirectory() as scratch:
+            git_repository(scratch, base | files, base_tracked + tracked)
+            # LINE_REFS_ON_PURPOSE is read where it is used, and is meant to
+            # stay empty; the case lends it its own entries and takes them back.
+            LINE_REFS_ON_PURPOSE.update(line_refs)
+            try:
+                _, problems = scan(scratch, set())
+            finally:
+                LINE_REFS_ON_PURPOSE.difference_update(line_refs)
+        named = sorted(p.split(":", 1)[0].replace("\\", "/") for p in problems)
+        ok = named == want
+        failures += not ok
+        print(f"self-test: {name}: {'ok' if ok else f'WRONG, got {problems}'}")
+    return failures
 
 
 def main(argv: list[str]) -> int:

@@ -42,7 +42,7 @@
     {
       "name": "only a top-level folder makes a path a claim, as before M1-115",
       "file": "scripts/check-doc-links.py",
-      "find": "        if first not in roots and not any(os.path.isdir(os.path.join(b, first)) for b in bases):",
+      "find": "        if first not in roots and not any(listing.folder(os.path.join(b, first)) for b in bases):",
       "replace": "        if first not in roots:",
       "expect": "caught",
       "suites": [],
