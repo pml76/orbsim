@@ -388,7 +388,9 @@ taken on; `STATUS.md` names them.
    `PROJECT_STATE.md`); item 8; `check` in both trees; then commit, the
    mutation pass and its record, `check-full` in both trees, and push
    (decision 535).
-3. **Mutation testing at function level**: which mutants are due, decided per
+3. **Mutation testing at function level** -- since 2026-10-18 a task of its
+   own, [M1-134](m1-134-mutants-chosen-like-tests.md), after M1-133 (decision
+   633): which mutants are due, decided per
    mutant from the functions its judging tests enter; only the tests that
    enter the functions a mutant changed run against it; a mutant that leaves
    every compiled function identical is equivalent without running anything

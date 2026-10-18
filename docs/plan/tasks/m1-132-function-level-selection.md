@@ -59,8 +59,9 @@ data that points at other data (545).
 5. **A wrong or missing record fails `check`, naming the program** (590): the
    recorder finding its flags and table out of line, a test that starts a
    hooked program directly passing without a record, a record naming an
-   address the map gives no function. The probes that pass by aborting have
-   no record and always run (559).
+   address the map gives no function. The probes that pass by aborting leave
+   a record too since decision 634, which amends 559, and are judged like any
+   other test.
 6. **Self-tests** (591): the decision rules on made-up inputs; the reader on
    small samples compiled with the tree's own clang as the test runs, among
    them that a test inserted before others leaves their digests unchanged;

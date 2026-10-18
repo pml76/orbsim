@@ -3,8 +3,10 @@
 Phase: B | Status: not started
 Prerequisites: M1-129
 Decided by: register decisions 544, 551, 559, 564-566, 569 and 570, ruled
-2026-10-15, 582-595 and 601, ruled 2026-10-16, and 625-632, ruled 2026-10-17
-before the task began -- every question it raised, item 5's among them; split
+2026-10-15, 582-595 and 601, ruled 2026-10-16, 625-632, ruled 2026-10-17
+before the task began -- every question it raised, item 5's among them -- and
+634, ruled 2026-10-18 after a spike, the record written however a program
+ends, and 635, shaders judged alike by both scripts; split
 out of M1-129 as its item 9's step C by decision 596.
 The selection that reads what this records is [M1-132](m1-132-function-level-selection.md),
 and [M1-133](m1-133-selection-proved.md) proves it. The spike and the design
@@ -56,8 +58,17 @@ cost about 30% of the Debug tests (decision 559).
    - writes after every static destructor has run, so that code running at
      exit is recorded too: the hook's first start-up call registers the
      writer with `atexit` (626);
+   - **writes too when the program stops abnormally** (634): on `abort`, which
+     a failed assertion and `std::terminate` call, through a `SIGABRT`
+     handler; on a crash, the debug library's checks among them, through a
+     vectored exception handler acting only on the kinds that end a program;
+     on a bad argument to the C runtime, through its invalid-parameter
+     handler, which then ends the program with the runtime's own
+     `__fastfail` -- each leaving the exit code and the output as they were,
+     and no record written twice at once;
    - carries the suppressions of decision 565 as decision 627 narrows it, and
-     627's, and no others: any other finding comes back to the owner.
+     627's and 634's, and no others: any other finding comes back to the
+     owner.
 3. **The test's name, `ORBSIM_TEST_NAME`, in the environment of every test
    `CMakeLists.txt` defines** (564, 594), appended in one place after the last
    test is defined, so that a test added later cannot be missed.
@@ -72,14 +83,18 @@ cost about 30% of the Debug tests (decision 559).
    - the benchmark with and without the hook on this machine (589), written
      down; M1-47 takes the same both ways on the RX 7900 XTX;
    - the size and time of the mutation harness's copy of the build tree,
-     which now holds the maps (631).
+     which now holds the maps (631);
+   - how often, over a full run of each tree, the crash handler acts in a
+     program that goes on to end normally -- an exception some code catches,
+     which it sees first (634).
 5. **The shader files a test read** (M1-124's item (a); moved here from
    M1-129 by decision 601). Today every test that starts the application is
    fingerprinted on every compiled shader: 50 tests, about 149 s of test time
-   in Debug and 89 s in RelWithDebInfo, rerun by any shader edit, and six
-   mutant files stay due on any shader change (decision 394) -- 51 of 580
-   tests on 2026-10-17. The application records the shaders it loaded for the
-   test `ORBSIM_TEST_NAME` names -- the naming item 3 builds -- and
+   in Debug and 89 s in RelWithDebInfo, rerun by any shader edit, and eleven
+   mutant files stay due on any shader change, measured 2026-10-18, where
+   decision 394 had counted six -- 51 of 580 tests on 2026-10-17. The
+   application records the shaders it loaded for the test `ORBSIM_TEST_NAME`
+   names -- the naming item 3 builds -- and
    `scripts/run-tests.py` and `scripts/mutants-due.py` fingerprint each such
    test on those alone. **How, as decision 629 ruled**: in every tree, the
    application writes a record of its own into the folder
@@ -90,7 +105,13 @@ cost about 30% of the Debug tests (decision 559).
    every record carrying its name and stores the list, a test that left none
    keeping every shader; `mutants-due.py` takes the stored list while the
    application is byte for byte what it was then (616), otherwise a probe's
-   sidecar (394), otherwise every shader.
+   sidecar (394), otherwise every shader. **And both scripts judge those
+   shaders alike** (635): by the compiled files' bytes, each read in full, a
+   pass recording each one's hash for its judges -- where `mutants-due.py`
+   read the shader sources' text through `git diff` -- so a comment-only
+   shader edit makes no test run and no file due -- the shader a file's own
+   mutants change included, where every other mutated file stays on its
+   source text.
 
 **The names** (632): coverage_recorder_probe.cpp under tests/, the self-test's
 program, and coverage_recorder_unaligned.cpp under tests/, flags without the
@@ -108,14 +129,21 @@ warnings that refuse one switched off at that declaration alone (628).
 At least: the recorder writing nothing; writing without the folder variable
 set; writing before the static destructors; the flags-and-table check removed;
 the hook on a target compiling someone else's code; a test defined in
-`CMakeLists.txt` without its name in the environment -- each caught by a test.
+`CMakeLists.txt` without its name in the environment; no record on an abort,
+on a crash, or on a bad argument to the C runtime; a handler that changes the
+exit code -- each caught by a test.
 
 ## Done when
 
 - [ ] A self-test runs a small program carrying the hook with the folder
       variable set and requires its record to name exactly the functions it
       entered, a function entered by a static destructor among them; and
-      without the variable, no file.
+      without the variable, no file. **And the same program stopped each way
+      decision 634 names** -- a failed assertion, an exception escaping a
+      `noexcept` function, a crash, the debug library's check, a bad argument
+      to the C runtime -- requiring each record to name the functions entered
+      up to the stop, and the exit code and the output to be those the
+      program has without the handlers.
 - [ ] The measurements of item 4 are written down, with the owner's word on
       any that contradicted its ruling.
 - [ ] `check` passes in both trees.

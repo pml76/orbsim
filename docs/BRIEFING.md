@@ -341,5 +341,7 @@ commits, decisions 601-623. Next,
 [M1-133](plan/tasks/m1-133-selection-proved.md) (tests chosen function by
 function, every question already ruled, decisions 582-596 and 624, and
 M1-131's own, item 5's among them, 625-632 on the evening of 2026-10-17,
-before its work began), then M1-127 and M1-130 (the code as modules), lower
-levels first (decision 495).
+before its work began); then
+[M1-134](plan/tasks/m1-134-mutants-chosen-like-tests.md), mutation passes
+chosen the way the tests are (decision 633, 2026-10-18); then M1-127 and
+M1-130 (the code as modules), lower levels first (decision 495).
