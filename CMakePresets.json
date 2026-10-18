@@ -14,17 +14,29 @@
       }
     },
     {
-      "name": "debug",
+      "name": "debug-base",
+      "hidden": true,
       "inherits": "base",
-      "displayName": "clang Debug",
-      "description": "Assertions live. Part of the definition of done alongside relwithdebinfo.",
+      "description": "The Debug settings every preset built on Debug shares. The presets below inherit this rather than debug, so that what only the check trees carry -- the coverage hook -- reaches no other tree (register decision 625).",
       "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
     },
     {
-      "name": "relwithdebinfo",
+      "name": "relwithdebinfo-base",
+      "hidden": true,
       "inherits": "base",
-      "displayName": "clang RelWithDebInfo",
+      "description": "The RelWithDebInfo settings every preset built on RelWithDebInfo shares, for the same reason as debug-base (register decision 625).",
       "cacheVariables": { "CMAKE_BUILD_TYPE": "RelWithDebInfo" }
+    },
+    {
+      "name": "debug",
+      "inherits": "debug-base",
+      "displayName": "clang Debug",
+      "description": "Assertions live. Part of the definition of done alongside relwithdebinfo."
+    },
+    {
+      "name": "relwithdebinfo",
+      "inherits": "relwithdebinfo-base",
+      "displayName": "clang RelWithDebInfo"
     },
     {
       "name": "release",
@@ -34,7 +46,7 @@
     },
     {
       "name": "asan",
-      "inherits": "relwithdebinfo",
+      "inherits": "relwithdebinfo-base",
       "displayName": "clang RelWithDebInfo + AddressSanitizer, assertions live",
       "description": "Every test under ASan. Not Debug: ASan and the MSVC debug C runtime cannot share a heap (see CMakeLists.txt), so this is the release runtime with -DNDEBUG removed from the RelWithDebInfo flags. Run before a milestone lands.",
       "cacheVariables": {
@@ -45,7 +57,7 @@
     },
     {
       "name": "linux-sanitize",
-      "inherits": "debug",
+      "inherits": "debug-base",
       "displayName": "Linux: clang Debug + ASan + UBSan, core only",
       "description": "ASan and UBSan on the core. UBSan is the reason a Linux build exists; run it by hand before a milestone lands, because this project has no CI (ADR 0005).",
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" },
@@ -57,7 +69,7 @@
     },
     {
       "name": "linux-gcc",
-      "inherits": "debug",
+      "inherits": "debug-base",
       "displayName": "Linux: gcc 14 Debug, core only",
       "description": "The second compiler. Where two compilers disagree is where the bugs live.",
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" },
@@ -69,7 +81,7 @@
     },
     {
       "name": "windows-msvc",
-      "inherits": "debug",
+      "inherits": "debug-base",
       "displayName": "Windows: MSVC 18, the third implementation",
       "description": "cl.exe with /W4 /WX /permissive-, the whole tree including the renderer. A third opinion beside clang and gcc-14, and it earned its keep on the first run: std::isfinite is not constexpr before C++26, which clang and libstdc++ both accept as an extension and MSVC does not. Needs INCLUDE and LIB, so configure and build it from a Developer Command Prompt or after calling vcvars64.bat -- PROJECT_STATE.md section 2. Run it before a milestone lands.",
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
@@ -80,7 +92,7 @@
     },
     {
       "name": "windows-fuzz",
-      "inherits": "debug",
+      "inherits": "debug-base",
       "displayName": "Windows: clang + libFuzzer + ASan + UBSan, core only",
       "description": "The fuzz targets, on the platform they are run on. Not part of check: a fuzzer has no natural exit, so it is run deliberately with a time budget. Builds the whole tree against the static release CRT, which clang's Windows libFuzzer requires. See VERIFICATION.md rule 13.",
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
@@ -91,7 +103,7 @@
     },
     {
       "name": "linux-fuzz",
-      "inherits": "debug",
+      "inherits": "debug-base",
       "displayName": "Linux: clang + libFuzzer + ASan + UBSan + LeakSanitizer, core only",
       "description": "The same fuzz targets under WSL. Kept for LeakSanitizer, which does not exist on Windows; everything else it checks, windows-fuzz checks too. See VERIFICATION.md rule 13.",
       "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" },
