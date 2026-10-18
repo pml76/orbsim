@@ -185,7 +185,9 @@ before putting them again: the trees and the branches move.
   tip was a commit to be amended, and it moves onto `master` after M1-131's
   commit), and M1-135's worktree would have to check out this task's branch.
 
-**7. Register numbers**
+**7. Register numbers** -- **ruled 2026-10-18, option A** (register decision
+680), ahead of the other seven questions because M1-131 had run to 659: 680-689
+are this task's, and M1-131 goes on after 689.
 
 On 2026-10-18 decision 670, on M1-135's branch, gave M1-135 decisions 660-679
 and left M1-131 652-659, M1-131 to go on after 679 should it need more.
