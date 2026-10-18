@@ -10,7 +10,13 @@ ends, and 635, shaders judged alike by both scripts; and 636-644, ruled
 2026-10-18 before the work began -- the self-test's plain program, the `end`
 line, the writers taking turns, the 51 programs, Windows only, the `check`
 trees for the measurements, the names, a supposed shader change, and four
-smaller choices; split
+smaller choices; and 645-651, ruled the same day while items 1-3 were built --
+the two NOLINTs and the warning of the self-test's program, the turn-taking
+tested in a suite of its own, the refusals checked by hand, an unlinted file,
+and the smaller choices; and 652-654 the same day -- the document-link check
+reading only what git does not ignore, `mutant-anchors` waiting for the
+programs whose tests it reads, each in a commit of its own, and the recorder's
+end on a stuck writer declared a surviving mutant; split
 out of M1-129 as its item 9's step C by decision 596.
 The selection that reads what this records is [M1-132](m1-132-function-level-selection.md),
 and [M1-133](m1-133-selection-proved.md) proves it. The spike and the design
@@ -153,7 +159,9 @@ the type `ShaderRecord`, the application's writer; `ShaderRequested`, the
 callback's type in `src/render/VulkanContext.hpp`; and the CTest test
 `shader_record`, requiring the `clear` probe's record to name exactly
 `fullscreen.vert.spv`, `probe_gradient.frag.spv` and `tonemap.frag.spv`, and a
-usage run's to name none.
+usage run's to name none. And (648): `tests/WriterTurns.hpp`, the writers'
+turn-taking, which the recorder calls, and the Catch2 suite
+`test_writer_turns`, testing it with two threads held in step.
 
 ## Mutants
 
@@ -163,8 +171,8 @@ the hook on a target compiling someone else's code; a test defined in
 `CMakeLists.txt` without its name in the environment; no record on an abort,
 on a crash, or on a bad argument to the C runtime; a handler that changes the
 exit code; a record without its `end` line, or a shader record without it
-taken as complete; a writer that gives up where it should wait -- each caught
-by a test.
+taken as complete; a writer that gives up where it should wait, caught by
+`test_writer_turns` (648) -- each caught by a test.
 
 ## Done when
 
@@ -178,7 +186,10 @@ by a test.
       up to the stop, and the exit code and the output to be those the
       program has without the handlers: those of
       `coverage_recorder_probe_plain`, the same program built with neither
-      the hook nor the recorder (636).
+      the hook nor the recorder (636). The exception escaping a `noexcept`
+      function carries a NOLINT for `bugprone-exception-escape` (645), the
+      bad argument is `_itoa_s` with no buffer (646), and the configure's two
+      refusals are checked by hand and written down (649).
 - [ ] The measurements of item 4 are written down, with the owner's word on
       any that contradicted its ruling.
 - [ ] `check` passes in both trees.
