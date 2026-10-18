@@ -12,7 +12,9 @@ names read from the linker's map through scripts/compiled-code.py (decision
 582) -- in every way that program can end (decision 634):
 
   * **a normal end**, the record written after the static destructors, so that
-    it names the function one of them entered (decision 626);
+    it names the function one of them entered (decision 626) -- and the same
+    after a file written and read back through the standard library's file
+    streams, which the recorder's own stream once failed after (decision 659);
   * **each way of stopping the probe has** -- a failed precondition and the
     debug library's own check where the tree is Debug, an exception escaping
     a noexcept function, a read through a null pointer, a plain abort and a
@@ -68,7 +70,8 @@ PROBE_OBJECT = "coverage_recorder_probe.cpp.obj"
 # that one added there and not here fails rather than going unjudged.
 PROBE_FUNCTIONS = {"runScenario", "stopAs", "enteredFirst", "enteredAfterTheStop", "neverEntered",
                    "enteredByTheStaticDestructor", "requiresZero", "throwsWhenPositive", "escapesNoexcept",
-                   "readsThroughNull", "stepsBeforeBegin", "abortsWhenPositive", "convertsIntoNoBuffer"}
+                   "readsThroughNull", "stepsBeforeBegin", "abortsWhenPositive", "convertsIntoNoBuffer",
+                   "usesAFileStream"}
 
 
 class Scenario(NamedTuple):
@@ -82,6 +85,9 @@ STOPPED = frozenset({"runScenario", "enteredFirst", "stopAs"})
 SCENARIOS = (
     Scenario("normally", "normally", frozenset({"runScenario", "enteredFirst", "enteredByTheStaticDestructor"}),
              False),
+    # A program that used a file stream before it ends (decision 659).
+    Scenario("file-stream", "normally",
+             frozenset({"runScenario", "enteredFirst", "usesAFileStream", "enteredByTheStaticDestructor"}), False),
     Scenario("precondition", "by abort", STOPPED | {"requiresZero"}, True),
     Scenario("noexcept", "by abort", STOPPED | {"escapesNoexcept", "throwsWhenPositive"}, False),
     Scenario("crash", "by a crash", STOPPED | {"readsThroughNull"}, False),

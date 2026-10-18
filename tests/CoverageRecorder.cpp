@@ -38,9 +38,19 @@
 // written: where they do not, a flag cannot be placed beside its function, so
 // the count is written "out of line" and no function at all (decisions 559 and
 // 627). The `end` line comes last, so that a record cut off part-way -- a crash
-// inside the write, a full disk, which a file stream meets without a word --
-// has none, and counts as no record rather than as a record of fewer functions
-// (decision 637).
+// inside the write, a full disk -- has none, and counts as no record rather
+// than as a record of fewer functions (decision 637).
+//
+// **Written with Windows' own file calls, its text built without C++ streams**
+// (decision 659). The writer runs after the standard library has torn down
+// what its file streams need, and a stream opened here crashed as the program
+// ended, leaving an empty record, in any program that had used one -- found
+// 2026-10-18, and the self-test's `file-stream` scenario since. The file is
+// opened, and emptied, before the text is built, so that a write stopped
+// part-way still leaves a record without its `end` line rather than an earlier
+// one whole; the text goes in one call. A path converts to UTF-8 through the
+// library's own call to Windows, `__std_fs_convert_wide_to_narrow`, not
+// through a stream's conversion, and std::format reads no locale unless asked.
 //
 // **When.** The hook's first start-up call registers the writer with `atexit`.
 // clang places that call in `.CRT$XCA00002`, which runs before the standard
@@ -92,14 +102,16 @@
 #include <cstdint>
 #include <cstdlib>
 #include <filesystem>
-#include <fstream>
-#include <ios>
+#include <format>
+#include <iterator>
+#include <memory>
 #include <process.h>
 #include <ranges>
 #include <span>
 #include <string>
 #include <string_view>
 #include <thread>
+#include <utility>
 
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
@@ -110,6 +122,8 @@
 
 #include <errhandlingapi.h>
 #include <excpt.h>
+#include <fileapi.h>
+#include <handleapi.h>
 #include <intrin.h>
 #include <libloaderapi.h>
 #include <minwinbase.h>
@@ -214,9 +228,55 @@ Seen& seen() {
     return path;
 }
 
-void writeLine(std::ofstream& out, std::string_view key, std::wstring_view text) {
-    const std::u8string utf8 = std::filesystem::path(text).u8string();
-    out << key << ' ' << std::string(utf8.begin(), utf8.end()) << '\n';
+// Closes a file Windows opened: what the std::unique_ptr holding one calls,
+// the Rule of Zero kept (Non-negotiable 5).
+struct CloseFile {
+    void operator()(HANDLE file) const noexcept { static_cast<void>(CloseHandle(file)); }
+};
+using UniqueFile = std::unique_ptr<void, CloseFile>;
+
+// The record's file, opened and emptied, shared as the stream it replaces
+// shared it; null where it cannot be opened. Windows' "no file" is not null,
+// and is never held, so never closed.
+[[nodiscard]] UniqueFile openRecord(const std::filesystem::path& file) {
+    auto* const opened = CreateFileW(file.c_str(),
+                                     GENERIC_WRITE,
+                                     FILE_SHARE_READ | FILE_SHARE_WRITE,
+                                     nullptr,
+                                     CREATE_ALWAYS,
+                                     FILE_ATTRIBUTE_NORMAL,
+                                     nullptr);
+    return UniqueFile{opened == INVALID_HANDLE_VALUE ? nullptr : opened};
+}
+
+void appendLine(std::string& text, std::string_view key, std::wstring_view value) {
+    const std::u8string utf8 = std::filesystem::path(value).u8string();
+    text.append(key).append(" ").append(std::string(utf8.begin(), utf8.end())).append("\n");
+}
+
+// The record's text from the line saying how the program ended.
+[[nodiscard]] std::string recordBody(const Seen& state, std::string_view how) {
+    std::string text = std::format("ended {}\n", how);
+    // Two words to each entry of the table: the function's address, and the
+    // hook's own note that it is a function's entry.
+    const bool aligned = state.flagsMatchMarkers && state.tableMatchesMarkers &&
+                         state.table.size() == 2 * state.flags.size();
+    if (!aligned) {
+        std::format_to(
+            std::back_inserter(text), "flags {} out of line\nend 0\n", state.flags.size());
+        return text;
+    }
+    std::format_to(std::back_inserter(text), "flags {}\n", state.flags.size());
+    const std::uintptr_t base = addressOf(GetModuleHandleW(nullptr));
+    std::size_t entered = 0;
+    for (const auto [flag, entry] :
+         std::views::zip(state.flags, state.table | std::views::chunk(2))) {
+        if (!flag) continue;
+        std::format_to(std::back_inserter(text), "{:x}\n", entry.front() - base);
+        ++entered;
+    }
+    std::format_to(std::back_inserter(text), "end {}\n", entered);
+    return text;
 }
 
 // The record, if one was asked for. Called only by the writer whose turn it
@@ -230,31 +290,19 @@ void writeRecordFile(std::string_view how) {
     const std::filesystem::path file =
         std::filesystem::path(folder) /
         (std::to_string(_getpid()) + "-" + std::to_string(started.count()) + ".functions.txt");
-    std::ofstream out(file, std::ios::binary);
+    const UniqueFile out = openRecord(file);
     if (!out) return;
-    writeLine(out, "program", programPath());
-    writeLine(out, "command", GetCommandLineW());
-    writeLine(out, "test", environmentValue(L"ORBSIM_TEST_NAME"));
-    out << "ended " << how << '\n';
-    // Two words to each entry of the table: the function's address, and the
-    // hook's own note that it is a function's entry.
-    const bool aligned = state.flagsMatchMarkers && state.tableMatchesMarkers &&
-                         state.table.size() == 2 * state.flags.size();
-    out << "flags " << state.flags.size();
-    if (!aligned) {
-        out << " out of line\nend 0\n";
-        return;
-    }
-    out << '\n';
-    const std::uintptr_t base = addressOf(GetModuleHandleW(nullptr));
-    std::size_t entered = 0;
-    for (const auto [flag, entry] :
-         std::views::zip(state.flags, state.table | std::views::chunk(2))) {
-        if (!flag) continue;
-        out << std::hex << (entry.front() - base) << std::dec << '\n';
-        ++entered;
-    }
-    out << "end " << entered << '\n';
+    std::string text;
+    appendLine(text, "program", programPath());
+    appendLine(text, "command", GetCommandLineW());
+    appendLine(text, "test", environmentValue(L"ORBSIM_TEST_NAME"));
+    text += recordBody(state, how);
+    // One call, which a file on disk takes whole or cuts short; cut short, the
+    // record has no `end` line and counts as none (decision 637).
+    if (!std::in_range<DWORD>(text.size())) return;
+    DWORD written = 0;
+    static_cast<void>(
+        WriteFile(out.get(), text.data(), static_cast<DWORD>(text.size()), &written, nullptr));
 }
 
 void writeRecord(std::string_view how) noexcept {

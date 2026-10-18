@@ -15,7 +15,10 @@
 //
 // **The first argument names the scenario**: `normally`, which returns from
 // main, so that the static object below is destroyed and its destructor enters
-// a function of its own; or a way of stopping -- `precondition`, a failed
+// a function of its own; `file-stream`, which writes a small file and reads it
+// back through the standard library's file streams before it returns the same
+// way, as nearly every program of the project does before it ends (register
+// decision 659); or a way of stopping -- `precondition`, a failed
 // ORBSIM_EXPECTS (assertions live only); `noexcept`, an exception escaping a
 // noexcept function; `crash`, a read through a null pointer; `library-check`,
 // the debug standard library's own check (Debug only); `abort`; and
@@ -39,10 +42,13 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <fstream>
+#include <ios>
 #include <memory>
 #include <print>
 #include <span>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <vector>
 
@@ -118,6 +124,25 @@ namespace {
 // 634 measured (decision 646).
 [[clang::noinline]] int convertsIntoNoBuffer(int count) { return _itoa_s(count, nullptr, 0, 10); }
 
+// A file written and read back, in the working folder, which the check makes a
+// scratch one. Found 2026-10-18 (decision 659): the recorder's writer runs
+// after the standard library has torn down what its file streams need, and its
+// own stream then failed in any program that had used one -- a crash as the
+// program ended, and an empty record -- which no scenario here had used.
+[[clang::noinline]] int usesAFileStream(int count) {
+    const std::string written = std::to_string(count);
+    {
+        std::ofstream out("coverage_recorder_stream.txt", std::ios::binary);
+        out << written;
+        if (!out) return 1;
+    }
+    std::ifstream in("coverage_recorder_stream.txt", std::ios::binary);
+    std::string read;
+    in >> read;
+    std::println("read back {}", read);
+    return read == written ? 0 : 1;
+}
+
 [[clang::noinline]] int stopAs(std::string_view scenario, int count) {
     if (scenario == "precondition") return requiresZero(count);
     if (scenario == "noexcept") return escapesNoexcept(count);
@@ -132,6 +157,7 @@ namespace {
 [[clang::noinline]] int runScenario(std::string_view scenario, int count) {
     enteredFirst(scenario);
     if (scenario == "normally") return 0;
+    if (scenario == "file-stream") return usesAFileStream(count);
     static_cast<void>(stopAs(scenario, count));
     enteredAfterTheStop(scenario);
     return 1;
