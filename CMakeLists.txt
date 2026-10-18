@@ -102,6 +102,22 @@ elseif(MSVC)
     add_compile_options(/arch:AVX2 /fp:precise)
 endif()
 
+# **Colour in clang's messages off, explicitly, for every compile** -- ours
+# and every dependency's, so here, before the first FetchContent (M1-131,
+# register decision 691). Left to itself, clang adds -fno-color-diagnostics to
+# its own command when NO_COLOR is set in the environment, and keeps that
+# command in each object's debug information (.debug$T): the same compile gave
+# other bytes from a shell that sets NO_COLOR than from one that does not, and
+# reproducible_build failed whenever the two met (measured 2026-10-18). Named
+# either way, the bytes are the same with and without it; off keeps colour
+# codes out of the logs. A compile option, because CMAKE_COLOR_DIAGNOSTICS set
+# here reached no compile at all (measured the same day). SDL3 switches colour
+# on for its own targets after this (its cmake/sdlcompilers.cmake), so its
+# objects end on -fcolor-diagnostics: explicit too, and as reproducible.
+if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    add_compile_options($<$<COMPILE_LANGUAGE:C,CXX,ASM>:-fno-color-diagnostics>)
+endif()
+
 # ---------------------------------------------------------------------------
 # The same source makes the same bytes (M1-129, register decision 504).
 #

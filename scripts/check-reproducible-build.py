@@ -22,6 +22,15 @@ If they come out the same, their old times are put back, so the tree is
 exactly as it was and nothing is relinked or re-linted on its account; if not,
 the new files stay, and Ninja rebuilds from them as from any other.
 
+**And the same in either shell** (register decision 691): the object is
+compiled once more with NO_COLOR set in the environment and once without, and
+the two must be the same bytes. clang adds -fno-color-diagnostics to its own
+command when NO_COLOR is set, and keeps that command in the object's debug
+information, so unless the build names colour itself, one compile gives other
+bytes from a shell that sets NO_COLOR than from one that does not -- which
+made this test fail whenever its object had been built in the one and the
+test ran in the other (measured 2026-10-18).
+
 A script running Ninja's commands rather than Ninja itself, because `check`
 runs CTest from inside Ninja, and a second Ninja building in the same tree at
 the same time is not safe. `ninja -t commands` only reads the build plan.
@@ -36,6 +45,7 @@ import os
 import pathlib
 import subprocess
 import sys
+from typing import Optional
 
 
 def verdict(before: dict, after: dict) -> list:
@@ -79,13 +89,38 @@ def plan_command(build_dir: pathlib.Path, ninja: str, output: str) -> str:
     return lines[0]
 
 
-def run_command(command: str, build_dir: pathlib.Path) -> None:
+def run_command(command: str, build_dir: pathlib.Path, environment: Optional[dict] = None) -> None:
     # Ninja hands a command to CreateProcess on Windows and to /bin/sh elsewhere.
-    done = subprocess.run(command, cwd=build_dir, shell=os.name != "nt",
+    done = subprocess.run(command, cwd=build_dir, shell=os.name != "nt", env=environment,
                           capture_output=True, text=True, check=False)
     if done.returncode != 0:
         sys.exit(f"check-reproducible-build: the command failed, exit {done.returncode}:\n"
                  f"{command}\n{done.stdout}{done.stderr}")
+
+
+# The variable clang reads to switch colour off (decision 691).
+NO_COLOR = "NO_COLOR"
+
+
+def colour_verdict(name: str, with_variable: str, without: str) -> list:
+    """The reason the object's hashes with NO_COLOR set and without show a
+    build that depends on it; empty if they are the same."""
+    if with_variable != without:
+        return [f"{name} came out different with {NO_COLOR} set and without: the build does "
+                "not name colour itself (register decision 691)"]
+    return []
+
+
+def colour_case(build_dir: pathlib.Path, command: str, name: str, path: pathlib.Path) -> list:
+    """The object compiled with NO_COLOR set, then without, and compared."""
+    hashes = []
+    for value in ("1", None):
+        environment = {k: v for k, v in os.environ.items() if k.upper() != NO_COLOR}
+        if value is not None:
+            environment[NO_COLOR] = value
+        run_command(command, build_dir, environment)
+        hashes.append(hashlib.sha256(path.read_bytes()).hexdigest())
+    return colour_verdict(name, *hashes)
 
 
 def run(build_dir: pathlib.Path, ninja: str, obj: pathlib.Path, program: pathlib.Path) -> int:
@@ -100,6 +135,8 @@ def run(build_dir: pathlib.Path, ninja: str, obj: pathlib.Path, program: pathlib
         run_command(command, build_dir)
     after = state(files)
     problems = verdict(before, after)
+    obj_name = next(iter(files))
+    problems += colour_case(build_dir, commands[0], obj_name, files[obj_name])
     for problem in problems:
         print(f"check-reproducible-build: {problem}")
     if problems:
@@ -107,7 +144,7 @@ def run(build_dir: pathlib.Path, ninja: str, obj: pathlib.Path, program: pathlib
     for name, path in files.items():
         os.utime(path, ns=(before[name][1], before[name][1]))
     print(f"check-reproducible-build: {' and '.join(files)} compiled and linked again "
-          "to the same bytes")
+          f"to the same bytes, and the object the same with {NO_COLOR} set and without")
     return 0
 
 
@@ -128,7 +165,19 @@ def self_test() -> int:
          unwritten),
         ("the program is gone", (same, {"probe.obj": ("a", 3)}), "was not there"),
     ]
+    # And the colour case (decision 691): the same hashes accepted, and two
+    # different ones refused for the reason that names it.
+    colour_cases = [
+        ("the object the same with NO_COLOR and without", ("a", "a"), None),
+        ("the object different with NO_COLOR", ("a", "x"), "with NO_COLOR set and without"),
+    ]
     failures = 0
+    for name, (with_variable, without), reason in colour_cases:
+        problems = colour_verdict("probe.obj", with_variable, without)
+        if (reason is None) != (not problems) or (reason and not any(reason in p for p in problems)):
+            failures += 1
+            print(f"self-test FAILED: {name}: got {problems}")
+    cases_run = len(cases) + len(colour_cases)
     for name, outcome, reason in cases:
         problems = verdict(*outcome)
         if reason is None and problems:
@@ -137,7 +186,7 @@ def self_test() -> int:
         elif reason is not None and not any(reason in problem for problem in problems):
             failures += 1
             print(f"self-test FAILED: {name}: expected a refusal saying '{reason}', got {problems}")
-    print(f"check-reproducible-build self-test: {len(cases) - failures} of {len(cases)} cases")
+    print(f"check-reproducible-build self-test: {cases_run - failures} of {cases_run} cases")
     return 1 if failures else 0
 
 
