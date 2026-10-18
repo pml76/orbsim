@@ -117,6 +117,13 @@ if(ORBSIM_CLANG_TIDY)
         list(APPEND orbsim_lint_targets orbsim test_probe_clear test_radiometry
                 test_tonemap_port make_broken_goldens test_probe_lines test_probe_grid)
     endif()
+    # The coverage recorder and its self-test's programs (M1-131), where the
+    # hook is on: the plain program compiles src/core/Contract.cpp too, and
+    # each of its objects is one its lint step depends on.
+    if(ORBSIM_COVERAGE_HOOK)
+        list(APPEND orbsim_lint_targets orbsim_coverage_recorder coverage_recorder_probe
+                coverage_recorder_unaligned coverage_recorder_probe_plain)
+    endif()
 
     set(orbsim_lint_stamps "")
     foreach(source IN LISTS ORBSIM_LINT_SOURCES)

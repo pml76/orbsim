@@ -423,6 +423,30 @@ endif()
 # makes that claim checkable.
 option(ORBSIM_BUILD_APP "Build the Vulkan renderer and application" ON)
 
+# The coverage hook (M1-131, register decisions 559, 566 and 644): with it on,
+# every function of this project's own code sets a flag of its own when it is
+# entered, and tests/CoverageRecorder.cpp writes down the entered ones when a
+# program ends, so that M1-132 can choose tests function by function. Off by
+# default; the loops at the end of this file give the targets the hook, the
+# linker's map and the recorder, and scripts/check-coverage-hook.py checks
+# what they made. Only clang has this hook (decision 625), and the recorder is
+# Windows code -- the section markers lld-link does not supply, and Windows'
+# own calls -- so clang elsewhere would fail later, with an error naming
+# neither (decision 640): both refused here, saying why.
+option(ORBSIM_COVERAGE_HOOK "Record the functions each program enters (clang on Windows only)" OFF)
+if(ORBSIM_COVERAGE_HOOK)
+    if(NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+        message(FATAL_ERROR "ORBSIM_COVERAGE_HOOK needs clang: the hook is clang's "
+                "-fsanitize-coverage=func,inline-bool-flag,pc-table, and this tree compiles with "
+                "${CMAKE_CXX_COMPILER_ID} (register decision 625).")
+    endif()
+    if(NOT WIN32)
+        message(FATAL_ERROR "ORBSIM_COVERAGE_HOOK needs Windows: the recorder, tests/CoverageRecorder.cpp, "
+                "supplies the section markers lld-link does not and calls Windows itself, so it would not "
+                "build here (register decision 640).")
+    endif()
+endif()
+
 # ---------------------------------------------------------------------------
 # mp-units -- the dimension system behind core/Units.hpp (ADR 0019).
 #
@@ -867,6 +891,7 @@ set(ORBSIM_TESTS
         test_tonemap
         test_units_validated
         test_view_math
+        test_writer_turns
 )
 # The suites, each with the abort listener (M1-90): cmake/TestSuites.cmake.
 orbsim_configure_input("${CMAKE_CURRENT_SOURCE_DIR}/cmake/TestSuites.cmake")
@@ -1063,6 +1088,90 @@ else()
     add_test(NAME reproducible_build_self_test COMMAND ${CMAKE_COMMAND} -E false)
 endif()
 set_tests_properties(reproducible_build PROPERTIES RESOURCE_LOCK ninja_deps)
+
+# The coverage hook on exactly the project's own code, every program with its
+# map, and every test this file defines carrying its own name (M1-131, register
+# decisions 584, 632 and 639): scripts/check-coverage-hook.py says what it
+# reads and why. In every tree, the hook on or off -- with it off, nothing may
+# carry it. It reads the tree's objects and programs, so it holds the lock
+# reproducible_build holds while it writes one of each again; and its
+# self-test, on made-up objects, programs and test listings.
+if(ORBSIM_COVERAGE_HOOK)
+    set(orbsim_coverage_hook_state on)
+else()
+    set(orbsim_coverage_hook_state off)
+endif()
+if(ORBSIM_PYTHON)
+    add_test(NAME coverage_hook
+            COMMAND ${ORBSIM_PYTHON}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-coverage-hook.py
+                    ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR} ${CMAKE_CTEST_COMMAND}
+                    --hook ${orbsim_coverage_hook_state}
+    )
+    add_test(NAME coverage_hook_self_test
+            COMMAND ${ORBSIM_PYTHON}
+                    ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-coverage-hook.py --self-test
+    )
+else()
+    add_test(NAME coverage_hook COMMAND ${CMAKE_COMMAND} -E false)
+    add_test(NAME coverage_hook_self_test COMMAND ${CMAKE_COMMAND} -E false)
+endif()
+set_tests_properties(coverage_hook PROPERTIES LABELS fixtures RESOURCE_LOCK ninja_deps)
+set_tests_properties(coverage_hook_self_test PROPERTIES LABELS fixtures)
+
+# The recorder and its self-test (M1-131, register decisions 566, 594, 632,
+# 636 and 639), where the hook is on.
+#
+# The recorder, tests/CoverageRecorder.cpp, writes down the functions a
+# program entered, however it ends; the file says how. An OBJECT library, so
+# that its object is linked into each program directly and cannot be left out
+# as a static library's would be, as orbsim_abort_behaviour is into the suites
+# -- the loops at the end of this file link it into every program carrying the
+# hook -- and compiled without the hook, which calls it.
+#
+# The self-test runs three programs built from tests/coverage_recorder_probe.cpp:
+# with the hook and the recorder; the same with
+# tests/coverage_recorder_unaligned.cpp, whose flags have no address (the hook
+# without `pc-table` for that file alone, the flag after the hook's own on the
+# command line), so that the recorder must refuse to name any function; and
+# coverage_recorder_probe_plain, which compiles the probe and
+# src/core/Contract.cpp once more with neither, for the exit code and the
+# output each way of stopping has without the recorder's handlers.
+# scripts/check-coverage-recorder.py says what it requires of each.
+if(ORBSIM_COVERAGE_HOOK)
+    add_library(orbsim_coverage_recorder OBJECT tests/CoverageRecorder.cpp)
+    # The repository root, for `#include "tests/WriterTurns.hpp"` (decision 648).
+    target_include_directories(orbsim_coverage_recorder PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+    target_link_libraries(orbsim_coverage_recorder PRIVATE orbsim_warnings orbsim_sanitizers)
+
+    add_executable(coverage_recorder_probe tests/coverage_recorder_probe.cpp)
+    add_executable(coverage_recorder_unaligned tests/coverage_recorder_probe.cpp
+            tests/coverage_recorder_unaligned.cpp)
+    foreach(orbsim_probe IN ITEMS coverage_recorder_probe coverage_recorder_unaligned)
+        target_include_directories(${orbsim_probe} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+        target_link_libraries(${orbsim_probe} PRIVATE orbsim_core orbsim_warnings orbsim_sanitizers)
+    endforeach()
+    set_source_files_properties(tests/coverage_recorder_unaligned.cpp PROPERTIES
+            COMPILE_OPTIONS -fno-sanitize-coverage=pc-table)
+
+    add_executable(coverage_recorder_probe_plain tests/coverage_recorder_probe.cpp src/core/Contract.cpp)
+    target_include_directories(coverage_recorder_probe_plain PRIVATE ${CMAKE_CURRENT_SOURCE_DIR} src)
+    target_link_libraries(coverage_recorder_probe_plain PRIVATE orbsim_fp orbsim_warnings orbsim_sanitizers)
+
+    if(ORBSIM_PYTHON)
+        add_test(NAME coverage_recorder
+                COMMAND ${ORBSIM_PYTHON}
+                        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-coverage-recorder.py
+                        --probe $<TARGET_FILE:coverage_recorder_probe>
+                        --unaligned $<TARGET_FILE:coverage_recorder_unaligned>
+                        --plain $<TARGET_FILE:coverage_recorder_probe_plain>
+                        --config $<CONFIG>
+        )
+    else()
+        add_test(NAME coverage_recorder COMMAND ${CMAKE_COMMAND} -E false)
+    endif()
+    set_tests_properties(coverage_recorder PROPERTIES LABELS fixtures)
+endif()
 
 # The generated reference data is the data the error budgets were measured
 # against, or `check` says otherwise (M1-06, register decision 44). Horizons
@@ -1792,6 +1901,7 @@ orbsim_add_header_selfcheck(orbsim_test_header_selfcheck orbsim_test_support
         tests/OrbitSweepSupport.hpp
         tests/OrbitTestSupport.hpp
         tests/TimeTestSupport.hpp
+        tests/WriterTurns.hpp
 )
 add_dependencies(test_orbit orbsim_header_selfcheck orbsim_test_header_selfcheck)
 add_dependencies(test_view_math orbsim_view_header_selfcheck)
@@ -1864,6 +1974,9 @@ endforeach()
 # src/app/main.cpp and met a lint conflict there that it had never met here
 # (register decision 156).
 list(APPEND ORBSIM_LINT_SOURCES tests/AbortBehaviour.cpp)
+# The read-record listener compiled into every suite beside it, compiled since
+# M1-129 and never linted until M1-131 found it (register decision 650).
+list(APPEND ORBSIM_LINT_SOURCES tests/ReadRecordListener.cpp)
 # The render-side maths library's own sources, which were not linted until
 # 2026-09-25: the list named the core, test and application sources and not
 # these, so src/view/Camera.cpp had never been through clang-tidy since M1-11
@@ -1878,6 +1991,12 @@ if(ORBSIM_BUILD_APP)
     list(APPEND ORBSIM_LINT_SOURCES ${ORBSIM_APP_SOURCES} tests/test_probe_clear.cpp
             tests/test_radiometry.cpp tests/test_tonemap_port.cpp tests/make_broken_goldens.cpp
             tests/test_probe_lines.cpp tests/test_probe_grid.cpp)
+endif()
+# The coverage recorder and its self-test's two sources (M1-131), where the
+# hook is on and they are compiled.
+if(ORBSIM_COVERAGE_HOOK)
+    list(APPEND ORBSIM_LINT_SOURCES tests/CoverageRecorder.cpp tests/coverage_recorder_probe.cpp
+            tests/coverage_recorder_unaligned.cpp)
 endif()
 
 # Formatting covers everything that is ours, whether or not it is built in
@@ -2041,6 +2160,11 @@ set(ORBSIM_CHECK_DEPENDENCIES
         mutant-anchors
         configure-current
 )
+# The coverage recorder's self-test programs (M1-131), where the hook is on.
+if(ORBSIM_COVERAGE_HOOK)
+    list(APPEND ORBSIM_CHECK_DEPENDENCIES coverage_recorder_probe coverage_recorder_unaligned
+            coverage_recorder_probe_plain)
+endif()
 add_dependencies(check ${ORBSIM_CHECK_DEPENDENCIES})
 add_dependencies(check-full ${ORBSIM_CHECK_DEPENDENCIES})
 if(ORBSIM_BUILD_APP)
@@ -2060,6 +2184,66 @@ endif()
 # Every library and program this file defines compiles in the memory pool
 # (M1-96): last, so that every target exists. cmake/MemoryPool.cmake says why.
 orbsim_pool_top_level_compiles()
+
+# The coverage hook, on every library and program this file defines but those
+# compiling someone else's code (M1-131, register decisions 545, 559, 569, 582,
+# 588, 639 and 644): last, beside the pool, so that every target exists, a
+# target added later among them. With it on:
+#
+#   * the hook on C++ alone, with -ffunction-sections and -fdata-sections, so
+#     that each function and each piece of data is a section of its own to be
+#     told apart by (decision 545);
+#   * every program linked with lld-link's map, `/map`, which writes it beside
+#     the program and turns a recorded address into a function (decision 582);
+#   * the recorder linked into every program carrying the hook; one carrying
+#     the hook without it does not link (decision 626).
+#
+# scripts/check-coverage-hook.py checks what they made, object by object.
+if(ORBSIM_COVERAGE_HOOK)
+    set(orbsim_unhooked_targets
+            # Someone else's code (decision 588): ERFA's library and its two
+            # validation programs, lodepng, stb_image's decoder and VMA. They
+            # change only with a version pin, and go by their binaries.
+            orbsim_erfa t_erfa_c t_erfa_c_extra orbsim_lodepng orbsim_stb_image vma_impl
+            # The recorder, which the hook calls (decision 566), and the
+            # self-test's plain program, built without either (decision 636).
+            orbsim_coverage_recorder coverage_recorder_probe_plain
+            # The header self-checks, compiled from files CMake generates
+            # rather than from src/ or tests/ (decision 644).
+            orbsim_header_selfcheck orbsim_view_header_selfcheck orbsim_test_header_selfcheck
+            orbsim_render_header_selfcheck)
+    set(orbsim_coverage_hook_flags
+            -fsanitize-coverage=func,inline-bool-flag,pc-table -ffunction-sections -fdata-sections)
+    get_property(orbsim_top_level_targets DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY BUILDSYSTEM_TARGETS)
+    foreach(orbsim_target IN LISTS orbsim_top_level_targets)
+        get_target_property(orbsim_target_type ${orbsim_target} TYPE)
+        if(orbsim_target_type STREQUAL "EXECUTABLE")
+            target_link_options(${orbsim_target} PRIVATE LINKER:/map)
+        endif()
+        if(NOT orbsim_target_type MATCHES "^(STATIC_LIBRARY|OBJECT_LIBRARY|EXECUTABLE)$"
+                OR orbsim_target IN_LIST orbsim_unhooked_targets)
+            continue()
+        endif()
+        target_compile_options(${orbsim_target} PRIVATE
+                "$<$<COMPILE_LANGUAGE:CXX>:${orbsim_coverage_hook_flags}>")
+        if(orbsim_target_type STREQUAL "EXECUTABLE")
+            target_link_libraries(${orbsim_target} PRIVATE orbsim_coverage_recorder)
+        endif()
+    endforeach()
+endif()
+
+# Every test this file defines carries its own name in its environment, as
+# ORBSIM_TEST_NAME, in every tree (M1-131, register decisions 564 and 594): a
+# test run through a script starts programs whose command lines are not its
+# own, and each writes the name into its coverage record, so that the records
+# of one test can be found. Last, after every test is defined, so that a test
+# added later cannot be missed; the tests Catch2 discovers in each suite are
+# matched by their command lines instead, and are not among them.
+# scripts/check-coverage-hook.py holds every one to it.
+get_property(orbsim_defined_tests DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY TESTS)
+foreach(orbsim_test IN LISTS orbsim_defined_tests)
+    set_property(TEST ${orbsim_test} APPEND PROPERTY ENVIRONMENT "ORBSIM_TEST_NAME=${orbsim_test}")
+endforeach()
 
 # Every static library this file defines carries the Debug postfix from the
 # first configure on (M1-109, register decision 395): a target takes it from
