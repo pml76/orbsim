@@ -1,6 +1,6 @@
 # Milestone 1 — the task queue
 
-Status: **planned 2026-09-08.** 134 tasks, in one order. (84 until 2026-09-13,
+Status: **planned 2026-09-08.** 135 tasks, in one order. (84 until 2026-09-13,
 when an audit found phase F had no gate although the rule below says every
 phase ends with one. The new task is **M1-85**, sitting between 77 and 78:
 renumbering seven tasks to make it "78" would have broken the identifiers that
@@ -48,7 +48,12 @@ lower levels of the code change first -- decisions 483-495. 130 until
 2026-10-16, when M1-129's item 9 left it as **M1-131 to M1-133**, after it --
 decision 596. 133 until 2026-10-18, when the owner asked for mutation passes
 chosen the way the tests are: **M1-134**, after M1-133 -- decision 633. The
-count on this page's first line still said 130 until then, two days behind.)
+count on this page's first line still said 130 until then, two days behind.
+134 until later that day, when the fuzz trees' `lint_deps` failure was found:
+**M1-136**, proposed after M1-131, its questions put to the owner and
+postponed, none ruled yet. M1-135, a guard that every compiled file is linted,
+was ruled the same day and is built on a branch of its own; its line here
+lands with it, which makes the count 136.)
 Which of them are done is in [`../STATUS.md`](../STATUS.md), not here.
 
 This is the working document for [milestone 1](milestone-1-earth.md): Earth, an
@@ -281,6 +286,7 @@ compilers' included -- passing.
 | [118](tasks/m1-118-core-fixes.md) | The simulation core's review findings | 117 | Every promise kept, tested |
 | [129](tasks/m1-129-tests-by-fingerprint.md) | Tests that run only when what they read has changed | 118 | A full run before a push, and a fraction of it otherwise |
 | [131](tasks/m1-131-coverage-hook.md) | The coverage hook and the recorder | 129 | Each test's entered functions, recorded |
+| [136](tasks/m1-136-fuzz-trees-lint-deps.md) | The fuzz trees' lint steps re-run on the fuzzers' objects -- **proposed, its questions not yet ruled**; after M1-135 once that lands | — | `lint_deps` passing in a fuzz tree |
 | [132](tasks/m1-132-function-level-selection.md) | Tests chosen function by function | 131 | A test reruns when what it ran changed |
 | [133](tasks/m1-133-selection-proved.md) | The selection proved, and measured | 132 | No failing test ever skipped |
 | [134](tasks/m1-134-mutants-chosen-like-tests.md) | Mutation passes chosen the way the tests are | 133 | A mutant reruns when what it ran changed |
