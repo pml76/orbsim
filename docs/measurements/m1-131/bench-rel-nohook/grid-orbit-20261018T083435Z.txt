@@ -1,0 +1,11 @@
+orbsim benchmark: grid-orbit, 600 measured frames after a warm-up of 7256 frames in 5.00 s
+GPU:          NVIDIA RTX A2000 8GB Laptop GPU (10de-25ba), NVIDIA 582.53, Vulkan 1.4.312
+Image:        1920x1080 pixels, VK_PRESENT_MODE_IMMEDIATE_KHR, display refreshing at 60.00 Hz
+Quality:      high
+Build:        RelWithDebInfo, clang 23.1.2 (https://github.com/llvm/llvm-project 85ac560262434c9ccfc0c183ec22d4138ed647fb)
+Validation:   off
+
+                    mean    median       p95       p99       max   (ms)
+frame interval    0.6666    0.4133    1.5890    2.2055    2.4648
+CPU working       0.1210    0.1124    0.1788    0.2309    0.3287
+GPU               0.1135    0.1132    0.1149    0.1319    0.1555

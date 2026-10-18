@@ -345,3 +345,12 @@ before its work began); then
 [M1-134](plan/tasks/m1-134-mutants-chosen-like-tests.md), mutation passes
 chosen the way the tests are (decision 633, 2026-10-18); then M1-127 and
 M1-130 (the code as modules), lower levels first (decision 495).
+
+**On the evening of 2026-10-18** M1-131 is in progress: items 1-3 committed,
+not pushed (decisions 636-658); the two `check` trees configured with the
+hook by hand (decision 641); item 5 being built; item 4's figures with the
+hook, and the owner's word on them, before the presets carry it. Two tasks
+it found wait on branches of their own on the first machine: M1-135, a guard
+that every compiled file is linted, built and three steps from done; and
+M1-136, `lint_deps` in the fuzz trees, its questions open. STATUS's row says
+exactly where each stands, what is left, and in what order.

@@ -1,0 +1,31 @@
+time: 2026-10-18 10:20:19 +02:00
+battery: status 2, charge 96 %
+Add-Type: C:\Users\U439644\AppData\Local\Temp\claude\C--Users-U439644-Projects-untitled\cf0d7665-e81a-4537-9c1c-f20461fb1e11\scratchpad\m0\machine-state.ps1:10
+Line |
+  10 |  Add-Type -AssemblyName System.Windows.Forms
+     |  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | Cannot add type. Definition of new types is not supported in this language mode.
+InvalidOperation: C:\Users\U439644\AppData\Local\Temp\claude\C--Users-U439644-Projects-untitled\cf0d7665-e81a-4537-9c1c-f20461fb1e11\scratchpad\m0\machine-state.ps1:11
+Line |
+  11 |  $p = [System.Windows.Forms.SystemInformation]::PowerStatus
+     |       ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+     | Unable to find type [System.Windows.Forms.SystemInformation].
+power line status: 
+power scheme: Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)
+memory: total 31.5 GiB, free 13.8 GiB
+disk C: free 106.89 GiB of 952.09 GiB
+cpu: 12th Gen Intel(R) Core(TM) i9-12900H, load 4 %
+top 12 processes by working set:
+  Memory Compression              1,498 MiB  cpu            s
+  claude                            712 MiB  cpu    5,739.1 s
+  brave                             628 MiB  cpu      929.6 s
+  cyserver                          455 MiB  cpu            s
+  OUTLOOK                           455 MiB  cpu      511.2 s
+  dwm                               386 MiB  cpu            s
+  jetbrains-toolbox                 370 MiB  cpu    4,398.2 s
+  Everything                        351 MiB  cpu    1,571.3 s
+  claude                            323 MiB  cpu       99.9 s
+  claude                            290 MiB  cpu    7,544.9 s
+  brave                             277 MiB  cpu    1,359.0 s
+  claude                            269 MiB  cpu    1,699.5 s
+build processes running:
