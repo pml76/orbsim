@@ -16,8 +16,10 @@ tested in a suite of its own, the refusals checked by hand, an unlinted file,
 and the smaller choices; and 652-654 the same day -- the document-link check
 reading only what git does not ignore, `mutant-anchors` waiting for the
 programs whose tests it reads, each in a commit of its own, and the recorder's
-end on a stuck writer declared a surviving mutant; split
-out of M1-129 as its item 9's step C by decision 596.
+end on a stuck writer declared a surviving mutant; and 696-699, ruled
+2026-10-19 before the mutant file was written -- two more ways of stopping in
+the self-test, three more declared survivors, the pass in `build/debug`, and
+about 45 mutants; split out of M1-129 as its item 9's step C by decision 596.
 The selection that reads what this records is [M1-132](m1-132-function-level-selection.md),
 and [M1-133](m1-133-selection-proved.md) proves it. The spike and the design
 behind all three are in M1-132's last section.
@@ -172,7 +174,12 @@ the hook on a target compiling someone else's code; a test defined in
 on a crash, or on a bad argument to the C runtime; a handler that changes the
 exit code; a record without its `end` line, or a shader record without it
 taken as complete; a writer that gives up where it should wait, caught by
-`test_writer_turns` (648) -- each caught by a test.
+`test_writer_turns` (648) -- each caught by a test. Four are declared
+survivors, each with its reason: the recorder's end on a stuck writer (654),
+the two comparisons of the hook's pointers with the section markers, and the
+recorder giving up on a second write on the same thread (697). The file is
+m1-131.json under scripts/mutants/, about 45 mutants, run in `build/debug` (698,
+699).
 
 ## Done when
 
@@ -182,7 +189,9 @@ taken as complete; a writer that gives up where it should wait, caught by
       without the variable, no file. **And the same program stopped each way
       decision 634 names** -- a failed assertion, an exception escaping a
       `noexcept` function, a crash, the debug library's check, a bad argument
-      to the C runtime -- requiring each record to name the functions entered
+      to the C runtime, and since decision 696 a division by zero and a
+      privileged instruction, the two other kinds of crash the handler acts
+      on -- requiring each record to name the functions entered
       up to the stop, and the exit code and the output to be those the
       program has without the handlers: those of
       `coverage_recorder_probe_plain`, the same program built with neither
