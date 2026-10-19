@@ -31,11 +31,13 @@
 
 namespace orb::coverage {
 
-// How long a write waits for another thread's to finish before deciding that
-// something is stuck (decision 638): "well above the longest write", which
-// M1-131's item 4 measures and which then sets it. 10 s until that
-// measurement -- a placeholder, not a measured figure. The recorder passes it;
-// tests/test_writer_turns.cpp passes bounds of its own.
+// How long a write waits for the write of another thread to finish. If the
+// wait is longer, something is stuck (decision 638). The bound must be well
+// above the longest write. M1-131's item 4 measured the longest write over
+// every test of each tree: 321.8 ms in RelWithDebInfo and 28.4 ms in Debug,
+// with a 99th percentile of 8.7 ms and 12.7 ms. Thus 10 s is approximately 31
+// times the longest write; the owner kept it (decision 694). The recorder
+// passes it; tests/test_writer_turns.cpp passes bounds of its own.
 inline constexpr std::chrono::seconds kLongestWait{10};
 // How often a waiting write looks again whether its turn has come.
 inline constexpr std::chrono::milliseconds kLookAgainAfter{1};
