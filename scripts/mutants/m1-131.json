@@ -1,0 +1,677 @@
+{
+  "task": "M1-131",
+  "tree": "build/debug",
+  "note": "The coverage hook, the recorder and the shader records (register decisions 544-699, as the task document lists them). The file runs in build/debug, the only tree where every way of stopping runs (decision 698). The recorder's mutants are judged by coverage_recorder. It runs the self-test's program each way it can end, and holds each run to the exit code and the output of the plain program (decisions 634, 636 and 696). The writers' turns are judged by test_writer_turns, with two threads held in step (decision 648). The mutants of the hook's loops in CMakeLists.txt make the build again and rebuild what they change; coverage_hook judges them. The application's shader record and the renderer's callback are judged by shader_record. The readers in the check scripts and in compiled-code.py, and the test driver's shader lists in run-tests.py, mutants-due.py and mutate.py, are judged by their self-tests, run_tests_end_to_end and mutants_due_shaders. Four survive, declared: the recorder's end on a stuck writer (decision 654), the two comparisons of the hook's pointers with the section markers, and the recorder giving up on a second write on the same thread (decision 697). No test reaches them. A program that carries the hook and does not link the recorder does not link at all (decision 626), so that mutant cannot compile and is not here.",
+  "mutants": [
+    {
+      "name": "the recorder writes nothing",
+      "file": "tests/CoverageRecorder.cpp",
+      "find": "    if (!out) return;",
+      "replace": "    if (out) return;",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "coverage_recorder_probe",
+        "coverage_recorder_unaligned"
+      ],
+      "ctest": [
+        "coverage_recorder"
+      ]
+    },
+    {
+      "name": "the recorder writes without the folder variable",
+      "file": "tests/CoverageRecorder.cpp",
+      "find": "    if (folder.empty()) return;",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "coverage_recorder_probe",
+        "coverage_recorder_unaligned"
+      ],
+      "ctest": [
+        "coverage_recorder"
+      ]
+    },
+    {
+      "name": "the recorder writes before the static destructors",
+      "file": "tests/CoverageRecorder.cpp",
+      "find": "    static_cast<void>(std::atexit(writeAtExit));",
+      "replace": "    writeAtExit();",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "coverage_recorder_probe",
+        "coverage_recorder_unaligned"
+      ],
+      "ctest": [
+        "coverage_recorder"
+      ]
+    },
+    {
+      "name": "the check that the flags line up with the address table removed",
+      "file": "tests/CoverageRecorder.cpp",
+      "find": "                         state.table.size() == 2 * state.flags.size();",
+      "replace": "                         true;",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "coverage_recorder_probe",
+        "coverage_recorder_unaligned"
+      ],
+      "ctest": [
+        "coverage_recorder"
+      ]
+    },
+    {
+      "name": "no record on an abort",
+      "file": "tests/CoverageRecorder.cpp",
+      "find": "    static_cast<void>(std::signal(SIGABRT, writeOnAbort));",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "coverage_recorder_probe",
+        "coverage_recorder_unaligned"
+      ],
+      "ctest": [
+        "coverage_recorder"
+      ]
+    },
+    {
+      "name": "no record on a crash",
+      "file": "tests/CoverageRecorder.cpp",
+      "find": "        writeRecord(\"by a crash\");",
+      "replace": "        return EXCEPTION_CONTINUE_SEARCH;",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "coverage_recorder_probe",
+        "coverage_recorder_unaligned"
+      ],
+      "ctest": [
+        "coverage_recorder"
+      ]
+    },
+    {
+      "name": "no record on a bad argument to the C runtime",
+      "file": "tests/CoverageRecorder.cpp",
+      "find": "    writeRecord(\"by a bad argument\");",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "coverage_recorder_probe",
+        "coverage_recorder_unaligned"
+      ],
+      "ctest": [
+        "coverage_recorder"
+      ]
+    },
+    {
+      "name": "the bad-argument handler changes the exit code",
+      "file": "tests/CoverageRecorder.cpp",
+      "find": "    __fastfail(FAST_FAIL_INVALID_ARG);",
+      "replace": "    std::_Exit(4);",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "coverage_recorder_probe",
+        "coverage_recorder_unaligned"
+      ],
+      "ctest": [
+        "coverage_recorder"
+      ]
+    },
+    {
+      "name": "a record without its end line",
+      "file": "tests/CoverageRecorder.cpp",
+      "find": "\"end {}\\n\", entered);",
+      "replace": "\"en {}\\n\", entered);",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "coverage_recorder_probe",
+        "coverage_recorder_unaligned"
+      ],
+      "ctest": [
+        "coverage_recorder"
+      ]
+    },
+    {
+      "name": "the end line counts no function",
+      "file": "tests/CoverageRecorder.cpp",
+      "find": "        ++entered;",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "coverage_recorder_probe",
+        "coverage_recorder_unaligned"
+      ],
+      "ctest": [
+        "coverage_recorder"
+      ]
+    },
+    {
+      "name": "a function whose flag is not set is listed too",
+      "file": "tests/CoverageRecorder.cpp",
+      "find": "        if (!flag) continue;",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "coverage_recorder_probe",
+        "coverage_recorder_unaligned"
+      ],
+      "ctest": [
+        "coverage_recorder"
+      ]
+    },
+    {
+      "name": "an address not less the program's base address",
+      "file": "tests/CoverageRecorder.cpp",
+      "find": "entry.front() - base)",
+      "replace": "entry.front() + 0 * base)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "coverage_recorder_probe",
+        "coverage_recorder_unaligned"
+      ],
+      "ctest": [
+        "coverage_recorder"
+      ]
+    },
+    {
+      "name": "the crash handler ignores a division by zero",
+      "file": "tests/CoverageRecorder.cpp",
+      "find": "        code == EXCEPTION_INT_DIVIDE_BY_ZERO || code == EXCEPTION_PRIV_INSTRUCTION) {",
+      "replace": "        code == EXCEPTION_PRIV_INSTRUCTION) {",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "coverage_recorder_probe",
+        "coverage_recorder_unaligned"
+      ],
+      "ctest": [
+        "coverage_recorder"
+      ]
+    },
+    {
+      "name": "the crash handler ignores a privileged instruction",
+      "file": "tests/CoverageRecorder.cpp",
+      "find": "        code == EXCEPTION_INT_DIVIDE_BY_ZERO || code == EXCEPTION_PRIV_INSTRUCTION) {",
+      "replace": "        code == EXCEPTION_INT_DIVIDE_BY_ZERO) {",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "coverage_recorder_probe",
+        "coverage_recorder_unaligned"
+      ],
+      "ctest": [
+        "coverage_recorder"
+      ]
+    },
+    {
+      "name": "the crash handler ignores an illegal instruction",
+      "file": "tests/CoverageRecorder.cpp",
+      "find": "    if (code == EXCEPTION_ACCESS_VIOLATION || code == EXCEPTION_ILLEGAL_INSTRUCTION ||",
+      "replace": "    if (code == EXCEPTION_ACCESS_VIOLATION ||",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "coverage_recorder_probe",
+        "coverage_recorder_unaligned"
+      ],
+      "ctest": [
+        "coverage_recorder"
+      ]
+    },
+    {
+      "name": "a stuck writer goes on and writes",
+      "file": "tests/CoverageRecorder.cpp",
+      "find": "        __fastfail(FAST_FAIL_FATAL_APP_EXIT);",
+      "replace": "        break;",
+      "expect": "survives",
+      "suites": [],
+      "targets": [
+        "coverage_recorder_probe",
+        "coverage_recorder_unaligned"
+      ],
+      "ctest": [
+        "coverage_recorder"
+      ],
+      "why": "Accepted by the owner, 2026-10-18 (register decision 654). This line runs only when a writer is stuck for the whole 10 s bound, which no test arranges; test_writer_turns tests that the wait reports the bound running out."
+    },
+    {
+      "name": "the flags' pointers not compared with the section markers",
+      "file": "tests/CoverageRecorder.cpp",
+      "find": "state.flagsMatchMarkers && state.tableMatchesMarkers &&",
+      "replace": "state.tableMatchesMarkers &&",
+      "expect": "survives",
+      "suites": [],
+      "targets": [
+        "coverage_recorder_probe",
+        "coverage_recorder_unaligned"
+      ],
+      "ctest": [
+        "coverage_recorder"
+      ],
+      "why": "Accepted by the owner, 2026-10-19 (register decision 697). In every program the pointers that the hook gives agree with the recorder's section markers, so no test sees a difference; the unaligned program is refused by the size check instead."
+    },
+    {
+      "name": "the address table's pointers not compared with the section markers",
+      "file": "tests/CoverageRecorder.cpp",
+      "find": "state.flagsMatchMarkers && state.tableMatchesMarkers &&",
+      "replace": "state.flagsMatchMarkers &&",
+      "expect": "survives",
+      "suites": [],
+      "targets": [
+        "coverage_recorder_probe",
+        "coverage_recorder_unaligned"
+      ],
+      "ctest": [
+        "coverage_recorder"
+      ],
+      "why": "Accepted by the owner, 2026-10-19 (register decision 697). In every program the pointers that the hook gives agree with the recorder's section markers, so no test sees a difference; the unaligned program is refused by the size check instead."
+    },
+    {
+      "name": "a second write on the same thread does not give up",
+      "file": "tests/CoverageRecorder.cpp",
+      "find": "    case orb::coverage::Turn::HeldByThisThread:\n        return;",
+      "replace": "    case orb::coverage::Turn::HeldByThisThread:\n        break;",
+      "expect": "survives",
+      "suites": [],
+      "targets": [
+        "coverage_recorder_probe",
+        "coverage_recorder_unaligned"
+      ],
+      "ctest": [
+        "coverage_recorder"
+      ],
+      "why": "Accepted by the owner, 2026-10-19 (register decision 697). A second write on the same thread needs a crash inside the write, which no test arranges; test_writer_turns tests the turn logic itself."
+    },
+    {
+      "name": "a writer gives up where it should wait",
+      "file": "tests/WriterTurns.hpp",
+      "find": "        if (holder == self) return Turn::HeldByThisThread;",
+      "replace": "        if (holder != std::thread::id{}) return Turn::HeldByThisThread;",
+      "expect": "caught",
+      "suites": [
+        "test_writer_turns"
+      ],
+      "targets": [],
+      "ctest": []
+    },
+    {
+      "name": "a wait that runs out is reported as the same thread's",
+      "file": "tests/WriterTurns.hpp",
+      "find": "        if (std::chrono::steady_clock::now() >= giveUpAt) return Turn::RanOut;",
+      "replace": "        if (std::chrono::steady_clock::now() >= giveUpAt) return Turn::HeldByThisThread;",
+      "expect": "caught",
+      "suites": [
+        "test_writer_turns"
+      ],
+      "targets": [],
+      "ctest": []
+    },
+    {
+      "name": "the wait runs out at once",
+      "file": "tests/WriterTurns.hpp",
+      "find": "        if (std::chrono::steady_clock::now() >= giveUpAt) return Turn::RanOut;",
+      "replace": "        if (std::chrono::steady_clock::now() >= giveUpAt - longestWait) return Turn::RanOut;",
+      "expect": "caught",
+      "suites": [
+        "test_writer_turns"
+      ],
+      "targets": [],
+      "ctest": []
+    },
+    {
+      "name": "the turn is not given back",
+      "file": "tests/WriterTurns.hpp",
+      "find": "writer.store(std::thread::id{}); }",
+      "replace": "writer.store(std::this_thread::get_id()); }",
+      "expect": "caught",
+      "suites": [
+        "test_writer_turns"
+      ],
+      "targets": [],
+      "ctest": []
+    },
+    {
+      "name": "the hook on someone else's code: lodepng and stb_image",
+      "file": "CMakeLists.txt",
+      "find": "            orbsim_erfa t_erfa_c t_erfa_c_extra orbsim_lodepng orbsim_stb_image vma_impl",
+      "replace": "            orbsim_erfa t_erfa_c t_erfa_c_extra vma_impl",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "build.ninja",
+        "orbsim_lodepng",
+        "orbsim_stb_image"
+      ],
+      "ctest": [
+        "coverage_hook"
+      ]
+    },
+    {
+      "name": "the last test CMakeLists.txt defines carries no name",
+      "file": "CMakeLists.txt",
+      "find": "get_property(orbsim_defined_tests DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY TESTS)",
+      "replace": "get_property(orbsim_defined_tests DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY TESTS)\nlist(REMOVE_AT orbsim_defined_tests -1)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "build.ninja"
+      ],
+      "ctest": [
+        "coverage_hook"
+      ]
+    },
+    {
+      "name": "programs linked without the linker's map",
+      "file": "CMakeLists.txt",
+      "find": "            target_link_options(${orbsim_target} PRIVATE LINKER:/map)",
+      "replace": "            # no map",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "build.ninja"
+      ],
+      "ctest": [
+        "coverage_hook"
+      ]
+    },
+    {
+      "name": "the unaligned file compiled with the address table",
+      "file": "CMakeLists.txt",
+      "find": "            COMPILE_OPTIONS -fno-sanitize-coverage=pc-table)",
+      "replace": "            COMPILE_OPTIONS -ffunction-sections)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "build.ninja",
+        "coverage_recorder_unaligned"
+      ],
+      "ctest": [
+        "coverage_hook",
+        "coverage_recorder"
+      ]
+    },
+    {
+      "name": "a shader record without its end line",
+      "file": "src/app/ShaderRecord.cpp",
+      "find": "void ShaderRecord::writeEnd() { writeLine(\"end\"); }",
+      "replace": "void ShaderRecord::writeEnd() { writeLine(\"en\"); }",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "ctest": [
+        "shader_record"
+      ]
+    },
+    {
+      "name": "a shader record written without the folder variable",
+      "file": "src/app/ShaderRecord.cpp",
+      "find": "    if (folder.empty()) return ShaderRecord{};",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "ctest": [
+        "shader_record"
+      ]
+    },
+    {
+      "name": "a shader record names no shader",
+      "file": "src/app/ShaderRecord.cpp",
+      "find": "    if (std::ranges::find(written_, line) != written_.end()) return;",
+      "replace": "    if (std::ranges::find(written_, line) == written_.end()) return;",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "ctest": [
+        "shader_record"
+      ]
+    },
+    {
+      "name": "the renderer does not tell which shader it loads",
+      "file": "src/render/VulkanContext.cpp",
+      "find": "    shaderRequested_(path);",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [
+        "orbsim"
+      ],
+      "ctest": [
+        "shader_record"
+      ]
+    },
+    {
+      "name": "a record with another count is taken as whole",
+      "file": "scripts/check-coverage-recorder.py",
+      "find": "    if int(end.group(1)) != len(body) or not all(",
+      "replace": "    if not all(",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "coverage_recorder"
+      ]
+    },
+    {
+      "name": "a record without its end line is taken as whole",
+      "file": "scripts/check-coverage-recorder.py",
+      "find": "    end = re.fullmatch(r\"end (\\d+)\", lines[-1])",
+      "replace": "    end = re.fullmatch(r\"end (\\d+)\", lines[-1])\n    if end is None:\n        lines.append(f\"end {len(lines) - 5}\")\n        end = re.fullmatch(r\"end (\\d+)\", lines[-1])",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "coverage_recorder"
+      ]
+    },
+    {
+      "name": "a shader record without its end line is taken as whole",
+      "file": "scripts/check-coverage-recorder.py",
+      "find": "    if len(lines) < 2 or lines[-1] != \"end\":",
+      "replace": "    if lines[-1] != \"end\":\n        lines.append(\"end\")\n    if len(lines) < 2:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "shader_record"
+      ]
+    },
+    {
+      "name": "an object that must not carry the hook is accepted with it",
+      "file": "scripts/check-coverage-hook.py",
+      "find": "    if want == \"none\" and (flags or table):",
+      "replace": "    if want == \"none\" and False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "coverage_hook_self_test"
+      ]
+    },
+    {
+      "name": "a program without the linker's map is accepted",
+      "file": "scripts/check-coverage-hook.py",
+      "find": "                found.append(f\"{name}: is not linked with /map\")",
+      "replace": "                pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "coverage_hook_self_test"
+      ]
+    },
+    {
+      "name": "a test without its name is accepted",
+      "file": "scripts/check-coverage-hook.py",
+      "find": "        if names != [test[\"name\"]]:",
+      "replace": "        if names and names != [test[\"name\"]]:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "coverage_hook_self_test"
+      ]
+    },
+    {
+      "name": "the map's addresses are not less its base address",
+      "file": "scripts/compiled-code.py",
+      "find": "        symbols.append(Symbol(address - base if address >= base else address, name, library, obj,",
+      "replace": "        symbols.append(Symbol(address, name, library, obj,",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "coverage_hook_self_test"
+      ]
+    },
+    {
+      "name": "the driver takes a shader record without its end line as whole",
+      "file": "scripts/run-tests.py",
+      "find": "    whole = (len(lines) >= 3 and lines[-1] == \"\" and lines[-2] == \"end\" and \"end\" not in shaders",
+      "replace": "    whole = (len(lines) >= 3 and lines[-1] == \"\" and \"end\" not in shaders",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "the driver ignores a shader record that is not whole",
+      "file": "scripts/run-tests.py",
+      "find": "        if shaders is None or found.get(test) == EVERY_SHADER:",
+      "replace": "        if shaders is None:\n            continue\n        if found.get(test) == EVERY_SHADER:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a test's stored shader list is not used for its fingerprint",
+      "file": "scripts/run-tests.py",
+      "find": "        if isinstance(shaders, list):",
+      "replace": "        if isinstance(shaders, list) and False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "the records folder is not emptied before a run",
+      "file": "scripts/run-tests.py",
+      "find": "        left = empty_folder(records)",
+      "replace": "        left = []",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "the tests are not told where to write their records",
+      "file": "scripts/run-tests.py",
+      "find": "    env = {**os.environ, RECORDS_VARIABLE: str(records)}",
+      "replace": "    env = {**os.environ}",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "a test's shader list is not stored",
+      "file": "scripts/run-tests.py",
+      "find": "                entry[\"shaders\"] = shaders[name]",
+      "replace": "                pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "a stored shader list is used after the application changed",
+      "file": "scripts/mutants-due.py",
+      "find": "            return shaders if entry.get(\"application\") == self.application_hash() else None",
+      "replace": "            return shaders",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "a stored list naming a file no build step makes is trusted",
+      "file": "scripts/mutants-due.py",
+      "find": "            return sorted(stored) if set(stored) <= known else self.all_shaders()",
+      "replace": "            return sorted(stored)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "a compiled shader is judged by its name, not its bytes",
+      "file": "scripts/mutants-due.py",
+      "find": "            return hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest()[:16]",
+      "replace": "            return pathlib.Path(path).name",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "a shader source supposed changed does not reach its compiled file",
+      "file": "scripts/mutants-due.py",
+      "find": "    return changed | compiled_from(changed if judged is None else assumed)",
+      "replace": "    return changed | compiled_from(changed if judged is None else set())",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutants_due_self_test",
+        "mutants_due_shaders"
+      ]
+    },
+    {
+      "name": "a pass records its judges without their compiled shaders",
+      "file": "scripts/mutate.py",
+      "find": "    parts = reading.fingerprint_parts(spec)",
+      "replace": "    parts = {key: {name: value for name, value in part.items() if not name.startswith(\"compiled shader \")}\n             for key, part in reading.fingerprint_parts(spec).items()}",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ]
+    }
+  ]
+}
