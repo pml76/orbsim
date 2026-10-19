@@ -18,8 +18,10 @@ names read from the linker's map through scripts/compiled-code.py (decision
     streams, which the recorder's own stream once failed after (decision 659);
   * **each way of stopping the probe has** -- a failed precondition and the
     debug library's own check where the tree is Debug, an exception escaping
-    a noexcept function, a read through a null pointer, a plain abort and a
-    bad argument to the C runtime -- each record
+    a noexcept function, a read through a null pointer, a plain abort, a
+    bad argument to the C runtime, and since decision 696 a division by zero
+    and a privileged instruction, the two other kinds of crash the handler
+    acts on -- each record
     naming the functions entered up to the stop and none after it, and saying
     how the program ended; and the exit code and the output, stdout and
     stderr, those of the same program built with neither the hook nor the
@@ -96,7 +98,7 @@ PROBE_OBJECT = "coverage_recorder_probe.cpp.obj"
 PROBE_FUNCTIONS = {"runScenario", "stopAs", "enteredFirst", "enteredAfterTheStop", "neverEntered",
                    "enteredByTheStaticDestructor", "requiresZero", "throwsWhenPositive", "escapesNoexcept",
                    "readsThroughNull", "stepsBeforeBegin", "abortsWhenPositive", "convertsIntoNoBuffer",
-                   "usesAFileStream"}
+                   "usesAFileStream", "dividesByZero", "runsAPrivilegedInstruction"}
 
 
 class Scenario(NamedTuple):
@@ -119,6 +121,9 @@ SCENARIOS = (
     Scenario("library-check", "by a crash", STOPPED | {"stepsBeforeBegin"}, True),
     Scenario("abort", "by abort", STOPPED | {"abortsWhenPositive"}, False),
     Scenario("bad-argument", "by a bad argument", STOPPED | {"convertsIntoNoBuffer"}, False),
+    # The two other kinds of crash the recorder's handler acts on (decision 696).
+    Scenario("divide-by-zero", "by a crash", STOPPED | {"dividesByZero"}, False),
+    Scenario("privileged-instruction", "by a crash", STOPPED | {"runsAPrivilegedInstruction"}, False),
 )
 
 

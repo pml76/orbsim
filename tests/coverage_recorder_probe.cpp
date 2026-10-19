@@ -21,8 +21,10 @@
 // decision 659); or a way of stopping -- `precondition`, a failed
 // ORBSIM_EXPECTS (assertions live only); `noexcept`, an exception escaping a
 // noexcept function; `crash`, a read through a null pointer; `library-check`,
-// the debug standard library's own check (Debug only); `abort`; and
-// `bad-argument`, a bad argument to the C runtime. Each
+// the debug standard library's own check (Debug only); `abort`;
+// `bad-argument`, a bad argument to the C runtime; and `divide-by-zero` and
+// `privileged-instruction`, the two other kinds of crash the recorder's
+// handler acts on (register decision 696). Each
 // enters `enteredFirst` and the function that stops, and would enter
 // `enteredAfterTheStop` if it went on; `neverEntered` is entered by none.
 //
@@ -43,6 +45,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <fstream>
+#include <intrin.h>
 #include <ios>
 #include <memory>
 #include <print>
@@ -124,6 +127,25 @@ namespace {
 // 634 measured (decision 646).
 [[clang::noinline]] int convertsIntoNoBuffer(int count) { return _itoa_s(count, nullptr, 0, 10); }
 
+// The divisor is made from `count` at run time, as the null pointer above is:
+// the processor refuses an integer division by zero, and Windows reports it
+// as a crash of its own kind (decision 696, measured 2026-10-19: 0xC0000094).
+// The quotient is kept in a volatile, so that the division must be done: no
+// caller uses the result, and RelWithDebInfo's optimiser removed the division
+// and the call where it was returned alone (measured 2026-10-19).
+[[clang::noinline]] int dividesByZero(int count) {
+    const volatile int quotient = count / (count - 1);
+    return quotient;
+}
+
+// HLT, an instruction that only the operating system may run: in a program
+// the processor refuses it as a privileged instruction (decision 696, measured
+// 2026-10-19: 0xC0000096).
+[[clang::noinline]] int runsAPrivilegedInstruction(int count) {
+    if (count > 0) __halt();
+    return count;
+}
+
 // A file written and read back, in the working folder, which the check makes a
 // scratch one. Found 2026-10-18 (decision 659): the recorder's writer runs
 // after the standard library has torn down what its file streams need, and its
@@ -150,6 +172,8 @@ namespace {
     if (scenario == "library-check") return stepsBeforeBegin(count);
     if (scenario == "abort") return abortsWhenPositive(count);
     if (scenario == "bad-argument") return convertsIntoNoBuffer(count);
+    if (scenario == "divide-by-zero") return dividesByZero(count);
+    if (scenario == "privileged-instruction") return runsAPrivilegedInstruction(count);
     neverEntered(scenario);
     return count;
 }
