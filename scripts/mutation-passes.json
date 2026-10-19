@@ -894,6 +894,114 @@
       "validation layer": "1.4.357 (variant 0), implementation 1"
     }
   },
+  "m1-131.json": {
+    "commit": "1f30436a91d7207f509b2aba92cdef5b8567d143",
+    "tree": "build/debug",
+    "date": "2026-10-19",
+    "judges": {
+      "program coverage_recorder_probe.exe": "bad8cf5b983fb0e9",
+      "program coverage_recorder_unaligned.exe": "a4b8973f55c6f260",
+      "program test_writer_turns.exe": "dba2cf11a6c372b2",
+      "program build.ninja": "37a7e9d745359f4d",
+      "program orbsim_lodepng": "6cbed37398ef1fc8",
+      "program orbsim_stb_image": "c95f48e42e300ae9",
+      "program orbsim.exe": "2d28c1b908135e94",
+      "ctest coverage_recorder": "a3c79052d307c286",
+      "program coverage_recorder_probe_plain.exe": "d365057b9de1bd34",
+      "ctest coverage_hook": "08478c9ac0f939a0",
+      "ctest shader_record": "a4400da52d4a213b",
+      "ctest coverage_hook_self_test": "e17a50de59323148",
+      "ctest run_tests_self_test": "10f4f11a8345008c",
+      "ctest run_tests_end_to_end": "7491270e7342dc13",
+      "ctest mutants_due_self_test": "b7c0c6ac3b397c71",
+      "ctest mutants_due_shaders": "0a70ed32ed5d73bc",
+      "ctest mutate_self_test": "ea186df7272e1571"
+    },
+    "judge_parts": {
+      "program coverage_recorder_probe.exe": {
+        "commands": "5be39ca23cd5bc1a",
+        "build-tree files": "b8650c843b3f1a4e",
+        "other files": "f5abe9235cab0d91"
+      },
+      "program coverage_recorder_unaligned.exe": {
+        "commands": "f28c9173b8cb0b6d",
+        "build-tree files": "b8650c843b3f1a4e",
+        "other files": "f5abe9235cab0d91"
+      },
+      "program test_writer_turns.exe": {
+        "commands": "566beb6001168d3c",
+        "build-tree files": "bbd0b9f6e0bd965a",
+        "other files": "700dce8311e367ee"
+      },
+      "program build.ninja": {
+        "commands": "772633097947c8c0",
+        "build-tree files": "e3b0c44298fc1c14",
+        "other files": "e3b0c44298fc1c14"
+      },
+      "program orbsim_lodepng": {
+        "commands": "787ddf4511c88e4c",
+        "build-tree files": "f9a531cb6249b045",
+        "other files": "a545dbab15f0778f"
+      },
+      "program orbsim_stb_image": {
+        "commands": "4a7cec0e2626f748",
+        "build-tree files": "ed01839ee01ee005",
+        "other files": "289af5b7434d26f0"
+      },
+      "program orbsim.exe": {
+        "commands": "256e689ca20465c6",
+        "build-tree files": "8ffce229ed7b3a21",
+        "other files": "f8140592c13c9254"
+      },
+      "ctest coverage_recorder": {
+        "definition": "34477f3f8522901b"
+      },
+      "program coverage_recorder_probe_plain.exe": {
+        "commands": "6b89a20b9c118f33",
+        "build-tree files": "e3b0c44298fc1c14",
+        "other files": "043cb8e7cf202285"
+      },
+      "ctest coverage_hook": {
+        "definition": "18b325444f00b6c6"
+      },
+      "ctest shader_record": {
+        "definition": "dfaf1daa367d4694",
+        "compiled shader body.frag.spv": "cc0aa2ab982b60dc",
+        "compiled shader body.vert.spv": "f8704ad1d08adc99",
+        "compiled shader fullscreen.vert.spv": "b156f4b072e95a46",
+        "compiled shader lambert.frag.spv": "35e32f4d4a09cde8",
+        "compiled shader lambert.vert.spv": "31997ebc5cb6bf3c",
+        "compiled shader line.frag.spv": "0a3563abcb74db08",
+        "compiled shader line.vert.spv": "dd2b7589e1c5f11d",
+        "compiled shader probe_gradient.frag.spv": "9a7aefb57c0f81c9",
+        "compiled shader probe_port.frag.spv": "3bb41f1ea34dc10c",
+        "compiled shader tonemap.frag.spv": "219e39bfe1abe40f"
+      },
+      "ctest coverage_hook_self_test": {
+        "definition": "45111e056f87cf1e"
+      },
+      "ctest run_tests_self_test": {
+        "definition": "ce02c3ef17f08550"
+      },
+      "ctest run_tests_end_to_end": {
+        "definition": "5d5949a766ac0671"
+      },
+      "ctest mutants_due_self_test": {
+        "definition": "1a2d082224a18959"
+      },
+      "ctest mutants_due_shaders": {
+        "definition": "3bc695ffd86d6c97"
+      },
+      "ctest mutate_self_test": {
+        "definition": "7210d3ef10157ad6"
+      }
+    },
+    "gpu": {
+      "card": "0x10de 0x25ba",
+      "driver": "582.53 0x918d4000",
+      "validation layer": "1.4.357 (variant 0), implementation 1"
+    }
+  },
   "m1-14.json": {
     "commit": "99c47aa220c1d2a592f7db1b330e5ef85bed2fc4",
     "tree": "build/debug",
