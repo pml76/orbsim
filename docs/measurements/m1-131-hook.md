@@ -375,6 +375,33 @@ information, and a `.f32` file a probe's frame.
 
 ## With the hook -- to be measured
 
+**State on 2026-10-19 at 10:00.** The measurement stopped there at the
+owner's request, to continue in a new session. The figures below are raw,
+and nobody has analysed them yet. The logs, the analysis outputs and the
+scripts of that run are in build/m131-spikes/m0-hook/, on the first machine
+only; series.sh there runs the alternated series.
+
+| Tree | Rebuild | Hook | Full build, wall clock |
+|---|---|---|---|
+| RelWithDebInfo | 1 | off | 237.0 s |
+| RelWithDebInfo | 1 | on | 218.9 s |
+| RelWithDebInfo | 2 | off | 211.5 s |
+| RelWithDebInfo | 2 | on | 216.7 s |
+| RelWithDebInfo | 3 | off | 266.5 s |
+| RelWithDebInfo | 3 | on | 263.4 s |
+| Debug | 1 | off | 259.1 s |
+| Debug | 1 | on | 328.6 s |
+| Debug | 2 | off | 351.4 s |
+| Debug | 3 and later | -- | not done |
+
+Each of these builds ended with exit code 0. Each `check` after a
+RelWithDebInfo rebuild passed: 563 to 566 tests ran, and 0 failed. The
+benchmark ran after each RelWithDebInfo rebuild. Rebuilds of the same kind
+differ by up to 55 s on the wall clock. Thus the wall clock alone cannot
+show a difference of 6 %; compare the summed compile times from each
+rebuild's .ninja_log. The other figures of the list are not measured yet.
+
+
 **Not measured yet.** The same lines as above, in the same order, with the
 labels `rel-hook` and `debug-hook` in place of `rel-nohook` and
 `debug-nohook`, and the full rebuilds alternated as point 1 above says.
