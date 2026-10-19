@@ -351,12 +351,13 @@ before its work began); then
 chosen the way the tests are (decision 633, 2026-10-18); then M1-127 and
 M1-130 (the code as modules), lower levels first (decision 495).
 
-**On the afternoon of 2026-10-19** M1-131 has all five items committed, not
-pushed (decisions 636-695), and the presets carry the hook (decision 694).
-Left: the task's mutant file and its pass, the documents, `check-full` in
-both trees, and the push on the owner's word. Write all text in ASD-STE100
-(section 1). Two tasks
-it found wait on branches of their own on the first machine: M1-135, a guard
-that every compiled file is linted, built and three steps from done; and
-M1-136, `lint_deps` in the fuzz trees, its questions open. STATUS's row says
-exactly where each stands, what is left, and in what order.
+**On the evening of 2026-10-19** M1-131 is done and committed, not pushed
+(decisions 636-699): the presets carry the hook (decision 694), and the
+task's mutant file passed in `build/debug`, 45 of 49 caught and the 4
+declared survivors surviving (decisions 654, 697 and 698). Left:
+`check-full` in both trees, and the push on the owner's word. Then M1-135,
+a guard that every compiled file is linted, built on a branch of its own on
+the first machine and three steps from done; then M1-132 and M1-133. M1-136,
+`lint_deps` in the fuzz trees, waits with its questions open. Write all
+text in ASD-STE100 (section 1). STATUS's row says exactly where each
+stands, what is left, and in what order.

@@ -1,6 +1,6 @@
 # M1-131 — The coverage hook and the recorder
 
-Phase: B | Status: not started
+Phase: B | Status: done 2026-10-19, its push waiting for `check-full` in both trees and the owner's go-ahead
 Prerequisites: M1-129
 Decided by: register decisions 544, 551, 559, 564-566, 569 and 570, ruled
 2026-10-15, 582-595 and 601, ruled 2026-10-16, 625-632, ruled 2026-10-17
@@ -183,7 +183,7 @@ m1-131.json under scripts/mutants/, about 45 mutants, run in `build/debug` (698,
 
 ## Done when
 
-- [ ] A self-test runs a small program carrying the hook with the folder
+- [x] A self-test runs a small program carrying the hook with the folder
       variable set and requires its record to name exactly the functions it
       entered, a function entered by a static destructor among them; and
       without the variable, no file. **And the same program stopped each way
@@ -198,11 +198,18 @@ m1-131.json under scripts/mutants/, about 45 mutants, run in `build/debug` (698,
       the hook nor the recorder (636). The exception escaping a `noexcept`
       function carries a NOLINT for `bugprone-exception-escape` (645), the
       bad argument is `_itoa_s` with no buffer (646), and the configure's two
-      refusals are checked by hand and written down (649).
-- [ ] The measurements of item 4 are written down, with the owner's word on
-      any that contradicted its ruling.
-- [ ] `check` passes in both trees.
-- [ ] The task's mutant file has run after the commit and its record is
+      refusals are checked by hand and written down (649). *Done: the
+      CTest test `coverage_recorder`, 10 ways of ending in Debug and 8 in
+      RelWithDebInfo; the refusals are in decision 649's row.*
+- [x] The measurements of item 4 are written down, with the owner's word on
+      any that contradicted its ruling. *Done: [the measurement
+      record](../../measurements/m1-131-hook.md), and decisions 694 and 695.*
+- [x] `check` passes in both trees. *Done, 2026-10-19: 588 tests in each.*
+- [x] The task's mutant file has run after the commit and its record is
       committed; every other file listed as due waits for phase B's gate
       (630). A commit at the end; the push only on the owner's go-ahead
-      (595).
+      (595). *The pass is done, 2026-10-19 in `build/debug` (decision
+      698): 49 mutants, 45 caught, the 4 declared survivors surviving,
+      none invalid, in 14 min 28 s; its record is committed (`874492e`).
+      `check-full` in both trees follows; the push waits for the owner's
+      word.*
