@@ -38,9 +38,17 @@ skipped when every part of its fingerprint is what it was at its last
     is fingerprinted on all of those -- every file on disk under data/ and
     tests/golden/, ignored or not, since a generated fixture is ignored by git
     and still read;
-  * for a test that starts the application, every compiled shader; for a test
-    labelled gpu, the graphics card, its driver and the Vulkan versions, read
-    from a clear probe this script runs before CTest (decisions 490 and 532);
+  * the compiled shaders its runs of the application asked for (M1-131,
+    decisions 629, 635 and 637), from the records the application writes into
+    `<tree>/coverage-records/`, which this script names to every test it runs
+    and empties before the run (decisions 570 and 642): each file named in
+    every whole record carrying the test's name, read in full -- a test that
+    starts the application through a script among them -- and every compiled
+    shader for a test that names the application on its command line and left
+    no whole record, a crash or an abort, or that left one record not whole;
+    for a test labelled gpu, the graphics card, its driver and the Vulkan
+    versions, read from a clear probe this script runs before CTest
+    (decisions 490 and 532);
   * the "machine" part, in every test (decisions 509, 533 and 615): the
     leap seconds the leap-second test compares against -- on Windows the
     registry value Microsoft's library reads them from, and the five files of
@@ -57,9 +65,11 @@ a skipped setup test back by itself: a setup test whose fingerprint is
 unchanged left its outputs as they were.
 
 **What is written** (decisions 491 and 497), all in the build tree's
-`run-tests/`: the fingerprints of the last passing run of each test, the list
-of tests skipped, and CTest's own report. One line in `check`'s output says
-how many ran and how many were skipped.
+`run-tests/`: the fingerprints of the last passing run of each test -- with
+the shader files its records named and the application's SHA-256 at that run,
+which mutants-due.py reads (decisions 616 and 629) -- the list of tests
+skipped, and CTest's own report. One line in `check`'s output says how many
+ran and how many were skipped.
 
 **--full** runs every test (decision 484), requires that CTest ran as many as
 it lists (decision 537), and, from a clean working tree whose commit did not
@@ -106,9 +116,21 @@ REPORT = "results.xml"
 FULL_STAMP = "full-check.json"
 CARD = "card"
 RECORDS = "test-reads"
+# The folder ORBSIM_COVERAGE_RECORDS names for the tests this script runs,
+# beside test-reads/ (M1-131, decisions 570 and 642): every program carrying
+# the coverage hook writes its .functions.txt there, which M1-132 reads, and
+# the application its .shaders.txt (decision 629).
+COVERAGE_RECORDS = "coverage-records"
+RECORDS_VARIABLE = "ORBSIM_COVERAGE_RECORDS"
+SHADER_RECORD = ".shaders.txt"
+# What a test keeps when one of its shader records is not whole -- an abort or
+# a crash before main() wrote `end` (decision 637): every shader, whether or
+# not it names the application, since what that run asked for is not known.
+EVERY_SHADER = "every"
 # Raised whenever what the store holds, or how a part is computed, changes:
-# a store of another version is not read, so every test runs once.
-STORE_VERSION = 1
+# a store of another version is not read, so every test runs once. 2: the
+# shaders a test's records name, and the application's hash (M1-131).
+STORE_VERSION = 2
 LISTENER = "RecordWhatEachCaseRead"
 APPLICATION = "orbsim"
 GPU_LABEL = "gpu"
@@ -194,6 +216,67 @@ def parse_record(text: str):
             return None
         reads.append((stamp, path))
     return reads
+
+
+def parse_shader_record(text: str):
+    """(test, [shader file]) from the application's record of the shaders a
+    run asked for (decision 644): `test <name>`, a line for each shader file,
+    and `end`. The shaders, each path normalised -- the renderer is given the
+    folder and the name joined with a backslash, its folder written with
+    either separator (decision 659 e) -- or None where the record is not
+    whole (decision 637): no last line `end`, cut off inside a line, an empty
+    line, or a path that is not absolute, which could not be hashed as the
+    file the run read. None altogether where there is no `test` line, so that
+    the record names no test."""
+    first, newline, _ = text.partition("\n")
+    if not newline or not (first == "test" or first.startswith("test ")):
+        return None
+    lines = text.split("\n")
+    shaders = lines[1:-2]
+    whole = (len(lines) >= 3 and lines[-1] == "" and lines[-2] == "end" and "end" not in shaders
+             and all(s and os.path.isabs(s) for s in shaders))
+    return first[len("test "):], ([norm(s) for s in shaders] if whole else None)
+
+
+def shaders_by_test(texts) -> dict:
+    """{test: its shader files, or EVERY_SHADER}, from the texts of one run's
+    shader records: the files of every record carrying a test's name
+    combined, each once, sorted (decisions 564 and 629) -- a script may start
+    the application more than once -- and EVERY_SHADER for a test any of whose
+    records is not whole (decision 637). A test that left no record is not
+    in it."""
+    found = {}
+    for text in texts:
+        parsed = parse_shader_record(text)
+        if parsed is None:
+            continue
+        test, shaders = parsed
+        if shaders is None or found.get(test) == EVERY_SHADER:
+            found[test] = EVERY_SHADER
+        else:
+            found[test] = sorted(set(found.get(test, [])) | set(shaders))
+    return found
+
+
+def shader_record_texts(folder: pathlib.Path) -> tuple:
+    """([text], [(record, why)]): every shader record in `folder`, and those
+    that could not be read. The coverage recorder's records beside them are
+    M1-132's to read."""
+    texts, unreadable = [], []
+    for path in sorted(folder.glob("*" + SHADER_RECORD)):
+        try:
+            texts.append(path.read_bytes().decode("utf-8", errors="replace"))
+        except OSError as error:
+            unreadable.append((path, error))
+    return texts, unreadable
+
+
+def empty_folder(folder: pathlib.Path) -> list:
+    """`folder` emptied, or made: what is left in it -- a record a program
+    still holds open, on Windows -- which would be read as this run's."""
+    shutil.rmtree(folder, ignore_errors=True)
+    folder.mkdir(parents=True, exist_ok=True)
+    return sorted(folder.iterdir())
 
 
 def properties(test: dict) -> dict:
@@ -674,10 +757,11 @@ class Run:
                     found.append(pathlib.Path(candidate))
         return found
 
-    def parts(self, test: dict, reads, env: dict) -> dict:
+    def parts(self, test: dict, reads, env: dict, shaders=None) -> dict:
         """What `test` is fingerprinted on, part by part. The environment is
         handed in rather than read here, so that the self-test can give it
-        one (register decision 602)."""
+        one (register decision 602); and the shaders its records named, as
+        shaders_by_test gives them, or None where it left no record."""
         tree, root = norm(self.tree), norm(self.root)
         found = {"definition": definition(test), "environment": environment(env),
                  "machine": self.machine()}
@@ -706,7 +790,12 @@ class Run:
             found["scripts"] = self.script_inputs()
         if cautious(reads, self.root):
             found["cautious"] = self.cautious_inputs()
-        if any(norm(p) == norm(self.app) for p in programs):
+        # The compiled files its records name, each read in full (decisions
+        # 629 and 635): which shaders a run asks for follows from what the
+        # other parts hold. Every shader where they cannot say.
+        if isinstance(shaders, list):
+            found["shaders"] = self.world.files(shaders)
+        elif shaders == EVERY_SHADER or any(norm(p) == norm(self.app) for p in programs):
             found["shaders"] = self.shaders()
         if GPU_LABEL in labels(test):
             found["card"] = digest(json.dumps(self.card(), sort_keys=True))
@@ -818,8 +907,13 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
         forced = {n for n, t in run.tests.items() if GPU_LABEL in labels(t)}
     began = time.monotonic()
     run.learn_all_imports()
-    env = dict(os.environ)
-    parts = {name: run.parts(test, (stored.get(name) or {}).get("reads"), env)
+    # Every program the tests start writes its records into the one folder
+    # (decisions 570 and 642), named the same on every run, so that the
+    # environment part does not move with it.
+    records = tree / COVERAGE_RECORDS
+    env = {**os.environ, RECORDS_VARIABLE: str(records)}
+    parts = {name: run.parts(test, (stored.get(name) or {}).get("reads"), env,
+                             (stored.get(name) or {}).get("shaders"))
              for name, test in run.tests.items()}
     chosen = selection(run.tests, stored, parts, run.world.file, forced)
     decided = time.monotonic()
@@ -835,12 +929,19 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
     if order:
         report = run.state / REPORT
         report.unlink(missing_ok=True)
+        # Emptied first (decision 570): a record left from an earlier run
+        # would be read as this one's.
+        left = empty_folder(records)
+        if left:
+            print(f"run-tests: {records} could not be emptied, {left[0].name} among {len(left)} left; "
+                  "is a program from an earlier run still running?")
+            return 1
         command = [ctest, "--output-on-failure", "-j", str(jobs), "--tests-from-file", str(run.state / SELECTED),
                    "--output-junit", str(report)]
         if not full:
             # A setup test left out was unchanged, and so are its outputs.
             command += ["--fixture-exclude-setup", ".*"]
-        code = subprocess.run(command, cwd=tree, check=False).returncode
+        code = subprocess.run(command, cwd=tree, env=env, check=False).returncode
         try:
             results = outcomes(report.read_text(encoding="utf-8"))
         except (OSError, ElementTree.ParseError):
@@ -860,9 +961,23 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
     problems = [f"{name}: passed without its read record, though its program carries {LISTENER}: is the "
                 "name escaped differently here and in tests/TestReads.cpp, or the record not written?"
                 for name in sorted(missing_records)]
+    # The shaders each test's runs asked for (decision 629). A record that
+    # cannot be read belongs to a test this cannot name, so nothing this run
+    # ran is remembered, and every one of them runs again.
+    texts, unreadable = shader_record_texts(records) if order else ([], [])
+    problems += [f"{path}: a shader record that could not be read ({why}); every test this run ran runs again"
+                 for path, why in unreadable]
+    shaders = shaders_by_test(texts)
+    # The application's bytes at this run, with each list: mutants-due.py
+    # takes a list only while the application is what it was (decision 616).
+    application = run.world.file(run.app)
     for name in order:
-        if name in passed and name not in missing_records:
-            stored[name] = {"parts": run.parts(run.tests[name], reads[name], env), "reads": reads[name]}
+        if name in passed and name not in missing_records and not unreadable:
+            entry = {"parts": run.parts(run.tests[name], reads[name], env, shaders.get(name)), "reads": reads[name]}
+            if name in shaders:
+                entry["shaders"] = shaders[name]
+                entry["application"] = application
+            stored[name] = entry
         else:
             stored.pop(name, None)
     for name in list(stored):
@@ -998,6 +1113,81 @@ add_custom_target(built ALL COMMAND ${CMAKE_COMMAND} -E touch built.txt)
 """
 
 
+# A test of the second scratch project's (M1-131): `starts.py <name>
+# whole|cut|none <shader>...` writes a shader record as the application does,
+# into the folder ORBSIM_COVERAGE_RECORDS names, each shader as the build
+# tree's shaders folder joined with a backslash -- or one without its `end`
+# line, or none -- standing for a script that starts the application.
+SCRATCH_STARTS = r"""import os, sys, time
+name, kind, shaders = sys.argv[1], sys.argv[2], sys.argv[3:]
+folder = os.environ.get("ORBSIM_COVERAGE_RECORDS")
+if folder and kind != "none":
+    lines = [f"test {name}"] + [os.path.join(os.getcwd(), "shaders") + "\\" + s for s in shaders]
+    lines += ["end"] if kind == "whole" else []
+    with open(os.path.join(folder, f"{os.getpid()}-{time.time_ns()}.shaders.txt"), "wb") as out:
+        out.write("".join(line + "\n" for line in lines).encode("utf-8"))
+"""
+
+SCRATCH_SHADER_PROJECT = """cmake_minimum_required(VERSION 3.25)
+project(scratch NONE)
+enable_testing()
+add_test(NAME loads COMMAND ${PY} ${CMAKE_SOURCE_DIR}/starts.py loads whole s1.spv)
+add_test(NAME cut COMMAND ${PY} ${CMAKE_SOURCE_DIR}/starts.py cut cut s1.spv)
+add_test(NAME none COMMAND ${PY} ${CMAKE_SOURCE_DIR}/starts.py none none)
+"""
+
+
+def shader_records_end_to_end(cmake: str, ctest: str, ninja: str, steps: list) -> list:
+    """The shader records through the driver (M1-131, decisions 570, 629, 637
+    and 642): the folder it names reaches the tests, a test's record is read
+    and its list stored and judged by at the next run, a record without its
+    `end` line keeps every shader, and the folder is emptied before each run."""
+    failures = []
+    with tempfile.TemporaryDirectory() as scratch:
+        root = pathlib.Path(scratch) / "repo"
+        tree = root / "build"
+        root.mkdir()
+        (root / "starts.py").write_bytes(SCRATCH_STARTS.encode("utf-8"))
+        (root / "CMakeLists.txt").write_bytes(SCRATCH_SHADER_PROJECT.encode("utf-8"))
+        (root / ".gitignore").write_bytes(b"build/\n")
+        quiet = {"capture_output": True, "check": True, "cwd": root}
+        subprocess.run(["git", "init", "-q"], **quiet)
+        subprocess.run([cmake, "-S", str(root), "-B", str(tree), "-G", "Ninja", f"-DCMAKE_MAKE_PROGRAM={ninja}",
+                        f"-DPY={sys.executable}"], **quiet)
+        (tree / "shaders").mkdir()
+        s1, s2 = tree / "shaders" / "s1.spv", tree / "shaders" / "s2.spv"
+        s1.write_bytes(b"1")
+        s2.write_bytes(b"2")
+
+        def step(name: str, wanted: set) -> None:
+            (tree / STATE / REPORT).unlink(missing_ok=True)
+            done = subprocess.run([sys.executable, __file__, str(tree), "--ctest", ctest, "--root", str(root)],
+                                  capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
+            try:
+                ran = set(outcomes((tree / STATE / REPORT).read_text(encoding="utf-8")))
+            except OSError:
+                ran = set()
+            steps.append(name)
+            if ran != wanted or done.returncode != 0:
+                failures.append(f"{name}: ran {sorted(ran)}, wanted {sorted(wanted)}, exit "
+                                f"{done.returncode}\n{done.stdout}{done.stderr}")
+
+        step("shader records: the first run", {"loads", "cut", "none"})
+        step("shader records: nothing changed", set())
+        s2.write_bytes(b"2 changed")
+        step("shader records: a shader no whole record names", {"cut"})
+        s1.write_bytes(b"1 changed")
+        step("shader records: a shader a whole record names", {"loads", "cut"})
+        # A record left from an earlier run, cut off, which would keep every
+        # shader for `loads` if it were read as this run's.
+        (tree / COVERAGE_RECORDS / f"1-1{SHADER_RECORD}").write_bytes(b"test loads\n")
+        s1.write_bytes(b"1 changed again")
+        step("shader records: a record left in the folder before a run", {"loads", "cut"})
+        s2.write_bytes(b"2 changed again")
+        step("shader records: the left record was not read", {"cut"})
+    return failures
+
+
 def end_to_end(cmake: str, ctest: str, ninja: str) -> int:
     """The driver on a scratch project: each change runs exactly the tests it
     should, a full run runs all and stamps its commit, and a full run from a
@@ -1089,6 +1279,7 @@ def end_to_end(cmake: str, ctest: str, ninja: str) -> int:
                             f"or failed\n{done.stdout}{done.stderr}")
         step("after a full run, nothing changed", always)
         failures += push_through_the_hook(root, pathlib.Path(scratch) / "remote.git", head, steps)
+    failures += shader_records_end_to_end(cmake, ctest, ninja, steps)
 
     for failure in failures:
         print(f"end-to-end FAILED: {failure}")
@@ -1395,6 +1586,93 @@ def tools_read_as_they_answer(expect) -> None:
     expect("a program that failed lists nothing", lists_listener(1, SAMPLE_LISTENERS), False)
 
 
+def shader_record(test: str, *shaders, end: bool = True) -> str:
+    """A shader record as the application writes it (decision 644)."""
+    return f"test {test}\n" + "".join(f"{s}\n" for s in shaders) + ("end\n" if end else "")
+
+
+def shader_record_cases(expect) -> None:
+    """The shaders a test's runs asked for (M1-131, decisions 629, 635, 637 and
+    659 e): a test is fingerprinted on the compiled files its records name, and
+    on every shader where it left none, or one not whole."""
+    expect("a whole shader record, its separators evened out",
+           parse_shader_record(shader_record("t", "C:\\x/shaders\\a.spv")), ("t", [norm("C:/x/shaders/a.spv")]))
+    expect("a whole shader record of no shader", parse_shader_record(shader_record("t")), ("t", []))
+    expect("a shader record without its end line is not whole",
+           parse_shader_record(shader_record("t", "C:/x/a.spv", end=False)), ("t", None))
+    expect("a shader record cut off inside a line is not whole",
+           parse_shader_record(shader_record("t", "C:/x/a.spv")[:-2]), ("t", None))
+    expect("a shader record with an empty line is not whole",
+           parse_shader_record(shader_record("t", "C:/x/a.spv", "")), ("t", None))
+    expect("a shader record naming a path that is not absolute is not whole",
+           parse_shader_record(shader_record("t", "shaders/a.spv")), ("t", None))
+    expect("a shader record without its test line names no test", parse_shader_record("C:/x/a.spv\nend\n"), None)
+
+    with tempfile.TemporaryDirectory() as scratch:
+        base = pathlib.Path(scratch)
+        root, outside = base / "repo", base / "tools"
+        tree = root / "build"
+        exe = ".exe" if os.name == "nt" else ""
+        app, cmake, script = tree / f"{APPLICATION}{exe}", outside / f"cmake{exe}", root / "cmake" / "RunProbe.cmake"
+        a, b = tree / "shaders" / "a.frag.spv", tree / "shaders" / "b.frag.spv"
+        for path in (app, cmake, script, a, b):
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("x", encoding="utf-8")
+            if os.name != "nt":
+                path.chmod(0o755)
+        names = {"name": "p", "command": [str(cmake), f"-DORBSIM={app}", "-P", str(script)]}
+        starts = {"name": "s", "command": [str(cmake), "-P", str(script)]}
+        # As the renderer is given it: the shader folder joined with a
+        # backslash (decision 659 e).
+        a_given, b_given = f"{tree / 'shaders'}\\{a.name}", f"{tree / 'shaders'}\\{b.name}"
+
+        def part(test, texts):
+            listed = shaders_by_test(texts).get(test["name"])
+            return stand_in_run(tree, root).parts(test, [], STAND_IN_ENVIRONMENT, listed).get("shaders")
+
+        def moves(test, texts, changed) -> bool:
+            before = part(test, texts)
+            changed.write_text(changed.read_text(encoding="utf-8") + "+", encoding="utf-8")
+            return part(test, texts) != before
+
+        named_a = [shader_record("p", a_given)]
+        expect("a changed shader its record names reruns the test", moves(names, named_a, a), True)
+        expect("a changed shader its record does not name leaves the test alone", moves(names, named_a, b), False)
+        expect("a test naming the application that left no record keeps every shader", moves(names, [], b), True)
+        expect("a record without its end line keeps every shader",
+               moves(names, [shader_record("p", a_given, end=False)], b), True)
+        expect("one record of two not whole keeps every shader",
+               moves(names, named_a + [shader_record("p", a_given, end=False)], b), True)
+        expect("a whole record of no shader leaves the test alone", moves(names, [shader_record("p")], a), False)
+        expect("the same file spelt with either separator is one file",
+               shaders_by_test([shader_record("p", a_given), shader_record("p", str(a).replace("\\", "/"))]).get("p"),
+               [norm(a)])
+        expect("two records of one test are combined",
+               shaders_by_test([shader_record("p", a_given), shader_record("p", b_given)]).get("p"),
+               sorted([norm(a), norm(b)]))
+        both = [shader_record("p", a_given), shader_record("p", b_given)]
+        expect("a changed shader either of its records names reruns the test",
+               moves(names, both, a) and moves(names, both, b), True)
+        expect("each test takes the records carrying its own name, and no other's",
+               shaders_by_test([shader_record("p", a_given), shader_record("p-x", b_given)]),
+               {"p": [norm(a)], "p-x": [norm(b)]})
+        expect("a script that starts the application is fingerprinted on its records' shaders",
+               moves(starts, [shader_record("s", a_given)], a), True)
+        expect("and not on the shaders they do not name", moves(starts, [shader_record("s", a_given)], b), False)
+        expect("a test that neither names the application nor left a record has no shader part",
+               part(starts, []), None)
+        expect("a record not whole gives a test that does not name the application every shader",
+               moves(starts, [shader_record("s", a_given, end=False)], b), True)
+
+        folder = tree / COVERAGE_RECORDS
+        folder.mkdir()
+        (folder / f"12-34{SHADER_RECORD}").write_bytes(shader_record("p", a_given).encode("utf-8"))
+        (folder / "12-34.functions.txt").write_bytes(b"program x\nend 0\n")
+        texts, unreadable = shader_record_texts(folder)
+        expect("the folder's shader records are read, the coverage recorder's beside them not",
+               (texts, unreadable), ([shader_record("p", a_given)], []))
+
+
 def self_test() -> int:
     failures, cases = [], []
 
@@ -1567,6 +1845,7 @@ def self_test() -> int:
 
     each_part_moves_with_its_input(expect)
     tools_read_as_they_answer(expect)
+    shader_record_cases(expect)
 
     for failure in failures:
         print(f"self-test FAILED: {failure}")

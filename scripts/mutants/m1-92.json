@@ -54,8 +54,8 @@
     {
       "name": "shaders are no longer an input of the application's judges",
       "file": "scripts/mutants-due.py",
-      "find": "            if self.runs_application(test):\n                files |= self.shader_inputs(test)",
-      "replace": "            if False:\n                files |= self.shader_inputs(test)",
+      "find": "            files |= set(self.judge_shaders(test))",
+      "replace": "            pass",
       "expect": "caught",
       "suites": [],
       "targets": [],

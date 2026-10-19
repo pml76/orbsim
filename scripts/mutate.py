@@ -1109,6 +1109,38 @@ def scratch_build_cases(scratch: Path, cmake: str, ninja: str) -> dict:
     return cases
 
 
+def shader_record_cases() -> dict:
+    """A pass records each compiled shader its judges load as mutants-due.py's
+    check reads them (M1-131, register decision 635), so that the two compare
+    like with like: a check of the tree as the pass left it finds no judge
+    moved, and one after a shader compiled to other bytes names that shader.
+    On mutants-due.py's own stand-in tree."""
+    sys.dont_write_bytecode = True  # no __pycache__ in scripts/
+    loader = importlib.util.spec_from_file_location("mutants_due", Path(__file__).resolve().parent / "mutants-due.py")
+    module = importlib.util.module_from_spec(loader)
+    loader.loader.exec_module(module)
+    cases = {}
+    with tempfile.TemporaryDirectory() as scratch:
+        tree = Path(scratch).resolve() / "build"
+        application = tree / ("orbsim.exe" if os.name == "nt" else "orbsim")
+        tests = {"probe": {"name": "probe", "command": ["cmake", f"-DORBSIM={application}", "-P", "run.cmake"]}}
+        spec = {"mutants": [{"file": "src/x.cpp", "ctest": ["probe"]}]}
+        record = pass_record("c0ffee", "build", *judge_parts(module, module.stand_in_tree(tree, tests), spec))
+
+        def moved() -> list:
+            now = module.stand_in_tree(tree, tests).fingerprint_parts(spec)
+            return module.judged_since(record, {key: module.combine(value) for key, value in now.items()}, now)
+
+        cases["a pass records each compiled shader its judges load"] = sorted(
+            part for part in record["judge_parts"]["ctest probe"] if part.startswith("compiled shader ")) == [
+            "compiled shader a.frag.spv", "compiled shader b.frag.spv"]
+        cases["a check of the tree as the pass left it finds no judge moved"] = moved() == []
+        (tree / "shaders" / "a.frag.spv").write_bytes(b"compiled to other bytes")
+        cases["a check after a shader compiled to other bytes names that shader"] = moved() == [
+            "ctest probe: fingerprint changed (compiled shader a.frag.spv)"]
+    return cases
+
+
 def self_test(tools: list) -> int:
     """Prove the harness's own rules right before a pass trusts them. `tools`
     is the cmake and the ninja to build a scratch project with, which CTest
@@ -1134,6 +1166,7 @@ def self_test(tools: list) -> int:
         and pass_record("c0ffee", "build/rel", judges, parts, card).get("gpu") == card)
     record_cases["a record for a file not judged on a card names none"] = (
         "gpu" not in pass_record("c0ffee", "build/rel", judges, parts, None))
+    record_cases.update(shader_record_cases())
     # A mutant that names no build (M1-109, register decision 392): allowed for
     # a Python script, refused for anything a build must read first.
     script = {"file": "scripts/x.py", "suites": [], "targets": []}
@@ -1273,6 +1306,16 @@ def pass_record(head: str, tree: str, judges, parts=None, gpu=None) -> dict:
     return record
 
 
+def judge_parts(module, reading, spec: dict) -> tuple:
+    """(fingerprints, their parts) of a mutant file's judges, from `reading`, a
+    reading of the tree by mutants-due.py, `module`: the parts its check
+    compares with, each compiled shader a judge loads among them (M1-131,
+    register decision 635), so that a pass and a later check compare like
+    with like."""
+    parts = reading.fingerprint_parts(spec)
+    return {key: module.combine(value) for key, value in parts.items()}, parts
+
+
 def judge_fingerprints(root: Path, tree: str, spec: dict) -> tuple:
     """(fingerprints, their parts, the graphics card), computed by
     mutants-due.py's own code so that the two can never disagree about what
@@ -1287,8 +1330,7 @@ def judge_fingerprints(root: Path, tree: str, spec: dict) -> tuple:
     try:
         loader.loader.exec_module(module)
         reading = module.Tree((root / tree).resolve())
-        parts = reading.fingerprint_parts(spec)
-        found = {key: module.combine(value) for key, value in parts.items()}
+        found, parts = judge_parts(module, reading, spec)
         gpu = None
         if reading.needs_gpu(spec):
             gpu, why = module.gpu_identity((root / tree).resolve())

@@ -35,11 +35,17 @@ on" is, deliberately, more than it strictly needs:
     not "this reads it", and they made every shader an input of the
     application. A generated header an object does include is followed back
     through its own inputs, so a file compiled into a program still counts;
-  * at run time: for a test that starts the application, the shaders it
-    reads -- for a probe test, those its last sidecar names, where that
-    sidecar can be trusted, and every shader otherwise (register decision
-    394); `data/` for every judge; every file named on a ctest entry's
-    command line;
+  * at run time: the compiled shaders a judge loads, by their bytes (M1-131,
+    register decisions 629 and 635) -- those `scripts/run-tests.py` stored
+    from the records of the judge's last passing run, while the application
+    is what it was then; otherwise, for a test that starts the application,
+    those its probe's last sidecar names, where that sidecar can be trusted,
+    and every shader otherwise (register decisions 394 and 616). Each such
+    file's hash is among the judge's fingerprint parts, and so is that of a
+    shader the file's own mutants change, so an edit that compiles to the
+    same bytes makes nothing due; `--assume-changed`, given a shader's
+    source, supposes its compiled file changed (decision 643). `data/` for
+    every judge; every file named on a ctest entry's command line;
   * the harness itself;
   * the build definition (`CMakeLists.txt`, `cmake/`, `CMakePresets.json`)
     through what it changed (M1-103, register decision 250): a clean pass
@@ -72,6 +78,7 @@ all, and exits non-zero unless each is judged right.
 
 import contextlib
 import hashlib
+import importlib.util
 import io
 import json
 import os
@@ -122,6 +129,11 @@ GRAPH = "mutants-due-graph.json"
 # trusted while both files are what they were.
 TRUSTED = "mutants-due-sidecars.json"
 GRAPH_FILES = ("build.ninja", "CMakeFiles/rules.ninja", ".ninja_deps")
+# The test driver, whose store in the build tree holds the shader files each
+# test's last passing run asked for, with the application's SHA-256 at that
+# run (M1-131, decision 629); read through the driver's own code, so that a
+# store of another version is not read here either.
+RUN_TESTS = ROOT / "scripts" / "run-tests.py"
 # Raised whenever what is stored, or how, changes.
 GRAPH_FORMAT = 1
 
@@ -568,6 +580,7 @@ class Tree:
         self._hashes = None
         self._trusted = None
         self._application_hash = None
+        self._run_tests_store = None
 
     def _graph_key(self) -> dict:
         return graph_key(self.tree, shutil.which(self.ninja) or self.ninja, pathlib.Path(__file__).read_bytes())
@@ -727,23 +740,72 @@ class Tree:
             partial.write_text(json.dumps(self._trusted, sort_keys=True), encoding="utf-8")
             os.replace(partial, self.tree / TRUSTED)
 
-    def shader_inputs(self, test: dict) -> set:
+    def stored_shaders(self, name: str):
+        """The compiled shader files the test driver stored for the ctest entry
+        `name`, normalised, or None (decisions 616 and 629): only while the
+        application is byte for byte what it was when the list was stored,
+        since another application may ask for other shaders."""
+        if self._run_tests_store is None:
+            module = run_tests_module()
+            self._run_tests_store = module.load_store(self.tree / module.STATE)["tests"]
+        entry = self._run_tests_store.get(name) or {}
+        shaders = entry.get("shaders")
+        if not isinstance(shaders, list):
+            return None
+        try:
+            return shaders if entry.get("application") == self.application_hash() else None
+        except OSError:
+            return None
+
+    def all_shaders(self) -> list:
+        """Every compiled shader file, normalised."""
+        return sorted(self.key(node) for node in self.shader_nodes().values())
+
+    def judge_shaders(self, test: dict) -> list:
+        """The compiled shader files a ctest entry's runs load, normalised
+        (decisions 394, 616, 629 and 635): the list the test driver stored
+        while the application is what it was then; otherwise, for an entry
+        that starts the application, its probe's sidecar where that can be
+        trusted, and every shader where not. A list naming a file no build
+        step makes -- a shader folder of the test's own -- counts every
+        shader. An entry that does not name the application loads none,
+        unless the driver stored a list for it: a script that starts it."""
+        stored = self.stored_shaders(test["name"])
+        if stored is not None:
+            known = set(self.all_shaders())
+            return sorted(stored) if set(stored) <= known else self.all_shaders()
+        if not self.runs_application(test):
+            return []
         nodes = self.shader_nodes()
         named = self.shaders_read(test)
         if named is None or any(n not in nodes for n in named):
-            named = list(nodes)
-        files = set()
-        for name in named:
-            files.add(self.key(nodes[name]))
-            files |= self.build_inputs(nodes[name])
-        return files
+            return self.all_shaders()
+        return sorted(self.key(nodes[n]) for n in named)
 
-    def shader_commands(self) -> str:
-        """The commands that compile every shader: part of the fingerprint of a
-        test that starts the application, since the walk no longer reaches them
-        through the build-order edge (M1-109). Every shader rather than those
-        a sidecar names, so a fingerprint never depends on a sidecar's age."""
-        return "".join(self.build_commands(node) for _, node in sorted(self.shader_nodes().items()))
+    def compiled_from(self, paths: set) -> set:
+        """The compiled shader files built from any of `paths`, normalised,
+        found through Ninja's graph (decision 643): a shader's source, or a
+        file it includes."""
+        return {self.key(node) for node in self.shader_nodes().values() if self.build_inputs(node) & paths}
+
+    def mutated_inputs(self, file: str) -> set:
+        """A mutated file as an input of its own mutant file: its text, but
+        for a shader, which is judged by its compiled file's bytes, as every
+        shader a judge loads is (decision 635)."""
+        return self.compiled_from({norm(ROOT / file)}) or {norm(ROOT / file)}
+
+    def compiled_hash(self, path: str) -> str:
+        """A compiled shader file's SHA-256, its bytes read in full every time
+        (decision 635): ten files of 12,452 bytes, measured 2026-10-18, cost
+        nothing a size-and-date memory would save."""
+        try:
+            return hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest()[:16]
+        except OSError:
+            return "missing"
+
+    def shader_parts(self, paths) -> dict:
+        """A fingerprint's part for each compiled shader file, by its name."""
+        return {f"compiled shader {pathlib.Path(path).name}": self.compiled_hash(path) for path in paths}
 
     # --- the judges ------------------------------------------------------------
 
@@ -761,15 +823,19 @@ class Tree:
         return found
 
     def judge_inputs(self, spec: dict) -> set:
+        """Every file a change to which makes the file due. A shader stands
+        here by its compiled file, which no change git reports names: a
+        supposed change reaches it (decision 643), and its bytes are judged
+        through the fingerprints (decision 635)."""
         files = set()
         for mutant in spec["mutants"]:
-            files.add(norm(ROOT / mutant["file"]))
+            files |= self.mutated_inputs(mutant["file"])
             # Built, and for a suite run; a target is only built (M1-109).
             for name in list(mutant.get("suites", [])) + list(mutant.get("targets", [])):
                 files |= self.build_inputs(self.program_target(name))
             for name in mutant.get("suites", []):
                 if name == APPLICATION:
-                    files |= self.shader_inputs({})
+                    files |= set(self.all_shaders())
         for entry in self.judging_tests(spec):
             test = self.tests.get(entry)
             if test is None:
@@ -780,8 +846,7 @@ class Tree:
                     files.add(norm(value))
             for program in self.test_programs(test):
                 files |= self.build_inputs(program)
-            if self.runs_application(test):
-                files |= self.shader_inputs(test)
+            files |= set(self.judge_shaders(test))
         return files
 
     def needs_gpu(self, spec: dict) -> bool:
@@ -800,20 +865,29 @@ class Tree:
 
     def fingerprint_parts(self, spec: dict) -> dict:
         """judge -> its fingerprint's parts, for the judges of one mutant file:
-        the same programs and CTest entries judge_inputs reads."""
+        the same programs and CTest entries judge_inputs reads. A ctest entry's
+        parts hold each compiled shader file it loads, by its bytes, where
+        they held the commands that compile every shader (decision 635): the
+        bytes record whatever a compiler or a flag changes, and a change that
+        compiles to the same bytes changes nothing. A mutated shader, and the
+        shaders of the application run as a suite, are held the same way."""
         found = {}
         for mutant in spec["mutants"]:
+            compiled = self.compiled_from({norm(ROOT / mutant["file"])})
+            if compiled:
+                found[f"mutated shader {mutant['file']}"] = self.shader_parts(sorted(compiled))
             for name in list(mutant.get("suites", [])) + list(mutant.get("targets", [])):
                 target = self.program_target(name)
                 found[f"program {target}"] = self.program_parts(target)
+            if APPLICATION in mutant.get("suites", []):
+                found[f"suite {self.program_target(APPLICATION)}"] = self.shader_parts(self.all_shaders())
         for entry in self.judging_tests(spec):
             test = self.tests.get(entry)
             if test is None:
                 found[f"ctest {entry}"] = {"definition": "unknown"}
                 continue
             parts = {"definition": test_fingerprint(test, self.tree, ROOT)}
-            if self.runs_application(test):
-                parts["shader builds"] = fingerprint(placeholders(self.shader_commands(), self.tree, ROOT))
+            parts.update(self.shader_parts(self.judge_shaders(test)))
             found[f"ctest {entry}"] = parts
             for program in self.test_programs(test):
                 found[f"program {program}"] = self.program_parts(program)
@@ -872,6 +946,17 @@ def same_tree(recorded: str, tree: pathlib.Path) -> bool:
 
 def same_tree_path(one: pathlib.Path, two: pathlib.Path) -> bool:
     return norm(one) == norm(two)
+
+
+def supposed_changes(changed: set, assumed: set, judged, compiled_from) -> set:
+    """The changes a mutant file is judged on: `changed`, and the compiled
+    shader files built from what it holds (decision 643) -- from the files
+    supposed changed with --assume-changed, a shader's source among them; and
+    from every changed file where no fingerprints are compared (`judged`
+    None), since the compiled bytes' parts that judge a real change to a
+    shader's source are then not there (decision 635). `compiled_from` maps
+    files to the compiled shader files built from them."""
+    return changed | compiled_from(changed if judged is None else assumed)
 
 
 def judged_since(record: dict, now: dict, now_parts=None) -> list:
@@ -936,12 +1021,13 @@ def main_check(tree: pathlib.Path, assumed: list, only_assumed: bool, expect_due
 
     due_count = 0
     due_names = set()
+    assumed_paths = {norm(ROOT / a) for a in assumed}
     files = sorted((ROOT / "scripts" / "mutants").glob("*.json"))
     for spec_path in files:
         spec = json.loads(spec_path.read_text(encoding="utf-8"))
         record = passes.get(spec_path.name)
         changed = changed_since(record["commit"]) if record and not only_assumed else set()
-        changed |= {norm(ROOT / a) for a in assumed}
+        changed |= assumed_paths
         where, absent = judging_tree(record, tree, only_assumed, pathlib.Path.is_dir)
         if where is None:
             due_count += 1
@@ -966,7 +1052,8 @@ def main_check(tree: pathlib.Path, assumed: list, only_assumed: bool, expect_due
             reason = gpu_reason(record, *card(where))
             if reason:
                 other.append(reason)
-        due, reasons = is_due(changed, t.judge_inputs(spec), record is not None or only_assumed, judged, other)
+        seen = supposed_changes(changed, assumed_paths, judged, t.compiled_from)
+        due, reasons = is_due(seen, t.judge_inputs(spec), record is not None or only_assumed, judged, other)
         root = norm(ROOT) + "/"
         shown = [r[len(root):] if r.startswith(root) else r for r in reasons[:3]]
         in_tree = "" if same_tree_path(where, tree) else f" [in {os.path.relpath(where, ROOT).replace(chr(92), '/')}]"
@@ -1374,6 +1461,10 @@ def self_test() -> int:
         status = "ok" if got else "WRONG"
         failures += status == "WRONG"
         print(f"self-test: {name} ({status})")
+    for name, got in m1_131_cases().items():
+        status = "ok" if got else "WRONG"
+        failures += status == "WRONG"
+        print(f"self-test: {name} ({status})")
     return 1 if failures else 0
 
 
@@ -1443,6 +1534,135 @@ def m1_129_cases(root: str, inputs: set) -> dict:
     with contextlib.redirect_stdout(io.StringIO()):
         cases["--fingerprints takes one reading that asks Ninja itself"] = (
             main_fingerprints(pathlib.Path("."), "m1-17.json", Reader) == 0)
+    return cases
+
+
+# The stand-in tree's compiled shaders, built from these sources of this
+# repository -- named, never read.
+STAND_IN_SHADERS = ("a.frag", "b.frag")
+
+
+def run_tests_module():
+    """scripts/run-tests.py, loaded, for its own reading of its store."""
+    sys.dont_write_bytecode = True  # no __pycache__ in scripts/
+    loader = importlib.util.spec_from_file_location("run_tests", RUN_TESTS)
+    module = importlib.util.module_from_spec(loader)
+    loader.loader.exec_module(module)
+    return module
+
+
+def stand_in_tree(folder: pathlib.Path, tests: dict) -> "Tree":
+    """A reading of a made-up tree in `folder`, its Ninja answers given rather
+    than asked for (M1-131): the shader step building `shaders/<name>.spv` of
+    each of STAND_IN_SHADERS, from that source under this repository's
+    shaders/, and the application, made here, built from nothing; `tests` its
+    ctest entries. Read again, by another call, it hashes everything again."""
+    application = folder / (APPLICATION + (".exe" if os.name == "nt" else ""))
+    if not application.exists():
+        application.parent.mkdir(parents=True, exist_ok=True)
+        application.write_bytes(b"the application")
+        if os.name != "nt":
+            application.chmod(0o755)
+    reading = Tree.__new__(Tree)
+    reading.tree, reading.tests, reading.ninja = folder, tests, "ninja"
+    reading.asked_ninja, reading._learned, reading.from_stored = 0, False, True
+    nodes = [f"shaders/{name}.spv" for name in STAND_IN_SHADERS]
+    for node in nodes:
+        if not (folder / node).exists():
+            (folder / node).parent.mkdir(parents=True, exist_ok=True)
+            (folder / node).write_bytes(f"compiled {node}".encode("utf-8"))
+    target = reading.program_target(APPLICATION)
+    reading._built = {reading.key(name): name for name in nodes + [SHADER_STEP, target]}
+    reading._edges = {reading.key(SHADER_STEP): nodes}
+    reading._walks = {node: ({norm(ROOT / "shaders" / pathlib.Path(node).stem)}, [node]) for node in nodes}
+    reading._walks[target] = (set(), [target])
+    reading._commands = {target: "link the application\n"}
+    reading._headers_found = {}
+    reading._fingerprints, reading._tracked, reading._hashes = {}, set(), {}
+    reading._trusted, reading._application_hash, reading._run_tests_store = {}, None, None
+    return reading
+
+
+def m1_131_cases() -> dict:
+    """M1-131's rules for the shaders a judge loads (decisions 616, 629, 635 and
+    643): the test driver's stored list while the application is what it was,
+    otherwise a probe's sidecar, otherwise every shader; each judged by its
+    compiled file's bytes, the shader a file's own mutants change included;
+    and a shader source supposed changed, its compiled file changed."""
+    cases = {}
+    module = run_tests_module()
+    with tempfile.TemporaryDirectory() as scratch:
+        tree = pathlib.Path(scratch).resolve() / "build"
+        application = tree / (APPLICATION + (".exe" if os.name == "nt" else ""))
+        out = tree / "probes"
+        probe = {"name": "probe", "command": ["cmake", f"-DORBSIM={application}", "-DPROBE=x", f"-DOUT={out}",
+                                              "-P", "run.cmake"]}
+        script = {"name": "script", "command": ["cmake", "-P", "run.cmake"]}
+        tests = {"probe": probe, "script": script}
+        reading = stand_in_tree(tree, tests)
+        a, b = (norm(tree / f"shaders/{name}.spv") for name in STAND_IN_SHADERS)
+        source_a, source_b = (norm(ROOT / "shaders" / name) for name in STAND_IN_SHADERS)
+
+        def store(entries: dict) -> None:
+            (tree / module.STATE).mkdir(parents=True, exist_ok=True)
+            (tree / module.STATE / module.STORE).write_bytes(json.dumps(
+                {"version": module.STORE_VERSION, "tests": entries, "listeners": {}}).encode("utf-8"))
+
+        def shaders(test) -> list:
+            return stand_in_tree(tree, tests).judge_shaders(test)
+
+        built = hashlib.sha256(application.read_bytes()).hexdigest()
+        store({"probe": {"shaders": [a], "application": built}})
+        cases["a judge's shaders are the list the test driver stored, while the application is what it was"] = (
+            shaders(probe) == [a])
+        application.write_bytes(b"the application, rebuilt")
+        out.mkdir(parents=True, exist_ok=True)
+        (out / "x.txt").write_bytes(b"outcome = rendered\nshaders = b.frag.spv\n")
+        cases["an application of other bytes since: the probe's sidecar"] = shaders(probe) == [b]
+        (out / "x.txt").unlink()
+        cases["neither: every shader"] = shaders(probe) == [a, b]
+        built = hashlib.sha256(application.read_bytes()).hexdigest()
+        store({"probe": {"shaders": [norm(tree / "elsewhere" / "a.frag.spv")], "application": built}})
+        cases["a stored list naming a file no build step makes counts every shader"] = shaders(probe) == [a, b]
+        cases["an entry that does not name the application loads no shader"] = shaders(script) == []
+        store({"probe": {"shaders": [a], "application": built}, "script": {"shaders": [b], "application": built}})
+        cases["unless the test driver stored a list for it: a script that starts the application"] = (
+            shaders(script) == [b])
+
+        judged_by_probe = {"mutants": [{"file": "src/x.cpp", "ctest": ["probe"]}]}
+        before = stand_in_tree(tree, tests).fingerprint_parts(judged_by_probe)
+        cases["a judge's fingerprint carries each compiled shader's hash, and no shader builds part"] = (
+            sorted(before["ctest probe"]) == ["compiled shader a.frag.spv", "definition"])
+        (tree / "shaders" / "a.frag.spv").write_bytes((tree / "shaders" / "a.frag.spv").read_bytes())
+        cases["a shader compiled to the same bytes leaves it as it was"] = (
+            stand_in_tree(tree, tests).fingerprint_parts(judged_by_probe) == before)
+        (tree / "shaders" / "a.frag.spv").write_bytes(b"compiled to other bytes")
+        after = stand_in_tree(tree, tests).fingerprint_parts(judged_by_probe)
+        cases["other bytes move that shader's part alone"] = [
+            (key, part) for key in before for part in before[key]
+            if before[key][part] != after[key].get(part)] == [("ctest probe", "compiled shader a.frag.spv")]
+        inputs = reading.judge_inputs(judged_by_probe)
+        cases["a judge's inputs hold the compiled file it loads, not the shader's source"] = (
+            a in inputs and source_a not in inputs and b not in inputs)
+
+        cases["a shader's source is found to its compiled file through the graph"] = (
+            reading.compiled_from({source_a}) == {a} and reading.compiled_from({norm(ROOT / "src/x.cpp")}) == set())
+        supposed = supposed_changes({source_a}, {source_a}, None, reading.compiled_from)
+        cases["a shader's source supposed changed is its compiled file changed"] = (
+            is_due(supposed, inputs, True)[0]
+            and not is_due(supposed_changes({source_b}, {source_b}, None, reading.compiled_from), inputs, True)[0])
+        cases["a shader's source changed, where no fingerprint can be compared, is its compiled file changed"] = (
+            supposed_changes({source_a}, set(), None, reading.compiled_from) == {source_a, a})
+        cases["where fingerprints are compared, only a supposed change is: the bytes judge a real one"] = (
+            supposed_changes({source_a, source_b}, {source_b}, [], reading.compiled_from) == {source_a, source_b, b})
+
+        cases["a file's own mutated shader is judged by its compiled file, a C++ file by its text"] = (
+            reading.mutated_inputs("shaders/a.frag") == {a}
+            and reading.mutated_inputs("src/x.cpp") == {norm(ROOT / "src/x.cpp")})
+        own_shader = {"mutants": [{"file": "shaders/b.frag"}]}
+        cases["and its compiled file's hash is among the file's fingerprints"] = (
+            sorted(stand_in_tree(tree, tests).fingerprint_parts(own_shader).get("mutated shader shaders/b.frag", {}))
+            == ["compiled shader b.frag.spv"])
     return cases
 
 
