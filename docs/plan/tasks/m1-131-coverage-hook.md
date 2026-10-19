@@ -1,6 +1,6 @@
 # M1-131 — The coverage hook and the recorder
 
-Phase: B | Status: done 2026-10-19, its push waiting for `check-full` in both trees and the owner's go-ahead
+Phase: B | Status: done 2026-10-19, and pushed the same day (`4cd5e13`)
 Prerequisites: M1-129
 Decided by: register decisions 544, 551, 559, 564-566, 569 and 570, ruled
 2026-10-15, 582-595 and 601, ruled 2026-10-16, 625-632, ruled 2026-10-17
@@ -19,7 +19,7 @@ programs whose tests it reads, each in a commit of its own, and the recorder's
 end on a stuck writer declared a surviving mutant; and 696-699, ruled
 2026-10-19 before the mutant file was written -- two more ways of stopping in
 the self-test, three more declared survivors, the pass in `build/debug`, and
-about 45 mutants; split out of M1-129 as its item 9's step C by decision 596.
+about 45 mutants; and 700, the route of its push; split out of M1-129 as its item 9's step C by decision 596.
 The selection that reads what this records is [M1-132](m1-132-function-level-selection.md),
 and [M1-133](m1-133-selection-proved.md) proves it. The spike and the design
 behind all three are in M1-132's last section.
@@ -211,5 +211,6 @@ m1-131.json under scripts/mutants/, about 45 mutants, run in `build/debug` (698,
       (595). *The pass is done, 2026-10-19 in `build/debug` (decision
       698): 49 mutants, 45 caught, the 4 declared survivors surviving,
       none invalid, in 14 min 28 s; its record is committed (`874492e`).
-      `check-full` in both trees follows; the push waits for the owner's
-      word.*
+      `check-full` passed in both trees, 588 tests in each, and the push
+      followed on the owner's word, up to `4cd5e13`, confirmed by a fetch
+      (decision 700).*

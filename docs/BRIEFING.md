@@ -351,11 +351,10 @@ before its work began); then
 chosen the way the tests are (decision 633, 2026-10-18); then M1-127 and
 M1-130 (the code as modules), lower levels first (decision 495).
 
-**On the evening of 2026-10-19** M1-131 is done and committed, not pushed
-(decisions 636-699): the presets carry the hook (decision 694), and the
+**On the evening of 2026-10-19** M1-131 is done, and pushed up to `4cd5e13`
+(decisions 636-700): the presets carry the hook (decision 694), and the
 task's mutant file passed in `build/debug`, 45 of 49 caught and the 4
-declared survivors surviving (decisions 654, 697 and 698). Left:
-`check-full` in both trees, and the push on the owner's word. Then M1-135,
+declared survivors surviving (decisions 654, 697 and 698). Next, M1-135,
 a guard that every compiled file is linted, built on a branch of its own on
 the first machine and three steps from done; then M1-132 and M1-133. M1-136,
 `lint_deps` in the fuzz trees, waits with its questions open. Write all
