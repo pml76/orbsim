@@ -197,6 +197,12 @@ if(ORBSIM_PYTHON AND ORBSIM_BUILD_APP)
     # parallel_tests requires the lock).
     set_tests_properties(mutants_due mutants_due_shaders mutants_due_scripts mutants_due_fingerprints
             mutants_due_unmet_expectation_fails PROPERTIES LABELS fixtures RESOURCE_LOCK ninja_deps)
+    # When the store holds no shader list, mutants_due_fingerprints reads the
+    # probes' sidecars, and probe_clear_golden removes one while it runs: the
+    # two tests overlapped once, and this one failed. Thus the probe tests run
+    # first (register decision 692 B), as for mutants_due_probe_shaders.
+    set_tests_properties(mutants_due_fingerprints PROPERTIES
+            FIXTURES_REQUIRED "probe_data;probe_clear_reruns")
 elseif(ORBSIM_BUILD_APP)
     add_test(NAME mutants_due COMMAND ${CMAKE_COMMAND} -E false)
     add_test(NAME mutants_due_shaders COMMAND ${CMAKE_COMMAND} -E false)
