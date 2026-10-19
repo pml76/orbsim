@@ -31,12 +31,15 @@
       "name": "debug",
       "inherits": "debug-base",
       "displayName": "clang Debug",
-      "description": "Assertions live. Part of the definition of done alongside relwithdebinfo."
+      "description": "Assertions live. Part of the definition of done alongside relwithdebinfo. With the coverage hook, which no other preset carries (register decisions 566, 625 and 694).",
+      "cacheVariables": { "ORBSIM_COVERAGE_HOOK": "ON" }
     },
     {
       "name": "relwithdebinfo",
       "inherits": "relwithdebinfo-base",
-      "displayName": "clang RelWithDebInfo"
+      "displayName": "clang RelWithDebInfo",
+      "description": "Part of the definition of done alongside debug. With the coverage hook, which no other preset carries (register decisions 566, 625 and 694).",
+      "cacheVariables": { "ORBSIM_COVERAGE_HOOK": "ON" }
     },
     {
       "name": "release",
