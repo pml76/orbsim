@@ -59,3 +59,9 @@ data/textures/tiles/
 data/horizons/*
 !data/horizons/README.md
 !data/horizons/checksums.sha256
+
+# The ASD-STE100 specification (Simplified Technical English), which all text
+# follows since 2026-10-19 (CLAUDE.md, working agreement 1; register decision
+# 693). ASD owns its copyright, and this repository is public. Thus each
+# machine keeps its own copy in this folder, and git never takes it.
+/ASD-STE100/

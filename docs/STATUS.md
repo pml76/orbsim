@@ -81,6 +81,7 @@ How to install and run any of it is
 | WSL 2 + Ubuntu | 26.04 LTS ("resolute") | Installed 2026-09-07. clang 23.1.1, gcc-14 14.3.0, cmake 4.2.3, ninja 1.13.2. This is where UBSan and the second compiler live |
 | cppcheck | **2.22.0** | `C:\GitHub\cppcheck-2.22.0` -- built from source with the clang above on 2026-10-10 for M1-116, run once as a measurement and not part of `check` (decisions 436-438); how to build it is `PROJECT_STATE.md` section 2 |
 | include-what-you-use | **0.27**, on clang 23.1.2 | `C:\GitHub\iwyu-0.27` -- the same, with zlib 1.3.2 and zstd 1.5.7 built static beside it; its own 89 unit tests pass |
+| ASD-STE100 Simplified Technical English | **Issue 9**, January 2025 | ASD-STE100_ISSUE9.pdf in the folder ASD-STE100 at the root of the checkout, which `.gitignore` excludes: ASD owns the copyright (decision 693). Each machine needs its own copy |
 | GPU in use | NVIDIA RTX A2000, Vulkan `10de-25ba` | The renderer requires a discrete GPU where one exists. The Intel UHD Graphics beside it is `8086-4626`, and runs only with the NVIDIA driver hidden (`VK_LOADER_DRIVERS_DISABLE=nv-vk64.json`) |
 | CPU | Intel Core i9-12900H | Every build assumes x86-64 with MMX, SSE to SSE4.2, FMA3, AVX, AVX2, F16C and BMI2 -- what this CPU and AMD's Zen 2 share; SSE4A is left out because this CPU lacks it ([ADR 0023](adr/0023-the-processor-we-assume.md)) |
 

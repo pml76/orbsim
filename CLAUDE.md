@@ -119,8 +119,9 @@ note that exists only on one of them is a note that does not exist.
    commit messages and code comments. When you give a task to a helper, tell
    it to write its documents and comments in STE. Do not rewrite the current
    documents as a separate task. ASD supplies the standard free of charge as
-   a PDF file. ASD owns the copyright, thus keep a copy on each machine,
-   outside this repository. If a copy is available, examine your words
+   a PDF file. ASD owns the copyright, thus keep a copy on each machine in
+   the folder `ASD-STE100/` at the root of the checkout, which `.gitignore`
+   excludes, so that git never takes it. If a copy is available, examine your words
    against its dictionary. If no copy is available, apply the writing rules,
    use simple and frequent words, and explain each technical name when it
    first occurs, as the fourth addition tells you. Register decision 693
