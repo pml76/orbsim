@@ -909,6 +909,7 @@ logs and the counts (`timing-<tree>-*`).
 **In the repository, the small outputs of the second half**, 113 files of
 less than 60 KB each, 206 KB in total, are in
 [`m1-131/with-hook/`](m1-131/with-hook/): each `.txt` and `.csv` file of
-that folder, byte for byte (decision 694). They are in a folder of their own
+that folder, with their line endings turned from CR LF into LF by git and
+nothing else changed (decision 694). They are in a folder of their own
 because some of their names, for example the machine samples, are the same
 as those of the first half.
