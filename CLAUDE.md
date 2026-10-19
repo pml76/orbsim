@@ -111,6 +111,20 @@ note that exists only on one of them is a note that does not exist.
    answers given, and it is the reason the questions in this repository's
    records read as they do. It is here rather than in any assistant's memory
    for the reason the preamble to these agreements gives.
+
+   A fifth, added 2026-10-19: **write all text in ASD-STE100 Simplified
+   Technical English (STE), Issue 9, January 2025.** This rule applies to
+   all text that you write or change from that date. That is answers and
+   questions to the owner, register rows, task documents, `docs/STATUS.md`,
+   commit messages and code comments. When you give a task to a helper, tell
+   it to write its documents and comments in STE. Do not rewrite the current
+   documents as a separate task. ASD supplies the standard free of charge as
+   a PDF file. ASD owns the copyright, thus keep a copy on each machine,
+   outside this repository. If a copy is available, examine your words
+   against its dictionary. If no copy is available, apply the writing rules,
+   use simple and frequent words, and explain each technical name when it
+   first occurs, as the fourth addition tells you. Register decision 693
+   gives the reasons.
 2. **A failing test means fix the code.** If the test itself is genuinely
    wrong, say so and ask -- do not quietly edit it. A test that passes under
    one compiler and fails under another is evidence of an unstable algorithm,

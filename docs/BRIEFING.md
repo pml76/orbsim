@@ -70,6 +70,11 @@ recorded; confirm that, do not record it again.** In practice:
   where the decision is written (decision 84).
 - **Plain words** (agreement 1, fourth refinement): the ordinary word first, and
   any technical term glossed the first time it appears in a reply or question.
+  **Since 2026-10-19, all text that you write or change follows ASD-STE100
+  Simplified Technical English, Issue 9** (agreement 1, fifth addition;
+  decision 693): answers, questions, documents, commit messages and code
+  comments. Short sentences, the active voice, one instruction in each
+  sentence, and the condition first.
 - **Rulings are recorded** as the next numbered row of the register,
   [`plan/milestone-1-decisions.md`](plan/milestone-1-decisions.md) section 9:
   what was ruled, what was measured, what was considered, the date. A ruling
