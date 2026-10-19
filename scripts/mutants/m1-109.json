@@ -71,7 +71,7 @@
       "expect": "caught",
       "suites": [],
       "targets": [],
-      "ctest": ["mutants_due_probe_shaders"]
+      "ctest": ["mutants_due_probe_shaders", "mutants_due_self_test"]
     },
     {
       "name": "a file in the build tree is hashed with the tree's path in it",
