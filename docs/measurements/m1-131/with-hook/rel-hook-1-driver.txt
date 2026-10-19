@@ -1,0 +1,10 @@
+tree C:\Users\U439644\Projects\untitled\build\relwithdebinfo, label rel-hook-1
+[2026-10-19T07:08:39+02:00] clean: C:\Strawberry\c\bin\ninja.exe -C C:\Users\U439644\Projects\untitled\build\relwithdebinfo -t clean
+[2026-10-19T07:08:39+02:00] clean: exit 0, 0.4 s wall clock, output in rel-hook-1-clean.log
+[2026-10-19T07:08:39+02:00] .ninja_log before-build: 168437 bytes, sha256 b0c46401db7e48f8
+[2026-10-19T07:08:39+02:00] build: C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe --build C:\Users\U439644\Projects\untitled\build\relwithdebinfo
+[2026-10-19T07:12:18+02:00] build: exit 0, 218.9 s wall clock, output in rel-hook-1-build.log
+[2026-10-19T07:12:18+02:00] .ninja_log after-build: 296359 bytes, sha256 840898d25ee79559
+[2026-10-19T07:12:18+02:00] check: C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe --build C:\Users\U439644\Projects\untitled\build\relwithdebinfo --target check
+[2026-10-19T07:18:50+02:00] check: exit 0, 391.6 s wall clock, output in rel-hook-1-check.log
+[2026-10-19T07:18:50+02:00] .ninja_log after-check: 319228 bytes, sha256 002adc1b578cd3ae

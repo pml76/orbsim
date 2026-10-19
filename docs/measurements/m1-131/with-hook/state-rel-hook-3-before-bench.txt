@@ -1,0 +1,22 @@
+time: 2026-10-19 08:22:36 +02:00
+battery: status 2, charge 100 %
+power scheme: Power Scheme GUID: 381b4222-f694-41f0-9685-ff5bb260df2e  (Balanced)
+memory: total 31.5 GiB, free 15.0 GiB
+disk C: free 104.04 GiB of 952.09 GiB
+cpu: 12th Gen Intel(R) Core(TM) i9-12900H, load 6 %
+top 12 processes by working set:
+  Memory Compression              2,191 MiB  cpu            s
+  claude                            641 MiB  cpu    7,745.7 s
+  brave                             624 MiB  cpu      998.9 s
+  cyserver                          478 MiB  cpu            s
+  Everything                        466 MiB  cpu    2,500.1 s
+  OUTLOOK                           438 MiB  cpu      183.6 s
+  jetbrains-toolbox                 393 MiB  cpu    6,021.7 s
+  claude                            322 MiB  cpu    1,096.5 s
+  claude                            291 MiB  cpu    2,630.6 s
+  brave                             260 MiB  cpu      439.4 s
+  dwm                               238 MiB  cpu            s
+  explorer                          230 MiB  cpu    2,682.3 s
+build processes running:
+  python 77360
+  python 77980

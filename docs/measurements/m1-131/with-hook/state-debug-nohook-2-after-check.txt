@@ -1,0 +1,22 @@
+time: 2026-10-19 10:00:42 +02:00
+battery: status 2, charge 98 %
+power scheme: Power Scheme GUID: cbd2463e-9cea-42a7-bdff-7c02f06b18c2  (Tasksequenz mit hoher Leistung)
+memory: total 31.5 GiB, free 11.0 GiB
+disk C: free 104.33 GiB of 952.09 GiB
+cpu: 12th Gen Intel(R) Core(TM) i9-12900H, load 18 %
+top 12 processes by working set:
+  msedgewebview2                    798 MiB  cpu      290.8 s
+  claude                            618 MiB  cpu    7,970.7 s
+  brave                             565 MiB  cpu    1,117.6 s
+  bplus64                           541 MiB  cpu      465.6 s
+  EXCEL                             482 MiB  cpu      196.5 s
+  cyserver                          476 MiB  cpu            s
+  Everything                        464 MiB  cpu    2,624.0 s
+  bplus64                           385 MiB  cpu      176.8 s
+  wintrv                            383 MiB  cpu    1,243.5 s
+  dwm                               338 MiB  cpu            s
+  claude                            325 MiB  cpu    1,225.7 s
+  Memory Compression                300 MiB  cpu            s
+build processes running:
+  python 84780
+  python 87504

@@ -1,0 +1,22 @@
+check               tests  summed s  not passed  common tests  summed s
+debug-nohook-1        566     762.8           1           563     752.9
+debug-nohook-2        563     846.4           1           563     846.4
+debug-nohook-3        563     707.2           1           563     707.2
+debug-hook-1          564     998.2           1           563     982.0
+debug-hook-2          567     889.2           1           563     868.3
+debug-hook-3          564     989.7           1           563     973.4
+common tests summed: without 768.8 s (lowest 707.2, highest 846.4), with 941.2 s (lowest 868.3, highest 982.0); difference +172.4 s, +22.4 %
+ran only with the hook: ['coverage_recorder']
+ran only without the hook: []
+the ten tests whose average time grew the most (without -> with, s):
+   +11.58    33.76 ->   45.34  float_equal_guard
+   +11.57    41.78 ->   53.35  mutants_due
+   +10.51     3.53 ->   14.04  coverage_hook
+    +5.12     9.10 ->   14.22  probe_grid-jitter-1km-1
+    +4.73    11.42 ->   16.15  probe_clear_determinism
+    +4.26    12.84 ->   17.09  probe_clear
+    +3.20     9.36 ->   12.57  abort_listener
+    +3.02     8.74 ->   11.76  probe_grid-jitter-1km-0
+    +2.83     3.63 ->    6.46  probe_lambert-two-au
+    +2.21     5.28 ->    7.49  probe_grid-jitter-2
+common tests whose average grew: 478, fell or stayed: 85

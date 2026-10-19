@@ -1,0 +1,52 @@
+objects carrying the hook: 92
+  function-type symbols (places): 80,104
+  funclets: 15,646
+  funclets with an entry: 0
+  the hook's own start-up functions: 92
+  the hook's own start-up functions with an entry: 0
+  functions: 64,366
+  table entries: 63,065
+  entries pointing at a function: 63,065
+  entries pointing elsewhere: 0
+  relocations other than ADDR64: 0
+  functions without a flag: 1,301
+  share of functions without a flag: 2.02 %
+objects compiled with the hook that hold no table: 1
+  tests/coverage_recorder_unaligned.cpp: 1 functions, the table not asked for (no pc-table)
+  without a flag and naming the project's namespace orb:: anywhere: 77
+without a flag, by the outermost scope of the name:
+  std: 1232
+  (global): 30
+  Catch: 22
+  (no calling convention) : 17
+without a flag, the most frequent last parts of the name:
+  operator: 600
+  vector: 171
+  _Throw_bad_array_new_length: 88
+  array: 75
+  _Xlen_string: 75
+  _String_val: 48
+  _Throw_system_error: 36
+  _Throw_system_error_from_std_win_error: 36
+  _Throw_bad_cast: 34
+  _Throw_format_error: 30
+  __empty_global_delete: 30
+  expected: 25
+  : 17
+  MatcherBase: 11
+  basic_string_view: 9
+  `scalar deleting dtor': 6
+  Unreachable: 5
+  _Throw_tree_length_error: 2
+  _Variant_dispatcher: 2
+  _Throw_bad_variant_access: 1
+objects with the most functions without a flag:
+  tests/test_fixture_file.cpp: 43 of 1847
+  tests/fixturefile.cpp: 38 of 1583
+  tests/make_broken_goldens.cpp: 37 of 1504
+  src/app/benchmode.cpp: 36 of 2127
+  src/view/imagefiles.cpp: 34 of 1420
+  tests/test_time_leap.cpp: 34 of 1662
+  src/app/probemode.cpp: 34 of 2301
+  src/app/main.cpp: 32 of 1907
+the full list: debug-unflagged-list.txt

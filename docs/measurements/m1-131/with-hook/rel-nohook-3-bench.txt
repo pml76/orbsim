@@ -1,0 +1,54 @@
+=== run 1, 2026-10-19 08:06:14
+orbsim benchmark: grid-orbit, 600 measured frames after a warm-up of 7269 frames in 5.00 s
+GPU:          NVIDIA RTX A2000 8GB Laptop GPU (10de-25ba), NVIDIA 582.53, Vulkan 1.4.312
+Image:        1920x1080 pixels, VK_PRESENT_MODE_IMMEDIATE_KHR, display refreshing at 60.00 Hz
+Quality:      high
+Build:        RelWithDebInfo, clang 23.1.2 (https://github.com/llvm/llvm-project 85ac560262434c9ccfc0c183ec22d4138ed647fb)
+Validation:   off
+
+                    mean    median       p95       p99       max   (ms)
+frame interval    0.6662    0.4180    1.6950    2.1118    2.3207
+CPU working       0.1540    0.1474    0.2251    0.2549    0.4582
+GPU               0.1129    0.1130    0.1142    0.1149    0.1174
+
+Written: C:\Users\U439644\AppData\Local\Temp\claude\C--Users-U439644-Projects-untitled\cf0d7665-e81a-4537-9c1c-f20461fb1e11\scratchpad\m0-hook\bench-rel-nohook-3\grid-orbit-20261019T060620Z.txt and .csv
+=== run 1 exit 0
+=== run 2, 2026-10-19 08:06:21
+orbsim benchmark: grid-orbit, 600 measured frames after a warm-up of 7272 frames in 5.00 s
+GPU:          NVIDIA RTX A2000 8GB Laptop GPU (10de-25ba), NVIDIA 582.53, Vulkan 1.4.312
+Image:        1920x1080 pixels, VK_PRESENT_MODE_IMMEDIATE_KHR, display refreshing at 60.00 Hz
+Quality:      high
+Build:        RelWithDebInfo, clang 23.1.2 (https://github.com/llvm/llvm-project 85ac560262434c9ccfc0c183ec22d4138ed647fb)
+Validation:   off
+
+                    mean    median       p95       p99       max   (ms)
+frame interval    0.6675    0.3811    1.7607    2.1589    2.4365
+CPU working       0.1536    0.1471    0.2268    0.2848    0.4858
+GPU               0.1128    0.1129    0.1143    0.1148    0.1166
+
+Written: C:\Users\U439644\AppData\Local\Temp\claude\C--Users-U439644-Projects-untitled\cf0d7665-e81a-4537-9c1c-f20461fb1e11\scratchpad\m0-hook\bench-rel-nohook-3\grid-orbit-20261019T060627Z.txt and .csv
+=== run 2 exit 0
+=== run 3, 2026-10-19 08:06:28
+orbsim benchmark: grid-orbit, 600 measured frames after a warm-up of 7277 frames in 5.00 s
+GPU:          NVIDIA RTX A2000 8GB Laptop GPU (10de-25ba), NVIDIA 582.53, Vulkan 1.4.312
+Image:        1920x1080 pixels, VK_PRESENT_MODE_IMMEDIATE_KHR, display refreshing at 60.00 Hz
+Quality:      high
+Build:        RelWithDebInfo, clang 23.1.2 (https://github.com/llvm/llvm-project 85ac560262434c9ccfc0c183ec22d4138ed647fb)
+Validation:   off
+
+                    mean    median       p95       p99       max   (ms)
+frame interval    0.6660    0.3921    1.7810    2.3218    2.5176
+CPU working       0.1563    0.1463    0.2376    0.3367    0.6800
+GPU               0.1130    0.1130    0.1144    0.1155    0.1241
+
+Written: C:\Users\U439644\AppData\Local\Temp\claude\C--Users-U439644-Projects-untitled\cf0d7665-e81a-4537-9c1c-f20461fb1e11\scratchpad\m0-hook\bench-rel-nohook-3\grid-orbit-20261019T060634Z.txt and .csv
+=== run 3 exit 0
+total 1280
+drwxr-xr-x 1 U439644 1049089      0 Oct 19 08:06 .
+drwxr-xr-x 1 U439644 1049089      0 Oct 19 08:06 ..
+-rw-r--r-- 1 U439644 1049089 416189 Oct 19 08:06 grid-orbit-20261019T060620Z.csv
+-rw-r--r-- 1 U439644 1049089    702 Oct 19 08:06 grid-orbit-20261019T060620Z.txt
+-rw-r--r-- 1 U439644 1049089 417354 Oct 19 08:06 grid-orbit-20261019T060627Z.csv
+-rw-r--r-- 1 U439644 1049089    702 Oct 19 08:06 grid-orbit-20261019T060627Z.txt
+-rw-r--r-- 1 U439644 1049089 416490 Oct 19 08:06 grid-orbit-20261019T060634Z.csv
+-rw-r--r-- 1 U439644 1049089    702 Oct 19 08:06 grid-orbit-20261019T060634Z.txt

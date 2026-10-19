@@ -1,0 +1,25 @@
+files: 586 records, 51 other files ['15156-1792403393196864400.shaders.txt', '1532-1792403412287130900.shaders.txt', '15540-1792403342388844500.shaders.txt', '17556-1792403342185886600.shaders.txt', '19832-1792403381071627100.shaders.txt']
+processes: 586
+the writes of one process, in order:
+     586  normally
+processes that wrote 'by a crash' and then 'normally': 0
+exception codes of the crash handler's writes: {}
+records without their end line: 0 []
+write_us: to the end of WriteFile: 586 writes timed, 0 without the line
+  longest 320,346 us; 99th percentile 7,291 us; 99.9th 224,635 us; median 2,292 us; mean 3,455 us
+  ended normally: 586 writes, longest 320,346 us, 99th percentile 7,291 us, median 2,292 us
+  the five longest:
+    320,346 us  test_time_ut1.exe  test ''  11708-1792403339268391500-1.functions.txt
+    224,635 us  test_orbit_elements.exe  test ''  6336-1792403339368489200-1.functions.txt
+    37,742 us  test_orbit_scales.exe  test ''  33312-1792403370823127000-1.functions.txt
+    36,568 us  test_image_files.exe  test ''  27076-1792403354586640700-1.functions.txt
+    10,230 us  test_radiometry.exe  test 'abort_listener'  40912-1792403335085124400-1.functions.txt
+duration_us: until the file is closed, the turn held: 586 writes timed, 0 without the line
+  longest 321,838 us; 99th percentile 8,732 us; 99.9th 225,940 us; median 3,014 us; mean 4,190 us
+  ended normally: 586 writes, longest 321,838 us, 99th percentile 8,732 us, median 3,014 us
+  the five longest:
+    321,838 us  test_time_ut1.exe  test ''  11708-1792403339268391500-1.functions.txt
+    225,940 us  test_orbit_elements.exe  test ''  6336-1792403339368489200-1.functions.txt
+    38,707 us  test_orbit_scales.exe  test ''  33312-1792403370823127000-1.functions.txt
+    37,560 us  test_image_files.exe  test ''  27076-1792403354586640700-1.functions.txt
+    10,874 us  test_radiometry.exe  test 'abort_listener'  40912-1792403335085124400-1.functions.txt

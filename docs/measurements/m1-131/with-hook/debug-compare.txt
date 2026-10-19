@@ -1,0 +1,43 @@
+                                              debug-nohook-1  debug-nohook-2  debug-nohook-3    debug-hook-1    debug-hook-2    debug-hook-3
+build wall clock                                       259.1           351.4           286.3           328.6           314.7           307.6
+check wall clock                                       573.5           787.2           634.5           761.5           811.4           824.2
+hooked (90)                                           1376.4          1868.2          1392.3          1616.9          1546.8          1522.8
+own, never hooked (2)                                    9.2            10.2             9.5            11.0            10.7            11.1
+only with the hook (0)                                   0.0             0.0             0.0             nan             nan             nan
+header self-checks (61)                                584.9           899.2           686.1           824.2           740.1           678.2
+someone else's, top-level (252)                        279.7           312.3           322.0           300.2           401.3           295.2
+dependencies (489)                                    1355.6          1757.8          1727.8          1813.0          1698.5          1938.2
+links: other programs (54)                             245.6           206.8           191.7           383.9           291.9           260.5
+links: recorder self-test programs (0)                   0.0             0.0             0.0             nan             nan             nan
+static libraries (13)                                   39.4            52.8            48.8            48.3            48.3            52.9
+objects elsewhere (0)                                    0.0             0.0             0.0             0.0             0.0             0.0
+other (14)                                              19.6            35.9            29.0            29.8            24.4            31.1
+hooked / dependencies                                  1.015           1.063           0.806           0.892           0.911           0.786
+every compile but hooked                              2229.3          2979.6          2745.3          2979.3          2875.1          2953.0
+other compiles, same objects                          2229.3          2979.6          2745.3          2948.4          2850.6          2922.7
+hooked / other compiles                                0.617           0.627           0.507           0.548           0.543           0.521
+links: all programs                                    245.6           206.8           191.7           394.6           298.7           266.7
+check: lint summed                                    2419.3          4071.8          3343.9          3156.5          4048.9          3926.1
+check: the test run's step                             310.9           337.9           270.4           414.0           346.6           393.0
+only with the hook (6)                                   nan             nan             nan            30.9            24.5            30.3
+links: recorder self-test programs (3)                   nan             nan             nan            10.6             6.8             6.2
+
+                                             without: mean      sd      low     high  with: mean      sd      low     high  difference       %
+build wall clock                                     298.9    47.4    259.1    351.4       317.0    10.7    307.6    328.6        18.0     6.0
+check wall clock                                     665.1   110.1    573.5    787.2       799.0    33.1    761.5    824.2       134.0    20.1
+hooked (90)                                         1545.7   279.4   1376.4   1868.2      1562.2    48.9   1522.8   1616.9        16.5     1.1
+own, never hooked (2)                                  9.6     0.5      9.2     10.2        10.9     0.2     10.7     11.1         1.3    13.6
+header self-checks (61)                              723.4   160.5    584.9    899.2       747.5    73.3    678.2    824.2        24.1     3.3
+someone else's, top-level (252)                      304.7    22.1    279.7    322.0       332.3    59.9    295.2    401.3        27.6     9.1
+dependencies (489)                                  1613.7   224.1   1355.6   1757.8      1816.6   119.9   1698.5   1938.2       202.8    12.6
+links: other programs (54)                           214.7    27.8    191.7    245.6       312.1    64.1    260.5    383.9        97.4    45.4
+static libraries (13)                                 47.0     6.9     39.4     52.8        49.9     2.6     48.3     52.9         2.9     6.1
+objects elsewhere (0)                                  0.0     0.0      0.0      0.0         0.0     0.0      0.0      0.0         0.0     nan
+other (14)                                            28.2     8.2     19.6     35.9        28.5     3.5     24.4     31.1         0.3     1.0
+hooked / dependencies                                0.961   0.137    0.806    1.063       0.863   0.067    0.786    0.911      -0.099   -10.3
+every compile but hooked                            2651.4   383.9   2229.3   2979.6      2935.8    54.2   2875.1   2979.3       284.4    10.7
+other compiles, same objects                        2651.4   383.9   2229.3   2979.6      2907.2    50.7   2850.6   2948.4       255.8     9.6
+hooked / other compiles                              0.584   0.067    0.507    0.627       0.537   0.014    0.521    0.548      -0.047    -8.0
+links: all programs                                  214.7    27.8    191.7    245.6       320.0    66.5    266.7    394.6       105.3    49.0
+check: lint summed                                  3278.3   828.2   2419.3   4071.8      3710.5   483.7   3156.5   4048.9       432.1    13.2
+check: the test run's step                           306.4    34.0    270.4    337.9       384.5    34.5    346.6    414.0        78.1    25.5

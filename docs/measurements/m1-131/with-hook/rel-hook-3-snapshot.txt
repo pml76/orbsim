@@ -1,0 +1,7 @@
+tree C:\Users\U439644\Projects\untitled\build\relwithdebinfo: 12,818 files in 1,587 folders, listed in 0.43 s
+copied by a pass: 6,424 files, 1,580,722,728 bytes (1,507.5 MiB, 1.472 GiB)
+listed, not copied (_deps/*-src): 6,394 files, 417,335,047 bytes (398.0 MiB, 0.389 GiB)
+the largest top-level parts of the copy: (top-level files) 830 MiB; probes 282 MiB; _deps/sdl3-build 55 MiB; probes-golden 42 MiB; _deps/catch2-build 39 MiB; .cache 33 MiB; _deps/openexr-build 16 MiB; CMakeFiles/orbsim.dir 15 MiB
+take_snapshot: 6.2 s (it lists the tree, copies, lists the copy and compares, writes sources.json and listing.json)
+the snapshot on disk: 6,426 files, 1,581,922,542 bytes (1,508.6 MiB, 1.473 GiB); listing.json 1,199,812 bytes
+shutil.rmtree of the snapshot: 3.3 s; still there afterwards: False

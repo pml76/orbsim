@@ -1,0 +1,22 @@
+check               tests  summed s  not passed  common tests  summed s
+rel-nohook-1          566     355.9           7           563     348.0
+rel-nohook-2          563     328.9           7           563     328.9
+rel-nohook-3          563     434.1           7           563     434.1
+rel-hook-1            564     380.6           7           563     377.7
+rel-hook-2            564     420.4           7           563     417.4
+rel-hook-3            564     357.3           7           563     355.5
+common tests summed: without 370.3 s (lowest 328.9, highest 434.1), with 383.5 s (lowest 355.5, highest 417.4); difference +13.2 s, +3.6 %
+ran only with the hook: ['coverage_recorder']
+ran only without the hook: ['test_cases', 'test_reads', 'tonemap_constants']
+the ten tests whose average time grew the most (without -> with, s):
+    +4.07    19.48 ->   23.55  float_equal_guard
+    +3.31    27.27 ->   30.59  mutants_due
+    +3.28    10.82 ->   14.10  mutants_due_fingerprints
+    +2.52     1.87 ->    4.39  coverage_hook
+    +2.19    13.01 ->   15.20  mutants_due_probe_shaders
+    +1.93     3.53 ->    5.46  shader_record
+    +0.59     2.27 ->    2.86  probe_grid-jitter-3
+    +0.55     3.35 ->    3.89  orbsim_smoke_bare
+    +0.47     2.36 ->    2.83  probe_grid-jitter-4
+    +0.47     1.64 ->    2.11  probe_lambert-exposure
+common tests whose average grew: 277, fell or stayed: 286

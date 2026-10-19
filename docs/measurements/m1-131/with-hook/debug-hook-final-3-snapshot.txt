@@ -1,0 +1,7 @@
+tree C:\Users\U439644\Projects\untitled\build\debug: 9,947 files in 1,585 folders, listed in 0.64 s
+copied by a pass: 3,553 files, 2,053,608,118 bytes (1,958.5 MiB, 1.913 GiB)
+listed, not copied (_deps/*-src): 6,394 files, 417,340,769 bytes (398.0 MiB, 0.389 GiB)
+the largest top-level parts of the copy: (top-level files) 1,185 MiB; probes 282 MiB; _deps/sdl3-build 74 MiB; _deps/catch2-build 64 MiB; probes-golden 42 MiB; CMakeFiles/orbsim.dir 26 MiB; _deps/openexr-build 22 MiB; CMakeFiles/orbsim_view.dir 17 MiB
+take_snapshot: 19.0 s (it lists the tree, copies, lists the copy and compares, writes sources.json and listing.json)
+the snapshot on disk: 3,555 files, 2,054,542,570 bytes (1,959.4 MiB, 1.913 GiB); listing.json 934,450 bytes
+shutil.rmtree of the snapshot: 5.5 s; still there afterwards: False

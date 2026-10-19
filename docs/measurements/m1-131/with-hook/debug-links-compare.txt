@@ -1,0 +1,9 @@
+programs linked in all six rebuilds: 54
+link time, average over the programs: without 3.98 s, with 5.78 s
+difference per program: median +0.83 s, average +1.80 s, lowest -1.56 s, highest +8.32 s; grew for 39 of 54
+the five largest differences (without -> with, s):
+   +8.32    2.52 ->  10.84  test_lambert.exe
+   +8.11    3.03 ->  11.14  test_orbit_scales.exe
+   +8.07    2.92 ->  10.99  test_double_double.exe
+   +6.66    3.20 ->   9.86  test_time.exe
+   +6.61    2.76 ->   9.37  test_math.exe

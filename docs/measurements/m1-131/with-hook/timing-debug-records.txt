@@ -1,0 +1,28 @@
+files: 586 records, 51 other files ['11552-1792403789462609100.shaders.txt', '11616-1792403640555487100.shaders.txt', '11616-1792403672647065600.shaders.txt', '12004-1792403604933924400.shaders.txt', '13752-1792403656721567900.shaders.txt']
+processes: 586
+the writes of one process, in order:
+     580  normally
+       6  by abort
+processes that wrote 'by a crash' and then 'normally': 0
+exception codes of the crash handler's writes: {}
+records without their end line: 0 []
+write_us: to the end of WriteFile: 586 writes timed, 0 without the line
+  longest 27,485 us; 99th percentile 12,482 us; 99.9th 22,177 us; median 2,894 us; mean 3,480 us
+  ended by abort: 6 writes, longest 4,637 us, 99th percentile 4,637 us, median 2,925 us
+  ended normally: 580 writes, longest 27,485 us, 99th percentile 12,482 us, median 2,894 us
+  the five longest:
+    27,485 us  orbsim.exe  test 'probe_grid-jitter-1km-0'  43472-1792403610030027800-1.functions.txt
+    22,177 us  orbsim.exe  test 'probe_clear'  3892-1792403566839031900-1.functions.txt
+    21,319 us  orbsim.exe  test 'probe_grid-jitter-1km-1'  47868-1792403595426342000-1.functions.txt
+    19,866 us  orbsim.exe  test 'probe_clear_determinism'  21016-1792403581374900000-1.functions.txt
+    17,580 us  orbsim.exe  test 'probe_grid-jitter-1km-4'  37736-1792403621952478400-1.functions.txt
+duration_us: until the file is closed, the turn held: 586 writes timed, 0 without the line
+  longest 28,419 us; 99th percentile 12,693 us; 99.9th 23,303 us; median 3,111 us; mean 3,705 us
+  ended by abort: 6 writes, longest 5,764 us, 99th percentile 5,764 us, median 3,632 us
+  ended normally: 580 writes, longest 28,419 us, 99th percentile 12,693 us, median 3,102 us
+  the five longest:
+    28,419 us  orbsim.exe  test 'probe_grid-jitter-1km-0'  43472-1792403610030027800-1.functions.txt
+    23,303 us  orbsim.exe  test 'probe_clear'  3892-1792403566839031900-1.functions.txt
+    22,460 us  orbsim.exe  test 'probe_grid-jitter-1km-1'  47868-1792403595426342000-1.functions.txt
+    21,216 us  orbsim.exe  test 'probe_clear_determinism'  21016-1792403581374900000-1.functions.txt
+    18,518 us  orbsim.exe  test 'probe_grid-jitter-1km-4'  37736-1792403621952478400-1.functions.txt

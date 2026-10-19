@@ -1,0 +1,97 @@
+diff --git a/tests/CoverageRecorder.cpp b/tests/CoverageRecorder.cpp
+index 95ad3ac..2c00751 100644
+--- a/tests/CoverageRecorder.cpp
++++ b/tests/CoverageRecorder.cpp
+@@ -202,6 +202,10 @@ struct Seen {
+     bool tableMatchesMarkers = false;
+     // The thread writing a record now, or none.
+     std::atomic<std::thread::id> writer;
++    // TEMPORARY (M1-131 item 4 measurement): the writes so far, and the code
++    // of the last exception the crash handler acted on.
++    std::atomic<unsigned> writes{0};
++    std::atomic<DWORD> crashCode{0};
+ };
+ 
+ Seen& seen() {
+@@ -282,27 +286,60 @@ void appendLine(std::string& text, std::string_view key, std::wstring_view value
+ // The record, if one was asked for. Called only by the writer whose turn it
+ // is, so the flags are read inside that turn.
+ void writeRecordFile(std::string_view how) {
++    // TEMPORARY (M1-131 item 4 measurement): the write's start.
++    const auto began = std::chrono::steady_clock::now();
+     const std::wstring folder = environmentValue(L"ORBSIM_COVERAGE_RECORDS");
+     if (folder.empty()) return;
+-    const Seen& state = seen();
++    Seen& state = seen();
+     const auto started =
+         std::chrono::duration_cast<std::chrono::nanoseconds>(state.started.time_since_epoch());
++    // TEMPORARY: each write in a file of its own, numbered.
++    const unsigned number = state.writes.fetch_add(1U) + 1U;
+     const std::filesystem::path file =
+         std::filesystem::path(folder) /
+-        (std::to_string(_getpid()) + "-" + std::to_string(started.count()) + ".functions.txt");
+-    const UniqueFile out = openRecord(file);
+-    if (!out) return;
+-    std::string text;
+-    appendLine(text, "program", programPath());
+-    appendLine(text, "command", GetCommandLineW());
+-    appendLine(text, "test", environmentValue(L"ORBSIM_TEST_NAME"));
+-    text += recordBody(state, how);
+-    // One call, which a file on disk takes whole or cuts short; cut short, the
+-    // record has no `end` line and counts as none (decision 637).
+-    if (!std::in_range<DWORD>(text.size())) return;
++        (std::to_string(_getpid()) + "-" + std::to_string(started.count()) + "-" +
++         std::to_string(number) + ".functions.txt");
++    std::chrono::steady_clock::time_point wrote;
++    {
++        const UniqueFile out = openRecord(file);
++        if (!out) return;
++        std::string text;
++        appendLine(text, "program", programPath());
++        appendLine(text, "command", GetCommandLineW());
++        appendLine(text, "test", environmentValue(L"ORBSIM_TEST_NAME"));
++        text += recordBody(state, how);
++        // TEMPORARY: the code of the exception the crash handler acted on.
++        if (how == "by a crash") {
++            std::format_to(std::back_inserter(text), "code {:#x}\n", state.crashCode.load());
++        }
++        // One call, which a file on disk takes whole or cuts short; cut short, the
++        // record has no `end` line and counts as none (decision 637).
++        if (!std::in_range<DWORD>(text.size())) return;
++        DWORD written = 0;
++        static_cast<void>(
++            WriteFile(out.get(), text.data(), static_cast<DWORD>(text.size()), &written, nullptr));
++        wrote = std::chrono::steady_clock::now();
++    }
++    // TEMPORARY: the file is closed; the two times go after `end`, through the
++    // file opened again.
++    const auto closed = std::chrono::steady_clock::now();
++    auto* const opened = CreateFileW(file.c_str(),
++                                     FILE_APPEND_DATA,
++                                     FILE_SHARE_READ | FILE_SHARE_WRITE,
++                                     nullptr,
++                                     OPEN_EXISTING,
++                                     FILE_ATTRIBUTE_NORMAL,
++                                     nullptr);
++    const UniqueFile again{opened == INVALID_HANDLE_VALUE ? nullptr : opened};
++    if (!again) return;
++    const auto micro = [began](std::chrono::steady_clock::time_point at) {
++        return std::chrono::duration_cast<std::chrono::microseconds>(at - began).count();
++    };
++    const std::string times =
++        std::format("write_us {}\nduration_us {}\n", micro(wrote), micro(closed));
+     DWORD written = 0;
+     static_cast<void>(
+-        WriteFile(out.get(), text.data(), static_cast<DWORD>(text.size()), &written, nullptr));
++        WriteFile(again.get(), times.data(), static_cast<DWORD>(times.size()), &written, nullptr));
+ }
+ 
+ void writeRecord(std::string_view how) noexcept {
+@@ -348,6 +385,7 @@ LONG WINAPI writeOnCrash(EXCEPTION_POINTERS* crash) {
+     const DWORD code = crash->ExceptionRecord->ExceptionCode;
+     if (code == EXCEPTION_ACCESS_VIOLATION || code == EXCEPTION_ILLEGAL_INSTRUCTION ||
+         code == EXCEPTION_INT_DIVIDE_BY_ZERO || code == EXCEPTION_PRIV_INSTRUCTION) {
++        seen().crashCode.store(code); // TEMPORARY (M1-131 item 4 measurement)
+         writeRecord("by a crash");
+     }
+     return EXCEPTION_CONTINUE_SEARCH;

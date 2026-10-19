@@ -1,0 +1,9 @@
+maps: 57, 119,553,475 bytes (114.0 MiB, 119.6 MB)
+beside a program of the same name: 57; older than their program by over 60 s: 0
+  test_orbit_scales.map: 3,526,227 bytes (3.4 MiB)
+  test_image_files.map: 3,292,949 bytes (3.1 MiB)
+  test_orbit.map: 3,164,702 bytes (3.0 MiB)
+  test_fixture_file.map: 3,040,734 bytes (2.9 MiB)
+  test_planetary_grid.map: 2,909,384 bytes (2.8 MiB)
+maps not beside a program: 0 []
+programs at the top: 58; sizes and hashes in rel-hook-3-maps.json

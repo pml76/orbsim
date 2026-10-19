@@ -1,0 +1,42 @@
+entries 1084, edges 985
+wall time from the log: 263.2 s (first start 38 ms, last end 263232 ms)
+
+kind                                                                  edges   summed s
+archive of a static library (.lib): a dependency's (_deps/)               6       16.2
+archive of a static library (.lib): top-level                             7       16.5
+compile: a dependency's (_deps/)                                        492     1398.4
+compile: header self-checks (generated)                                  61      579.2
+compile: someone else's code in a top-level target                      252      215.7
+compile: the project's own (src/, tests/)                                98     1504.2
+link of a DLL: a dependency's (_deps/)                                    1        1.2
+link of a program (.exe): top-level                                      57      151.0
+other (custom commands, CMake re-run, run-tests)                         11       11.1
+all edges                                                               985     3893.5
+all compiles                                                            903     3697.5
+
+compiles by target, the 15 largest summed times:
+  _deps/catch2-build                             108     546.3 s   a dependency's (_deps/)
+  _deps/sdl3-build                               269     472.5 s   a dependency's (_deps/)
+  _deps/openexr-build                            109     347.5 s   a dependency's (_deps/)
+  orbsim_view                                     15     320.7 s   the project's own (src/, tests/)
+  orbsim                                          10     274.3 s   the project's own (src/, tests/)
+  orbsim_view_header_selfcheck                    29     258.8 s   header self-checks (generated)
+  orbsim_erfa                                    249     200.6 s   someone else's code in a top-level target
+  orbsim_render_header_selfcheck                  12     140.2 s   header self-checks (generated)
+  orbsim_core                                      6     104.1 s   the project's own (src/, tests/)
+  orbsim_header_selfcheck                         12     104.1 s   header self-checks (generated)
+  orbsim_test_support                              4      80.4 s   the project's own (src/, tests/)
+  orbsim_test_header_selfcheck                     8      76.1 s   header self-checks (generated)
+  test_orbit_scales                                1      28.2 s   the project's own (src/, tests/)
+  test_time_leap                                   1      27.1 s   the project's own (src/, tests/)
+  test_orbit                                       1      26.6 s   the project's own (src/, tests/)
+
+longest in archive of a static library (.lib): a dependency's (_deps/): 3.7 s _deps/imath-build/src/Imath/Imath-3_2.lib; 3.2 s _deps/catch2-build/src/Catch2Main.lib; 3.1 s _deps/openexr-build/src/lib/OpenEXRCore/OpenEXRCore-3_5.lib
+longest in archive of a static library (.lib): top-level: 3.3 s orbsim_erfa.lib; 3.1 s orbsim_lodepng.lib; 3.0 s orbsim_stb_image.lib
+longest in compile: a dependency's (_deps/): 15.6 s _deps/sdl3-build/CMakeFiles/SDL3-shared.dir/src/video/yuv2rgb/yuv_rgb_std.c.obj; 15.3 s _deps/vk_bootstrap-build/CMakeFiles/vk-bootstrap.dir/src/VkBootstrap.cpp.obj; 12.2 s _deps/catch2-build/src/CMakeFiles/Catch2.dir/catch2/internal/catch_commandline.cpp.obj
+longest in compile: header self-checks (generated): 20.7 s CMakeFiles/orbsim_render_header_selfcheck.dir/selfcheck/orbsim_render_header_selfcheck_render_Probes_hpp.cpp.obj; 20.1 s CMakeFiles/orbsim_render_header_selfcheck.dir/selfcheck/orbsim_render_header_selfcheck_render_ResolvePass_hpp.cpp.obj; 18.9 s CMakeFiles/orbsim_render_header_selfcheck.dir/selfcheck/orbsim_render_header_selfcheck_app_InteractiveView_hpp.cpp.obj
+longest in compile: someone else's code in a top-level target: 7.8 s CMakeFiles/t_erfa_c.dir/_deps/erfa-src/src/t_erfa_c.c.obj; 7.0 s CMakeFiles/orbsim_lodepng.dir/_deps/lodepng-src/lodepng.cpp.obj; 1.8 s CMakeFiles/orbsim_erfa.dir/_deps/erfa-src/src/atio13.c.obj
+longest in compile: the project's own (src/, tests/): 38.5 s CMakeFiles/orbsim.dir/src/app/ProbeMode.cpp.obj; 37.8 s CMakeFiles/orbsim.dir/src/app/main.cpp.obj; 35.7 s CMakeFiles/orbsim.dir/src/app/BenchMode.cpp.obj
+longest in link of a DLL: a dependency's (_deps/): 1.2 s _deps/sdl3-build/SDL3.dll
+longest in link of a program (.exe): top-level: 6.0 s test_exposure.exe; 5.7 s test_half.exe; 5.5 s test_earth_orientation.exe
+longest in other (custom commands, CMake re-run, run-tests): 1.8 s shaders/body.frag.spv; 1.3 s shaders/tonemap.frag.spv; 1.2 s shaders/probe_port.frag.spv

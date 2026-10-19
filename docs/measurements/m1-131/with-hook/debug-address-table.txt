@@ -1,0 +1,72 @@
+angle_between_zero_probe.exe: base 0x140000000 (map 0x140000000), 185 entries, 185 flags (.SCOV 194 bytes), markers 0/0, notes {1: 185}; one function 185, none 0, several 0; addresses twice in the table 0
+assertion_message_probe.exe: base 0x140000000 (map 0x140000000), 147 entries, 147 flags (.SCOV 156 bytes), markers 0/0, notes {1: 147}; one function 147, none 0, several 0; addresses twice in the table 0
+count_wraparound_addition.exe: base 0x140000000 (map 0x140000000), 131 entries, 131 flags (.SCOV 140 bytes), markers 0/0, notes {1: 131}; one function 131, none 0, several 0; addresses twice in the table 0
+count_wraparound_multiplication.exe: base 0x140000000 (map 0x140000000), 131 entries, 131 flags (.SCOV 140 bytes), markers 0/0, notes {1: 131}; one function 131, none 0, several 0; addresses twice in the table 0
+count_wraparound_subtraction.exe: base 0x140000000 (map 0x140000000), 131 entries, 131 flags (.SCOV 140 bytes), markers 0/0, notes {1: 131}; one function 131, none 0, several 0; addresses twice in the table 0
+coverage_recorder_probe.exe: base 0x140000000 (map 0x140000000), 286 entries, 286 flags (.SCOV 295 bytes), markers 0/0, notes {1: 286}; one function 283, none 0, several 3; addresses twice in the table 0
+coverage_recorder_unaligned.exe: base 0x140000000 (map 0x140000000), 286 entries, 287 flags (.SCOV 296 bytes), markers 0/0, notes {1: 286}; one function 283, none 0, several 3; addresses twice in the table 0
+make_broken_goldens.exe: base 0x140000000 (map 0x140000000), 1113 entries, 1113 flags (.SCOV 1122 bytes), markers 0/0, notes {1: 1113}; one function 1110, none 0, several 3; addresses twice in the table 0
+orbsim.exe: base 0x140000000 (map 0x140000000), 5938 entries, 5938 flags (.SCOV 5947 bytes), markers 0/0, notes {1: 5938}; one function 5926, none 0, several 12; addresses twice in the table 0
+reproducible_build_probe.exe: base 0x140000000 (map 0x140000000), 102 entries, 102 flags (.SCOV 111 bytes), markers 0/0, notes {1: 102}; one function 102, none 0, several 0; addresses twice in the table 0
+test_astro_time.exe: base 0x140000000 (map 0x140000000), 1263 entries, 1263 flags (.SCOV 1272 bytes), markers 0/0, notes {1: 1263}; one function 1248, none 0, several 15; addresses twice in the table 0
+test_benchmark_path.exe: base 0x140000000 (map 0x140000000), 800 entries, 800 flags (.SCOV 809 bytes), markers 0/0, notes {1: 800}; one function 782, none 0, several 18; addresses twice in the table 0
+test_camera.exe: base 0x140000000 (map 0x140000000), 714 entries, 714 flags (.SCOV 723 bytes), markers 0/0, notes {1: 714}; one function 699, none 0, several 15; addresses twice in the table 0
+test_camera_controller.exe: base 0x140000000 (map 0x140000000), 802 entries, 802 flags (.SCOV 811 bytes), markers 0/0, notes {1: 802}; one function 787, none 0, several 15; addresses twice in the table 0
+test_camera_path.exe: base 0x140000000 (map 0x140000000), 797 entries, 797 flags (.SCOV 806 bytes), markers 0/0, notes {1: 797}; one function 782, none 0, several 15; addresses twice in the table 0
+test_double_double.exe: base 0x140000000 (map 0x140000000), 488 entries, 488 flags (.SCOV 497 bytes), markers 0/0, notes {1: 488}; one function 473, none 0, several 15; addresses twice in the table 0
+test_earth_orientation.exe: base 0x140000000 (map 0x140000000), 1403 entries, 1403 flags (.SCOV 1412 bytes), markers 0/0, notes {1: 1403}; one function 1384, none 0, several 19; addresses twice in the table 0
+test_exposure.exe: base 0x140000000 (map 0x140000000), 518 entries, 518 flags (.SCOV 527 bytes), markers 0/0, notes {1: 518}; one function 501, none 0, several 17; addresses twice in the table 0
+test_file_replace.exe: base 0x140000000 (map 0x140000000), 737 entries, 737 flags (.SCOV 746 bytes), markers 0/0, notes {1: 737}; one function 720, none 0, several 17; addresses twice in the table 0
+test_fixture_file.exe: base 0x140000000 (map 0x140000000), 1726 entries, 1726 flags (.SCOV 1735 bytes), markers 0/0, notes {1: 1726}; one function 1707, none 0, several 19; addresses twice in the table 0
+test_golden_path.exe: base 0x140000000 (map 0x140000000), 365 entries, 365 flags (.SCOV 374 bytes), markers 0/0, notes {1: 365}; one function 350, none 0, several 15; addresses twice in the table 0
+test_gpu_clock.exe: base 0x140000000 (map 0x140000000), 333 entries, 333 flags (.SCOV 342 bytes), markers 0/0, notes {1: 333}; one function 318, none 0, several 15; addresses twice in the table 0
+test_half.exe: base 0x140000000 (map 0x140000000), 301 entries, 301 flags (.SCOV 310 bytes), markers 0/0, notes {1: 301}; one function 286, none 0, several 15; addresses twice in the table 0
+test_hdr_dump.exe: base 0x140000000 (map 0x140000000), 877 entries, 877 flags (.SCOV 886 bytes), markers 0/0, notes {1: 877}; one function 862, none 0, several 15; addresses twice in the table 0
+test_image_compare.exe: base 0x140000000 (map 0x140000000), 721 entries, 721 flags (.SCOV 730 bytes), markers 0/0, notes {1: 721}; one function 706, none 0, several 15; addresses twice in the table 0
+test_image_files.exe: base 0x140000000 (map 0x140000000), 1669 entries, 1669 flags (.SCOV 1678 bytes), markers 0/0, notes {1: 1669}; one function 1651, none 0, several 18; addresses twice in the table 0
+test_lambert.exe: base 0x140000000 (map 0x140000000), 591 entries, 591 flags (.SCOV 600 bytes), markers 0/0, notes {1: 591}; one function 574, none 0, several 17; addresses twice in the table 0
+test_line_batch.exe: base 0x140000000 (map 0x140000000), 826 entries, 826 flags (.SCOV 835 bytes), markers 0/0, notes {1: 826}; one function 811, none 0, several 15; addresses twice in the table 0
+test_math.exe: base 0x140000000 (map 0x140000000), 789 entries, 789 flags (.SCOV 798 bytes), markers 0/0, notes {1: 789}; one function 772, none 0, several 17; addresses twice in the table 0
+test_orbit.exe: base 0x140000000 (map 0x140000000), 1191 entries, 1191 flags (.SCOV 1200 bytes), markers 0/0, notes {1: 1191}; one function 1165, none 0, several 26; addresses twice in the table 0
+test_orbit_elements.exe: base 0x140000000 (map 0x140000000), 1014 entries, 1014 flags (.SCOV 1023 bytes), markers 0/0, notes {1: 1014}; one function 993, none 0, several 21; addresses twice in the table 0
+test_orbit_scales.exe: base 0x140000000 (map 0x140000000), 1212 entries, 1212 flags (.SCOV 1221 bytes), markers 0/0, notes {1: 1212}; one function 1187, none 0, several 25; addresses twice in the table 0
+test_pipeline_inputs.exe: base 0x140000000 (map 0x140000000), 510 entries, 510 flags (.SCOV 519 bytes), markers 0/0, notes {1: 510}; one function 495, none 0, several 15; addresses twice in the table 0
+test_planetary_grid.exe: base 0x140000000 (map 0x140000000), 2133 entries, 2133 flags (.SCOV 2142 bytes), markers 0/0, notes {1: 2133}; one function 2118, none 0, several 15; addresses twice in the table 0
+test_probe_clear.exe: base 0x140000000 (map 0x140000000), 750 entries, 750 flags (.SCOV 759 bytes), markers 0/0, notes {1: 750}; one function 735, none 0, several 15; addresses twice in the table 0
+test_probe_grid.exe: base 0x140000000 (map 0x140000000), 1595 entries, 1595 flags (.SCOV 1604 bytes), markers 0/0, notes {1: 1595}; one function 1580, none 0, several 15; addresses twice in the table 0
+test_probe_lines.exe: base 0x140000000 (map 0x140000000), 747 entries, 747 flags (.SCOV 756 bytes), markers 0/0, notes {1: 747}; one function 732, none 0, several 15; addresses twice in the table 0
+test_probe_sidecar.exe: base 0x140000000 (map 0x140000000), 1371 entries, 1371 flags (.SCOV 1380 bytes), markers 0/0, notes {1: 1371}; one function 1353, none 0, several 18; addresses twice in the table 0
+test_projection.exe: base 0x140000000 (map 0x140000000), 533 entries, 533 flags (.SCOV 542 bytes), markers 0/0, notes {1: 533}; one function 518, none 0, several 15; addresses twice in the table 0
+test_radiometry.exe: base 0x140000000 (map 0x140000000), 1328 entries, 1328 flags (.SCOV 1337 bytes), markers 0/0, notes {1: 1328}; one function 1313, none 0, several 15; addresses twice in the table 0
+test_read_records.exe: base 0x140000000 (map 0x140000000), 764 entries, 764 flags (.SCOV 773 bytes), markers 0/0, notes {1: 764}; one function 745, none 0, several 19; addresses twice in the table 0
+test_render_quality.exe: base 0x140000000 (map 0x140000000), 542 entries, 542 flags (.SCOV 551 bytes), markers 0/0, notes {1: 542}; one function 525, none 0, several 17; addresses twice in the table 0
+test_srgb.exe: base 0x140000000 (map 0x140000000), 425 entries, 425 flags (.SCOV 434 bytes), markers 0/0, notes {1: 425}; one function 410, none 0, several 15; addresses twice in the table 0
+test_statistics.exe: base 0x140000000 (map 0x140000000), 762 entries, 762 flags (.SCOV 771 bytes), markers 0/0, notes {1: 762}; one function 745, none 0, several 17; addresses twice in the table 0
+test_sun.exe: base 0x140000000 (map 0x140000000), 1443 entries, 1443 flags (.SCOV 1452 bytes), markers 0/0, notes {1: 1443}; one function 1426, none 0, several 17; addresses twice in the table 0
+test_test_case.exe: base 0x140000000 (map 0x140000000), 517 entries, 517 flags (.SCOV 526 bytes), markers 0/0, notes {1: 517}; one function 502, none 0, several 15; addresses twice in the table 0
+test_time.exe: base 0x140000000 (map 0x140000000), 875 entries, 875 flags (.SCOV 884 bytes), markers 0/0, notes {1: 875}; one function 857, none 0, several 18; addresses twice in the table 0
+test_time_leap.exe: base 0x140000000 (map 0x140000000), 1165 entries, 1165 flags (.SCOV 1174 bytes), markers 0/0, notes {1: 1165}; one function 1148, none 0, several 17; addresses twice in the table 0
+test_time_ut1.exe: base 0x140000000 (map 0x140000000), 788 entries, 788 flags (.SCOV 797 bytes), markers 0/0, notes {1: 788}; one function 771, none 0, several 17; addresses twice in the table 0
+test_tonemap.exe: base 0x140000000 (map 0x140000000), 468 entries, 468 flags (.SCOV 477 bytes), markers 0/0, notes {1: 468}; one function 453, none 0, several 15; addresses twice in the table 0
+test_tonemap_port.exe: base 0x140000000 (map 0x140000000), 1412 entries, 1412 flags (.SCOV 1421 bytes), markers 0/0, notes {1: 1412}; one function 1395, none 0, several 17; addresses twice in the table 0
+test_units_validated.exe: base 0x140000000 (map 0x140000000), 485 entries, 485 flags (.SCOV 494 bytes), markers 0/0, notes {1: 485}; one function 468, none 0, several 17; addresses twice in the table 0
+test_view_math.exe: base 0x140000000 (map 0x140000000), 562 entries, 562 flags (.SCOV 571 bytes), markers 0/0, notes {1: 562}; one function 547, none 0, several 15; addresses twice in the table 0
+test_writer_turns.exe: base 0x140000000 (map 0x140000000), 414 entries, 414 flags (.SCOV 423 bytes), markers 0/0, notes {1: 414}; one function 399, none 0, several 15; addresses twice in the table 0
+
+programs carrying the hook: 54; without it: 4 ['count_wraparound_probe.exe', 'coverage_recorder_probe_plain.exe', 't_erfa_c.exe', 't_erfa_c_extra.exe']
+  entries: 47,176
+  one: 46,422
+  none: 0
+  several: 754
+  several: one destructor's two names (??_E, ??_G): 754
+  several: other: 0
+  twice: 0
+  flags differ from entries: 1
+  base differs from map: 0
+  markers not zero: 0
+  notes other than 1: 0
+  maps unreadable: 0
+examples, several:
+  coverage_recorder_probe.exe 0x33940: ??_G?$basic_filebuf@DU?$char_traits@D@std@@@std@@UEAAPEAXI@Z (coverage_recorder_probe.cpp.obj), ??_E?$basic_filebuf@DU?$char_traits@D@std@@@std@@UEAAPEAXI@Z (coverage_recorder_probe.cpp.obj)
+  coverage_recorder_probe.exe 0x34580: ??_G?$basic_ofstream@DU?$char_traits@D@std@@@std@@UEAAPEAXI@Z (coverage_recorder_probe.cpp.obj), ??_E?$basic_ofstream@DU?$char_traits@D@std@@@std@@UEAAPEAXI@Z (coverage_recorder_probe.cpp.obj)
+  coverage_recorder_probe.exe 0x34cf0: ??_G?$basic_ifstream@DU?$char_traits@D@std@@@std@@UEAAPEAXI@Z (coverage_recorder_probe.cpp.obj), ??_E?$basic_ifstream@DU?$char_traits@D@std@@@std@@UEAAPEAXI@Z (coverage_recorder_probe.cpp.obj)

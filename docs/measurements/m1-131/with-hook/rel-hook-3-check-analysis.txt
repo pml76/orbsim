@@ -1,0 +1,13 @@
+entries 213, edges 107
+wall time from the log: 457.3 s (first start 53 ms, last end 457318 ms)
+
+kind                                                                  edges   summed s
+lint (clang-tidy, --verify-config)                                      101     3418.6
+other (custom commands, CMake re-run, run-tests)                          6      104.4
+all edges                                                               107     3523.0
+all compiles                                                              0        0.0
+
+compiles by target, the 5 largest summed times:
+
+longest in lint (clang-tidy, --verify-config): 132.6 s lint/tests_test_orbit_scales.cpp.ok; 105.8 s lint/src_app_ProbeMode.cpp.ok; 101.3 s lint/tests_test_math.cpp.ok
+longest in other (custom commands, CMake re-run, run-tests): 94.2 s CMakeFiles/check; 5.3 s CMakeFiles/format-check; 2.2 s CMakeFiles/mutant-anchors

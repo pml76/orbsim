@@ -1,0 +1,10 @@
+tree C:\Users\U439644\Projects\untitled\build\relwithdebinfo, label rel-nohook-3
+[2026-10-19T07:52:53+02:00] clean: C:\Strawberry\c\bin\ninja.exe -C C:\Users\U439644\Projects\untitled\build\relwithdebinfo -t clean
+[2026-10-19T07:52:54+02:00] clean: exit 0, 0.5 s wall clock, output in rel-nohook-3-clean.log
+[2026-10-19T07:52:54+02:00] .ninja_log before-build: 168289 bytes, sha256 bf8b77f4999cbe29
+[2026-10-19T07:52:54+02:00] build: C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe --build C:\Users\U439644\Projects\untitled\build\relwithdebinfo
+[2026-10-19T07:57:21+02:00] build: exit 0, 266.5 s wall clock, output in rel-nohook-3-build.log
+[2026-10-19T07:57:21+02:00] .ninja_log after-build: 295464 bytes, sha256 019dfd7f5240bf99
+[2026-10-19T07:57:21+02:00] check: C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe --build C:\Users\U439644\Projects\untitled\build\relwithdebinfo --target check
+[2026-10-19T08:05:43+02:00] check: exit 0, 502.6 s wall clock, output in rel-nohook-3-check.log
+[2026-10-19T08:05:43+02:00] .ninja_log after-check: 317696 bytes, sha256 c9773a5f4bbba82f

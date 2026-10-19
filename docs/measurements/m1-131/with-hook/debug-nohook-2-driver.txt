@@ -1,0 +1,10 @@
+tree C:\Users\U439644\Projects\untitled\build\debug, label debug-nohook-2
+[2026-10-19T09:41:20+02:00] clean: C:\Strawberry\c\bin\ninja.exe -C C:\Users\U439644\Projects\untitled\build\debug -t clean
+[2026-10-19T09:41:21+02:00] clean: exit 0, 0.8 s wall clock, output in debug-nohook-2-clean.log
+[2026-10-19T09:41:21+02:00] .ninja_log before-build: 157589 bytes, sha256 056007268d4655fe
+[2026-10-19T09:41:21+02:00] build: C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe --build C:\Users\U439644\Projects\untitled\build\debug
+[2026-10-19T09:47:12+02:00] build: exit 0, 351.4 s wall clock, output in debug-nohook-2-build.log
+[2026-10-19T09:47:12+02:00] .ninja_log after-build: 284725 bytes, sha256 4b7bbfcde1952995
+[2026-10-19T09:47:12+02:00] check: C:\Users\U439644\AppData\Local\Programs\CLion\bin\cmake\win\x64\bin\cmake.exe --build C:\Users\U439644\Projects\untitled\build\debug --target check
+[2026-10-19T10:00:19+02:00] check: exit 0, 787.2 s wall clock, output in debug-nohook-2-check.log
+[2026-10-19T10:00:19+02:00] .ninja_log after-check: 306052 bytes, sha256 9bf9b634b465d487

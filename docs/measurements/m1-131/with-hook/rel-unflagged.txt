@@ -1,0 +1,49 @@
+objects carrying the hook: 91
+  function-type symbols (places): 23,887
+  funclets: 14,624
+  funclets with an entry: 0
+  the hook's own start-up functions: 91
+  the hook's own start-up functions with an entry: 0
+  functions: 9,172
+  table entries: 8,790
+  entries pointing at a function: 8,790
+  entries pointing elsewhere: 0
+  relocations other than ADDR64: 0
+  functions without a flag: 382
+  share of functions without a flag: 4.16 %
+objects compiled with the hook that hold no table: 2
+  src/core/contract.cpp: 0 functions, the table asked for
+  tests/coverage_recorder_unaligned.cpp: 1 functions, the table not asked for (no pc-table)
+  without a flag and naming the project's namespace orb:: anywhere: 48
+without a flag, by the outermost scope of the name:
+  std: 356
+  Catch: 22
+  (no calling convention) : 4
+without a flag, the most frequent last parts of the name:
+  vector: 87
+  _Throw_bad_array_new_length: 53
+  _Xlen_string: 47
+  _Throw_system_error: 31
+  _Throw_system_error_from_std_win_error: 31
+  _Throw_bad_cast: 29
+  _Throw_format_error: 25
+  array: 21
+  _String_val: 14
+  expected: 13
+  MatcherBase: 11
+  `scalar deleting dtor': 6
+  Unreachable: 5
+  : 4
+  basic_string_view: 2
+  _Throw_tree_length_error: 2
+  _Throw_bad_variant_access: 1
+objects with the most functions without a flag:
+  src/render/vulkancontext.cpp: 19 of 200
+  tests/test_fixture_file.cpp: 18 of 304
+  tests/test_image_files.cpp: 15 of 208
+  tests/testreads.cpp: 13 of 139
+  src/app/probemode.cpp: 12 of 344
+  tests/make_broken_goldens.cpp: 12 of 235
+  src/view/imagefiles.cpp: 11 of 179
+  tests/fixturefile.cpp: 10 of 227
+the full list: rel-unflagged-list.txt

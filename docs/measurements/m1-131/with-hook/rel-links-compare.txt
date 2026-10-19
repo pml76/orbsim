@@ -1,0 +1,9 @@
+programs linked in all six rebuilds: 54
+link time, average over the programs: without 2.39 s, with 2.66 s
+difference per program: median +0.01 s, average +0.27 s, lowest -1.29 s, highest +2.35 s; grew for 27 of 54
+the five largest differences (without -> with, s):
+   +2.35    1.78 ->   4.13  test_read_records.exe
+   +2.34    1.95 ->   4.28  test_orbit_scales.exe
+   +2.25    1.96 ->   4.21  test_sun.exe
+   +2.22    1.86 ->   4.07  test_earth_orientation.exe
+   +2.07    1.60 ->   3.66  test_units_validated.exe

@@ -1,0 +1,9 @@
+maps: 57, 293,372,196 bytes (279.8 MiB, 293.4 MB)
+beside a program of the same name: 57; older than their program by over 60 s: 0
+  test_planetary_grid.map: 7,542,719 bytes (7.2 MiB)
+  orbsim.map: 7,351,676 bytes (7.0 MiB)
+  test_image_files.map: 7,319,938 bytes (7.0 MiB)
+  test_orbit_scales.map: 7,188,951 bytes (6.9 MiB)
+  test_orbit.map: 6,950,768 bytes (6.6 MiB)
+maps not beside a program: 0 []
+programs at the top: 58; sizes and hashes in debug-hook-1-maps.json
