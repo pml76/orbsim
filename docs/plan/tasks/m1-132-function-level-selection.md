@@ -9,6 +9,8 @@ M1-129 as its item 9's step D by decision 596. And 695, ruled 2026-10-19; and
 start-up check, the tests that run through a script, records that match no
 test, the paths of the libraries, the rule that skips a test, a test that
 enters other functions in a different run, ADR 0028, and the smaller choices.
+And 710 and 711, ruled 2026-10-20 during step 1: the five points of the
+readers, and the eight points of the digests.
 Reads what [M1-131](m1-131-coverage-hook.md) records; proved by
 [M1-133](m1-133-selection-proved.md).
 
@@ -32,9 +34,15 @@ data that points at other data (545).
    digests (545), each object's summary kept in the build tree under the
    file's hash if reading them all takes more than a few seconds (567) --
    more than 3 s for one tree, in `<tree>/run-tests/objects/`, and the driver
-   deletes the summaries that the last run did not use (709). And a reader of
-   the module list in a program's .pdb file, which gives the path of each
-   library that the program links (705).
+   deletes the summaries that the last run did not use (709) -- kept in the
+   two trees, and only the digests that the stored records use computed
+   (711). And a reader of the module list in a program's .pdb file, which
+   gives the path of each library that the program links (705); each member
+   that the map names must be a module of its library there (710). The key
+   of an object is its path relative to the tree --
+   `orbsim_core_d.lib(Orbit.cpp.obj)` for a member of a library -- and its
+   full path when it is not in the tree (711). A weak external that no
+   object defines is followed to its default (711).
 2. **Each recorded address turned into a function through the linker's map**
    (582, amending 560), never through the debug information's names; checked
    against the procedure ranges over a full run before it is relied on (560)
@@ -53,7 +61,15 @@ data that points at other data (545).
    - A module is known to carry the hook by its content: it holds the hook's
      address table (584).
    - A function in such a module that carries no flag counts as entered by
-     every test of every program that links it (586).
+     every test of every program that links it (586) -- judged by code
+     section, so that a funclet in a section with an entry in the hook's
+     table does not count alone (711). The hook's own start-up function,
+     `sancov.module_ctor_bool_flag`, is left out with the other start-up
+     functions (711).
+   - A member of a library with the hook that the reader cannot read makes
+     `check` fail (710); the digests get the keys of the objects without the
+     hook, and a name that the map gives to an object in none of the two
+     sets is a problem (711).
    - **No start-up function in an object compiled from `src/`** (624):
      `check` fails, naming the object, where one carries a start-up entry, so
      that the rule above stays safe; an exception to `-Wglobal-constructors`
@@ -85,6 +101,11 @@ data that points at other data (545).
      names, and each test holds numbers into it; an external function is
      known by its decorated name, an internal one by its object's path and
      its name (709).
+   - **The linker directives** (`.drectve`) of the program's objects with the
+     hook, all of them, `/INCLUDE` included, are a part of the program's
+     fingerprint (711): a changed `/alternatename` changes the symbol that a
+     name resolves to. What it costs: a test added to a program makes each
+     test of that program run again.
 4. **Which test a record belongs to** (564): a test starting a program of the
    tree directly, by its command line; a test defined in `CMakeLists.txt`, by
    `ORBSIM_TEST_NAME`, every record carrying it combined. **The records give
@@ -138,7 +159,11 @@ that does not come from the .pdb file, or two objects with one name, passed
 (705); a test skipped when
 a part other than the program changed (706). The file is m1-132.json in
 scripts/mutants/, run in `build/debug`; a mutant that only RelWithDebInfo
-catches goes into a second file (709).
+catches goes into a second file (709). And for decisions 710 and 711: a
+member that the .pdb file does not hold passed; a weak default not followed;
+an object in none of the two sets passed; a funclet counted alone; a start-up
+function counted as without a flag; `/INCLUDE` left out of the directives;
+the digests on request computing each section.
 
 ## Done when
 
