@@ -45,6 +45,12 @@ recorded; confirm that, do not record it again.** In practice:
   and say what was checked.
 - **During the work**, anything unforeseen goes back to the owner, with its
   measurement, before it is acted on.
+- **The method of work** (decision 701): give each long step of the work to
+  one helper at a time, and do not run two builds at the same time. Keep
+  only the helpers' reports, and check each claim in them by measurement.
+  Write each ruling as a register row before the code. Do not edit a tracked
+  file while a build or a check runs. Examine the exit code of each check
+  before a commit.
 - **Never without an explicit go-ahead**: change or delete a test, relax a
   tolerance, add to `.clang-tidy` or write a `NOLINT`, switch a warning off
   project-wide, refactor beyond the scope asked, delete a tracked file, rename a
