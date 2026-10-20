@@ -1,6 +1,6 @@
 # M1-135 — Every compiled file linted, or named as an exception
 
-Phase: B | Status: **done 2026-10-20, on `master`, not pushed**
+Phase: B | Status: **done 2026-10-20, and pushed the same day (`1c4c502`)**
 Prerequisites: M1-131, for decision 650's line
 Decided by: register decisions 650 and 660-671, ruled 2026-10-18 before the
 work began -- the task and its place (660), the guard in the lint-dependency
@@ -188,6 +188,12 @@ them. The record names the commit `85535a3`. After the pass,
 `m1-135.json` is the file that is not due. `m1-89.json` is due, as decision
 661 says, and runs at phase B's gate.
 
+**After the push**, 2026-10-20: a fetch showed `origin/master` at
+`1c4c502`. The worktree of this task went to the Recycle Bin,
+`git worktree prune` removed its record, and the local branch
+`claude/suspicious-mendel-1c1f44` was deleted (decision 675). The worktree
+of M1-136 stays.
+
 ## Done when
 
 - [x] The questions are ruled and recorded (660-671).
@@ -201,4 +207,5 @@ them. The record names the commit `85535a3`. After the pass,
 - [x] `check` passes in the two trees of the main checkout, on `master`
       (decision 673).
 - [x] The mutation pass has run and its record is committed.
-- [ ] Pushed, on the owner's word (decision 675).
+- [x] Pushed on the word of the owner, 2026-10-20, up to `1c4c502`
+      (decision 675).

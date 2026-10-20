@@ -354,8 +354,8 @@ before its work began); then
 chosen the way the tests are (decision 633, 2026-10-18); then M1-127 and
 M1-130 (the code as modules), lower levels first (decision 495).
 
-**On 2026-10-20** M1-131 is pushed up to `b4ead1a`, and M1-135 is done on
-`master`, not pushed (decisions 660-678): `lint_deps` makes sure that
+**On 2026-10-20** M1-135 is done and pushed up to `1c4c502` (decisions
+660-678): `lint_deps` makes sure that
 each compiled file of the repository is linted or named as an exception,
 and its mutation pass caught 8 of 8 mutants. Next, M1-132 and M1-133.
 M1-136, `lint_deps` in the fuzz trees, waits with its questions open.
