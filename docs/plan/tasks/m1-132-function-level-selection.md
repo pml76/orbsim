@@ -83,7 +83,9 @@ data that points at other data (545).
      section with a name that starts with `.CRT$` fails it, but for the entry
      of the hook, `.CRT$XCA00002`, when its one relocation points at
      `sancov.module_ctor_bool_flag`. The check is in
-     check-coverage-hook.py in scripts/.
+     check-coverage-hook.py in scripts/. *Done in step 3: it examines 31
+     objects in Debug and 30 in RelWithDebInfo, and finds no start-up entry
+     but the hook's own.*
    - Everyone else's code, per program: the bytes of each library or object
      file, and the list of modules the program took from it, from the map
      (585) -- the code compiled in the tree without the hook, the libraries

@@ -25,6 +25,15 @@ trusted as far as the hook reaches, so what CMakeLists.txt sets up with
     scripts/compiled-code.py. An object holding no machine code shows nothing
     either way -- src/core/Contract.cpp is empty where assertions are compiled
     out -- and is judged by its command in the compile database instead;
+  * **no start-up entry in an object compiled from src/ that carries the
+    hook** (M1-132, decision 624 as decision 702 amends it): no section with a
+    name that starts with `.CRT$` -- a C or C++ initialiser, a thread callback,
+    an exit table -- but the hook's own entry, `.CRT$XCA00002`, when its one
+    relocation points at `sancov.module_ctor_bool_flag`. The selection by
+    function counts no start-up function as entered, and that is safe only
+    while src/ has none. The objects from tests/ hold the test registrations,
+    which decision 624 accepts, and an object without the hook, such as VMA's
+    in src/render/VmaImpl.cpp, is fingerprinted on its bytes;
   * **tests/coverage_recorder_unaligned.cpp's object with the flags and
     without the table**, which the recorder's self-test needs (decision 632);
   * **every program linked with its map**, lld-link's `/map`, beside it
@@ -167,6 +176,64 @@ def object_problems(objects: list, root: str, hook: bool) -> tuple:
     return found, counts
 
 
+# The start-up entries (decision 624, as decision 702 amends it). The C
+# runtime calls each pointer in a section with a name that starts with `.CRT$`:
+# the C and C++ initialisers, the thread callbacks and the exit tables. Each
+# object that carries the hook has one such entry of its own: clang puts a
+# pointer to the hook's start-up function in `.CRT$XCA00002` (decision 626).
+# Measured 2026-10-20: 31 objects from src/ in Debug and 30 in RelWithDebInfo
+# have it, and no other start-up entry.
+START_UP_PREFIX = ".CRT$"
+HOOK_START_UP = ".CRT$XCA00002"
+HOOK_CONSTRUCTOR = "sancov.module_ctor_bool_flag"
+
+
+def start_up_problem(whole):
+    """Why an object from src/ that carries the hook breaks decision 624, or
+    None. `whole` is compiled-code.py's read_object of the object, None for a
+    file that it cannot read. The selection by function counts no start-up
+    function as entered (decision 624), and that is safe only while src/ has
+    none: each start-up entry breaks the rule, but the hook's own entry when
+    its one relocation points at the hook's start-up function (decision 702)."""
+    if whole is None:
+        return "cannot be read as a COFF object, thus its start-up entries are not known"
+    names = {symbol.index: symbol.name for symbol in whole.symbols}
+    found = []
+    for section in whole.sections:
+        if not section.name.startswith(START_UP_PREFIX):
+            continue
+        targets = [names.get(relocation.symbol, f"symbol {relocation.symbol}") for relocation in section.relocations]
+        if section.name == HOOK_START_UP and targets == [HOOK_CONSTRUCTOR]:
+            continue
+        found.append(f"{section.name} points at {', '.join(targets) or 'nothing'}")
+    if found:
+        return f"has a start-up entry, which no object from src/ may have (decision 624): {'; '.join(found)}"
+    return None
+
+
+def start_up_problems(objects: list, root: str, hook: bool, read_whole) -> tuple:
+    """(problems, examined) for [(source, object path, command, read)]: each
+    object compiled from src/ that carries the hook -- its address table, as
+    decision 584 has it -- is read in full by `read_whole(object path)` and
+    examined. An object from tests/ and an object without the hook, such as
+    VMA's in src/render/VmaImpl.cpp, are not examined (decision 702): the
+    fingerprint holds the bytes of an object without the hook."""
+    found, examined = [], 0
+    for source, obj, _, read in objects:
+        relative = own_source(source, root)
+        if relative is None or not relative.startswith("src/") or read is None:
+            continue
+        if not compiled_code.carries(*read)[1]:
+            continue
+        examined += 1
+        why = start_up_problem(read_whole(obj))
+        if why:
+            found.append(f"{obj} (from {source}): {why}")
+    if hook and not examined:
+        found.append("no object from src/ carries the hook: the start-up check would be checking nothing")
+    return found, examined
+
+
 def program_problems(programs: list, hook: bool) -> list:
     """For [{name, inputs, link_flags, read, map}], `map` the map's text or None."""
     found = []
@@ -270,6 +337,14 @@ def read_file(path: pathlib.Path):
         return None
 
 
+def read_whole(path: pathlib.Path):
+    """compiled-code.py's read_object of a file, or None."""
+    try:
+        return compiled_code.read_object(path.read_bytes())
+    except OSError:
+        return None
+
+
 def tree_objects(build: pathlib.Path) -> tuple:
     """([(source, object, command, read)], not built): every object the
     compile database names that is on disk; the others are counted."""
@@ -306,6 +381,8 @@ def tree_programs(build: pathlib.Path) -> list:
 def check(build: pathlib.Path, root: pathlib.Path, ctest: str, hook: bool) -> int:
     objects, missing = tree_objects(build)
     found, counts = object_problems(objects, str(root), hook)
+    start_up_found, examined = start_up_problems(objects, str(root), hook, lambda obj: read_whole(build / obj))
+    found += start_up_found
     programs = tree_programs(build)
     found += program_problems(programs, hook)
     listing = json.loads(subprocess.run([ctest, "--show-only=json-v1"], cwd=build, capture_output=True, text=True,
@@ -316,6 +393,7 @@ def check(build: pathlib.Path, root: pathlib.Path, ctest: str, hook: bool) -> in
         print(f"check-coverage-hook: {line}")
     summary = (f"{len(objects)} objects judged ({counts['hook']} to carry the hook, {counts['flags']} the flags "
                f"alone, {counts['none']} neither) and {missing} in the compile database not built; "
+               f"{examined} objects from src/ with the hook examined for start-up entries; "
                f"{len(programs)} programs; {defined} tests defined in CMakeLists.txt")
     if found:
         print(f"check-coverage-hook: {len(found)} problem(s) -- {summary}")
@@ -468,6 +546,7 @@ def self_test() -> int:
         verdict(name, program_problems(programs, hook), reason)
     for name, (tests, reason) in test_cases.items():
         verdict(name, test_problems(tests, root)[0], reason)
+    start_up_cases(verdict, obj, hooked, plain, on, off)
 
     # The tree's readers on a small tree written here: a compile database, the
     # objects it names, a Ninja file with a program at the top and one below.
@@ -498,6 +577,61 @@ def self_test() -> int:
         verdict("the top-level programs read from the Ninja file", [] if statements == want else [str(statements)],
                 None)
     return 1 if failures else 0
+
+
+def start_up_object(*entries) -> bytes:
+    """A made-up object with code, the hook's sections, and each start-up
+    entry of `entries`: (section name, [names that its relocations point at])."""
+    code, data = compiled_code.COFF_CODE | 0x60000000, 0x40000040
+    names = sorted({name for _, targets in entries for name in targets})
+    sections = [(".text", code, b"\xc3" * 16, [], False), (".SCOV$BM", data, b"\0", [], False),
+                (".SCOVP$M", data, b"\0" * 16, [], False)]
+    sections += [(section, data, b"\0" * 8 * max(len(targets), 1),
+                  [(8 * at, names.index(name), 1) for at, name in enumerate(targets)], False)
+                 for section, targets in entries]
+    symbols = [(name, 0, 1, 0x20, 2, []) for name in names]
+    return compiled_code.made_object(sections, symbols)
+
+
+def start_up_cases(verdict, obj, hooked, plain, on: str, off: str) -> None:
+    """Decision 624, as decision 702 amends it: the start-up entries of the
+    objects from src/ that carry the hook."""
+    hook_entry = (HOOK_START_UP, [HOOK_CONSTRUCTOR])
+    whole = {
+        "the hook's own entry only": start_up_object(hook_entry),
+        "no start-up entry": start_up_object(),
+        "a C++ initialiser": start_up_object(hook_entry, (".CRT$XCU", ["??__Ex@@YAXXZ"])),
+        "the hook's entry pointing at another function": start_up_object((HOOK_START_UP, ["other"])),
+        "the hook's entry with two relocations": start_up_object((HOOK_START_UP, [HOOK_CONSTRUCTOR, "other"])),
+        "a C initialiser": start_up_object(hook_entry, (".CRT$XIU", ["init"])),
+        "a thread callback": start_up_object(hook_entry, (".CRT$XLB", ["callback"])),
+        "an exit table": start_up_object(hook_entry, (".CRT$XTZ", ["finish"])),
+    }
+    for name, data in whole.items():
+        reason = None if name in ("the hook's own entry only", "no start-up entry") else "start-up entry"
+        verdict(f"start-up: {name}", [why for why in [start_up_problem(compiled_code.read_object(data))] if why],
+                reason)
+    verdict("start-up: an object that cannot be read", [why for why in [start_up_problem(None)] if why],
+            "cannot be read")
+    # Which objects the check examines: those from src/ that carry the hook.
+    root = "C:/r" if os.name == "nt" else "/r"
+    bad = start_up_object(hook_entry, (".CRT$XCU", ["??__Ex@@YAXXZ"]))
+    files = {"CMakeFiles/orbsim_core.dir/src/orbit/Orbit.cpp.obj": start_up_object(hook_entry),
+             "CMakeFiles/test_math.dir/tests/test_math.cpp.obj": bad,
+             "CMakeFiles/vma_impl.dir/src/render/VmaImpl.cpp.obj": bad}
+    objects = [obj("src/orbit/Orbit.cpp", "orbsim_core", hooked, on),
+               obj("tests/test_math.cpp", "test_math", hooked, on),
+               obj("src/render/VmaImpl.cpp", "vma_impl", plain, off)]
+    found, examined = start_up_problems(objects, root, True, lambda path: compiled_code.read_object(files[path]))
+    verdict("start-up: a test's registration and VMA's initialiser not examined", found if examined == 1
+            else found + [f"{examined} objects examined, not 1"], None)
+    files["CMakeFiles/orbsim_core.dir/src/orbit/Orbit.cpp.obj"] = bad
+    found, _ = start_up_problems(objects, root, True, lambda path: compiled_code.read_object(files[path]))
+    verdict("start-up: an object from src/ with a C++ initialiser", found, "start-up entry")
+    found, _ = start_up_problems(objects[1:], root, True, lambda path: compiled_code.read_object(files[path]))
+    verdict("start-up: no object from src/ with the hook", found, "checking nothing")
+    found, examined = start_up_problems(objects[2:], root, False, lambda path: compiled_code.read_object(files[path]))
+    verdict("start-up: the hook off", found if examined == 0 else found + [f"{examined} examined"], None)
 
 
 def main() -> int:
