@@ -367,3 +367,7 @@ and its mutation pass caught 8 of 8 mutants. Next, M1-132 and M1-133.
 M1-136, `lint_deps` in the fuzz trees, waits with its questions open.
 Write all text in ASD-STE100 (section 1). STATUS's row says what each
 task has done, what is left, and the sequence.
+
+**Later on 2026-10-20** the owner ruled the questions of M1-132 before its
+work started, decisions 702-709, and the work started. Decision 701 put the
+method of work into section 1.

@@ -1,10 +1,14 @@
 # M1-132 — Tests chosen function by function
 
-Phase: B | Status: not started
+Phase: B | Status: started 2026-10-20
 Prerequisites: M1-131
 Decided by: register decisions 543-553, 556-561, 564, 567, 569 and 570, ruled
 2026-10-15, 582-595, ruled 2026-10-16, and 624, ruled 2026-10-17; split out of
-M1-129 as its item 9's step D by decision 596.
+M1-129 as its item 9's step D by decision 596. And 695, ruled 2026-10-19; and
+701-709, ruled 2026-10-20 before the work started: the method of work, the
+start-up check, the tests that run through a script, records that match no
+test, the paths of the libraries, the rule that skips a test, a test that
+enters other functions in a different run, ADR 0028, and the smaller choices.
 Reads what [M1-131](m1-131-coverage-hook.md) records; proved by
 [M1-133](m1-133-selection-proved.md).
 
@@ -26,10 +30,20 @@ data that points at other data (545).
    object files (COFF) and of the libraries that hold them, read directly
    (546), and of the linker's map, whose reader M1-131 begins (632); and the
    digests (545), each object's summary kept in the build tree under the
-   file's hash if reading them all takes more than a few seconds (567).
+   file's hash if reading them all takes more than a few seconds (567) --
+   more than 3 s for one tree, in `<tree>/run-tests/objects/`, and the driver
+   deletes the summaries that the last run did not use (709). And a reader of
+   the module list in a program's .pdb file, which gives the path of each
+   library that the program links (705).
 2. **Each recorded address turned into a function through the linker's map**
    (582, amending 560), never through the debug information's names; checked
-   against the procedure ranges over a full run before it is relied on (560).
+   against the procedure ranges over a full run before it is relied on (560)
+   -- a measurement done one time in each tree, read with llvm-pdbutil and
+   written as a measurement record, not part of `check` (709). One name at an
+   address is the function; two names that start with `??_E` and `??_G` and
+   are the same after that are one function, with the `??_G` name; each
+   other set of names fails the check and names the program and the address
+   (695).
 3. **A program carrying the hook is fingerprinted as decision 583 lays out:
    our own code by the hook, everyone else's code by its binary.**
    - Function by function: the digests of the functions the test entered,
@@ -43,31 +57,71 @@ data that points at other data (545).
    - **No start-up function in an object compiled from `src/`** (624):
      `check` fails, naming the object, where one carries a start-up entry, so
      that the rule above stays safe; an exception to `-Wglobal-constructors`
-     there comes back to the owner with this ruling.
+     there comes back to the owner with this ruling. Since decision 702, the
+     check examines only the objects from `src/` that carry the hook, and each
+     section with a name that starts with `.CRT$` fails it, but for the entry
+     of the hook, `.CRT$XCA00002`, when its one relocation points at
+     `sancov.module_ctor_bool_flag`. The check is in
+     check-coverage-hook.py in scripts/.
    - Everyone else's code, per program: the bytes of each library or object
      file, and the list of modules the program took from it, from the map
      (585) -- the code compiled in the tree without the hook, the libraries
      built in their own folders, and those from outside the tree, Visual
      Studio's and the Windows SDK's among them.
+     The path of each library comes from the program's .pdb file; each
+     library that the map names must have one path there, and only one; and
+     a library or a program with objects that carry the hook must not hold
+     two objects with one file name (705).
    - The program's link command, from Ninja, and lld-link.exe in the machine
-     part (583).
+     part (583): the last command of Ninja for the program,
+     `ninja -n -t commands -s`, read in one call for all programs (709).
    - The libraries the program loads at start (525, 539), and for a GPU test
      the card (532), as now.
+   - **The program's bytes stay in the fingerprint with the function part**,
+     and a test is skipped when each other part is unchanged and one of these
+     two is unchanged: the program's bytes, or its function part (706). The
+     digests are thus computed only for the programs with changed bytes.
+   - The store goes to version 3; for each program, one table of function
+     names, and each test holds numbers into it; an external function is
+     known by its decorated name, an internal one by its object's path and
+     its name (709).
 4. **Which test a record belongs to** (564): a test starting a program of the
    tree directly, by its command line; a test defined in `CMakeLists.txt`, by
-   `ORBSIM_TEST_NAME`, every record carrying it combined.
+   `ORBSIM_TEST_NAME`, every record carrying it combined. **The records give
+   the function part of a program only for a test that starts the program
+   directly, or that runs through one of seven CMake scripts that only start
+   a program and read its output** -- `RunProbe.cmake`, `RunUsage.cmake`,
+   `VerifyAssertionProbe.cmake`, `VerifyAssertionMessage.cmake`,
+   `RunBench.cmake`, `VerifyMissingShader.cmake` and `VerifyReadRecord.cmake`,
+   a list in `scripts/run-tests.py`. Each other test keeps the bytes of each
+   program on its command line, and also gets the function parts of each
+   program that its records name (703).
 5. **A wrong or missing record fails `check`, naming the program** (590): the
    recorder finding its flags and table out of line, a test that starts a
    hooked program directly passing without a record, a record naming an
    address the map gives no function. The probes that pass by aborting leave
    a record too since decision 634, which amends 559, and are judged like any
-   other test.
+   other test. And since decision 704: a record that matches no test, or more
+   than one; and a record with a count of flags that is different from the
+   number of entries in the address table of the program it names.
 6. **Self-tests** (591): the decision rules on made-up inputs; the reader on
    small samples compiled with the tree's own clang as the test runs, among
    them that a test inserted before others leaves their digests unchanged;
    and `compiled_code_self_test` and `run_tests_function_level`, the second
    on a small scratch project carrying the hook, beside
-   `run_tests_end_to_end` -- each about 20-30 s, estimated.
+   `run_tests_end_to_end` -- each about 20-30 s, estimated. The samples are
+   compiled at `-O0` and at `-O2`, so that each tree's run tests the two
+   levels of optimisation; and three cases more than decision 545's list: a
+   changed `catch` clause, which changes only the exception tables, the jump
+   table of a `switch` statement, and a changed `noexcept` (709). The reader
+   of the .pdb file is tested on a program that the test links (705).
+7. **ADR 0028** (708), written at the end of the task: a test with a program
+   that carries the hook is fingerprinted on the functions it entered; it
+   supersedes ADR 0027's rule that uses only the bytes of such a program, and
+   it gives the limit of decision 707 -- in a run after its last pass, a test
+   can enter a function that it did not enter at that pass; the driver skips
+   it, and the full run before each push finds a fault there. M1-133 adds its
+   measured figures.
 
 ## Mutants
 
@@ -76,12 +130,23 @@ not counted; a start-up function left in a record; an address mapped to the
 wrong function; a function without a flag left out; a start-up entry in an
 object from `src/` passed by the check of decision 624; a library from outside
 the tree left out of the binary part; a missing record passed over -- each
-caught by its self-test.
+caught by its self-test. And for the rulings of 2026-10-20: a `.CRT$` section
+other than the hook's entry passed (702); a test run through a script that is
+not on the list given the function part (703); a record that matches no test,
+or with a count of flags that is not correct, passed (704); a library path
+that does not come from the .pdb file, or two objects with one name, passed
+(705); a test skipped when
+a part other than the program changed (706). The file is m1-132.json in
+scripts/mutants/, run in `build/debug`; a mutant that only RelWithDebInfo
+catches goes into a second file (709).
 
 ## Done when
 
 - [ ] Every question the design raised ruled, and the rulings in the register.
+      *The questions known before the work started: decisions 701-709,
+      2026-10-20.*
 - [ ] `check` passes in both trees, the digest cost measured (567).
+- [ ] ADR 0028 written (708).
 - [ ] The task's mutant file has run after the commit and its record is
       committed. A commit at the end; the push only on the owner's go-ahead
       (595).
