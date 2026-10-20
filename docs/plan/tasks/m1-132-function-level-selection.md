@@ -13,6 +13,9 @@ And 710 and 711, ruled 2026-10-20 during step 1: the five points of the
 readers, and the eight points of the digests; and 712, ruled the same day
 during step 2: the hook's table counted from two sources, and a thunk's
 record in the debug information counted as a procedure.
+And 713, ruled the same day before step 4: a member without the hook in a
+library with the hook, a record that is not complete for a script test, a
+problem found before the tests run, and the smaller choices of the driver.
 Reads what [M1-131](m1-131-coverage-hook.md) records; proved by
 [M1-133](m1-133-selection-proved.md).
 
