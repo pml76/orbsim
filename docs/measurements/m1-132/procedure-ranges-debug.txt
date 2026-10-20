@@ -1,0 +1,82 @@
+angle_between_zero_probe.exe: 3599 procedures, 166 thunks, 103 different recorded addresses, 0 disagreements
+assertion_message_probe.exe: 3561 procedures, 162 thunks, 108 different recorded addresses, 0 disagreements
+count_wraparound_addition.exe: 3544 procedures, 162 thunks, 83 different recorded addresses, 0 disagreements
+count_wraparound_multiplication.exe: 3544 procedures, 162 thunks, 83 different recorded addresses, 0 disagreements
+count_wraparound_subtraction.exe: 3544 procedures, 162 thunks, 83 different recorded addresses, 0 disagreements
+make_broken_goldens.exe: 8113 procedures, 254 thunks, 608 different recorded addresses, 0 disagreements
+orbsim.exe: 15126 procedures, 420 thunks, 4964 different recorded addresses, 0 disagreements
+test_astro_time.exe: 12254 procedures, 341 thunks, 814 different recorded addresses, 0 disagreements
+test_benchmark_path.exe: 11878 procedures, 342 thunks, 577 different recorded addresses, 0 disagreements
+test_camera.exe: 11806 procedures, 344 thunks, 530 different recorded addresses, 0 disagreements
+test_camera_controller.exe: 11891 procedures, 346 thunks, 620 different recorded addresses, 0 disagreements
+test_camera_path.exe: 11889 procedures, 342 thunks, 614 different recorded addresses, 0 disagreements
+test_double_double.exe: 11576 procedures, 339 thunks, 313 different recorded addresses, 0 disagreements
+test_earth_orientation.exe: 12390 procedures, 350 thunks, 902 different recorded addresses, 0 disagreements
+test_exposure.exe: 11612 procedures, 340 thunks, 326 different recorded addresses, 0 disagreements
+test_file_replace.exe: 11720 procedures, 331 thunks, 586 different recorded addresses, 0 disagreements
+test_fixture_file.exe: 12683 procedures, 340 thunks, 1355 different recorded addresses, 0 disagreements
+test_golden_path.exe: 11318 procedures, 329 thunks, 247 different recorded addresses, 0 disagreements
+test_gpu_clock.exe: 11369 procedures, 330 thunks, 222 different recorded addresses, 0 disagreements
+test_half.exe: 11338 procedures, 331 thunks, 196 different recorded addresses, 0 disagreements
+test_hdr_dump.exe: 11930 procedures, 337 thunks, 582 different recorded addresses, 0 disagreements
+test_image_compare.exe: 11795 procedures, 337 thunks, 488 different recorded addresses, 0 disagreements
+test_image_files.exe: 16291 procedures, 375 thunks, 1223 different recorded addresses, 0 disagreements
+test_lambert.exe: 11668 procedures, 342 thunks, 387 different recorded addresses, 0 disagreements
+test_line_batch.exe: 11912 procedures, 337 thunks, 539 different recorded addresses, 0 disagreements
+test_math.exe: 11867 procedures, 344 thunks, 585 different recorded addresses, 0 disagreements
+test_orbit.exe: 12240 procedures, 359 thunks, 885 different recorded addresses, 0 disagreements
+test_orbit_elements.exe: 12100 procedures, 356 thunks, 758 different recorded addresses, 0 disagreements
+test_orbit_scales.exe: 12281 procedures, 356 thunks, 984 different recorded addresses, 0 disagreements
+test_pipeline_inputs.exe: 11605 procedures, 336 thunks, 318 different recorded addresses, 0 disagreements
+test_planetary_grid.exe: 13161 procedures, 345 thunks, 1539 different recorded addresses, 0 disagreements
+test_probe_clear.exe: 11801 procedures, 339 thunks, 568 different recorded addresses, 0 disagreements
+test_probe_grid.exe: 12572 procedures, 345 thunks, 1146 different recorded addresses, 0 disagreements
+test_probe_lines.exe: 11798 procedures, 342 thunks, 558 different recorded addresses, 0 disagreements
+test_probe_sidecar.exe: 12382 procedures, 345 thunks, 810 different recorded addresses, 0 disagreements
+test_projection.exe: 11624 procedures, 338 thunks, 347 different recorded addresses, 0 disagreements
+test_radiometry.exe: 15924 procedures, 377 thunks, 743 different recorded addresses, 0 disagreements
+test_read_records.exe: 11744 procedures, 330 thunks, 653 different recorded addresses, 0 disagreements
+test_render_quality.exe: 11632 procedures, 336 thunks, 349 different recorded addresses, 0 disagreements
+test_srgb.exe: 11517 procedures, 337 thunks, 248 different recorded addresses, 0 disagreements
+test_statistics.exe: 11847 procedures, 337 thunks, 536 different recorded addresses, 0 disagreements
+test_sun.exe: 12468 procedures, 346 thunks, 1007 different recorded addresses, 0 disagreements
+test_test_case.exe: 11457 procedures, 330 thunks, 361 different recorded addresses, 0 disagreements
+test_time.exe: 11949 procedures, 337 thunks, 655 different recorded addresses, 0 disagreements
+test_time_leap.exe: 12239 procedures, 345 thunks, 885 different recorded addresses, 0 disagreements
+test_time_ut1.exe: 11869 procedures, 336 thunks, 573 different recorded addresses, 0 disagreements
+test_tonemap.exe: 11562 procedures, 340 thunks, 290 different recorded addresses, 0 disagreements
+test_tonemap_port.exe: 16015 procedures, 376 thunks, 901 different recorded addresses, 0 disagreements
+test_units_validated.exe: 11519 procedures, 330 thunks, 362 different recorded addresses, 0 disagreements
+test_view_math.exe: 11656 procedures, 340 thunks, 386 different recorded addresses, 0 disagreements
+test_writer_turns.exe: 11378 procedures, 335 thunks, 285 different recorded addresses, 0 disagreements
+
+C:\Users\U439644\Projects\untitled\build\debug:
+  S_GPROC32 and S_LPROC32 records in the .pdb files: 576,558
+  S_THUNK32 records in the .pdb files: 16,558
+  addresses where procedure records (S_GPROC32, S_LPROC32, S_THUNK32) start: 1: 33,285
+  different recorded addresses: 33,285
+  funclets in the ranges: 13,505
+  labels $ehgcr_ in the ranges: 2,065
+  one procedure: a different symbol of the map in its range (disagreement): 0
+  one procedure: no other symbol of the map in its range: 27,420
+  one procedure: only funclets and labels in its range: 5,865
+  procedure starts that are the address of a code symbol of the map: 576,558
+  programs: 51
+  ranges with a funclet: 5,865
+  ranges with a label: 956
+  recorded addresses in all records: 290,043
+  records with a section that the section headers do not give: 0
+the names, for information:
+  llvm-undname does not read the map name: 5,021
+  the .pdb name equals the map name: 115
+  the .pdb name is a part of the text of llvm-undname: 21,409
+  the .pdb name is not a part of the text of llvm-undname: 6,740
+  example: angle_between_zero_probe.exe: ??$_Reallocate_grow_by@V<lambda_1>@?0???$resize_and_overwrite@V<lambda_1>@?0??_Unescape_braces@std@@YA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@... -> 'private: class std::basic_string<char, struct std::char_traits<char>, class std::allocator<char>> & __cdecl std::basic_string<char, struct std::char_traits<char...'; .pdb 'std::basic_string<char,std::char_traits<char>,std::allocator<char> >::_Reallocate_grow_by<`lambda at C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\VC\\Too...'
+  example: angle_between_zero_probe.exe: ??$to_address@$$CBN@std@@YAPEBNQEBN@Z -> 'double const * __cdecl std::to_address<double const>(double const *const)'; .pdb 'std::to_address<const double>'
+  example: angle_between_zero_probe.exe: ??$_Reallocate_grow_by@V<lambda_1>@?0???$resize_and_overwrite@V<lambda_1>@?0??_Stacktrace_string_fill_impl@std@@YA_K_KQEAX1Q6A_KPEAD_KPEAX@_E@Z@@?$basic_string@... -> 'private: class std::basic_string<char, struct std::char_traits<char>, class std::allocator<char>> & __cdecl std::basic_string<char, struct std::char_traits<char...'; .pdb 'std::basic_string<char,std::char_traits<char>,std::allocator<char> >::_Reallocate_grow_by<`lambda at C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\VC\\Too...'
+  example: angle_between_zero_probe.exe: ??R<lambda_1>@?0???$resize_and_overwrite@V<lambda_1>@?0??_Unescape_braces@std@@YA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@3@W4_Add_newline@3@V... -> 'public: static <auto> __cdecl `public: void __cdecl std::basic_string<char, struct std::char_traits<char>, class std::allocator<char>>::resize_and_overwrite<cla...'; .pdb 'std::basic_string<char,std::char_traits<char>,std::allocator<char> >::resize_and_overwrite<`lambda at C:\\Program Files\\Microsoft Visual Studio\\18\\Insiders\\VC\\To...'
+  example: angle_between_zero_probe.exe: ??$_Max_element_unchecked@PEBNU?$less@X@std@@@std@@YAPEBNPEBN0U?$less@X@0@@Z -> 'double const * __cdecl std::_Max_element_unchecked<double const *, struct std::less<void>>(double const *, double const *, struct std::less<void>)'; .pdb 'std::_Max_element_unchecked<const double *,std::less<void> >'
+the instrument, each recorded address plus 1:
+  addresses where no procedure record starts, with 0 S_THUNK32 there: 33,285
+  addresses where procedure records (S_GPROC32, S_LPROC32, S_THUNK32) start: 0: 33,285
+disagreements (0):

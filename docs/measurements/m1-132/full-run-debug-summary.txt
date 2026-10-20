@@ -1,0 +1,14 @@
+start 2026-10-20T18:23:47+02:00, tree build/debug, records C:\Users\U439644\AppData\Local\Temp\claude\C--Users-U439644-Projects-untitled\5985916b-899b-4261-a138-ee39bc892852\scratchpad\step2\records-debug
+Test project C:/Users/U439644/Projects/untitled/build/debug
+[... one line for each start and each end of a test, left out ...]
+100% tests passed, 0 tests failed out of 589
+
+Label Time Summary:
+fixtures    = 163.26 sec*proc (41 tests)
+gpu         = 210.73 sec*proc (64 tests)
+
+Total Test time (real) = 211.05 sec
+
+The following tests did not run:
+	 92 - a write the disk refuses only when the file is closed is reported (Skipped)
+end 2026-10-20T18:27:19+02:00, ctest exit 0, 211373 ms

@@ -1,0 +1,47 @@
+compiled-code: C:\Users\U439644\Projects\untitled\scripts\compiled-code.py
+  programs with the hook's table: 54
+  module_paths problems: 0
+  objects with the hook, summed over the programs: 322
+  members with the hook, summed over the programs: 171
+  members with the hook with a name in the library that is not the map's name: 0
+  objects read, without the hook, summed over the programs: 7,408
+  objects that read_object does not read, summed over the programs: 277
+  objects not read that hold the text .SCOVP$M: 0
+  (object, name) in the two sets: 70,478
+  ... with equal keys: 70,478
+  ... with different keys: 0
+  map symbols that Program does not have in that object: 3,078
+  Program functions that the map does not give in that object: 87,400
+  table addresses: 47,180
+  table addresses with a problem: 0
+  table addresses with a key of Program in the same object: 47,180
+  table addresses with a key that Program does not have there: 0
+causes:
+  79,242: Program only: the map gives the name in a different object: a copy that the linker did not take (a COMDAT section)
+  8,158: Program only: the map gives a different function of the same section in a different object: a copy that the linker did not take (a COMDAT section)
+  2,403: map only: not of function type (type 0x0, storage 3)
+  675: map only: a weak external, default the ??_G name of the same class
+examples, map only: not of function type (type 0x0, storage 3) (2403):
+  angle_between_zero_probe.exe: ('CMakeFiles/angle_between_zero_probe.dir/tests/angle_between_zero_probe.cpp.obj', '$ehgcr_186_9')
+  angle_between_zero_probe.exe: ('CMakeFiles/angle_between_zero_probe.dir/tests/angle_between_zero_probe.cpp.obj', '$ehgcr_3_8')
+  angle_between_zero_probe.exe: ('orbsim_core_d.lib(Contract.cpp.obj)', '$ehgcr_0_26')
+  assertion_message_probe.exe: ('CMakeFiles/assertion_message_probe.dir/tests/assertion_message_probe.cpp.obj', '$ehgcr_23_9')
+  assertion_message_probe.exe: ('CMakeFiles/assertion_message_probe.dir/tests/assertion_message_probe.cpp.obj', '$ehgcr_3_17')
+examples, Program only: the map gives the name in a different object: a copy that the linker did not take (a COMDAT section) (79242):
+  angle_between_zero_probe.exe: ('CMakeFiles/angle_between_zero_probe.dir/tests/angle_between_zero_probe.cpp.obj', '??$?0$$V@?$_Compressed_pair@V?$allocator@D@std@@V?$_String_val@U?$_Simple_types@D@std@@@2@$00@std@@QEAA@U_Zero_then_variadic_args_t@1@@Z')
+  angle_between_zero_probe.exe: ('CMakeFiles/angle_between_zero_probe.dir/tests/angle_between_zero_probe.cpp.obj', '??$?0AEAPEADW4errc@std@@$0A@@?$pair@PEADW4errc@std@@@std@@QEAA@AEAPEAD$$QEAW4errc@1@@Z')
+  angle_between_zero_probe.exe: ('CMakeFiles/angle_between_zero_probe.dir/tests/angle_between_zero_probe.cpp.obj', '??$?0AEAPEAV_Facet_base@std@@@?$_Compressed_pair@U?$default_delete@V_Facet_base@std@@@std@@PEAV_Facet_base@2@$00@std@@QEAA@U_Zero_then_variadic_args_t@1@AEAPEAV_Facet_base@1@@Z')
+  angle_between_zero_probe.exe: ('CMakeFiles/angle_between_zero_probe.dir/tests/angle_between_zero_probe.cpp.obj', '??$?0AEBQEADW4errc@std@@$0A@@?$pair@PEADW4errc@std@@@std@@QEAA@AEBQEAD$$QEAW4errc@1@@Z')
+  angle_between_zero_probe.exe: ('CMakeFiles/angle_between_zero_probe.dir/tests/angle_between_zero_probe.cpp.obj', '??$?0D@?$allocator@U_Container_proxy@std@@@std@@QEAA@AEBV?$allocator@D@1@@Z')
+examples, Program only: the map gives a different function of the same section in a different object: a copy that the linker did not take (a COMDAT section) (8158):
+  angle_between_zero_probe.exe: ('CMakeFiles/angle_between_zero_probe.dir/tests/angle_between_zero_probe.cpp.obj', '?dtor$103@?0???$_Fmt_write@DV?$back_insert_iterator@V?$_Fmt_buffer@D@std@@@std@@M@__p2286@std@@YA?AV?$back_insert_iterator@V?$_Fmt_buffer@D@std@@@1@V21@MAEBU?$_Basic_format_specs@D@1@V_Lazy_locale@1@@Z@4HA')
+  angle_between_zero_probe.exe: ('CMakeFiles/angle_between_zero_probe.dir/tests/angle_between_zero_probe.cpp.obj', '?dtor$103@?0???$_Fmt_write@DV?$back_insert_iterator@V?$_Fmt_buffer@D@std@@@std@@N@__p2286@std@@YA?AV?$back_insert_iterator@V?$_Fmt_buffer@D@std@@@1@V21@NAEBU?$_Basic_format_specs@D@1@V_Lazy_locale@1@@Z@4HA')
+  angle_between_zero_probe.exe: ('CMakeFiles/angle_between_zero_probe.dir/tests/angle_between_zero_probe.cpp.obj', '?dtor$103@?0???$_Fmt_write@DV?$back_insert_iterator@V?$_Fmt_buffer@D@std@@@std@@O@__p2286@std@@YA?AV?$back_insert_iterator@V?$_Fmt_buffer@D@std@@@1@V21@OAEBU?$_Basic_format_specs@D@1@V_Lazy_locale@1@@Z@4HA')
+  angle_between_zero_probe.exe: ('CMakeFiles/angle_between_zero_probe.dir/tests/angle_between_zero_probe.cpp.obj', '?dtor$10@?0???$_Floating_to_chars_fixed_precision@M@std@@YA?AUto_chars_result@0@QEAD0MH@Z@4HA')
+  angle_between_zero_probe.exe: ('CMakeFiles/angle_between_zero_probe.dir/tests/angle_between_zero_probe.cpp.obj', '?dtor$10@?0???$_Floating_to_chars_fixed_precision@N@std@@YA?AUto_chars_result@0@QEAD0NH@Z@4HA')
+examples, map only: a weak external, default the ??_G name of the same class (675):
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '??_E?$basic_filebuf@DU?$char_traits@D@std@@@std@@UEAAPEAXI@Z')
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '??_E?$basic_ifstream@DU?$char_traits@D@std@@@std@@UEAAPEAXI@Z')
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '??_E?$basic_ofstream@DU?$char_traits@D@std@@@std@@UEAAPEAXI@Z')
+  coverage_recorder_unaligned.exe: ('CMakeFiles/coverage_recorder_unaligned.dir/tests/coverage_recorder_probe.cpp.obj', '??_E?$basic_filebuf@DU?$char_traits@D@std@@@std@@UEAAPEAXI@Z')
+  coverage_recorder_unaligned.exe: ('CMakeFiles/coverage_recorder_unaligned.dir/tests/coverage_recorder_probe.cpp.obj', '??_E?$basic_ifstream@DU?$char_traits@D@std@@@std@@UEAAPEAXI@Z')

@@ -1,0 +1,33 @@
+C:\Users\U439644\AppData\Local\Temp\claude\C--Users-U439644-Projects-untitled\5985916b-899b-4261-a138-ee39bc892852\scratchpad\step2\fault-run2\program\test_srgb.exe: records 1, addresses 50 (50 different), keys 50, problems 0; table_entries 132, entries read 132, markers 0/0, notes {1: 132}, addresses two times 1; table addresses: 131 keys, 0 problems; module_paths problems 0
+test_srgb.exe: records 2, addresses 100 (51 different), keys 99, problems 1; table_entries 132, entries read 132, markers 0/0, notes {1: 132}, addresses two times 0; table addresses: 132 keys, 0 problems; module_paths problems 0
+
+  records: 3
+  records that read_record does not read: 0
+  records of a program that is not there now: 0
+  records of a program outside the top of the tree: 1
+  programs: 2
+  records out of line: 0
+  addresses: 150
+  different (program, address) pairs: 102
+  keys: 149
+  problems: 1
+  records with fewer keys than different addresses: 1
+  records with flags equal to table_entries: 2
+  records with flags not equal to table_entries: 1
+  records with flags equal to VirtualSize / 16, the markers not subtracted: 1
+  table entries, all programs: 264
+  table entries, table_entries differs from the entries read: 0
+  table addresses two times in one table: 1
+  table addresses with a problem: 0
+  table: markers not zero: 0
+  table: notes other than 1: 0
+  module_paths problems: 0
+  the largest record: 50 addresses, twice.functions.txt (C:\Users\U439644\AppData\Local\Temp\claude\C--Users-U439644-Projects-untitled\5985916b-899b-4261-a138-ee39bc892852\scratchpad\step2\fault-run2\program\test_srgb.exe, test '')
+problems (1):
+  test_srgb.exe (address.functions.txt): the address 0x1301 has 0 names in the map, not one function: []
+examples, fewer keys (1):
+  address.functions.txt (test_srgb.exe): 50 addresses, 49 keys
+examples, flags not equal (1):
+  flags.functions.txt (test_srgb.exe): flags 133, table_entries 132
+examples, outside the tree (1):
+  twice.functions.txt: C:\Users\U439644\AppData\Local\Temp\claude\C--Users-U439644-Projects-untitled\5985916b-899b-4261-a138-ee39bc892852\scratchpad\step2\fault-run2\program\test_srgb.exe

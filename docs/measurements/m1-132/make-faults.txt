@@ -1,0 +1,1 @@
+from 20776-1792513318849721600.functions.txt: address 1300 -> 1301; flags 132 -> flags 133; the table's second entry in C:\Users\U439644\AppData\Local\Temp\claude\C--Users-U439644-Projects-untitled\5985916b-899b-4261-a138-ee39bc892852\scratchpad\step2\fault-run2\program\test_srgb.exe has the first entry's address

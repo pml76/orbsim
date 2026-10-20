@@ -1,0 +1,4 @@
+build/relwithdebinfo: 91 objects with .SCOVP$M
+  length 16, relocations (offset, type) ((0, 1),), second word 1: 8794
+build/debug: 92 objects with .SCOVP$M
+  length 16, relocations (offset, type) ((0, 1),), second word 1: 63069

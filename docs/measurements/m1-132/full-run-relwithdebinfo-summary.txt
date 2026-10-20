@@ -1,0 +1,20 @@
+start 2026-10-20T18:21:42+02:00, tree build/relwithdebinfo, records C:\Users\U439644\AppData\Local\Temp\claude\C--Users-U439644-Projects-untitled\5985916b-899b-4261-a138-ee39bc892852\scratchpad\step2\records-rel
+Test project C:/Users/U439644/Projects/untitled/build/relwithdebinfo
+[... one line for each start and each end of a test, left out ...]
+100% tests passed, 0 tests failed out of 589
+
+Label Time Summary:
+fixtures    = 151.21 sec*proc (41 tests)
+gpu         =  87.88 sec*proc (64 tests)
+
+Total Test time (real) =  88.22 sec
+
+The following tests did not run:
+	 92 - a write the disk refuses only when the file is closed is reported (Skipped)
+	484 - count_wraparound_subtraction_aborts (Skipped)
+	485 - count_wraparound_addition_aborts (Skipped)
+	486 - count_wraparound_multiplication_aborts (Skipped)
+	487 - angle_between_zero_aborts (Skipped)
+	488 - assertion_message_precondition (Skipped)
+	489 - assertion_message_postcondition (Skipped)
+end 2026-10-20T18:23:11+02:00, ctest exit 0, 88486 ms

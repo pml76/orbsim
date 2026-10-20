@@ -1,0 +1,10 @@
+angle_between_zero_probe.exe: VirtualSize 32, SizeOfRawData 512; $A (0, 8), $M (8, 16), $Z (24, 8); flags 1; $M / 16 = 1.0; VirtualSize / 16 = 2.0; (VirtualSize - 16) / 16 = 1.0
+assertion_message_probe.exe: VirtualSize 32, SizeOfRawData 512; $A (0, 8), $M (8, 16), $Z (24, 8); flags 1; $M / 16 = 1.0; VirtualSize / 16 = 2.0; (VirtualSize - 16) / 16 = 1.0
+count_wraparound_addition.exe: VirtualSize 32, SizeOfRawData 512; $A (0, 8), $M (8, 16), $Z (24, 8); flags 1; $M / 16 = 1.0; VirtualSize / 16 = 2.0; (VirtualSize - 16) / 16 = 1.0
+build/relwithdebinfo: 54 programs with .SCOVP; not as the others: 1
+   coverage_recorder_unaligned.exe: VirtualSize 1216, SizeOfRawData 1536; $A (0, 8), $M (8, 1200), $Z (1208, 8); flags 76; $M / 16 = 75.0; VirtualSize / 16 = 76.0; (VirtualSize - 16) / 16 = 75.0
+angle_between_zero_probe.exe: VirtualSize 2976, SizeOfRawData 3072; $A (0, 8), $M (8, 2960), $Z (2968, 8); flags 185; $M / 16 = 185.0; VirtualSize / 16 = 186.0; (VirtualSize - 16) / 16 = 185.0
+assertion_message_probe.exe: VirtualSize 2368, SizeOfRawData 2560; $A (0, 8), $M (8, 2352), $Z (2360, 8); flags 147; $M / 16 = 147.0; VirtualSize / 16 = 148.0; (VirtualSize - 16) / 16 = 147.0
+count_wraparound_addition.exe: VirtualSize 2112, SizeOfRawData 2560; $A (0, 8), $M (8, 2096), $Z (2104, 8); flags 131; $M / 16 = 131.0; VirtualSize / 16 = 132.0; (VirtualSize - 16) / 16 = 131.0
+build/debug: 54 programs with .SCOVP; not as the others: 1
+   coverage_recorder_unaligned.exe: VirtualSize 4624, SizeOfRawData 5120; $A (0, 8), $M (8, 4608), $Z (4616, 8); flags 289; $M / 16 = 288.0; VirtualSize / 16 = 289.0; (VirtualSize - 16) / 16 = 288.0

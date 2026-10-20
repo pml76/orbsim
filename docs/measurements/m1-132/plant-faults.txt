@@ -1,0 +1,18 @@
+pair-without-rest: exit 1, 1 cases WRONG
+    self-test: a recorded address, a problem: ??_E and ??_G with a different rest: WRONG, got (['??_GCircle@@UEAAPEAXI@Z'], []), wanted ([], [(True, True)])
+static-by-name: exit 1, 6 cases WRONG
+    self-test: a recorded address: one static name in a library: WRONG, got (['?hidden@?A0x1@@YAHH@Z'], []), wanted (['liba.lib(a.obj)|?hidden@?A0x1@@YAHH@Z'], [])
+    self-test: a recorded address: one static name in an object linked directly: WRONG, got (['?local@@YAHXZ'], []), wanted (['CMakeFiles/t.dir/direct.obj|?local@@YAHXZ'], [])
+    self-test: a recorded address: a static pair: WRONG, got (['??_GImpl@?A0x1@@UEAAPEAXI@Z'], []), wanted (['liba.lib(a.obj)|??_GImpl@?A0x1@@UEAAPEAXI@Z'], [])
+    self-test: the addresses of one record: each key one time, sorted, and each problem: WRONG, got (['??_GShape@@UEAAPEAXI@Z', '?local@@YAHXZ', '?one@@YAHH@Z'], 1), wanted (['??_GShape@@UEAAPEAXI@Z', '?o
+    self-test: the key of a static symbol: its object's key and its name: WRONG, got '?one@@YAHH@Z', wanted 'liba.lib(a.obj)|?one@@YAHH@Z'
+    self-test: the keys of the map's symbols are the keys that Program gives: WRONG, got (['f', 's'], ['f', 'liba.lib(a.obj)|s']), wanted (['f', 'liba.lib(a.obj)|s'], ['f', 'liba.lib(a.obj)|s'])
+size-of-raw-data: exit 1, 4 cases WRONG
+    self-test: the entries of a program's hook table, from VirtualSize: WRONG, got 31, wanted 3
+    self-test: a table with the two markers only: WRONG, got 31, wanted 0
+    self-test: a table that does not hold complete entries, refused: WRONG, got 31, wanted None
+    self-test: a table shorter than its markers, refused: WRONG, got 31, wanted None
+no-name-passed: exit 1, 3 cases WRONG
+    self-test: a recorded address, a problem: no name: WRONG, got ([], []), wanted ([], [(True, True)])
+    self-test: a recorded address, a problem: a data symbol and no code: WRONG, got ([], []), wanted ([], [(True, True)])
+    self-test: the addresses of one record: each key one time, sorted, and each problem: WRONG, got (['??_GShape@@UEAAPEAXI@Z', '?one@@YAHH@Z', 'CMakeFiles/t.dir/direct.obj|?local@@YAHXZ'], 0), wanted (['

@@ -1,0 +1,47 @@
+compiled-code: C:\Users\U439644\Projects\untitled\scripts\compiled-code.py
+  programs with the hook's table: 54
+  module_paths problems: 0
+  objects with the hook, summed over the programs: 276
+  members with the hook, summed over the programs: 125
+  members with the hook with a name in the library that is not the map's name: 0
+  objects read, without the hook, summed over the programs: 7,298
+  objects that read_object does not read, summed over the programs: 739
+  objects not read that hold the text .SCOVP$M: 0
+  (object, name) in the two sets: 24,238
+  ... with equal keys: 24,238
+  ... with different keys: 0
+  map symbols that Program does not have in that object: 3,340
+  Program functions that the map does not give in that object: 20,044
+  table addresses: 9,012
+  table addresses with a problem: 0
+  table addresses with a key of Program in the same object: 9,012
+  table addresses with a key that Program does not have there: 0
+causes:
+  13,985: Program only: the map gives the name in a different object: a copy that the linker did not take (a COMDAT section)
+  6,059: Program only: the map gives a different function of the same section in a different object: a copy that the linker did not take (a COMDAT section)
+  2,695: map only: not of function type (type 0x0, storage 3)
+  645: map only: a weak external, default the ??_G name of the same class
+examples, map only: not of function type (type 0x0, storage 3) (2695):
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '$ehgcr_167_32')
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '$ehgcr_193_18')
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '$ehgcr_3_5')
+  coverage_recorder_unaligned.exe: ('CMakeFiles/coverage_recorder_unaligned.dir/tests/coverage_recorder_probe.cpp.obj', '$ehgcr_167_32')
+  coverage_recorder_unaligned.exe: ('CMakeFiles/coverage_recorder_unaligned.dir/tests/coverage_recorder_probe.cpp.obj', '$ehgcr_193_18')
+examples, map only: a weak external, default the ??_G name of the same class (645):
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '??_E?$basic_filebuf@DU?$char_traits@D@std@@@std@@UEAAPEAXI@Z')
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '??_E?$basic_ifstream@DU?$char_traits@D@std@@@std@@UEAAPEAXI@Z')
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '??_E?$basic_ios@DU?$char_traits@D@std@@@std@@UEAAPEAXI@Z')
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '??_E?$basic_istream@DU?$char_traits@D@std@@@std@@UEAAPEAXI@Z')
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '??_E?$basic_ofstream@DU?$char_traits@D@std@@@std@@UEAAPEAXI@Z')
+examples, Program only: the map gives the name in a different object: a copy that the linker did not take (a COMDAT section) (13985):
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '??$?RD@?$_Arg_formatter@V?$back_insert_iterator@V?$_Fmt_buffer@D@std@@@std@@D@__p2286@std@@QEAA?AV?$back_insert_iterator@V?$_Fmt_buffer@D@std@@@2@D@Z')
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '??$_Floating_to_chars@$00M@std@@YA?AUto_chars_result@0@PEADQEADMW4chars_format@0@H@Z')
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '??$_Floating_to_chars@$00N@std@@YA?AUto_chars_result@0@PEADQEADNW4chars_format@0@H@Z')
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '??$_Floating_to_chars@$01M@std@@YA?AUto_chars_result@0@PEADQEADMW4chars_format@0@H@Z')
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '??$_Floating_to_chars@$01N@std@@YA?AUto_chars_result@0@PEADQEADNW4chars_format@0@H@Z')
+examples, Program only: the map gives a different function of the same section in a different object: a copy that the linker did not take (a COMDAT section) (6059):
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '?dtor$10@?0??default_error_condition@_System_error_category@std@@UEBA?AVerror_condition@2@H@Z@4HA')
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '?dtor$11@?0???0_System_error@std@@IEAA@Verror_code@1@@Z@4HA')
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '?dtor$11@?0??_Getcat@?$numpunct@D@std@@SA_KPEAPEBVfacet@locale@2@PEBV42@@Z@4HA')
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '?dtor$123@?0???$_Write_integral@DV?$back_insert_iterator@V?$_Fmt_buffer@D@std@@@std@@E@__p2286@std@@YA?AV?$back_insert_iterator@V?$_Fmt_buffer@D@std@@@1@V21@EU?$_Basic_format_specs@D@1@V_Lazy_locale@1@@Z@4HA')
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '?dtor$127@?0???$_Write_integral@DV?$back_insert_iterator@V?$_Fmt_buffer@D@std@@@std@@I@__p2286@std@@YA?AV?$back_insert_iterator@V?$_Fmt_buffer@D@std@@@1@V21@IU?$_Basic_format_specs@D@1@V_Lazy_locale@1@@Z@4HA')

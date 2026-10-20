@@ -1,0 +1,41 @@
+compiled-code: C:\Users\U439644\AppData\Local\Temp\claude\C--Users-U439644-Projects-untitled\5985916b-899b-4261-a138-ee39bc892852\scratchpad\step2\faults2\compiled-code-static-by-name.py
+  programs with the hook's table: 54
+  module_paths problems: 0
+  objects with the hook, summed over the programs: 276
+  members with the hook, summed over the programs: 125
+  members with the hook with a name in the library that is not the map's name: 0
+  objects read, without the hook, summed over the programs: 7,298
+  objects that read_object does not read, summed over the programs: 739
+  objects not read that hold the text .SCOVP$M: 0
+  (object, name) in the two sets: 24,238
+  ... with equal keys: 8,311
+  ... with different keys: 15,927
+  map symbols that Program does not have in that object: 3,340
+  Program functions that the map does not give in that object: 20,044
+  table addresses: 9,012
+  table addresses with a problem: 0
+  table addresses with a key of Program in the same object: 7,729
+  table addresses with a key that Program does not have there: 1,283
+causes:
+  13,985: Program only: the map gives the name in a different object: a copy that the linker did not take (a COMDAT section)
+  6,059: Program only: the map gives a different function of the same section in a different object: a copy that the linker did not take (a COMDAT section)
+  2,695: map only: not of function type (type 0x0, storage 3)
+  645: map only: a weak external, default the ??_G name of the same class
+examples, different keys (15927):
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '??0format_error@std@@QEAA@PEBD@Z'): Program {'CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj|??0format_error@std@@QEAA@PEBD@Z'}, map {'??0format_error@std@@QEAA@PEBD@Z'}
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '??__FkEnteredAtExit@?A0x91197E45@coverage_probe@orb@@YAXXZ'): Program {'CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj|??__FkEnteredAtExit@?A0x91197E45@coverage_probe@orb@@YAXXZ'}, map {'??__FkEnteredAtExit@?A0x91197E45@coverage_probe@orb@@YAXXZ'}
+examples, map only: not of function type (type 0x0, storage 3) (2695):
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '$ehgcr_167_32')
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '$ehgcr_193_18')
+examples, map only: a weak external, default the ??_G name of the same class (645):
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '??_E?$basic_filebuf@DU?$char_traits@D@std@@@std@@UEAAPEAXI@Z')
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '??_E?$basic_ifstream@DU?$char_traits@D@std@@@std@@UEAAPEAXI@Z')
+examples, Program only: the map gives the name in a different object: a copy that the linker did not take (a COMDAT section) (13985):
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '??$?RD@?$_Arg_formatter@V?$back_insert_iterator@V?$_Fmt_buffer@D@std@@@std@@D@__p2286@std@@QEAA?AV?$back_insert_iterator@V?$_Fmt_buffer@D@std@@@2@D@Z')
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '??$_Floating_to_chars@$00M@std@@YA?AUto_chars_result@0@PEADQEADMW4chars_format@0@H@Z')
+examples, Program only: the map gives a different function of the same section in a different object: a copy that the linker did not take (a COMDAT section) (6059):
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '?dtor$10@?0??default_error_condition@_System_error_category@std@@UEBA?AVerror_condition@2@H@Z@4HA')
+  coverage_recorder_probe.exe: ('CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj', '?dtor$11@?0???0_System_error@std@@IEAA@Verror_code@1@@Z@4HA')
+examples, table key not in Program (1283):
+  coverage_recorder_probe.exe: 0x1a320 ??__FkEnteredAtExit@?A0x91197E45@coverage_probe@orb@@YAXXZ (CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj)
+  coverage_recorder_probe.exe: 0x1a410 ?runScenario@?A0x91197E45@coverage_probe@orb@@YAHV?$basic_string_view@DU?$char_traits@D@std@@@std@@H@Z (CMakeFiles/coverage_recorder_probe.dir/tests/coverage_recorder_probe.cpp.obj)

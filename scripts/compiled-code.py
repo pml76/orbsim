@@ -50,6 +50,15 @@ object file name of each module, from the DBI stream of the MSF file.
 object only by its file name. The .pdb file gives the full path of each, and
 each library and each object must have one path only (decision 705).
 
+**The functions of a record** (`address_index`, `record_functions`,
+`symbol_key`, `table_entries`, `map_table_entries`, `hook_table_entries`):
+the function at each address of a coverage record, through the map
+(decisions 582 and 695), with the key that Program gives the same function;
+and the number of entries in the hook's table of a program, which the count
+of flags in its record must equal (decision 704). The map's markers and the
+length of the section `.SCOVP` give that number, and the two must agree
+(decision 712).
+
 **The digests** (`object_summary`, `Program`): a function's digest (decision
 545) is a hash of its machine code, the names of the functions that it points
 at, and the contents of the data that it uses, followed through data that
@@ -776,6 +785,188 @@ def same_file_names(where: str, names: list) -> list:
             for group in groups.values() for first, second in itertools.combinations(group, 2)]
 
 
+# --- each recorded address turned into a function (M1-132, decisions 582 and 695)
+#
+# A coverage record gives each function that a test entered by its address
+# less the base address of the program (decision 644). The linker's map gives
+# the function at that address, with the name that its object file gives it:
+# the name of its digest (decision 582). The debug information does not give
+# the name, because it cannot tell apart two functions with the same bytes.
+
+# The start of the decorated name of a vector deleting destructor and of a
+# scalar deleting destructor. clang makes the vector deleting destructor an
+# alias of the scalar deleting destructor of the same class: one code at one
+# address, with two names in the map (decision 695). Measured 2026-10-19:
+# 546 entries of the hook's tables in RelWithDebInfo and 754 in Debug.
+VECTOR_DELETING, SCALAR_DELETING = "??_E", "??_G"
+# The hook's table in a program (decision 704). lld-link puts the two markers
+# of the recorder, `.SCOVP$A` and `.SCOVP$Z` of 8 bytes each
+# (tests/CoverageRecorder.cpp), and the `.SCOVP$M` sections of the objects
+# into the section `.SCOVP`, in the sequence of the text after `$`. Measured
+# 2026-10-20 in the 54 programs with the hook in each tree: the markers are at
+# the start and at the end of `.SCOVP`, with no padding, thus its VirtualSize
+# is 16 bytes more than the entries.
+TABLE_MARKERS = 2 * 8
+# The length of one entry: the address of the function and the value 1 that
+# the hook writes, 8 bytes each. Measured 2026-10-20: each `.SCOVP$M` section
+# of the objects with the hook has 16 bytes, with one relocation of type
+# IMAGE_REL_AMD64_ADDR64 at offset 0 -- 8,794 sections in 91 objects in
+# RelWithDebInfo, and 63,069 sections in 92 objects in Debug.
+TABLE_ENTRY = 16
+# The offset of VirtualSize in a section header of a PE program. The length
+# of the bytes in the file, SizeOfRawData at offset 16, is a multiple of
+# FileAlignment and thus can be larger (Microsoft's PE format specification,
+# "Section Table").
+SECTION_VIRTUAL_SIZE = 8
+# The names of the two markers in the linker's map (tests/CoverageRecorder.cpp).
+TABLE_START, TABLE_STOP = "__start___sancov_pcs", "__stop___sancov_pcs"
+# The length of the start marker. LLVM's SanitizerCoverage pass adds 8 bytes to
+# the start symbol on Windows, because there the start symbol is a value of 8
+# bytes before the table (CreateSecStartEnd in
+# llvm/lib/Transforms/Instrumentation/SanitizerCoverage.cpp, read 2026-10-20).
+TABLE_START_LENGTH = 8
+
+
+def map_table_entries(linker_map: LinkerMap) -> Optional[int]:
+    """The number of entries in the hook's table from the linker's map: from
+    the end of the start marker to the stop marker, as LLVM's pass gives the
+    hook the start and the end of its table (decision 712). None when the map
+    does not have each marker one time, or when the length between them is not
+    a number of complete entries."""
+    found = {}
+    for symbol in linker_map.symbols:
+        if symbol.name in (TABLE_START, TABLE_STOP):
+            found.setdefault(symbol.name, []).append(symbol.address)
+    if any(len(found.get(name, ())) != 1 for name in (TABLE_START, TABLE_STOP)):
+        return None
+    length = found[TABLE_STOP][0] - found[TABLE_START][0] - TABLE_START_LENGTH
+    if length < 0 or length % TABLE_ENTRY:
+        return None
+    return length // TABLE_ENTRY
+
+
+def hook_table_entries(data: bytes, linker_map: LinkerMap) -> tuple:
+    """(entries, problem): the number of entries in the hook's table of a
+    program, from the map's markers and from the length of the section
+    `.SCOVP` (decision 712). The two must agree; if not, or if one is not
+    available, no number and a problem that gives the two. Thus a change of
+    the layout, such as padding or a different marker, makes `check` fail and
+    does not give an incorrect count (decision 704)."""
+    from_section, from_map = table_entries(data), map_table_entries(linker_map)
+    if from_section is None or from_section != from_map:
+        return None, (f"the hook's table has {from_section} entries from the length of the section .SCOVP "
+                      f"and {from_map} from the map's markers, not one number")
+    return from_section, None
+
+
+def address_index(linker_map: LinkerMap) -> dict:
+    """{address: [Symbol]} of the symbols in the code sections of the map, in
+    the sequence of the map. LinkerMap.at examines each symbol for each
+    address: a map of the Debug tree has up to 42,789 symbols, and a record
+    gave up to 3,616 addresses in the full run of 2026-10-20. This function
+    reads the map one time."""
+    index = {}
+    for symbol in linker_map.symbols:
+        if symbol.code:
+            index.setdefault(symbol.address, []).append(symbol)
+    return index
+
+
+def _one_function(names: list) -> Optional[Symbol]:
+    """The symbol of the one function at an address, or None (decision 695).
+    One name is that function. Two names that start with `??_E` and `??_G`,
+    and that are the same after these four characters, are one destructor,
+    with its `??_G` name. Each other set of names can be two functions at one
+    address (decision 551)."""
+    if len(names) == 1:
+        return names[0]
+    if len(names) == 2:
+        vector, scalar = sorted(names, key=lambda symbol: symbol.name)
+        rest = len(VECTOR_DELETING)
+        if (vector.name.startswith(VECTOR_DELETING) and scalar.name.startswith(SCALAR_DELETING)
+                and vector.name[rest:] == scalar.name[rest:]):
+            return scalar
+    return None
+
+
+def record_functions(index: dict, addresses: Iterable, key_of) -> tuple:
+    """(keys, problems) for the addresses of one record. `index` is the
+    address_index of the program's map, and `key_of` gives the key of a map
+    symbol, or None (symbol_key). The keys are sorted, each key one time. Each
+    problem gives an address in hexadecimal and the names at it, so that the
+    caller can name the program and make `check` fail (decisions 590 and 695).
+    An address with no name, or with names that are not one function, gives
+    no key."""
+    keys, problems = set(), []
+    for address in addresses:
+        names = index.get(address, [])
+        symbol = _one_function(names)
+        if symbol is None:
+            problems.append(f"the address {address:#x} has {len(names)} names in the map, not one function: "
+                            f"{sorted(s.name for s in names)}")
+            continue
+        key = key_of(symbol)
+        if key is None:
+            where = f"{symbol.library}:{symbol.object}" if symbol.library else symbol.object
+            problems.append(f"the address {address:#x}: {symbol.name}, a static symbol of {where}, "
+                            "which has no path in the .pdb file")
+            continue
+        keys.add(key)
+    return sorted(keys), problems
+
+
+def symbol_key(symbol: Symbol, paths: dict, tree: str) -> Optional[str]:
+    """The key of a map symbol: the key that Program gives the same function
+    (decisions 709 (3) and 711 (4)). A symbol that the map gives as public is
+    external, and its key is its decorated name. A symbol in the part "Static
+    symbols" of the map is known only in its object, and its key is the key of
+    the object and its name. `paths` comes from module_paths. A member of a
+    library has the name that the map gives it, its file name; llvm-ar gives
+    the same name to the members of the libraries of the tree. None for a
+    static symbol of an object without a path: module_paths gives a problem
+    for that object."""
+    if not symbol.static:
+        return symbol.name
+    path = paths.get((symbol.library, symbol.object))
+    if path is None:
+        return None
+    return function_key(object_key(tree, path, symbol.object if symbol.library else None), symbol.name, COFF_STATIC)
+
+
+def _virtual_sizes(data: bytes, name: bytes) -> Optional[list]:
+    """The VirtualSize of each section with the name `name` in a PE program,
+    or None for a file that is not a PE program."""
+    if len(data) < 0x40 or data[0:2] != b"MZ":
+        return None
+    header = struct.unpack_from("<I", data, 0x3C)[0]
+    if data[header:header + 4] != b"PE\0\0":
+        return None
+    count, optional = struct.unpack_from("<H", data, header + 6)[0], struct.unpack_from("<H", data, header + 20)[0]
+    first = header + 24 + optional
+    if first + COFF_SECTION_HEADER * count > len(data):
+        return None
+    headers = (first + COFF_SECTION_HEADER * number for number in range(count))
+    return [struct.unpack_from("<I", data, at + SECTION_VIRTUAL_SIZE)[0] for at in headers
+            if data[at:at + 8].rstrip(b"\0") == name]
+
+
+def table_entries(data: bytes) -> Optional[int]:
+    """The number of entries in the hook's table of a PE program (decision
+    704): the VirtualSize of its section `.SCOVP`, less the two markers,
+    divided by the length of one entry. None for a file that is not a PE
+    program, for a program with no `.SCOVP` section or with two, and for a
+    section that does not hold the two markers and a number of complete
+    entries. Thus the caller does not compare a record with an incorrect
+    number."""
+    try:
+        sizes = _virtual_sizes(data, HOOK_SECTIONS["pe-program"][1].encode())
+    except struct.error:
+        return None
+    if sizes is None or len(sizes) != 1 or sizes[0] < TABLE_MARKERS or (sizes[0] - TABLE_MARKERS) % TABLE_ENTRY:
+        return None
+    return (sizes[0] - TABLE_MARKERS) // TABLE_ENTRY
+
+
 # --- the digests of a program's functions (M1-132, decision 545) --------------
 #
 # A function's digest is a hash of three things: its machine code, the names of
@@ -1321,10 +1512,14 @@ def made_coff(names: list, code: tuple = (), big: bool = False) -> bytes:
     return head + headers + table
 
 
-def made_pe(names: list) -> bytes:
+def made_pe(names: list, sizes: Optional[dict] = None) -> bytes:
+    """A PE program holding only section headers. `sizes` maps a name to its
+    (VirtualSize, SizeOfRawData); each other section has (0, 16)."""
     dos = b"MZ" + b"\0" * 0x3A + struct.pack("<I", 0x40)
-    headers = b"".join(n.encode().ljust(8, b"\0") + struct.pack("<IIIIIIHHI", 0, 0, 16, 0, 0, 0, 0, 0, 0x40)
-                       for n in names)
+    headers = b""
+    for name in names:
+        virtual, raw = (sizes or {}).get(name, (0, 16))
+        headers += name.encode().ljust(8, b"\0") + struct.pack("<IIIIIIHHI", virtual, 0, raw, 0, 0, 0, 0, 0, 0x40)
     return dos + b"PE\0\0" + struct.pack("<HHIIIHH", 0x8664, len(names), 0, 0, 0, 0, 0) + headers
 
 
@@ -1703,6 +1898,151 @@ def module_cases(expect) -> None:
            [(True, True)])
     problems = same_file_names("p.exe", ["C:\\a\\x.obj", "C:\\b\\x.obj", "C:/c/X.OBJ"])
     expect("a program with three objects of one name, each pair", len(problems), 3)
+
+
+# A made-up map for the functions at the recorded addresses (decisions 582 and
+# 695): .text at 0x1000 and .rdata at 0x2000, less the base. Each address of
+# .text holds one case. No symbol is at 0x1090.
+RECORD_MAP = """\
+ r
+
+ Preferred load address is 0000000140000000
+
+ Start         Length     Name                   Class
+ 0001:00000000 00001000H .text                   CODE
+ 0002:00000000 00000200H .rdata                  DATA
+
+  Address         Publics by Value              Rva+Base               Lib:Object
+
+ 0001:00000000       ?one@@YAHH@Z               0000000140001000     liba:a.obj
+ 0001:00000010       ??_EShape@@UEAAPEAXI@Z     0000000140001010     liba:a.obj
+ 0001:00000010       ??_GShape@@UEAAPEAXI@Z     0000000140001010     liba:a.obj
+ 0001:00000020       ??_GBox@@UEAAPEAXI@Z       0000000140001020     direct.obj
+ 0001:00000020       ??_EBox@@UEAAPEAXI@Z       0000000140001020     direct.obj
+ 0001:00000030       ??_ESquare@@UEAAPEAXI@Z    0000000140001030     liba:a.obj
+ 0001:00000030       ??_GCircle@@UEAAPEAXI@Z    0000000140001030     liba:a.obj
+ 0001:00000040       ?a@@YAXXZ                  0000000140001040     liba:a.obj
+ 0001:00000040       ?b@@YAXXZ                  0000000140001040     liba:a.obj
+ 0001:00000040       ?c@@YAXXZ                  0000000140001040     liba:a.obj
+ 0001:000000a0       ?first@@YAXXZ              00000001400010a0     direct.obj
+ 0001:000000a0       ?second@@YAXXZ             00000001400010a0     direct.obj
+ 0002:00000100       ?_Data@@3HB                0000000140002100     liba:a.obj
+
+ Static symbols
+
+ 0001:00000050       ?hidden@?A0x1@@YAHH@Z      0000000140001050     liba:a.obj
+ 0001:00000060       ?local@@YAHXZ              0000000140001060     direct.obj
+ 0001:00000070       ??_EImpl@?A0x1@@UEAAPEAXI@Z 0000000140001070     liba:a.obj
+ 0001:00000070       ??_GImpl@?A0x1@@UEAAPEAXI@Z 0000000140001070     liba:a.obj
+ 0001:00000080       ?orphan@@YAXXZ             0000000140001080     other.obj
+"""
+RECORD_TREE = "C:\\b\\tree"
+# The modules of RECORD_MAP's program: other.obj has none.
+RECORD_MODULES = [("a.obj", "C:\\b\\tree\\liba.lib"), ("C:\\b\\tree\\CMakeFiles\\t.dir\\direct.obj",) * 2]
+
+
+def record_cases(expect) -> None:
+    """Each recorded address turned into a function (decisions 582 and 695),
+    the key of a map symbol (decisions 709 (3) and 711 (4)), and the number of
+    entries in a program's hook table (decision 704)."""
+    linker_map = read_map(RECORD_MAP)
+    index = address_index(linker_map)
+    expect("the index of the map by address: code only",
+           sorted(index), [0x1000, 0x1010, 0x1020, 0x1030, 0x1040, 0x1050, 0x1060, 0x1070, 0x1080, 0x10A0])
+    paths, _ = module_paths(linker_map, RECORD_MODULES)
+
+    def key_of(symbol: Symbol) -> Optional[str]:
+        return symbol_key(symbol, paths, RECORD_TREE)
+
+    found = [
+        ("one name", 0x1000, ["?one@@YAHH@Z"]),
+        ("the ??_E and ??_G names of one destructor", 0x1010, ["??_GShape@@UEAAPEAXI@Z"]),
+        ("the same pair in the other sequence", 0x1020, ["??_GBox@@UEAAPEAXI@Z"]),
+        ("one static name in a library", 0x1050, ["liba.lib(a.obj)|?hidden@?A0x1@@YAHH@Z"]),
+        ("one static name in an object linked directly", 0x1060, ["CMakeFiles/t.dir/direct.obj|?local@@YAHXZ"]),
+        ("a static pair", 0x1070, ["liba.lib(a.obj)|??_GImpl@?A0x1@@UEAAPEAXI@Z"]),
+    ]
+    for what, address, keys in found:
+        expect(f"a recorded address: {what}", record_functions(index, [address], key_of), (keys, []))
+    refused = [
+        ("??_E and ??_G with a different rest", 0x1030, ["??_ESquare@@UEAAPEAXI@Z", "??_GCircle@@UEAAPEAXI@Z"]),
+        ("three names", 0x1040, ["?a@@YAXXZ", "?b@@YAXXZ", "?c@@YAXXZ"]),
+        ("two names that are not the pair", 0x10A0, ["?first@@YAXXZ", "?second@@YAXXZ"]),
+        ("no name", 0x1090, []),
+        ("a data symbol and no code", 0x2100, []),
+        ("a static name of an object without a path", 0x1080, ["?orphan@@YAXXZ"]),
+    ]
+    for what, address, names in refused:
+        keys, problems = record_functions(index, [address], key_of)
+        found_names = [(f"{address:#x}" in p, all(name in p for name in names)) for p in problems]
+        expect(f"a recorded address, a problem: {what}", (keys, found_names), ([], [(True, True)]))
+    keys, problems = record_functions(index, [0x1060, 0x1000, 0x1090, 0x1010, 0x1000], key_of)
+    expect("the addresses of one record: each key one time, sorted, and each problem", (keys, len(problems)),
+           (["??_GShape@@UEAAPEAXI@Z", "?one@@YAHH@Z", "CMakeFiles/t.dir/direct.obj|?local@@YAHXZ"], 1))
+
+    public = Symbol(0x1000, "?one@@YAHH@Z", "liba", "a.obj", True, False)
+    expect("the key of a public symbol: its decorated name", symbol_key(public, paths, RECORD_TREE), "?one@@YAHH@Z")
+    expect("the key of a public symbol of an object without a path",
+           symbol_key(public._replace(library="", object="other.obj"), paths, RECORD_TREE), "?one@@YAHH@Z")
+    expect("the key of a static symbol: its object's key and its name",
+           symbol_key(public._replace(static=True), paths, RECORD_TREE), "liba.lib(a.obj)|?one@@YAHH@Z")
+    summary = made_sample({"f": (".text", "code", b"\xc3", (), None), "s": (".text", "code", b"\x90\xc3", (), None)},
+                          {"f": (0, "f", "function"), "s": (0, "s", "static function")})
+    program = Program({object_key(RECORD_TREE, paths[("liba", "a.obj")], "a.obj"): summary})
+    mapped = [Symbol(0x1000, "f", "liba", "a.obj", True, False), Symbol(0x1010, "s", "liba", "a.obj", True, True)]
+    expect("the keys of the map's symbols are the keys that Program gives",
+           ([symbol_key(s, paths, RECORD_TREE) for s in mapped], sorted(program.digests())),
+           (["f", "liba.lib(a.obj)|s"], ["f", "liba.lib(a.obj)|s"]))
+
+    # The table of a program: the two markers of 8 bytes and 3 entries of 16
+    # bytes, in a section that the file pads to 512 bytes.
+    table = made_pe([".text", ".SCOV", ".SCOVP"], {".SCOVP": (8 + 3 * 16 + 8, 512)})
+    expect("the entries of a program's hook table, from VirtualSize", table_entries(table), 3)
+    expect("a table with the two markers only", table_entries(made_pe([".SCOVP"], {".SCOVP": (16, 512)})), 0)
+    expect("a program without the table", table_entries(made_pe([".text", ".SCOV"])), None)
+    expect("a table that does not hold complete entries, refused",
+           table_entries(made_pe([".SCOVP"], {".SCOVP": (8 + 16 + 8 + 8, 512)})), None)
+    expect("a table shorter than its markers, refused", table_entries(made_pe([".SCOVP"], {".SCOVP": (8, 512)})), None)
+    expect("two tables, refused", table_entries(made_pe([".SCOVP", ".SCOVP"], {".SCOVP": (32, 512)})), None)
+    expect("an object, refused", table_entries(made_coff([".SCOVP$M"])), None)
+    expect("text, refused", table_entries(b"not a program"), None)
+    table_map_cases(expect, table)
+
+
+def marker_map(start: int, stop: int, extra: str = "") -> str:
+    """A map with the two markers of the hook's table at `start` and `stop`,
+    addresses less the preferred one."""
+    return (" Preferred load address is 0000000140000000\n\n"
+            " 0006:00000000 00000100H .SCOVP                  DATA\n\n"
+            f" 0006:00000000       {TABLE_START:26} {0x140000000 + start:016x}     CoverageRecorder.cpp.obj\n"
+            f" 0006:00000000       {TABLE_STOP:26} {0x140000000 + stop:016x}     CoverageRecorder.cpp.obj\n"
+            + extra)
+
+
+def table_map_cases(expect, table: bytes) -> None:
+    """The entries of the hook's table from the map's markers, and the two
+    counts that must agree (decision 712)."""
+    three = read_map(marker_map(0x1000, 0x1000 + 8 + 3 * 16))
+    expect("the entries of the hook's table, from the map's markers", map_table_entries(three), 3)
+    expect("no entry between the markers", map_table_entries(read_map(marker_map(0x1000, 0x1008))), 0)
+    expect("a stop marker before the end of the start marker, refused",
+           map_table_entries(read_map(marker_map(0x1000, 0x1004))), None)
+    # 16 bytes less than no entry: an integer number of entries, below 0.
+    expect("a stop marker before the start marker, refused", map_table_entries(read_map(marker_map(0x1008, 0x1000))),
+           None)
+    expect("a part of an entry between the markers, refused",
+           map_table_entries(read_map(marker_map(0x1000, 0x1000 + 8 + 20))), None)
+    expect("a map without the stop marker, refused",
+           map_table_entries(read_map(marker_map(0x1000, 0x1038).replace(TABLE_STOP, "other"))), None)
+    twice = marker_map(0x1000, 0x1038, f" 0006:00000040       {TABLE_STOP:26} {0x140001048:016x}     x.obj\n")
+    expect("a map with the stop marker two times, refused", map_table_entries(read_map(twice)), None)
+    expect("the two counts agree: the number, and no problem", hook_table_entries(table, three), (3, None))
+    four = read_map(marker_map(0x1000, 0x1000 + 8 + 4 * 16))
+    count, problem = hook_table_entries(table, four)
+    expect("the two counts differ: no number, and a problem that gives the two",
+           (count, problem is not None and "3" in problem and "4" in problem), (None, True))
+    count, problem = hook_table_entries(made_pe([".text"]), three)
+    expect("no section `.SCOVP`: no number, and a problem", (count, problem is not None), (None, True))
 
 
 # The samples that compiled_cases compiles. The archived one has an external
@@ -2519,6 +2859,7 @@ def self_test(tools: Optional[tuple] = None) -> int:
     archive_cases(expect)
     pdb_cases(expect)
     module_cases(expect)
+    record_cases(expect)
     digest_cases(expect)
     ruling_cases(expect)
     if tools is not None:
