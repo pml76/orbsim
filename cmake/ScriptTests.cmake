@@ -394,14 +394,20 @@ set_tests_properties(abort_listener abort_listener_self_test PROPERTIES LABELS f
 
 # The lint steps' dependencies (M1-89, ADR 0024): each on its own objects, the
 # configurations, a verify stamp and clang-tidy, and on no project header
-# directly; and no `__clang_analyzer__` anywhere in src/ or tests/. Read from
-# the Ninja file and the compile database this tree generated. And its
-# self-test, which feeds it each fault it exists to catch.
+# directly; and no `__clang_analyzer__` anywhere in src/ or tests/. And every
+# file of the repository this tree compiles linted, or named in
+# ORBSIM_LINT_EXCEPTIONS with its reason (M1-135), each entry handed over as
+# one argument. Read from the Ninja file and the compile database this tree
+# generated. And its self-test, which feeds it each fault it exists to catch.
 if(ORBSIM_PYTHON)
+    set(orbsim_lint_exception_arguments "")
+    foreach(orbsim_lint_exception IN LISTS ORBSIM_LINT_EXCEPTIONS)
+        list(APPEND orbsim_lint_exception_arguments --exception "${orbsim_lint_exception}")
+    endforeach()
     add_test(NAME lint_deps
             COMMAND ${ORBSIM_PYTHON}
                     ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-lint-deps.py
-                    ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR}
+                    ${CMAKE_BINARY_DIR} ${CMAKE_CURRENT_SOURCE_DIR} ${orbsim_lint_exception_arguments}
     )
     add_test(NAME lint_deps_self_test
             COMMAND ${ORBSIM_PYTHON}

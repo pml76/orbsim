@@ -1,0 +1,111 @@
+{
+  "task": "M1-135",
+  "tree": "build/debug",
+  "note": "The fifth check of scripts/check-lint-deps.py, M1-135 (register decisions 662, 665, 667 and 668): every file of the repository a tree compiles is linted or named in ORBSIM_LINT_EXCEPTIONS with its reason. Each mutant switches off one of the check's refusals; the judges are its self-test and the real check against this tree. The outside-the-repository mutant drops the report and keeps the `continue`: dropping the whole branch would leave the file to be reported as unlinted, so the self-test would catch it for another reason. The first seven are expected to be caught by the self-test alone, since the real tree holds none of those faults; the eighth, which stops passing over the folders a tree's CMakeCache.txt names as fetched code (decision 672), by the self-test and, in a tree pointed at a dependency cache outside the repository, by lint_deps too.",
+  "mutants": [
+    {
+      "name": "a compiled file neither linted nor excepted is accepted",
+      "file": "scripts/check-lint-deps.py",
+      "find": "        if key not in linted and key not in excepted:",
+      "replace": "        if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "lint_deps_self_test",
+        "lint_deps"
+      ]
+    },
+    {
+      "name": "an exception without a reason is accepted",
+      "file": "scripts/check-lint-deps.py",
+      "find": "        if not reason:",
+      "replace": "        if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "lint_deps_self_test",
+        "lint_deps"
+      ]
+    },
+    {
+      "name": "the same file named twice is accepted",
+      "file": "scripts/check-lint-deps.py",
+      "find": "        if key in excepted:",
+      "replace": "        if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "lint_deps_self_test",
+        "lint_deps"
+      ]
+    },
+    {
+      "name": "an exception for a linted file is accepted",
+      "file": "scripts/check-lint-deps.py",
+      "find": "        elif key in linted:",
+      "replace": "        elif False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "lint_deps_self_test",
+        "lint_deps"
+      ]
+    },
+    {
+      "name": "an exception naming a file this tree does not compile is accepted",
+      "file": "scripts/check-lint-deps.py",
+      "find": "        elif key not in compiled:",
+      "replace": "        elif False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "lint_deps_self_test",
+        "lint_deps"
+      ]
+    },
+    {
+      "name": "a file compiled from outside the repository and the build tree is accepted",
+      "file": "scripts/check-lint-deps.py",
+      "find": "            found.append(f\"{path} is compiled from outside the repository and the build tree, \"\n                         \"so the check cannot tell whose code it is\")",
+      "replace": "            pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "lint_deps_self_test",
+        "lint_deps"
+      ]
+    },
+    {
+      "name": "a compile database listing no file of the repository is accepted",
+      "file": "scripts/check-lint-deps.py",
+      "find": "    if not compiled:",
+      "replace": "    if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "lint_deps_self_test",
+        "lint_deps"
+      ]
+    },
+    {
+      "name": "code in a folder CMakeCache.txt names as fetched is refused",
+      "file": "scripts/check-lint-deps.py",
+      "find": "    skipped = (norm(build).rstrip(\"/\") + \"/\", root_n + \"build/\", *fetched)",
+      "replace": "    skipped = (norm(build).rstrip(\"/\") + \"/\", root_n + \"build/\")",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "lint_deps_self_test",
+        "lint_deps"
+      ]
+    }
+  ]
+}

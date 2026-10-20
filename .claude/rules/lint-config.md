@@ -106,7 +106,10 @@ lint step depends on its own compiled object in every target that compiles
 it, never on "every header". Ninja rebuilds an object exactly when the file or
 anything it includes changes. A new linted file must be compiled by a target in
 `orbsim_lint_targets`, or the configure step stops; the CTest test `lint_deps`
-checks the dependencies against the generated Ninja file. **Never guard an
+checks the dependencies against the generated Ninja file. **And the other way
+round** (M1-135): a file of the repository that a tree compiles is linted, or
+named in `ORBSIM_LINT_EXCEPTIONS` beside its target with its reason, or
+`lint_deps` fails. **Never guard an
 include with `__clang_analyzer__`**: it is the one way the linter could read
 text the compiler does not, and `lint_deps` refuses it.
 

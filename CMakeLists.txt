@@ -1047,6 +1047,15 @@ foreach(kind precondition postcondition)
     )
 endforeach()
 
+# The files compiled here and not linted on purpose (M1-135, register decision
+# 665): each entry `<path>: <reason>`, added beside the target that compiles
+# the file and under the same condition. The CTest test lint_deps fails on a
+# compiled file of the repository that is neither linted nor named here, on an
+# entry without its reason, and on one naming a file this tree does not
+# compile or does lint. Started empty, so that a value given on the command
+# line cannot add to it.
+set(ORBSIM_LINT_EXCEPTIONS "")
+
 # -Wfloat-equal is live after core/Units.hpp (M1-117, register decisions 451
 # and 454): mp-units v2.5.0 left it switched off there, and core/Units.hpp now
 # undoes that. tests/float_equal_guard.cpp must NOT compile, so it is a target
@@ -1057,6 +1066,8 @@ endforeach()
 # mp-units' slip changes nothing there.
 if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     add_library(float_equal_guard OBJECT EXCLUDE_FROM_ALL tests/float_equal_guard.cpp)
+    list(APPEND ORBSIM_LINT_EXCEPTIONS
+            "tests/float_equal_guard.cpp: must not compile -- check-float-equal-guard.py requires the error")
     target_include_directories(float_equal_guard PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
     target_link_libraries(float_equal_guard PRIVATE orbsim_core orbsim_warnings)
     if(ORBSIM_PYTHON)
@@ -1373,6 +1384,7 @@ find_package(Vulkan REQUIRED COMPONENTS glslc)
 # VMA ships as a single header; this target holds the one translation unit that
 # instantiates its implementation.
 add_library(vma_impl STATIC src/render/VmaImpl.cpp)
+list(APPEND ORBSIM_LINT_EXCEPTIONS "src/render/VmaImpl.cpp: VMA's implementation, from its one third-party include")
 target_link_libraries(vma_impl PUBLIC Vulkan::Headers GPUOpen::VulkanMemoryAllocator)
 target_compile_definitions(vma_impl PUBLIC VMA_STATIC_VULKAN_FUNCTIONS=0 VMA_DYNAMIC_VULKAN_FUNCTIONS=1)
 # VMA's own header is not warning-clean; that is not ours to fix, and it is not
@@ -2007,6 +2019,9 @@ endif()
 find_program(ORBSIM_CLANG_TIDY clang-tidy)
 find_program(ORBSIM_CLANG_FORMAT clang-format)
 
+# Every file of the repository this tree compiles is in this list or in
+# ORBSIM_LINT_EXCEPTIONS, with its reason, beside its target; the CTest test
+# lint_deps fails otherwise (M1-135).
 set(ORBSIM_LINT_SOURCES
         ${ORBSIM_CORE_SOURCES} ${ORBSIM_TEST_SUPPORT_SOURCES} ${ORBSIM_FUZZ_SOURCES})
 foreach(test_name IN LISTS ORBSIM_TESTS)
