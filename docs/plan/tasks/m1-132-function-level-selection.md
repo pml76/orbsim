@@ -10,7 +10,9 @@ start-up check, the tests that run through a script, records that match no
 test, the paths of the libraries, the rule that skips a test, a test that
 enters other functions in a different run, ADR 0028, and the smaller choices.
 And 710 and 711, ruled 2026-10-20 during step 1: the five points of the
-readers, and the eight points of the digests.
+readers, and the eight points of the digests; and 712, ruled the same day
+during step 2: the hook's table counted from two sources, and a thunk's
+record in the debug information counted as a procedure.
 Reads what [M1-131](m1-131-coverage-hook.md) records; proved by
 [M1-133](m1-133-selection-proved.md).
 
@@ -51,7 +53,10 @@ data that points at other data (545).
    address is the function; two names that start with `??_E` and `??_G` and
    are the same after that are one function, with the `??_G` name; each
    other set of names fails the check and names the program and the address
-   (695).
+   (695). *Measured over a full run in each tree, and written in
+   [the measurement record](../../measurements/m1-132-procedure-ranges.md):
+   each recorded address starts one procedure record, and only one, an
+   `S_THUNK32` record counted as a procedure (712).*
 3. **A program carrying the hook is fingerprinted as decision 583 lays out:
    our own code by the hook, everyone else's code by its binary.**
    - Function by function: the digests of the functions the test entered,
@@ -124,7 +129,9 @@ data that points at other data (545).
    a record too since decision 634, which amends 559, and are judged like any
    other test. And since decision 704: a record that matches no test, or more
    than one; and a record with a count of flags that is different from the
-   number of entries in the address table of the program it names.
+   number of entries in the address table of the program it names -- the
+   number from the map's markers and from the length of the section
+   `.SCOVP`, which must agree (712).
 6. **Self-tests** (591): the decision rules on made-up inputs; the reader on
    small samples compiled with the tree's own clang as the test runs, among
    them that a test inserted before others leaves their digests unchanged;
