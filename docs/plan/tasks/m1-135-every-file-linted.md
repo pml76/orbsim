@@ -1,6 +1,6 @@
 # M1-135 — Every compiled file linted, or named as an exception
 
-Phase: B | Status: **in progress from 2026-10-18**, on a branch of its own
+Phase: B | Status: **done 2026-10-20, on `master`, not pushed**
 Prerequisites: M1-131, for decision 650's line
 Decided by: register decisions 650 and 660-671, ruled 2026-10-18 before the
 work began -- the task and its place (660), the guard in the lint-dependency
@@ -9,7 +9,11 @@ header no linted file includes (664), how an exception is named (665), the
 order against M1-131 (666), seeing it fail (667), its mutants (668), its build
 trees (669), the register's numbers (670), and four smaller choices (671);
 and 672, ruled the same day after the planted file found it -- fetched code
-in a folder outside the repository. Decisions 660-679 are this task's (670).
+in a folder outside the repository. And 673-678, ruled 2026-10-20 at the
+end: where the task is finished (673), the sequence of its last commit and
+its mutation pass (674), smaller decisions (675), how the ASD-STE100
+dictionary is applied (676), the spelling (677), and the record in
+`HISTORY.md` (678). Decisions 660-679 are this task's (670); 679 is not used.
 
 ## Purpose
 
@@ -139,6 +143,12 @@ decision 650's line. There it fails, rightly, on
 `master`, the branch is moved onto it, and `check` runs after that, in two
 trees of the task's own (669), started only on the owner's word.
 
+**Amended by decisions 673 and 674, 2026-10-20.** M1-131 was pushed, so the
+two commits of the branch were copied onto `master` in the main checkout,
+and `check` and the mutation pass ran in the two trees of the main
+checkout. The branch was not merged. The guard was committed before the
+pass, because the pass records the hash of the commit (674).
+
 ## Mutants
 
 `scripts/mutants/m1-135.json` (668): one Python mutant for each of the
@@ -151,6 +161,33 @@ fetched refused (672), judged by `lint_deps_self_test` and `lint_deps`. Its pass
 after the commit, in this task's Debug tree, and its record is committed on
 the branch. `m1-89.json` becomes due and runs at phase B's gate.
 
+## The end, 2026-10-20
+
+**Measured before the end, read only** (decision 673). The guard as the
+branch had it, run against the two `check` trees of the main checkout with
+the two exceptions, passed in the two trees: 96 files of the repository
+compiled, 94 linted, and the other 2 the exceptions. Without the
+exceptions, it named only those 2 files. It also passed in the gate trees
+`windows-msvc` and `asan`, with the exception for VMA, and in `linux-gcc`
+and `linux-sanitize`, in WSL. In `linux-gcc` it named
+`tests/float_equal_guard.cpp` when that exception was removed. `asan` and
+`linux-sanitize` were configured before `float_equal_guard` was added, so
+they do not compile it.
+
+**`check`** passed in the two trees before each commit. With the guard,
+`lint_deps` gave this result in the two trees:
+
+```
+check-lint-deps: all 94 lint steps depend on their objects and not on headers, and every file of the repository compiled here is linted or one of the 2 exceptions
+```
+
+**The mutation pass**, 2026-10-20, in `build/debug`, in 63 s: 8 mutants,
+8 caught, 0 survived, 0 invalid. `lint_deps_self_test` caught each of
+them. The record names the commit `85535a3`. After the pass,
+`scripts/mutants-due.py build/debug` gives 42 of 43 mutant files as due;
+`m1-135.json` is the file that is not due. `m1-89.json` is due, as decision
+661 says, and runs at phase B's gate.
+
 ## Done when
 
 - [x] The questions are ruled and recorded (660-671).
@@ -161,7 +198,7 @@ the branch. `m1-89.json` becomes due and runs at phase B's gate.
 - [x] The planted file is caught, accepted as an exception, and caught again
       as a stale one.
 - [x] All eight mutants caught in a dry run on a scratch copy of the script.
-- [ ] `check` passes in both of this task's trees, after the move onto
-      M1-131's commit.
-- [ ] The mutation pass has run and its record is committed.
-- [ ] Nothing is pushed: the branch is merged by the owner.
+- [x] `check` passes in the two trees of the main checkout, on `master`
+      (decision 673).
+- [x] The mutation pass has run and its record is committed.
+- [ ] Pushed, on the owner's word (decision 675).

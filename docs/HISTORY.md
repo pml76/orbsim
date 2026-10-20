@@ -2136,6 +2136,30 @@ directory contained, task by task.
 
 **Finished since the move, newest first:**
 
+- **[M1-135](plan/tasks/m1-135-every-file-linted.md), each compiled file linted or named as an exception,
+  finished 2026-10-20** (register decisions 660-678). Built: a fifth check in `scripts/check-lint-deps.py`,
+  which the CTest test `lint_deps` runs (661). Each file of the repository that a tree compiles, if it is not
+  in a build folder or in a folder that `CMakeCache.txt` names as fetched, is linted or is named in
+  `ORBSIM_LINT_EXCEPTIONS` with its reason, adjacent to its target and with the same condition (662, 665,
+  672). There are two entries, `src/render/VmaImpl.cpp` and `tests/float_equal_guard.cpp`. The check reports
+  an entry without a reason, an entry for a file that the tree does not compile or that is linted, a file with
+  two entries, a compiled file from a folder that is not in the repository or the build tree, and an empty
+  compile database. Each report names the file, the targets that compile it, and the two possible corrections
+  (671). Seen to report each fault first, with three methods (667): the 16 new cases of the self-test, before
+  the check was written; `tests/ReadRecordListener.cpp`, the file that was not linted, and no other file; and
+  a planted file. **Measured 2026-10-20**, read only: in the two `check` trees, 96 files of the repository are
+  compiled, 94 are linted, and the other 2 are the exceptions; the gate trees `windows-msvc`, `asan`,
+  `linux-gcc` and `linux-sanitize` also pass. **The end** was done on `master` in the main checkout, not on
+  the branch (673): the two commits were copied, and the guard was committed before its mutation pass (674).
+  The mutation pass, in `build/debug` in 63 s: 8 mutants, 8 caught, none invalid. Found during the work: the
+  sequence in `STATUS.md` gave a mutation record the hash of a commit that an amend removes (674); text
+  committed before it was examined against the ASD-STE100 dictionary, and corrected before the pass (676); and
+  the spelling rule of ASD-STE100 (677).
+
+  `STATUS.md`'s next-task row as it stood on 2026-10-19, before the end of the task, word for word:
+
+  > **M1-135, found by M1-131**: a guard that every file this project compiles is linted or named as an exception (decision 650). Its questions were ruled with the owner (decisions 660-672) and the guard built and seen failing first, all eight of its mutants caught in a dry run, on the branch `claude/suspicious-mendel-1c1f44` -- on the first machine only, not pushed: `f91e835`, the rulings and its task document, and `d0a1268`, a commit marked WIP, to be amended into the guard's once `check` passes (decision 666). Its worktree is under `.claude/worktrees/`, which git ignores, with a Debug tree of its own. Three steps are left, never beside M1-131's `check` (decision 669): the branch moved onto `master`; `check` in both of its own trees (669, estimated at 1 to 1.5 hours of machine time); its mutant file run and the record committed (668); then the WIP commit amended and the branch brought onto `master` as the owner rules, its rows 660-672 going in between 659 and 680 and decision 670 gaining its "Amended by decision 680" note. **Then [M1-132](plan/tasks/m1-132-function-level-selection.md) and [M1-133](plan/tasks/m1-133-selection-proved.md)**, M1-129's item 9 steps D and E: tests chosen function by function from M1-131's records, and the selection proved and measured -- every question they raised ruled before their code (decisions 582-595 and 624). Decision 695 is for M1-132: its map reader accepts one pair of alias names, and no other. **After M1-133, [M1-134](plan/tasks/m1-134-mutants-chosen-like-tests.md)**, added 2026-10-18 at the owner's request (decision 633): mutation passes chosen the way the tests are, its design questions put before it is built. Scratch on the first machine kept for them: `build/wthook`, `build/wtfn`, `build/wtfn-spike/` and `build/item9-prototypes/`, removed after them; and `build/wt129`, M1-129's "before" tree, kept for M1-133 (decision 611). **[M1-136](plan/tasks/m1-136-fuzz-trees-lint-deps.md)**, `lint_deps` failing in the fuzz trees, proposed 2026-10-18 and postponed by the owner: its task document holds the measurements and eight questions, each with its options, costs and a recommendation, to be put to the owner before it starts. Its questions wait for the owner, but for question 7, ruled on 2026-10-18: decisions 680-689 are its (decision 680). The worktrees of M1-135 and M1-136 under `.claude/worktrees/` are removed once their commits are on `master`, on the owner's word. **Then, lower levels first (decision 495):** M1-127; [M1-130](plan/tasks/m1-130-code-as-modules.md), the code as C++20 modules (decisions 485, 492-494); M1-119; M1-121; M1-120, M1-112, M1-113; M1-128; M1-122 to M1-124; M1-125 last. **M1-126 runs on the second machine** whenever the owner is next at it, and blocks nothing. **Register numbers:** 660-679 are M1-135's (decision 670, on M1-135's branch); 680-689 are M1-136's; M1-131 used 690-700, and the next free number is 701 (decision 680). Since 2026-10-19 all text follows ASD-STE100 (`CLAUDE.md`, agreement 1, fifth addition; decision 693). M1-131's progress as this row recorded it, with its measurements, is in `HISTORY.md` section 7
+
 - **[M1-131](plan/tasks/m1-131-coverage-hook.md), the coverage hook and the recorder, finished
   2026-10-19** (the register decisions its task document lists, 625-659 and 690-699 among them).
   Built: the option `ORBSIM_COVERAGE_HOOK`, refused with a compiler other than clang and on a system

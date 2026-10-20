@@ -1002,6 +1002,23 @@
       "validation layer": "1.4.357 (variant 0), implementation 1"
     }
   },
+  "m1-135.json": {
+    "commit": "85535a3eed3ae6f2519006b163917cf628159cf5",
+    "tree": "build/debug",
+    "date": "2026-10-20",
+    "judges": {
+      "ctest lint_deps_self_test": "4505343582d3d5f5",
+      "ctest lint_deps": "192604e12af14f55"
+    },
+    "judge_parts": {
+      "ctest lint_deps_self_test": {
+        "definition": "1211e57c934de738"
+      },
+      "ctest lint_deps": {
+        "definition": "a669eb795a5212e2"
+      }
+    }
+  },
   "m1-14.json": {
     "commit": "99c47aa220c1d2a592f7db1b330e5ef85bed2fc4",
     "tree": "build/debug",

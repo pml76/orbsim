@@ -74,7 +74,10 @@ recorded; confirm that, do not record it again.** In practice:
   Simplified Technical English, Issue 9** (agreement 1, fifth addition;
   decision 693): answers, questions, documents, commit messages and code
   comments. Short sentences, the active voice, one instruction in each
-  sentence, and the condition first.
+  sentence, and the condition first. Technical nouns and technical verbs of
+  software, and the usual terms of this project, stay; all other words
+  follow the dictionary (decision 676). The spelling stays British
+  (decision 677).
 - **Rulings are recorded** as the next numbered row of the register,
   [`plan/milestone-1-decisions.md`](plan/milestone-1-decisions.md) section 9:
   what was ruled, what was measured, what was considered, the date. A ruling
@@ -351,12 +354,10 @@ before its work began); then
 chosen the way the tests are (decision 633, 2026-10-18); then M1-127 and
 M1-130 (the code as modules), lower levels first (decision 495).
 
-**On the evening of 2026-10-19** M1-131 is done, and pushed up to `4cd5e13`
-(decisions 636-700): the presets carry the hook (decision 694), and the
-task's mutant file passed in `build/debug`, 45 of 49 caught and the 4
-declared survivors surviving (decisions 654, 697 and 698). Next, M1-135,
-a guard that every compiled file is linted, built on a branch of its own on
-the first machine and three steps from done; then M1-132 and M1-133. M1-136,
-`lint_deps` in the fuzz trees, waits with its questions open. Write all
-text in ASD-STE100 (section 1). STATUS's row says exactly where each
-stands, what is left, and in what order.
+**On 2026-10-20** M1-131 is pushed up to `b4ead1a`, and M1-135 is done on
+`master`, not pushed (decisions 660-678): `lint_deps` makes sure that
+each compiled file of the repository is linted or named as an exception,
+and its mutation pass caught 8 of 8 mutants. Next, M1-132 and M1-133.
+M1-136, `lint_deps` in the fuzz trees, waits with its questions open.
+Write all text in ASD-STE100 (section 1). STATUS's row says what each
+task has done, what is left, and the sequence.
