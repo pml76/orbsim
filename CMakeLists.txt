@@ -1198,6 +1198,24 @@ if(ORBSIM_COVERAGE_HOOK)
         add_test(NAME coverage_recorder COMMAND ${CMAKE_COMMAND} -E false)
     endif()
     set_tests_properties(coverage_recorder PROPERTIES LABELS fixtures)
+
+    # The self-test of the readers in scripts/compiled-code.py (M1-132,
+    # register decisions 546, 591, 594, 705 and 709): made-up objects,
+    # archives, maps and .pdb files, and small samples that this tree's clang
+    # compiles at -O0 and at -O2, archived with this tree's llvm-ar and linked
+    # into a DLL with its lld-link. The command line names the two, so that the
+    # test's fingerprint holds them (decision 710). Only where the hook is on,
+    # because only those trees read the compiled code function by function.
+    if(ORBSIM_PYTHON)
+        add_test(NAME compiled_code_self_test
+                COMMAND ${ORBSIM_PYTHON}
+                        ${CMAKE_CURRENT_SOURCE_DIR}/scripts/compiled-code.py --self-test
+                        --compiler ${CMAKE_CXX_COMPILER} --archiver ${CMAKE_AR} --linker ${CMAKE_LINKER}
+        )
+    else()
+        add_test(NAME compiled_code_self_test COMMAND ${CMAKE_COMMAND} -E false)
+    endif()
+    set_tests_properties(compiled_code_self_test PROPERTIES LABELS fixtures)
 endif()
 
 # The generated reference data is the data the error budgets were measured
