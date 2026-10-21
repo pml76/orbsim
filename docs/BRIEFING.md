@@ -430,3 +430,7 @@ Also on 2026-10-21, the owner postponed M1-134 (decision 735), and after
 that, on the same day, made it the next task after M1-133 again (decision
 736). Its task document is written again from the start, on the owner's
 rules R1 to R13, with SQLite for its store.
+
+Also on 2026-10-21, the owner added M1-137, the limits of the test
+selection, as the next task after M1-133 and before M1-134 (decision
+744).

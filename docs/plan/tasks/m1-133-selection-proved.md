@@ -53,8 +53,10 @@ In this sequence since decision 721:
 
 Points 3-5 of M1-129's "The order from here": mutation testing at function
 level, which is [M1-134](m1-134-mutants-chosen-like-tests.md) since
-2026-10-18 (decision 633) and comes next, written again from the start on
-2026-10-21 (decisions 735 and 736); working agreement 9 applied to the
+2026-10-18 (decision 633), written again from the start on 2026-10-21
+(decisions 735 and 736), and which comes after
+[M1-137](m1-137-selection-limits.md), the limits of the test selection
+(decision 744); working agreement 9 applied to the
 configure step, the tests run in both trees and the linting; and whether
 agreement 9 covers the documentation -- each of the last two may become a
 task of its own, decided when it is taken up.
