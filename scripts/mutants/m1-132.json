@@ -1,0 +1,501 @@
+{
+  "task": "M1-132",
+  "tree": "build/debug",
+  "note": "The selection of tests function by function (register decisions 701-719, and the earlier decisions that the task document gives). Each mutant changes a Python script, thus the harness builds nothing, and the CTest tests that run the scripts are the judges: compiled_code_self_test, coverage_hook_self_test and run_tests_self_test for compiled-code.py, which the two other scripts load; coverage_hook_self_test for the start-up check; and run_tests_self_test and run_tests_function_level for the driver. The mutants of the task document come first, then the mutant of decision 716, then the 11 mutants of the rulings 712-715 (decision 717). Four mutants change no decision of the driver (decision 718), and a case that examines the value itself catches each: 'a removed function is not in the function part' is caught by the case that examines that a key that the program does not hold is different from no key, because the driver compares the full part as one hash and the kept part was calculated with the removed function; 'the digests calculated for each function' by the cases that count the digested code sections; 'a kept table is not used' by the case that counts the full reads; and 'ORBSIM_TEST_NAME in the environment part' by the case that calls environment() itself, while run_tree removes the variable before. One survives, declared: the link commands read from Ninja one program at a time, which gives the same commands. No mutant is decisive only in RelWithDebInfo, thus the file runs in build/debug only (decision 709 (6)).",
+  "mutants": [
+    {
+      "name": "a digest ignores the relocations of a section",
+      "file": "scripts/compiled-code.py",
+      "find": "str(len(relocations)), *relocations, *associated)",
+      "replace": "str(len(relocations)), *associated)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compiled_code_self_test",
+        "coverage_hook_self_test",
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "data is not followed into the data it points at",
+      "file": "scripts/compiled-code.py",
+      "find": "lambda n: \"\" if n == member else self._data[n]",
+      "replace": "lambda n: \"\"",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compiled_code_self_test",
+        "coverage_hook_self_test",
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a removed function is not in the function part",
+      "file": "scripts/compiled-code.py",
+      "find": "part = {\"functions\": [[key, digests.get(key, MISSING_FUNCTION)] for key in wanted]",
+      "replace": "part = {\"functions\": [[key, digests[key]] for key in wanted if key in digests]",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compiled_code_self_test",
+        "coverage_hook_self_test",
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a start-up function is left in the keys of a record",
+      "file": "scripts/compiled-code.py",
+      "find": "        return [key for key in keys if key not in start], [f\"{self.name}: {p}\" for p in problems]",
+      "replace": "        return keys, [f\"{self.name}: {p}\" for p in problems]",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compiled_code_self_test",
+        "coverage_hook_self_test",
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a start-up function is left in the table of a program",
+      "file": "scripts/compiled-code.py",
+      "find": "keys[0] if keys and keys[0] not in start else None",
+      "replace": "keys[0] if keys else None",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compiled_code_self_test",
+        "coverage_hook_self_test",
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "an address with two names is given to the first name",
+      "file": "scripts/compiled-code.py",
+      "find": "        symbol = _one_function(names)",
+      "replace": "        symbol = names[0] if names else None",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compiled_code_self_test",
+        "coverage_hook_self_test",
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a function without a flag is left out of the function part",
+      "file": "scripts/compiled-code.py",
+      "find": "        wanted = sorted(set(keys) | set(self._unflagged))",
+      "replace": "        wanted = sorted(set(keys))",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compiled_code_self_test",
+        "coverage_hook_self_test",
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a start-up entry in an object from src/ is accepted",
+      "file": "scripts/check-coverage-hook.py",
+      "find": "        found.append(f\"{section.name} points at {', '.join(targets) or 'nothing'}\")",
+      "replace": "        continue",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "coverage_hook_self_test"
+      ]
+    },
+    {
+      "name": "a library that is not in the tree is left out of the binary part",
+      "file": "scripts/compiled-code.py",
+      "find": "            binary.append([\"library\", key, library.sha, sorted(names)])",
+      "replace": "            if \":\" not in key:\n                binary.append([\"library\", key, library.sha, sorted(names)])",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compiled_code_self_test",
+        "coverage_hook_self_test",
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a test that starts its program directly and passed with no record is accepted",
+      "file": "scripts/run-tests.py",
+      "find": "        if direct is not None and direct not in recorded:",
+      "replace": "        if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a start-up section that is not a C++ initialiser is accepted",
+      "file": "scripts/check-coverage-hook.py",
+      "find": "        if not section.name.startswith(START_UP_PREFIX):",
+      "replace": "        if not section.name.startswith(\".CRT$XC\"):",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "coverage_hook_self_test"
+      ]
+    },
+    {
+      "name": "a test through a script that is not one of the seven gets the function part",
+      "file": "scripts/run-tests.py",
+      "find": "    taken = recorded - on_line",
+      "replace": "    taken = set(recorded)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test",
+        "run_tests_function_level"
+      ]
+    },
+    {
+      "name": "a record that belongs to no test is accepted",
+      "file": "scripts/run-tests.py",
+      "find": "            loose.append(f\"{path}: {problem}\")",
+      "replace": "            continue",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a record with a count of flags different from the table is accepted",
+      "file": "scripts/run-tests.py",
+      "find": "    if record.flags != entries:",
+      "replace": "    if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a library with no path or two paths in the .pdb file is accepted",
+      "file": "scripts/compiled-code.py",
+      "find": "        elif (library or obj) not in named:",
+      "replace": "        elif not library and obj not in named:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compiled_code_self_test",
+        "coverage_hook_self_test",
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "two objects with one file name are accepted",
+      "file": "scripts/compiled-code.py",
+      "find": "groups.setdefault(_file_name(name).casefold(), []).append(name)",
+      "replace": "groups.setdefault(name.casefold(), []).append(name)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compiled_code_self_test",
+        "coverage_hook_self_test",
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a test is skipped when a part other than its programs changed",
+      "file": "scripts/run-tests.py",
+      "find": "    if stored is None or stored.get(\"parts\") != parts:",
+      "replace": "    if stored is None or (stored.get(\"parts\") != parts and not stored.get(\"programs\")):",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test",
+        "run_tests_function_level"
+      ]
+    },
+    {
+      "name": "a member that its library does not hold in the .pdb file is accepted",
+      "file": "scripts/compiled-code.py",
+      "find": "        if len(paths) == 1 and library and obj not in members[paths[0]]:",
+      "replace": "        if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compiled_code_self_test",
+        "coverage_hook_self_test",
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "the default of a weak external is not followed",
+      "file": "scripts/compiled-code.py",
+      "find": "                return \"weak\", tuple(names), self._target(index, here, default[0])",
+      "replace": "                return \"weak\", tuple(names)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compiled_code_self_test",
+        "coverage_hook_self_test",
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a name that the map gives to an object in none of the two sets is accepted",
+      "file": "scripts/compiled-code.py",
+      "find": "                elif owner in self._unhooked:",
+      "replace": "                elif True:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compiled_code_self_test",
+        "coverage_hook_self_test",
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a funclet counts alone as a function without a flag",
+      "file": "scripts/compiled-code.py",
+      "find": "            and not any(index.sections[n][1] == table for n in index.associated.get(number, ()))",
+      "replace": "            and (not any(index.sections[n][1] == table for n in index.associated.get(number, ())) or self._functions()[key][0][2][2] != 0)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compiled_code_self_test",
+        "coverage_hook_self_test",
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a start-up function counts as a function without a flag",
+      "file": "scripts/compiled-code.py",
+      "find": "            (index, number) not in start",
+      "replace": "            True",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compiled_code_self_test",
+        "coverage_hook_self_test",
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "/INCLUDE is left out of the linker directives",
+      "file": "scripts/compiled-code.py",
+      "find": "None if section.data is None else _sha(section.data)",
+      "replace": "None if section.data is None else _sha(re.sub(rb\" */INCLUDE:\\S*\", b\"\", section.data) if section.name == DIRECTIVES else section.data)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compiled_code_self_test",
+        "coverage_hook_self_test",
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "the digests are calculated for each function, not only for the keys given",
+      "file": "scripts/compiled-code.py",
+      "find": "        found = {}\n        for key in self._functions() if keys is None else keys:",
+      "replace": "        found = {}\n        for key in self._functions():\n            self._function_digest(key)\n        for key in self._functions() if keys is None else keys:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compiled_code_self_test",
+        "coverage_hook_self_test",
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a different start-up section that points at the hook's function is accepted",
+      "file": "scripts/check-coverage-hook.py",
+      "find": "        if section.name == HOOK_START_UP and targets == [HOOK_CONSTRUCTOR]:",
+      "replace": "        if targets == [HOOK_CONSTRUCTOR]:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "coverage_hook_self_test"
+      ]
+    },
+    {
+      "name": "the count of the hook's table from the map is not compared",
+      "file": "scripts/compiled-code.py",
+      "find": "    if from_section is None or from_section != from_map:",
+      "replace": "    if from_section is None:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compiled_code_self_test",
+        "coverage_hook_self_test",
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a member without the hook goes in with the bytes of its library",
+      "file": "scripts/compiled-code.py",
+      "find": "                binary.append([\"member\", member, found[0].sha])",
+      "replace": "                binary.append([\"member\", member, library.sha])",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compiled_code_self_test",
+        "coverage_hook_self_test",
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a record of a script test that is not complete is accepted",
+      "file": "scripts/run-tests.py",
+      "find": "            if owner in passed:",
+      "replace": "            if owner in passed and not head[2]:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a program with a problem counts as unchanged",
+      "file": "scripts/run-tests.py",
+      "find": "    return part is not None and part == stored.get(\"part\")",
+      "replace": "    return part is None or part == stored.get(\"part\")",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test",
+        "run_tests_function_level"
+      ]
+    },
+    {
+      "name": "a problem found before the tests run does not fail the run",
+      "file": "scripts/run-tests.py",
+      "find": "    problems += run.all_problems()",
+      "replace": "    run.all_problems()",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_function_level"
+      ]
+    },
+    {
+      "name": "a run that is not full deletes summaries",
+      "file": "scripts/run-tests.py",
+      "find": "        if not full:\n            return []",
+      "replace": "        if False:\n            return []",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test",
+        "run_tests_function_level"
+      ]
+    },
+    {
+      "name": "a summary file is named by the key and the hash of its object",
+      "file": "scripts/compiled-code.py",
+      "find": "            kept = {\"key\": key, \"sha256\": sha, \"version\": SUMMARY_VERSION, \"summary\": summary}\n            (self.folder / self.file_name(key))",
+      "replace": "            kept = {\"key\": key, \"sha256\": sha, \"version\": SUMMARY_VERSION, \"summary\": summary}\n            (self.folder / self.file_name(key + sha))",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compiled_code_self_test",
+        "coverage_hook_self_test",
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a kept table is used for a different map",
+      "file": "scripts/compiled-code.py",
+      "find": "kept.get(\"map\")) != (key, TABLE_VERSION, program, linker_map):",
+      "replace": "linker_map) != (key, TABLE_VERSION, program, linker_map):",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compiled_code_self_test",
+        "coverage_hook_self_test",
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "a kept table is not used",
+      "file": "scripts/run-tests.py",
+      "find": "            if kept is None:\n                self._tables[key] = self.code_of(path)",
+      "replace": "            if True:\n                self._tables[key] = self.code_of(path)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test",
+        "run_tests_function_level"
+      ]
+    },
+    {
+      "name": "ORBSIM_TEST_NAME stays in the environment of the run",
+      "file": "scripts/run-tests.py",
+      "find": "    env = without_test_name(env)",
+      "replace": "    pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_function_level"
+      ]
+    },
+    {
+      "name": "ORBSIM_TEST_NAME is in the environment part",
+      "file": "scripts/run-tests.py",
+      "find": "and fold(n) != TEST_NAME_VARIABLE}",
+      "replace": "}",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "the link commands are read from Ninja one program at a time",
+      "file": "scripts/run-tests.py",
+      "find": "    run.link_commands(run.changed_programs({n: e for n, e in stored.items() if n in run.tests and n not in forced}))",
+      "replace": "    pass",
+      "expect": "survives",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test",
+        "run_tests_end_to_end",
+        "run_tests_function_level"
+      ],
+      "why": "Accepted by the owner, 2026-10-21 (register decision 718). Without the one call for all changed programs, the driver calls Ninja for each program when it calculates its function part, and Ninja gives the same command for each program, thus each decision is the same. Measured in build/debug: one call is approximately 0.1 s for one program and for all 57; 57 calls are 6.8 s. No test counts the calls."
+    }
+  ]
+}
