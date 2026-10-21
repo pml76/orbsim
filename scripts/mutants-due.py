@@ -744,7 +744,10 @@ class Tree:
         """The compiled shader files the test driver stored for the ctest entry
         `name`, normalised, or None (decisions 616 and 629): only while the
         application is byte for byte what it was when the list was stored,
-        since another application may ask for other shaders."""
+        since another application may ask for other shaders. The driver also
+        gives the list the application of each run that skipped the test as
+        unchanged (decision 737), since the test then enters the functions of
+        its last pass, which load the same shaders."""
         if self._run_tests_store is None:
             module = run_tests_module()
             self._run_tests_store = module.load_store(self.tree / module.STATE)["tests"]

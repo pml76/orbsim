@@ -101,7 +101,9 @@ unchanged left its outputs as they were.
 **What is written** (decisions 491 and 497), all in the build tree's
 `run-tests/`: the fingerprints of the last passing run of each test -- with
 the shader files its records named and the application's SHA-256 at that run,
-which mutants-due.py reads (decisions 616 and 629) -- the list of tests
+which mutants-due.py reads (decisions 616 and 629); a test skipped as
+unchanged gets the SHA-256 of the application at the run that skipped it,
+written before CTest starts (decisions 737 and 738) -- the list of tests
 skipped, and CTest's own report. One line in `check`'s output says how many
 ran and how many were skipped. Where the hook is on, also the summary of each
 object with the hook, in `run-tests/objects/` (decision 714), and the kept
@@ -325,6 +327,27 @@ def shaders_by_test(texts) -> dict:
         else:
             found[test] = sorted(set(found.get(test, [])) | set(shaders))
     return found
+
+
+def renewed_applications(stored: dict, skipped, file_hash, application) -> tuple:
+    """(the SHA-256 of `application`, the names of the tests with entries that
+    got it): each skipped test with a stored list of shaders gets the hash of the
+    application at this run (M1-133, decisions 737 and 738). A skipped test is
+    unchanged, thus it loads the shaders of its last pass (ADR 0028), and
+    mutants-due.py, which uses a list only while the application is the one
+    that the entry names (decisions 616 and 629), can trust the list again. A
+    test that runs is not changed here: its entry is written again when it
+    passes. No entry changes where there is no application."""
+    hashed = file_hash(application)
+    if hashed == MISSING:
+        return hashed, []
+    renewed = []
+    for name in skipped:
+        entry = stored.get(name)
+        if entry and isinstance(entry.get("shaders"), list) and entry.get("application") != hashed:
+            entry["application"] = hashed
+            renewed.append(name)
+    return hashed, renewed
 
 
 def shader_record_texts(folder: pathlib.Path) -> tuple:
@@ -1618,6 +1641,13 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
 
     (run.state / SELECTED).write_text("".join(f"{n}\n" for n in order), encoding="utf-8")
     (run.state / SKIPPED).write_text("".join(f"{n}\n" for n in skipped), encoding="utf-8")
+    # The application's bytes at this run. The list of shaders of each
+    # skipped test gets them before CTest starts, because
+    # mutants_due_probe_shaders reads the store in this run (decisions 737 and
+    # 738); each test that passes gets them with its own list below.
+    application, renewed = renewed_applications(stored, skipped, run.world.file, run.app)
+    if renewed:
+        write_store(run.state, store)
     for name in order:
         run.record_path(name).unlink(missing_ok=True)
 
@@ -1666,9 +1696,6 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
     problems += [f"{path}: a shader record that could not be read ({why}); every test this run ran runs again"
                  for path, why in unreadable]
     shaders = shaders_by_test(texts)
-    # The application's bytes at this run, with each list: mutants-due.py
-    # takes a list only while the application is what it was (decision 616).
-    application = run.world.file(run.app)
     # The programs that each test that passed takes function by function,
     # from the coverage records (M1-132). A test with a problem is not
     # stored; a record that belongs to no test stores none of this run's.
@@ -2584,6 +2611,25 @@ def shader_record_cases(expect) -> None:
     expect("a shader record naming a path that is not absolute is not whole",
            parse_shader_record(shader_record("t", "shaders/a.spv")), ("t", None))
     expect("a shader record without its test line names no test", parse_shader_record("C:/x/a.spv\nend\n"), None)
+
+    # The hash of the application on the list of a skipped test (M1-133,
+    # decisions 737 and 739): without it, a change to the application in no
+    # function that the probes entered made mutants_due_probe_shaders fail.
+    app = pathlib.Path("C:/t/orbsim.exe")
+    hashes = {norm(app): "new"}
+    stored = {"skipped": {"shaders": ["C:/t/a.spv"], "application": "old"},
+              "ran": {"shaders": ["C:/t/a.spv"], "application": "old"},
+              "listless": {"parts": {}}}
+    hashed, renewed = renewed_applications(stored, ["skipped", "listless"],
+                                           lambda path: hashes.get(norm(path), "another file"), app)
+    expect("a skipped test keeps its shader list trusted when the application changes",
+           (stored["skipped"]["application"], hashed, renewed), ("new", "new", ["skipped"]))
+    expect("a test that runs keeps the application of its last pass until it passes again",
+           stored["ran"]["application"], "old")
+    expect("a skipped test with no shader list gets no application", "application" in stored["listless"], False)
+    expect("no list changes where there is no application",
+           renewed_applications({"skipped": {"shaders": [], "application": "old"}}, ["skipped"],
+                                lambda path: MISSING, app), (MISSING, []))
 
     with tempfile.TemporaryDirectory() as scratch:
         base = pathlib.Path(scratch)

@@ -651,7 +651,11 @@ changed since `scripts/mutation-passes.json` says it last passed. That covers:
   rendered and is newer than the application -- or, since M1-129, where it and
   the application are byte for byte what they were when it last was, since a
   reproducible relink gives the application a new time and no new bytes
-  (decision 616); every shader otherwise (M1-109, decision 394);
+  (decision 616); since M1-131, the list that the test driver stored for the
+  test, while the application is the one that the list names (decision 629),
+  and since M1-133 the driver gives the list of a test that it skips as
+  unchanged the application of that run (decision 737); every shader
+  otherwise (M1-109, decision 394);
 - every test CTest runs before a judging test -- the setup tests of the
   fixtures it requires, and the tests it is ordered after -- since `ctest -R`
   runs those too (M1-109, decision 394);
