@@ -78,6 +78,45 @@ has the exact URLs to fetch them again.
 Git remote: `git@github.com:pml76/orbsim.git`. The repository is **public**,
 which is why commit messages carry co-authorship but never a session URL.
 
+### The first machine: what the versions do not say
+
+Written 2026-10-21 from the assistant's notes on the first machine, so that
+the repository holds all of it.
+
+- **The folder of clang** (`STATUS.md`) also holds `llvm-pdbutil`,
+  `llvm-readobj`, `llvm-objdump` and `llvm-nm`.
+- **A web site with a bad certificate** that is read over plain HTTP, such as
+  braeunig.us, opened with `curl -k`.
+- **The push.** The file `.gitconfig` of the user sets `core.sshCommand` to
+  the OpenSSH of Windows: do not change it. The SSH key is locked with a
+  passphrase (`BRIEFING.md` section 5). On 2026-10-19 this network refused
+  port 22, and one push went over port 443, on the owner's word for that push
+  only (decision 700), with this command:
+  `git -c core.sshCommand="ssh -o HostName=ssh.github.com -o Port=443 -o HostKeyAlias=github.com -o StrictHostKeyChecking=yes" push origin master`.
+  Use it again only on the owner's word for that push. `ssh -G github.com`
+  shows the port that SSH uses.
+- **External data for a spike.** `pyerfa` 2.0.1.5 contains liberfa 2.0.1, the
+  ERFA version that this project pins: use it to measure, and not to examine
+  ERFA itself. The IERS files, read with `curl` on 2026-09-20:
+  EOP 20 C04 from 1962 (UT1 - UTC, the polar motion and the length of the
+  day), https://hpiers.obspm.fr/iers/eop/eopc04/eopc04.1962-now; finals2000A,
+  https://datacenter.iers.org/data/latestVersion/finals.all.iau2000.txt;
+  Bulletin A, https://datacenter.iers.org/data/latestVersion/bulletinA.txt;
+  and Bulletin C, the leap seconds,
+  https://datacenter.iers.org/data/latestVersion/bulletinC.txt.
+- **The word check of ASD-STE100** (decisions 676 and 677). Read
+  "ASD-STE100 Simplified Technical English.pdf" in the folder ASD-STE100 with
+  `pypdf`. A line that starts with a word, then a word class in brackets, such
+  as `(v)` or `(n)`, is a headword. A headword in capital letters is approved,
+  and one in small letters is not; the line after it gives the approved word
+  to use. Do not examine the text in backticks. Examine each word that agrees
+  only with headwords that are not approved, also after an end such as -s,
+  -ed or -ing is removed. The technical nouns and verbs of
+  software and the usual terms of this project stay. Words that the check
+  finds frequently: every, never, whose, whether, both, another, once, still,
+  instead, outside, else, whole, would, any, need, permit, way, kind, inside,
+  take, ask, list, already, real.
+
 ### cppcheck and include-what-you-use, built on Windows (M1-116)
 
 Run once each by the review, as a measurement and not as part of `check`

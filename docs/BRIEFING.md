@@ -61,11 +61,17 @@ recorded; confirm that, do not record it again.** In practice:
 - **A failing test means fix the code.** A test that passes under one compiler
   and fails under another is an unstable algorithm, not a limit to document;
   editing the test destroys the signal (agreement 2, `plan/realism.md` 1.2).
+  The owner's words on 2026-09-08, when a test was weakened and the solver
+  was not corrected: "changing the test to make it work is just plain
+  wrong!!!"
 - **Accuracy first** (agreement 3): the safeguarded algorithm, the
   cancellation-free formula, the solve to the resolution of the type; never
   "it reports a failure" where a closed form exists. **Prove each accuracy
   claim by measurement**, before and after, fitted against a conditioning law
-  where one exists.
+  where one exists. For example: a safeguarded or bracketed root-finder, not a
+  bare Newton iteration; and the equations without cancellation, such as the
+  half-angle identities, the argument reduction of the Stumpff functions and
+  compensated summation.
 - **A budget is about twice the reference's own measured distance**, measured
   before the budget is written (register decisions 54 and 76), never inherited
   from a plan. An independent *route* is not an independent *model*: say where
@@ -83,7 +89,9 @@ recorded; confirm that, do not record it again.** In practice:
   sentence, and the condition first. Technical nouns and technical verbs of
   software, and the usual terms of this project, stay; all other words
   follow the dictionary (decision 676). The spelling stays British
-  (decision 677).
+  (decision 677). An instruction has at most 20 words, and a description at
+  most 25; keep "a", "an" and "the". Examine the words of each new text against
+  the dictionary before the commit, as `PROJECT_STATE.md` section 2 says.
 - **Rulings are recorded** as the next numbered row of the register,
   [`plan/milestone-1-decisions.md`](plan/milestone-1-decisions.md) section 9:
   what was ruled, what was measured, what was considered, the date. A ruling
@@ -93,7 +101,9 @@ recorded; confirm that, do not record it again.** In practice:
   says why; it ends with one `Co-Authored-By` line naming the model and
   **never a session URL** (the repository is public). Push only when the
   owner says so, after `check-full` in both trees (the pre-push hook refuses
-  otherwise). **No CI, ever** (ADR 0005). **Everything lives in the
+  otherwise). When the work included a decision that the owner did not
+  rule, get the owner's word before the commit (the owner, 2026-09-08).
+  **No CI, ever** (ADR 0005). **Everything lives in the
   repository**: the project is worked on from two machines, and an assistant's
   memory reaches only one.
 
@@ -106,6 +116,10 @@ stay. **A simulation, not a sandbox** ([ADR 0006](adr/0006-simulation-not-sandbo
 every accuracy claim carries a stated error budget checked against data this
 project did not produce. **Only the visuals scale**: a quality setting never
 reaches the simulation state ([ADR 0007](adr/0007-render-quality-is-a-struct.md)).
+On the first machine the folder of the checkout is named `untitled`, from
+the empty CLion template that the work started from. The project is orbsim,
+a full 3D simulator in the spirit of Orbiter: the owner refused smaller
+scopes on 2026-09-04.
 
 Layers, one way only: `src/core/` (maths, units, time, contracts) and
 `src/orbit/` and `src/astro/` (ERFA behind typed wrappers) build headless;
@@ -314,7 +328,18 @@ section 8 unless another place is named.
   `wsl`: call `wsl` from PowerShell, and prefix `MSYS_NO_PATHCONV=1` for a
   Windows tool's `/flag` arguments. Its heredocs collapse backslashes: write a
   script with an editor. Python's `write_text` writes CRLF on Windows: use
-  `write_bytes`.
+  `write_bytes`. Python's output to a redirected standard output also has
+  CRLF: write it again with LF, and give it to `git add` again.
+- **The assistant's shell**: a `cd` into a worktree in `build/` makes the
+  session use that worktree as its folder: use absolute paths or a
+  subshell. A shell loop that ends with `[ ... ] && break` exits with 1 when
+  all passed: give it an explicit exit code. Commit only when the check
+  passed (`if`, not `;`).
+- **Helpers** stop after 600 s with no output: give them long commands in
+  the background, and continue a helper with a message, which keeps its
+  context.
+- **`doc-links` refuses a path in backticks to a file that is not there at
+  this time**: name a file to come without backticks.
 - A Catch2 test named with a comma cannot be selected by name; `ctest -R` can.
 - A summary of a web page is not the page: quote numbers from the source.
 - vk-bootstrap silently takes the driver's first swapchain format.
@@ -392,4 +417,4 @@ when a function that it entered has changed, as ADR 0028 records. Its
 mutation pass caught 36 of 37 mutants, and one survivor is declared. It is
 pushed up to `dcc5a13`. Next, M1-133, then M1-134. The next session starts
 with the questions of M1-133, all at one time, and with `check-full` in the
-two trees before the push of the three local commits (`STATUS.md`).
+two trees before the push of the local commits (`STATUS.md`).
