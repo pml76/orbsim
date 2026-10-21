@@ -82,3 +82,12 @@ in RelWithDebInfo, run again for any shader edit.
 
 **The stamps are per machine**, kept in the build trees and never committed
 (decision 491), so a push from another machine needs `check-full` there.
+
+## Update, 2026-10-21: the selection by function, by ADR 0028
+
+**[ADR 0028](0028-tests-run-when-a-function-they-entered-changes.md) replaces one rule of this
+record** ([M1-132](../plan/tasks/m1-132-function-level-selection.md), register decisions 701-719):
+in the two `check` trees, a test with a program that has the coverage hook is also skipped when its
+program's bytes changed but no function that it entered at its last pass changed. The other parts of
+the fingerprint, the full run before each push and the pre-push hook stay as this record gives them.
+The trees without the hook keep this record unchanged.

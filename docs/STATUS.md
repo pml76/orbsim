@@ -119,7 +119,7 @@ but not yet pinned, and which files of `bc7enc_rdo` may be compiled, are in
 ## Decision records
 
 **The list is [`adr/README.md`](adr/README.md)**, next to the records
-themselves, so that browsing the directory finds it. **Twenty-seven are accepted** *(this said twenty-two until 2026-10-04, two records behind 0023 and 0024, and twenty-five until 2026-10-16, one behind 0026, when M1-129 added 0027 -- register decision 608)*:
+themselves, so that browsing the directory finds it. **Twenty-eight are accepted** *(this said twenty-two until 2026-10-04, two records behind 0023 and 0024, and twenty-five until 2026-10-16, one behind 0026, when M1-129 added 0027 -- register decision 608; and twenty-seven until 2026-10-21, when M1-132 added 0028)*:
 0008 to 0015 written by
 [M1-02](plan/tasks/m1-02-record-the-decisions.md) from the decisions taken on
 2026-09-08, then 0016 — ERFA computes the astronomy — and 0017 — every warning

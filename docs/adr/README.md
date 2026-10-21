@@ -42,7 +42,8 @@ usually enough.
 | [0024](0024-verification-costs-what-changed.md) | Verification re-does only what a change can affect: a memory-sized lint pool, per-file lint dependencies, parallel tests, a strict mutation-rerun rule -- since 2026-09-30 judging a build-definition change by its effect -- committed fuzz corpora -- since 2026-10-05 reading what a judge reads more precisely, and the graphics card | accepted; its rejection of selecting tests superseded by 0027 | 2026-09-27 |
 | [0025](0025-bresenham-lines-required.md) | Lines are drawn by Bresenham's rule, which every device must offer, so a one-pixel line lands on the same pixels on every card | accepted | 2026-10-03 |
 | [0026](0026-input-is-commands.md) | Input becomes device-neutral commands through one mapping per device, and held input is sampled at a fixed step, so a replay of the commands is exact | accepted for the camera; the vessel half is milestone 2's | 2026-10-04 |
-| [0027](0027-tests-run-when-their-inputs-change.md) | `check` runs a test only when a fingerprint of everything it reads has changed, and every test runs in both trees before a push, which a hook enforces | accepted | 2026-10-16 |
+| [0027](0027-tests-run-when-their-inputs-change.md) | `check` runs a test only when a fingerprint of everything it reads has changed, and every test runs in both trees before a push, which a hook enforces | accepted; its rule for a program with the coverage hook replaced by 0028 | 2026-10-16 |
+| [0028](0028-tests-run-when-a-function-they-entered-changes.md) | A test with a program that has the coverage hook runs again only when a function that it entered changed; the trees without the hook keep 0027 | accepted | 2026-10-21 |
 
 **0008 to 0015 record the decisions taken on 2026-09-08**, before milestone 1
 started. All twenty-six of those decisions are in

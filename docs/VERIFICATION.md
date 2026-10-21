@@ -825,6 +825,20 @@ and the pre-push hook refusing a push without both stamps (decisions 484, 503
 and 535). The gate trees -- the sanitizers, MSVC, Linux -- run `check-full`
 (decision 534).
 
+**Since M1-132, in the two `check` trees, a test with a program that has the
+coverage hook is also skipped when its program's bytes changed but no function
+that it entered at its last pass changed**
+([ADR 0028](adr/0028-tests-run-when-a-function-they-entered-changes.md)). Four
+more checks make that safe: the self-test compiles samples with the tree's own
+clang, and only the changed function must get a different digest
+(`compiled_code_self_test`); the driver itself runs on a small project with
+the hook, and each change must run the correct tests and no other test
+(`run_tests_function_level`); `check` fails when a coverage record is
+incorrect or missing (decisions 590 and 704); and `check` refuses a start-up
+entry in an object from `src/` that has the hook (decisions 624 and 702). A
+test that enters different functions in a different run is a limit, and only
+the full run before each push finds a fault there (decision 707).
+
 ---
 
 ## Part 3 — The rules that are about people
@@ -920,7 +934,7 @@ rules a machine checks and which depend on a person remembering.
 | 18 Coverage | By hand, at each gate. **Since the phase A gate, every suite on both platforms, renderer and application included, each program read with its own profile** -- the merged report hid unexecuted lines; [`PROJECT_STATE.md`](PROJECT_STATE.md) section 11.4 has the table and the reading | **done** |
 | 19 Mutation testing | By hand, periodically; the **anchors** are in `check` | exercised 2026-09-07, again 2026-09-19 on M1-04, M1-06 and M1-05, and 2026-09-20 on M1-86, M1-07, M1-08 and M1-09. **2026-09-21 on M1-10: fourteen of fourteen, none surviving, none invalid**, six of them at compile time -- M1-09's declared survivor died there, and the pass found that *two written-down claims about which test would catch what* had never been run, one of them in M1-09's own mutant file. **2026-09-22 on M1-87: twelve mutants, and the pass ran twice** -- 11 caught and 1 surviving first, because the *test* was wrong rather than the code, then twelve of twelve, none surviving, none invalid, seven of them at compile time |
 | 20 WSL, UBSan, second compiler | By hand, before a milestone | **done** |
-| 21 `check` is the definition of done | The build, both trees; since M1-129 `check` skips unchanged tests and `check-full`, every test in both trees, is required by the pre-push hook | **done** |
+| 21 `check` is the definition of done | The build, both trees; since M1-129 `check` skips unchanged tests and `check-full`, every test in both trees, is required by the pre-push hook; since M1-132, in the two `check` trees, a test with a program that has the coverage hook is also skipped when no function that it entered has changed ([ADR 0028](adr/0028-tests-run-when-a-function-they-entered-changes.md)) | **done** |
 | 22–24 The human rules | A person | discipline |
 
 Rule 14 is *weakened* rather than done or to build, and it is the only row that
