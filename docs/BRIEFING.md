@@ -326,6 +326,17 @@ section 8 unless another place is named.
   when memory runs short and can leave a mutant in the source; a machine that
   sleeps trips the harness's time limits; the build pool is sized from total
   memory.
+- **Pushing from the first machine**: the SSH key is locked with a passphrase,
+  and on 2026-10-21 the SSH agent of Windows did not run. A push from the
+  assistant's shell then waits for a passphrase on a console that nobody can
+  see. The assistant does not type a passphrase: stop the push, and the owner
+  pushes from a terminal of their own, `git push origin <commit>:refs/heads/master`.
+  Read the remote without a key: `git ls-remote https://github.com/pml76/orbsim.git`.
+- **`mutate.py` stops with `[Errno 22] Invalid argument`** when Windows refuses
+  to cut a file that a different program has mapped into its memory. The
+  Claude desktop app runs `git diff` while files change, and Git maps the
+  changed files. Run the file one more time, as decision 623 says
+  (`STATUS.md`, open item (g)).
 - **Web access on the first machine**: the shell's proxy refuses some sites;
   in PowerShell, clear `HTTPS_PROXY` and `HTTP_PROXY` and use
   `Invoke-WebRequest -UseBasicParsing`, which takes Windows' own proxy.
@@ -379,4 +390,6 @@ method of work into section 1.
 trees, a test with a program that has the coverage hook also runs again only
 when a function that it entered has changed, as ADR 0028 records. Its
 mutation pass caught 36 of 37 mutants, and one survivor is declared. It is
-pushed up to `dcc5a13`. Next, M1-133, then M1-134.
+pushed up to `dcc5a13`. Next, M1-133, then M1-134. The next session starts
+with the questions of M1-133, all at one time, and with `check-full` in the
+two trees before the push of the three local commits (`STATUS.md`).
