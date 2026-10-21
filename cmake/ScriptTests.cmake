@@ -482,6 +482,30 @@ else()
 endif()
 set_tests_properties(run_tests_self_test run_tests_end_to_end PROPERTIES LABELS fixtures)
 
+# The selection by function from end to end (M1-132, register decision 713
+# (4)): the driver on a scratch project with the hook, which this tree's
+# CMake configures, its clang++ compiles, its llvm-ar archives and its
+# lld-link links with Ninja, with the recorder, tests/CoverageRecorder.cpp,
+# and the header that it includes. After each change, the driver must run
+# the tests that the change affects and no other test, and find no problem.
+# The command line names each of these files, so that the test's fingerprint
+# holds them (the reason of decision 710 (4)). Only where the hook is on,
+# because only those trees select tests function by function.
+if(ORBSIM_COVERAGE_HOOK)
+    if(ORBSIM_PYTHON)
+        add_test(NAME run_tests_function_level
+                COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/run-tests.py
+                        --function-level ${CMAKE_COMMAND} ${CMAKE_CTEST_COMMAND} ${CMAKE_MAKE_PROGRAM}
+                        ${CMAKE_CXX_COMPILER} ${CMAKE_AR} ${CMAKE_LINKER}
+                        ${CMAKE_CURRENT_SOURCE_DIR}/tests/CoverageRecorder.cpp
+                        ${CMAKE_CURRENT_SOURCE_DIR}/tests/WriterTurns.hpp
+        )
+    else()
+        add_test(NAME run_tests_function_level COMMAND ${CMAKE_COMMAND} -E false)
+    endif()
+    set_tests_properties(run_tests_function_level PROPERTIES LABELS fixtures)
+endif()
+
 # The driver on this tree's own programs (M1-129, register decision 602): the
 # self-test reads what llvm-readobj, ldd and --list-listeners answered once,
 # and this is where they are asked again. A suite carries the read-record

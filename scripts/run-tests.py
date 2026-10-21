@@ -5,6 +5,8 @@
     run-tests.py --pre-push <repository root>      (reads git's pre-push lines)
     run-tests.py --self-test
     run-tests.py --end-to-end <cmake> <ctest> <ninja>
+    run-tests.py --function-level <cmake> <ctest> <ninja> <clang++> <llvm-ar> <lld-link>
+                 <tests/CoverageRecorder.cpp> <tests/WriterTurns.hpp>
     run-tests.py <build tree> --in-tree --ctest <ctest> --suite <program> --without-listener <program>
                  [--application <program> --library <file name>...]
 
@@ -20,11 +22,30 @@ skipped when every part of its fingerprint is what it was at its last
 **passing** run (decisions 483 and 536):
 
   * its definition, as CTest describes it -- command line and properties;
-  * its environment: PATH, every VK_* and ORBSIM_* variable (decision 501);
+  * its environment: PATH, each VK_* and ORBSIM_* variable (decision 501),
+    but ORBSIM_TEST_NAME, which the driver removes from the environment that
+    it gives CTest (decision 715 (2));
   * every program on its command line that this tree builds, by its bytes and
     those of every library it loads (decision 525), the libraries found from
     the program's import table with llvm-readobj on Windows and by ldd
     elsewhere; and every other file on its command line, by its bytes;
+  * a program that the test takes function by function (M1-132, decisions
+    583, 703, 706 and 713): the libraries that it loads at start, as one part
+    that must be as it was; and, in the store next to the parts, its bytes,
+    its function part and the functions that the test entered. The test is
+    skipped only when its bytes or its function part is as it was; the
+    driver computes the function part only for a program with changed bytes.
+    The function part is the SHA-256 that ProgramCode.function_part in
+    scripts/compiled-code.py gives for those functions and for the link
+    command of the program, the last command of Ninja for it. Which programs
+    a test takes function by function, from the coverage records that the
+    programs with the hook write into `<tree>/coverage-records/`: the
+    program of a test that starts a program with the hook directly; each
+    program that the records of a test through one of the seven scripts of
+    LISTED_SCRIPTS name; and, for each other test, each program that its
+    records name and that is not on its command line -- a program on its
+    command line keeps its bytes. A record belongs to the test that it
+    names or, if it names no test, to the test with the same command line;
   * a directory on its command line inside the repository: every file in it
     git does not ignore; the build tree itself: its Ninja files and every file
     git does not ignore (decisions 500 and 510);
@@ -54,7 +75,20 @@ skipped when every part of its fingerprint is what it was at its last
     registry value Microsoft's library reads them from, and the five files of
     C:\\Windows\\Globalization\\ICU\\ for time zones; elsewhere the two files
     of /usr/share/zoneinfo/ that libstdc++ reads, measured 2026-10-14 -- and
-    the Python, CMake, CTest and compiler programs, each with its libraries.
+    the Python, CMake, CTest, compiler and linker programs, each with its
+    libraries (the linker since decision 583).
+
+**A coverage record that is incorrect or missing fails `check`** (decisions
+590, 704, 712 and 713): a record that matches no test or two tests, or that
+cannot be given to a test; a record that is not complete, of a test that
+passed; a test that starts a program with the hook directly and passed with
+no complete record of it; a record with a count of flags different from the
+hook's table of its program, or with its flags out of line; and each problem
+that compiled-code.py finds in a program. A problem at no time causes the
+driver to skip a test: the program counts as changed, and a test with a
+problem is not stored, so that it runs again. Only a run with --full deletes
+the summaries of the objects that no program of the tree links (decision
+714).
 
 **Every file is hashed in full on every run** (decision 526): no size and
 date are trusted.
@@ -69,7 +103,13 @@ unchanged left its outputs as they were.
 the shader files its records named and the application's SHA-256 at that run,
 which mutants-due.py reads (decisions 616 and 629) -- the list of tests
 skipped, and CTest's own report. One line in `check`'s output says how many
-ran and how many were skipped.
+ran and how many were skipped. Where the hook is on, also the summary of each
+object with the hook, in `run-tests/objects/` (decision 714), and the kept
+table of each program with the hook, in `run-tests/tables/` (decision 715
+(1)): the key of the function at each entry of its hook table and the count
+of the table, which the driver uses to examine the records of a program with
+bytes and a map that did not change, with no read of its map, its .pdb file,
+its libraries or its summaries.
 
 **--full** runs every test (decision 484), requires that CTest ran as many as
 it lists (decision 537), and, from a clean working tree whose commit did not
@@ -89,14 +129,20 @@ and requires the fingerprint to move, and reads what llvm-readobj, ldd, the
 clear probe and --list-listeners answered on this project's programs; the
 CTest test run_tests_end_to_end runs the driver on a scratch project,
 requires exactly the expected tests to run, and pushes through the real
-pre-push hook (decision 603); and run_tests_in_tree asks the real tools
-again, on the tree's own programs.
+pre-push hook (decision 603); run_tests_in_tree uses the tools again, on the
+tree's own programs; and, where the hook is on, run_tests_function_level
+(--function-level) builds a scratch project with the hook, with the tools of
+the tree, changes it one step at a time, and, at each step, makes sure that
+the driver runs the tests that the change affects and no other test, with no
+problem (decision 713 (4)).
 """
 
 import argparse
 import datetime
 import hashlib
+import importlib.util
 import json
+import ntpath
 import os
 import pathlib
 import re
@@ -129,8 +175,31 @@ SHADER_RECORD = ".shaders.txt"
 EVERY_SHADER = "every"
 # Raised whenever what the store holds, or how a part is computed, changes:
 # a store of another version is not read, so every test runs once. 2: the
-# shaders a test's records name, and the application's hash (M1-131).
-STORE_VERSION = 2
+# shaders a test's records name, and the application's hash (M1-131). 3: the
+# programs that a test takes function by function, and the table of function
+# names of each program (M1-132, decision 709 (3)).
+STORE_VERSION = 3
+# The coverage recorder's records, next to the application's shader records
+# (tests/CoverageRecorder.cpp, decision 644), and the first three lines of
+# each, which say which test it belongs to (decision 564).
+FUNCTION_RECORD = ".functions.txt"
+RECORD_HEAD = ("program", "command", "test")
+# The variable that names a test to the programs that it starts (decision
+# 564): CMakeLists.txt sets it for each test that it defines.
+TEST_NAME_VARIABLE = "ORBSIM_TEST_NAME"
+# The seven CMake scripts in cmake/ that only start a program and read its
+# output (decision 703): the function part of each program that the records
+# of such a test name. A script that is added after this stays on the safe
+# side, by the bytes of its programs, until it is added here.
+LISTED_SCRIPTS = ("RunProbe.cmake", "RunUsage.cmake", "VerifyAssertionProbe.cmake", "VerifyAssertionMessage.cmake",
+                  "RunBench.cmake", "VerifyMissingShader.cmake", "VerifyReadRecord.cmake")
+# The folder in run-tests/ with the summary of each object with the hook
+# (decisions 709 (2) and 714), the folder with the kept table of each program
+# with the hook (decision 715 (1)), and the key at the top of the store with
+# the table of function names of each program (decision 709 (3)).
+OBJECTS = "objects"
+TABLES = "tables"
+FUNCTIONS = "functions"
 LISTENER = "RecordWhatEachCaseRead"
 APPLICATION = "orbsim"
 GPU_LABEL = "gpu"
@@ -271,6 +340,30 @@ def shader_record_texts(folder: pathlib.Path) -> tuple:
     return texts, unreadable
 
 
+def function_record_texts(folder: pathlib.Path) -> tuple:
+    """([(record, text)], [(record, why)]): each coverage record of the
+    recorder in `folder` (M1-132), and those that could not be read. Read as
+    the recorder writes them, in UTF-8; a byte that is not UTF-8 stays as a
+    character that no path or test name holds."""
+    found, unreadable = [], []
+    for path in sorted(folder.glob("*" + FUNCTION_RECORD)):
+        try:
+            found.append((path, path.read_bytes().decode("utf-8", errors="replace")))
+        except OSError as error:
+            unreadable.append((path, error))
+    return found, unreadable
+
+
+def tree_programs(tree: pathlib.Path) -> list:
+    """The programs in the folder of the build tree, where CMake puts each
+    program that CMakeLists.txt defines. Only these have the hook:
+    CMakeLists.txt gives the hook only to the targets that it defines. The
+    programs in a folder below it are CMake's checks of the compilers and the
+    programs of the dependencies, with no hook (measured 2026-10-21 in
+    build/debug: 57 programs in the folder, and 4 below it)."""
+    return sorted(p for p in tree.iterdir() if p.is_file() and is_program(p)) if tree.is_dir() else []
+
+
 def empty_folder(folder: pathlib.Path) -> list:
     """`folder` emptied, or made: what is left in it -- a record a program
     still holds open, on Windows -- which would be read as this run's."""
@@ -301,11 +394,22 @@ def definition(test: dict) -> str:
 def environment(env: dict) -> str:
     """The variables a test's result can rest on (decision 501): PATH, every
     VK_* and ORBSIM_*. Names compared without case on Windows, as Windows
-    does."""
+    does. ORBSIM_TEST_NAME is not one of them (decision 715 (2)): the driver
+    does not give it to CTest, and each test that uses it gets it from its own
+    definition, which is a part of its own."""
     fold = (lambda n: n.upper()) if os.name == "nt" else (lambda n: n)
     kept = {fold(n): v for n, v in env.items()
-            if fold(n) == "PATH" or fold(n).startswith(("VK_", "ORBSIM_"))}
+            if (fold(n) == "PATH" or fold(n).startswith(("VK_", "ORBSIM_"))) and fold(n) != TEST_NAME_VARIABLE}
     return digest(json.dumps(kept, sort_keys=True))
+
+
+def without_test_name(env: dict) -> dict:
+    """`env` without ORBSIM_TEST_NAME, the environment that the driver gives
+    CTest (decision 715 (2)). If the shell that starts `check` sets it, each
+    Catch2 test gets it, the records of the test name that test, and `check`
+    fails. Names compared without case on Windows, as Windows does."""
+    fold = (lambda n: n.upper()) if os.name == "nt" else (lambda n: n)
+    return {name: value for name, value in env.items() if fold(name) != TEST_NAME_VARIABLE}
 
 
 def is_program(path: pathlib.Path) -> bool:
@@ -344,10 +448,16 @@ def cache_value(tree: pathlib.Path, key: str):
 
 # --- the decision, pure ------------------------------------------------------------
 
-def unchanged(stored, parts: dict, current_hash) -> bool:
-    """Whether a test may be skipped: stored at a passing run, every part as it
-    was, and every file its record names hashing as it did when it read it."""
+def unchanged(stored, parts: dict, current_hash, programs_unchanged=None) -> bool:
+    """Examine if a test can be skipped: stored at a passing run, each part as
+    it was, each file that its record names with the hash that it had when
+    the test read it, and each program that the test takes function by
+    function unchanged by the rule of decision 706, which
+    `programs_unchanged` examines. A stored test with such programs and no
+    such function counts as changed."""
     if stored is None or stored.get("parts") != parts:
+        return False
+    if stored.get("programs") and not (programs_unchanged is not None and programs_unchanged(stored["programs"])):
         return False
     return all(current_hash(path) == stamp for stamp, path in stored.get("reads") or [])
 
@@ -366,11 +476,12 @@ def with_dependents(chosen: set, tests: dict) -> set:
     return chosen
 
 
-def selection(tests: dict, store: dict, parts: dict, current_hash, forced: set) -> set:
-    """The tests to run: every test not unchanged, every forced one, and every
-    test depending on one of them."""
+def selection(tests: dict, store: dict, parts: dict, current_hash, forced: set, programs_unchanged=None) -> set:
+    """The tests to run: each test that is not unchanged, each forced test,
+    and each test with DEPENDS on one of them. The driver computes no digest
+    for a forced test."""
     chosen = {name for name in tests
-              if name in forced or not unchanged(store.get(name), parts[name], current_hash)}
+              if name in forced or not unchanged(store.get(name), parts[name], current_hash, programs_unchanged)}
     return with_dependents(chosen, tests)
 
 
@@ -457,6 +568,293 @@ def push_problems(lines: list, stamps: dict) -> list:
     return problems
 
 
+# --- the programs taken function by function, pure (M1-132) ---------------------
+
+_SCRIPTS = {}
+
+
+def script_module(name: str):
+    """A script of scripts/, loaded one time, as scripts/mutate.py loads
+    scripts/mutants-due.py: compiled-code.py, for the part of each program
+    with the hook (decision 713 (4)), and check-coverage-recorder.py, for
+    read_record, the parser of the coverage records (decision 644). Loaded
+    only when a function uses it: the copy of this script that the
+    end-to-end test puts next to the pre-push hook has no scripts next to it."""
+    if name not in _SCRIPTS:
+        sys.dont_write_bytecode = True  # no __pycache__ in scripts/
+        loader = importlib.util.spec_from_file_location(name.replace("-", "_"), ROOT / "scripts" / f"{name}.py")
+        module = importlib.util.module_from_spec(loader)
+        loader.loader.exec_module(module)
+        _SCRIPTS[name] = module
+    return _SCRIPTS[name]
+
+
+def holds_hook_table(data) -> bool:
+    """Examine if the bytes of a program hold the hook's address table: then
+    the program has the hook (decision 584). False for no bytes, and for
+    bytes of no format that compiled-code.py reads."""
+    if data is None:
+        return False
+    code = script_module("compiled-code")
+    found = code.sections(data)
+    return found is not None and code.carries(*found)[1]
+
+
+def split_command_line(text: str) -> list:
+    """The arguments of a Windows command line, as the Microsoft C runtime
+    gives them to main: parse_command_line in the Universal C runtime's
+    argv_parsing.cpp, and Microsoft's "Parsing C++ command-line arguments".
+    The first argument, the program, ends at the first space or tab not in
+    quotes; a quote only starts or ends quotes, and a backslash is a
+    character. In each other argument, 2n backslashes and a quote give n
+    backslashes and start or end quotes; 2n + 1 backslashes and a quote give
+    n backslashes and a quote; a backslash before a different character is a
+    character; two quotes in quotes give one quote. A command line that ends
+    in quotes ends its last argument. The recorder writes the command line of
+    its program as Windows gives it (GetCommandLineW), and CTest starts a
+    test with the quotes of libuv, which this function removes
+    (decision 704)."""
+    arguments, at, end = [], 0, len(text)
+    program, quoted = [], False
+    while at < end and (quoted or text[at] not in " \t"):
+        if text[at] == '"':
+            quoted = not quoted
+        else:
+            program.append(text[at])
+        at += 1
+    arguments.append("".join(program))
+    while True:
+        while at < end and text[at] in " \t":
+            at += 1
+        if at == end:
+            return arguments
+        argument, quoted = [], False
+        while True:
+            slashes = 0
+            while at < end and text[at] == "\\":
+                slashes, at = slashes + 1, at + 1
+            copy = True
+            if at < end and text[at] == '"':
+                if slashes % 2 == 0:
+                    if quoted and at + 1 < end and text[at + 1] == '"':
+                        at += 1
+                    else:
+                        copy, quoted = False, not quoted
+                slashes //= 2
+            argument.append("\\" * slashes)
+            if at == end or (not quoted and text[at] in " \t"):
+                break
+            if copy:
+                argument.append(text[at])
+            at += 1
+        arguments.append("".join(argument))
+
+
+def windows_path(text: str) -> str:
+    """A path as Windows compares two paths: `/` and `\\` are the same
+    separator, and the case of the letters is not important, as in
+    compiled-code.py's object_key (decision 710 (2)). The same rule on each
+    machine, so that the self-test gives one result on Linux too."""
+    return ntpath.normpath(text).casefold()
+
+
+def same_command(arguments: list, command: list) -> bool:
+    """Examine if the arguments of a record's command line are the command
+    that CTest lists for a test: the first argument as a path, as Windows
+    compares paths -- CTest lists it with `/`, and Windows gives it as CTest
+    gave it -- and each other argument with the same text."""
+    return (bool(command) and len(arguments) == len(command)
+            and windows_path(arguments[0]) == windows_path(command[0]) and arguments[1:] == command[1:])
+
+
+def record_head(text: str):
+    """(program, command, test) from the first three lines of a coverage
+    record, or None. Only for a record that read_record refuses, so that the
+    driver can name its test (decisions 590 and 713 (2)): read_record, in
+    scripts/check-coverage-recorder.py, is the parser of the records
+    (decision 644), and this function reads no other line."""
+    lines = text.split("\n")
+    if len(lines) <= len(RECORD_HEAD):
+        return None
+    head = []
+    for key, line in zip(RECORD_HEAD, lines):
+        if line != key and not line.startswith(key + " "):
+            return None
+        head.append(line[len(key) + 1:])
+    return tuple(head)
+
+
+def record_owner(head: tuple, ran: dict) -> tuple:
+    """(test, problem): the test of this run that a coverage record belongs to
+    (decisions 564 and 704). A record with a test name belongs to that test;
+    a record with an empty test name belongs to the test with the same
+    command line. A record that matches no test of this run, or more than
+    one, has no test, and the problem names its program and its command line."""
+    program, command, test = head
+    if test:
+        found = [test] if test in ran else []
+    else:
+        arguments = split_command_line(command)
+        found = [name for name, listed in ran.items() if same_command(arguments, listed.get("command") or [])]
+    if len(found) == 1:
+        return found[0], None
+    named = f", for the test {test!r}," if test else ""
+    return None, (f"a coverage record of {program}{named} with the command line {command!r} matches "
+                  f"{len(found)} tests of this run, not one (decision 704)")
+
+
+def assign_records(found: list, ran: dict, passed: set) -> tuple:
+    """({test: [Record]}, {test: [problem]}, [problem]) from the coverage
+    records of one run, [(path, text)]: the complete records of each test,
+    which read_record gives; a problem for each record that is not complete,
+    of a test that passed (decisions 590 and 713 (2)), which names the record
+    and the test; and the problems of the records that cannot be given to a
+    test, which belong to no test (decision 704). A record that is not
+    complete, of a test that did not pass, is no problem: such a test is not
+    stored."""
+    read_record = script_module("check-coverage-recorder").read_record
+    records, problems, loose = {}, {}, []
+    for path, text in found:
+        record = read_record(text)
+        head = record_head(text) if record is None else (record.program, record.command, record.test)
+        if head is None:
+            loose.append(f"{path}: a coverage record that cannot be given to a test: its first lines do not name "
+                         "its program, its command line and its test (decision 704)")
+            continue
+        owner, problem = record_owner(head, ran)
+        if owner is None:
+            loose.append(f"{path}: {problem}")
+        elif record is None:
+            if owner in passed:
+                problems.setdefault(owner, []).append(
+                    f"{path}: its coverage record is not complete, and the test passed (decisions 590 and 713 (2))")
+        else:
+            records.setdefault(owner, []).append(record)
+    return records, problems, loose
+
+
+def flag_problems(record, entries, problem) -> list:
+    """The problems of one complete record against the hook's table of its
+    program, of `entries` entries, or the `problem` that gives why the table
+    was not counted (decision 712): the flags out of line (decision 590), or
+    a count of flags different from the table -- a record of a different
+    build (decision 704)."""
+    if record.out_of_line:
+        return [f"{record.program}: the recorder found the flags and the hook's table out of line, and named no "
+                "function (decision 590)"]
+    if problem is not None:
+        return [problem]
+    if record.flags != entries:
+        return [f"{record.program}: a coverage record with {record.flags} flags, where the hook's table of the "
+                f"program has {entries} entries: a record of a different build (decision 704)"]
+    return []
+
+
+def listed_script(command: list, cmake, root) -> bool:
+    """Examine if a test runs through one of the seven scripts of decision 703:
+    its command line runs CMake -- the tree's CMAKE_COMMAND -- with `-P` and
+    the path of the script in cmake/ of the repository, each path compared
+    as Windows compares paths (decision 713 (4)). A script with the same name
+    in a different folder is not one of them."""
+    if not command or not cmake or windows_path(command[0]) != windows_path(str(cmake)) or "-P" not in command[1:]:
+        return False
+    at = command.index("-P", 1) + 1
+    folder = pathlib.Path(root) / "cmake"
+    return at < len(command) and any(windows_path(command[at]) == windows_path(str(folder / name))
+                                     for name in LISTED_SCRIPTS)
+
+
+def taken_programs(direct, listed: bool, on_line: set, recorded: set) -> set:
+    """The programs that a test takes function by function (decisions 703 and
+    713 (4)), from `direct`, the program with the hook that the test starts
+    directly, or None; `listed`, if it runs through one of the seven scripts;
+    the programs of the tree on its command line; and the programs that its
+    complete records name. Each other program on its command line keeps its
+    bytes, as before.
+      - Its direct program, from its records.
+      - Through one of the seven scripts: each program that its records name,
+        also when the program is on its command line.
+      - Each test: each program that its records name and that is not on its
+        command line -- for each other test as decision 703 rules, and for a
+        test that starts its program directly, on the safe side: a program
+        that it starts in turn has no other part."""
+    taken = recorded - on_line
+    if listed:
+        taken |= recorded
+    if direct is not None:
+        taken.add(direct)
+    return taken
+
+
+def program_unchanged(stored: dict, now, function_part) -> bool:
+    """Decision 706, for one program that a test takes function by function:
+    unchanged when its bytes are as they were -- then no digest is computed --
+    or when its function part is. `now` is the SHA-256 of its bytes, or None
+    where it is not there: then it counts as changed. `function_part` gives
+    the function part for the stored keys, or None, which counts as changed:
+    a program with a problem (decision 713 (3))."""
+    if now is None:
+        return False
+    if now == stored.get("bytes"):
+        return True
+    part = function_part(stored.get("keys") or [])
+    return part is not None and part == stored.get("part")
+
+
+def with_numbers(store: dict) -> dict:
+    """The store as it is written (decision 709 (3)): one table of function
+    names for each program at the top of the store, made again at each write
+    from the tests that the store holds, and each test with numbers into the
+    table of each program that it takes function by function. Thus a name is
+    written one time for each program, not one time for each test that
+    entered it."""
+    names = {}
+    for entry in store["tests"].values():
+        for key, program in (entry.get("programs") or {}).items():
+            names.setdefault(key, set()).update(program["keys"])
+    tables = {key: sorted(found) for key, found in names.items()}
+    places = {key: {name: number for number, name in enumerate(table)} for key, table in tables.items()}
+    tests = {}
+    for name, entry in store["tests"].items():
+        if entry.get("programs"):
+            entry = {**entry, "programs": {key: {**program, "keys": [places[key][k] for k in program["keys"]]}
+                                           for key, program in entry["programs"].items()}}
+        tests[name] = entry
+    return {**store, "tests": tests, FUNCTIONS: tables}
+
+
+def with_names(store: dict) -> dict:
+    """The store as the driver uses it: the numbers of each test turned back
+    into the names of the table of each of its programs. A test with a number
+    that the table does not hold is left out, so that it runs again."""
+    tables = store.get(FUNCTIONS) or {}
+    tests = {}
+    for name, entry in (store.get("tests") or {}).items():
+        if entry.get("programs"):
+            programs = named_programs(entry["programs"], tables)
+            if programs is None:
+                continue
+            entry = {**entry, "programs": programs}
+        tests[name] = entry
+    return {**{key: value for key, value in store.items() if key != FUNCTIONS}, "tests": tests}
+
+
+def named_programs(programs: dict, tables: dict):
+    """The programs of one stored test with the names of their tables in
+    place of the numbers, or None where a program has no table or a number is
+    not a place in its table."""
+    found = {}
+    try:
+        for key, program in programs.items():
+            table = tables[key]
+            if not all(type(number) is int and 0 <= number < len(table) for number in program["keys"]):
+                return None
+            found[key] = {**program, "keys": [table[number] for number in program["keys"]]}
+    except (KeyError, TypeError, AttributeError):
+        return None
+    return found
+
+
 # --- hashing the world -------------------------------------------------------------
 
 class World:
@@ -472,6 +870,7 @@ class World:
         self._edges = {}
         self._where = {}
         self._folders = {}
+        self._hooked = {}
         system = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32")
         self._search = [system] + [p for p in os.environ.get("PATH", "").split(os.pathsep) if p]
 
@@ -486,6 +885,20 @@ class World:
 
     def files(self, paths) -> str:
         return digest("\n".join(f"{self.file(p)} {norm(p)}" for p in sorted(paths, key=norm)))
+
+    def hooked(self, path) -> bool:
+        """Examine if a program holds the hook's address table (decision 584),
+        its bytes read one time for this and for its SHA-256."""
+        key = norm(path)
+        if key not in self._hooked:
+            try:
+                data = pathlib.Path(path).read_bytes()
+            except OSError:
+                data = None
+            if data is not None:
+                self._files.setdefault(key, hashlib.sha256(data).hexdigest())
+            self._hooked[key] = holds_hook_table(data)
+        return self._hooked[key]
 
     def listed(self) -> list:
         """Every file in the repository git does not ignore, tracked or not."""
@@ -686,10 +1099,27 @@ class Run:
         self._card_read = False
         # The parts many tests share, each computed once a run.
         self._shared = {}
+        self.start_function_level(cache_value(tree, "CMAKE_COMMAND"), cache_value(tree, "CMAKE_MAKE_PROGRAM"))
+
+    def start_function_level(self, cmake, ninja) -> None:
+        """The data that the programs taken function by function use in one run
+        (M1-132): CMake, which a test of the seven scripts runs (decision
+        713 (4)); Ninja, which gives the link commands (decision 709 (4)); one
+        CodeReader, made when a program is first read; the ProgramCode of
+        each program read, the link commands, the function parts computed,
+        and the problems found."""
+        self.cmake, self.ninja = cmake, ninja
+        self._reader, self._codes, self._links, self._function_parts = None, {}, {}, {}
+        self._problems = {}
+        # The kept tables (decision 715 (1)): the TableCache of the run, and
+        # the table of each program that a record named, kept or read.
+        self._table_cache, self._tables, self.tables_used = None, {}, 0
 
     def machine_programs(self) -> list:
+        # The linker joins them since decision 583: a program's code from
+        # not in the tree, and the linker's own pieces, which no digest sees.
         found = [sys.executable, self.ctest, cache_value(self.tree, "CMAKE_COMMAND"),
-                 cache_value(self.tree, "CMAKE_CXX_COMPILER")]
+                 cache_value(self.tree, "CMAKE_CXX_COMPILER"), cache_value(self.tree, "CMAKE_LINKER")]
         return [pathlib.Path(shutil.which(p) or p) for p in found if p]
 
     def learn_all_imports(self) -> None:
@@ -757,15 +1187,20 @@ class Run:
                     found.append(pathlib.Path(candidate))
         return found
 
-    def parts(self, test: dict, reads, env: dict, shaders=None) -> dict:
+    def parts(self, test: dict, reads, env: dict, shaders=None, taken=frozenset()) -> dict:
         """What `test` is fingerprinted on, part by part. The environment is
         handed in rather than read here, so that the self-test can give it
         one (register decision 602); and the shaders its records named, as
-        shaders_by_test gives them, or None where it left no record."""
+        shaders_by_test gives them, or None where it left no record. `taken`
+        holds the programs that the test takes function by function (M1-132),
+        each as norm gives it: their bytes are not in the part of the
+        programs, because the store holds them next to the function part for
+        the rule of decision 706, and the libraries that they load at start
+        are a part of their own."""
         tree, root = norm(self.tree), norm(self.root)
         found = {"definition": definition(test), "environment": environment(env),
                  "machine": self.machine()}
-        files, programs, built_program = [], [], False
+        files, programs, built, built_program = [], [], [], False
         command = test.get("command", [])
         for index, path in enumerate(self.arguments(test)):
             key = norm(path)
@@ -773,7 +1208,9 @@ class Run:
                 found["build tree"] = self.tree_inputs()
             elif under(key, tree):
                 if path.is_file() and is_program(path):
-                    programs.append(path)
+                    built.append(path)
+                    if key not in taken:
+                        programs.append(path)
                     if command and norm(command[0]) == key:
                         built_program = True
                 # Anything else in the tree is a test's output, judged by the
@@ -784,6 +1221,8 @@ class Run:
                 (programs if is_program(path) else files).append(path)
         if programs:
             found["programs"] = digest("\n".join(sorted(self.world.program(p) for p in programs)))
+        if taken:
+            found["libraries"] = self.libraries_part(taken)
         if files:
             found["files"] = self.world.files(files)
         if not built_program:
@@ -795,11 +1234,19 @@ class Run:
         # other parts hold. Every shader where they cannot say.
         if isinstance(shaders, list):
             found["shaders"] = self.world.files(shaders)
-        elif shaders == EVERY_SHADER or any(norm(p) == norm(self.app) for p in programs):
+        elif shaders == EVERY_SHADER or any(norm(p) == norm(self.app) for p in built):
             found["shaders"] = self.shaders()
         if GPU_LABEL in labels(test):
             found["card"] = digest(json.dumps(self.card(), sort_keys=True))
         return found
+
+    def libraries_part(self, taken) -> str:
+        """The libraries that each program taken function by function loads at
+        start, each program by its path (decisions 525 and 706): they must be
+        as they were, also when only one of its bytes and its function part
+        is as it was."""
+        return digest("\n".join(f"{key} {self.world.files(self.world.libraries(pathlib.Path(key)))}"
+                                for key in sorted(taken)))
 
     def record_path(self, name: str) -> pathlib.Path:
         return self.tree / RECORDS / (escaped_name(name) + ".txt")
@@ -817,6 +1264,243 @@ class Run:
                                  encoding="utf-8", errors="replace", check=False, timeout=60)
             known[key] = lists_listener(run.returncode, run.stdout)
         return known[key]
+
+    # --- the programs taken function by function (M1-132) ---
+
+    def problem(self, text: str) -> None:
+        self._problems.setdefault(text, None)
+
+    def all_problems(self) -> list:
+        """Each problem of the programs taken function by function, one time:
+        the driver's own, and each problem that compiled-code.py found in a
+        program that this run read (decision 713 (3)). Each one fails `check`."""
+        found = dict(self._problems)
+        for code in self._codes.values():
+            found.update(dict.fromkeys(code.problems))
+        return list(found)
+
+    def hooked(self, path) -> bool:
+        """Examine if `path` is a program of this tree that holds the hook's
+        address table (decision 584)."""
+        path = pathlib.Path(path)
+        return under(norm(path), norm(self.tree)) and is_program(path) and path.is_file() and self.world.hooked(path)
+
+    def reader(self):
+        """The one CodeReader of this run (decision 714), which keeps the
+        summary of each object with the hook in run-tests/objects/."""
+        if self._reader is None:
+            self._reader = script_module("compiled-code").CodeReader(self.tree, self.state / OBJECTS)
+        return self._reader
+
+    def code_of(self, path):
+        """The ProgramCode of a program with the hook, read in full one time in
+        a run. Its table is kept again for the next runs (decision 715 (1))."""
+        key = norm(path)
+        if key not in self._codes:
+            code = self._codes[key] = self.reader().program(pathlib.Path(path))
+            table = code.table()
+            if table is not None:
+                self.table_cache().put(key, *self.table_hashes(path), table)
+        return self._codes[key]
+
+    def table_cache(self):
+        """The one TableCache of this run, in run-tests/tables/."""
+        if self._table_cache is None:
+            self._table_cache = script_module("compiled-code").TableCache(self.state / TABLES)
+        return self._table_cache
+
+    def table_hashes(self, path) -> tuple:
+        """The SHA-256 of a program's bytes and of its map, which a kept table
+        must agree with (decision 715 (1)). Each is the hash of the file's
+        bytes, which this run computes one time; the map is not parsed."""
+        path = pathlib.Path(path)
+        return self.world.file(path), self.world.file(path.with_suffix(".map"))
+
+    def table_of(self, path):
+        """What the records of a program are examined with (decisions 590 and
+        704): the ProgramCode of a program that this run read in full; if not,
+        its kept table when the program's bytes and its map are as they were
+        when the table was kept, with no read of its map, its .pdb file, its
+        libraries or its summaries (decision 715 (1)); if not, the program read
+        in full."""
+        key = norm(path)
+        if key in self._codes:
+            return self._codes[key]
+        if key not in self._tables:
+            code = script_module("compiled-code")
+            kept = self.table_cache().get(key, *self.table_hashes(path))
+            if kept is None:
+                self._tables[key] = self.code_of(path)
+            else:
+                self._tables[key] = code.ProgramTable(code.object_key(str(self.tree), str(path)), kept)
+                self.tables_used += 1
+        return self._tables[key]
+
+    def ninja_commands(self, targets: list) -> tuple:
+        """(exit code, text) of `ninja -n -t commands -s` for `targets`: the
+        last command of Ninja for each target, one line each, a dry run as
+        decision 399 has it (decision 709 (4)). The one place the driver runs
+        Ninja, so that the self-test can give it answers."""
+        if not self.ninja:
+            return None, ""
+        done = subprocess.run([self.ninja, "-n", "-t", "commands", "-s", *targets], cwd=self.tree,
+                              capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
+        return done.returncode, done.stdout
+
+    def link_commands(self, paths) -> dict:
+        """{program: its link command, or None} for each of `paths`, the
+        programs not known before read in one call of Ninja (decision 709 (4)).
+        Ninja names a target by its path relative to the tree, with `/`. When
+        Ninja fails, or gives a number of lines that is not the number of
+        programs, no program has a link command, and a problem says why: its
+        tests run (decision 713 (3))."""
+        wanted = sorted({norm(p): pathlib.Path(p) for p in paths if norm(p) not in self._links}.items())
+        if wanted:
+            targets = [pathlib.Path(os.path.relpath(path, self.tree)).as_posix() for _, path in wanted]
+            code, text = self.ninja_commands(targets)
+            lines = [line for line in text.splitlines() if line.strip()]
+            if code != 0 or len(lines) != len(wanted):
+                self.problem(f"Ninja ({self.ninja}) gave {len(lines)} link commands for {len(wanted)} programs, "
+                             f"with exit code {code}, not one for each: {', '.join(targets[:3])}")
+                lines = [None] * len(wanted)
+            self._links.update(zip((key for key, _ in wanted), lines))
+        return {norm(p): self._links.get(norm(p)) for p in paths}
+
+    def function_part(self, path, keys) -> object:
+        """The function part of the program at `path` for the functions `keys`
+        (decision 583), computed one time for each set of keys, or None: then
+        the program counts as changed (decision 713 (3)), and the problem
+        that says why is in all_problems. A program that does not have the
+        hook now has no function part, and its bytes show that it changed."""
+        cached = (norm(path), tuple(sorted(keys)))
+        if cached not in self._function_parts:
+            part = None
+            if self.hooked(path):
+                link = self.link_commands([path])[norm(path)]
+                if link is not None:
+                    part = self.code_of(path).function_part(sorted(keys), link)
+            self._function_parts[cached] = part
+        return self._function_parts[cached]
+
+    def current_bytes(self, key: str):
+        path = pathlib.Path(key)
+        return self.world.file(path) if path.is_file() else None
+
+    def programs_unchanged(self, programs: dict) -> bool:
+        """Decision 706 for each stored program of one test (program_unchanged)."""
+        return all(program_unchanged(stored, self.current_bytes(key),
+                                     lambda keys, key=key: self.function_part(key, keys))
+                   for key, stored in sorted(programs.items()))
+
+    def changed_programs(self, stored: dict) -> list:
+        """The stored programs taken function by function with bytes that are
+        not as they were, of the tests in `stored`: the decision computes
+        their function parts, and Ninja gives their link commands in one call."""
+        found = {}
+        for entry in stored.values():
+            for key, program in (entry.get("programs") or {}).items():
+                now = self.current_bytes(key)
+                if now is not None and now != program.get("bytes"):
+                    found[key] = pathlib.Path(key)
+        return list(found.values())
+
+    def recorded_programs(self, records: list) -> tuple:
+        """({program: keys}, [problem]) from the complete coverage records of
+        one test: the keys of the functions that each program entered, with
+        the records of one program put together (decision 564). A record of a
+        program that is not one of this tree with the hook, a record with its
+        flags out of line or with a count of flags different from the hook's
+        table of its program (decisions 590, 704 and 712), and an address that
+        is not one function (decision 695) are problems."""
+        found, problems = {}, []
+        for record in records:
+            path = pathlib.Path(record.program)
+            if not self.hooked(path):
+                problems.append(f"a coverage record names {record.program}, which is not a program of this tree "
+                                "with the hook (decision 584)")
+                continue
+            code = self.table_of(path)
+            problems += flag_problems(record, *code.table_entries())
+            keys, more = code.keys(record.functions)
+            problems += more
+            found.setdefault(norm(path), set()).update(keys)
+        return found, problems
+
+    def taken_for(self, test: dict, records: list) -> tuple:
+        """({program: keys}, [problem]): the programs that `test` takes function
+        by function, each with the functions that the test entered, from its
+        complete coverage records (decisions 703 and 713 (4)). A test that
+        starts a program with the hook directly and passed with no complete
+        record of it has a problem (decision 590)."""
+        command = test.get("command") or []
+        tree = norm(self.tree)
+        on_line = {norm(p) for p in self.arguments(test) if under(norm(p), tree) and p.is_file() and is_program(p)}
+        first = norm(command[0]) if command else None
+        direct = first if first in on_line and self.hooked(command[0]) else None
+        recorded, problems = self.recorded_programs(records)
+        if direct is not None and direct not in recorded:
+            problems.append(f"it starts {command[0]}, which has the hook, and passed with no complete coverage "
+                            "record of it (decision 590)")
+        names = taken_programs(direct, listed_script(command, self.cmake, self.root), on_line, set(recorded))
+        return {key: recorded.get(key, set()) for key in sorted(names)}, problems
+
+    def stored_programs(self, taken: dict):
+        """{program: {"bytes", "part", "keys"}} for the store, from taken_for,
+        or None where a program has no function part: then the test is not
+        stored, and runs again (decision 713 (3))."""
+        found = {}
+        for key, keys in sorted(taken.items()):
+            part = self.function_part(key, keys)
+            if part is None:
+                self.problem(f"{key}: the program has no function part; each test that takes it function by "
+                             "function runs again")
+                return None
+            found[key] = {"bytes": self.world.file(pathlib.Path(key)), "part": part, "keys": sorted(keys)}
+        return found
+
+    def functions_of_run(self, folder: pathlib.Path, order: list, passed: list) -> dict:
+        """{test: stored programs}: from the coverage records in `folder`, the
+        programs of each test that passed and that the store can keep. A test
+        with a problem is not kept. A record that belongs to no test keeps no
+        test of the run, as for a shader record that cannot be read: its
+        functions can belong to each of them. Each problem goes into
+        all_problems."""
+        found, unreadable = function_record_texts(folder)
+        owned, problems_of, loose = assign_records(found, {name: self.tests[name] for name in order}, set(passed))
+        loose += [f"{path}: a coverage record that could not be read ({why}); no test of this run is stored"
+                  for path, why in unreadable]
+        for text in loose:
+            self.problem(text)
+        keys = {}
+        for name in passed:
+            keys[name], more = self.taken_for(self.tests[name], owned.get(name, []))
+            problems_of.setdefault(name, []).extend(more)
+        self.link_commands([pathlib.Path(key) for taken in keys.values() for key in taken])
+        taken = {}
+        for name in passed:
+            for text in problems_of[name]:
+                self.problem(f"the test {name}: {text}")
+            programs = None if problems_of[name] else self.stored_programs(keys[name])
+            if programs is not None:
+                taken[name] = programs
+        return {} if loose else taken
+
+    def prune_summaries(self, full: bool) -> list:
+        """Only in a run with --full (decision 714): read each program of the
+        tree with the hook -- also those that left no record, and each that
+        this run read -- and delete the summary of each object that none of
+        them links, and the kept table of each program that is not one of
+        them (decision 715 (1)). The names of the files deleted. A program
+        with a problem gives no objects: its summaries are made again when the
+        driver uses them, and its problem fails `check`."""
+        if not full:
+            return []
+        kept, programs = set(), set()
+        for path in tree_programs(self.tree) + [pathlib.Path(key) for key in list(self._codes)]:
+            if self.hooked(path):
+                kept.update(self.code_of(path).objects)
+                programs.add(norm(path))
+        return self.reader().cache.prune(kept) + self.table_cache().prune(programs)
 
 
 def lists_listener(code: int, out: str) -> bool:
@@ -854,13 +1538,20 @@ def card_values(text: str):
 
 
 def load_store(state: pathlib.Path) -> dict:
+    """The store of the last runs, with the names of the functions in place of
+    the numbers (with_names): mutants-due.py reads it through this function."""
     try:
         store = json.loads((state / STORE).read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return {"version": STORE_VERSION, "tests": {}, "listeners": {}}
-    if store.get("version") != STORE_VERSION:
+    if not isinstance(store, dict) or store.get("version") != STORE_VERSION:
         return {"version": STORE_VERSION, "tests": {}, "listeners": {}}
-    return store
+    return with_names(store)
+
+
+def write_store(state: pathlib.Path, store: dict) -> None:
+    """The store, with the numbers of with_numbers."""
+    (state / STORE).write_text(json.dumps(with_numbers(store), sort_keys=True), encoding="utf-8")
 
 
 def git(root: pathlib.Path, *args) -> str:
@@ -912,10 +1603,15 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
     # environment part does not move with it.
     records = tree / COVERAGE_RECORDS
     env = {**os.environ, RECORDS_VARIABLE: str(records)}
+    env = without_test_name(env)
     parts = {name: run.parts(test, (stored.get(name) or {}).get("reads"), env,
-                             (stored.get(name) or {}).get("shaders"))
+                             (stored.get(name) or {}).get("shaders"),
+                             set((stored.get(name) or {}).get("programs") or ()))
              for name, test in run.tests.items()}
-    chosen = selection(run.tests, stored, parts, run.world.file, forced)
+    # The link commands of the programs that the decision computes function
+    # parts for, in one call of Ninja (decision 709 (4)).
+    run.link_commands(run.changed_programs({n: e for n, e in stored.items() if n in run.tests and n not in forced}))
+    chosen = selection(run.tests, stored, parts, run.world.file, forced, run.programs_unchanged)
     decided = time.monotonic()
     skipped = sorted(set(run.tests) - chosen)
     order = [name for name in run.tests if name in chosen]
@@ -945,6 +1641,8 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
         try:
             results = outcomes(report.read_text(encoding="utf-8"))
         except (OSError, ElementTree.ParseError):
+            for line in run.all_problems():
+                print(f"run-tests: {line}")
             print("run-tests: CTest wrote no report; nothing is remembered from this run")
             return code or 1
 
@@ -971,9 +1669,16 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
     # The application's bytes at this run, with each list: mutants-due.py
     # takes a list only while the application is what it was (decision 616).
     application = run.world.file(run.app)
+    # The programs that each test that passed takes function by function,
+    # from the coverage records (M1-132). A test with a problem is not
+    # stored; a record that belongs to no test stores none of this run's.
+    taken = run.functions_of_run(records, order, passed) if order else {}
     for name in order:
-        if name in passed and name not in missing_records and not unreadable:
-            entry = {"parts": run.parts(run.tests[name], reads[name], env, shaders.get(name)), "reads": reads[name]}
+        if name in passed and name not in missing_records and not unreadable and name in taken:
+            entry = {"parts": run.parts(run.tests[name], reads[name], env, shaders.get(name), set(taken[name])),
+                     "reads": reads[name]}
+            if taken[name]:
+                entry["programs"] = taken[name]
             if name in shaders:
                 entry["shaders"] = shaders[name]
                 entry["application"] = application
@@ -983,14 +1688,24 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
     for name in list(stored):
         if name not in run.tests:
             del stored[name]
-    (run.state / STORE).write_text(json.dumps(store, sort_keys=True), encoding="utf-8")
+    # Only a full run reads each program with the hook of the tree, and thus
+    # knows which summaries no program uses (decision 714).
+    pruned = run.prune_summaries(full)
+    problems += run.all_problems()
+    write_store(run.state, store)
 
     for line in problems:
         print(f"run-tests: {line}")
     ran = len(results)
+    reader = run._reader
     print(f"run-tests: {ran} ran, {len(skipped)} skipped as unchanged"
           + (f" -- listed in {run.state / SKIPPED}" if skipped else "")
-          + f"; the fingerprints took {decided - began:.1f} s")
+          + f"; the fingerprints took {decided - began:.1f} s"
+          + ("" if reader is None and not run.tables_used else
+             f"; the compiled code: programs read in full: {len(run._codes)}, from kept tables: {run.tables_used}")
+          + ("" if reader is None else ", " + ", ".join(
+              f"{part} {seconds:.1f} s" for part, seconds in reader.seconds.items())
+             + f", {reader.cache.made} summaries made, {reader.cache.loaded} read, {len(pruned)} files deleted"))
     if full:
         refusals = full_problems(run, results, started_at, clean_at_start)
         if late:
@@ -1326,6 +2041,239 @@ def push_through_the_hook(root: pathlib.Path, remote: pathlib.Path, head: str, s
     return failures
 
 
+# --- the selection by function from end to end (M1-132, decision 713 (4)) ------
+
+# The scratch project of run_tests_function_level. It is built with the tools
+# that the test names and with no other -- the compiler, the archiver and the
+# linker by their paths -- as the trees with the hook build their programs:
+# C++ with the hook, -ffunction-sections and -fdata-sections; the recorder,
+# tests/CoverageRecorder.cpp, and one object of plain code without the hook;
+# each program linked by lld-link with /map, /debug and /Brepro. prog_a takes
+# a member of a library with the hook, core.lib. A glob finds the files in
+# extra/, so that an object can go away with no change to CMakeLists.txt, on
+# which the cautious rule fingerprints each test of the project.
+SCRATCH_HOOK_PROJECT = r"""cmake_minimum_required(VERSION 3.25)
+project(scratch LANGUAGES CXX)
+set(CMAKE_CXX_STANDARD 23)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_MSVC_RUNTIME_LIBRARY MultiThreadedDLL)
+set(CMAKE_CXX_ARCHIVE_CREATE "<CMAKE_AR> qcs <TARGET> <OBJECTS>")
+set(CMAKE_CXX_ARCHIVE_FINISH "")
+set(CMAKE_CXX_LINK_EXECUTABLE "<CMAKE_LINKER> /nologo <OBJECTS> /out:<TARGET> /pdb:<TARGET_PDB> /map /debug /Brepro\
+ /subsystem:console <LINK_LIBRARIES>")
+set(CMAKE_CXX_STANDARD_LIBRARIES kernel32.lib)
+add_compile_options(-g -gcodeview -mno-incremental-linker-compatible)
+set(hook -fsanitize-coverage=func,inline-bool-flag,pc-table -ffunction-sections -fdata-sections)
+add_library(recorder OBJECT tests/CoverageRecorder.cpp)
+target_include_directories(recorder PRIVATE ${CMAKE_SOURCE_DIR})
+add_library(plain OBJECT plain.cpp)
+add_library(core STATIC core.cpp)
+target_compile_options(core PRIVATE ${hook})
+file(GLOB extra CONFIGURE_DEPENDS ${CMAKE_SOURCE_DIR}/extra/*.cpp)
+add_executable(prog_a main.cpp ${extra})
+target_link_libraries(prog_a PRIVATE core recorder plain)
+add_executable(prog_b other.cpp)
+target_link_libraries(prog_b PRIVATE recorder)
+foreach(program prog_a prog_b)
+    target_compile_options(${program} PRIVATE ${hook})
+endforeach()
+enable_testing()
+add_test(NAME a_alpha COMMAND prog_a alpha "two words" [[a"b]] [[c\]] "")
+add_test(NAME a_beta COMMAND prog_a beta)
+add_test(NAME usage_alpha COMMAND ${CMAKE_COMMAND} -DPROGRAM=$<TARGET_FILE:prog_a> -DMODE=alpha
+         -P ${CMAKE_SOURCE_DIR}/cmake/RunUsage.cmake)
+add_test(NAME other_b COMMAND ${CMAKE_COMMAND} -DPROGRAM=$<TARGET_FILE:prog_b> -DMODE=b
+         -P ${CMAKE_SOURCE_DIR}/cmake/Other.cmake)
+add_test(NAME elsewhere_b COMMAND ${CMAKE_COMMAND} -DPROGRAM=$<TARGET_FILE:prog_b> -DMODE=b
+         -P ${CMAKE_SOURCE_DIR}/elsewhere/RunUsage.cmake)
+foreach(test a_beta usage_alpha other_b elsewhere_b)
+    set_tests_properties(${test} PROPERTIES ENVIRONMENT ORBSIM_TEST_NAME=${test})
+endforeach()
+"""
+# a_alpha enters main and alpha, a_beta main, beta, helper and core.lib's
+# coreValue; unused is linked and entered by no test.
+SCRATCH_MAIN = r"""#include <cstring>
+int coreValue();
+int plainValue();
+int alpha() { return 1; }
+int helper() { return 2; }
+int beta() { return helper() + coreValue(); }
+int unused() { return 3; }
+int main(int argc, char** argv) {
+    if (argc > 100) return unused() + plainValue();
+    if (argc > 1 && std::strcmp(argv[1], "alpha") == 0) return alpha() == 1 ? 0 : 1;
+    if (argc > 1 && std::strcmp(argv[1], "beta") == 0) return beta() == 6 ? 0 : 1;
+    return 1;
+}
+"""
+SCRATCH_SOURCES = {
+    "core.cpp": "int coreValue() { return 4; }\n",
+    "plain.cpp": "int plainValue() { return 5; }\n",
+    "other.cpp": "int unusedB() { return 7; }\nint main(int argc, char**) { return argc > 100 ? unusedB() : 0; }\n",
+    "extra/extra.cpp": "int extraValue() { return 8; }\n",
+}
+# The three scripts: each starts the program that the test names, and reads
+# only its exit code. Only cmake/RunUsage.cmake is one of LISTED_SCRIPTS.
+SCRATCH_RUN_SCRIPT = """execute_process(COMMAND ${PROGRAM} ${MODE} RESULT_VARIABLE code)
+if(NOT code EQUAL 0)
+    message(FATAL_ERROR "${PROGRAM} ${MODE}: exit code ${code}")
+endif()
+"""
+SCRATCH_SCRIPTS = ("cmake/RunUsage.cmake", "cmake/Other.cmake", "elsewhere/RunUsage.cmake")
+
+
+def function_level(tools: list) -> int:
+    """The selection by function on a scratch project with the hook (decision
+    713 (4)), built with the tools that the command line names: CMake, CTest,
+    Ninja, clang++, llvm-ar, lld-link, and tests/CoverageRecorder.cpp with
+    tests/WriterTurns.hpp. The driver runs on it as run_tests_end_to_end runs
+    it. At each step, the driver must run the tests that the change affects
+    and no other test, and it must print no problem, because a problem makes
+    `check` fail."""
+    names = ("CMake", "CTest", "Ninja", "the compiler", "the archiver", "the linker", "the recorder", "its header")
+    missing = [f"{name}, {path}" for name, path in zip(names, tools) if not pathlib.Path(path).is_file()]
+    for line in missing:
+        print(f"function-level FAILED: not a file: {line}")
+    if missing:
+        return 1
+    cmake, ctest, ninja, compiler, archiver, linker, recorder, turns = tools
+    began = time.monotonic()
+    # The driver names the folder of the records to each test that it runs; a
+    # folder from the run that started this test must not go to the scratch
+    # programs. A test name stays in the driver's environment, as CTest gives
+    # it to this test: the driver removes it (decision 715 (2)).
+    env = {k: v for k, v in os.environ.items() if k.upper() != RECORDS_VARIABLE}
+    env[TEST_NAME_VARIABLE] = "run_tests_function_level"
+    quiet = {"capture_output": True, "text": True, "encoding": "utf-8", "errors": "replace", "check": False, "env": env}
+    # The steps that failed; after a build that failed, no step runs.
+    failures, steps, failed = [], [], []
+    with tempfile.TemporaryDirectory() as scratch:
+        root = pathlib.Path(scratch).resolve() / "repo"
+        tree = root / "build"
+        sources = {"CMakeLists.txt": SCRATCH_HOOK_PROJECT, "main.cpp": SCRATCH_MAIN, ".gitignore": "build/\n",
+                   **SCRATCH_SOURCES, **dict.fromkeys(SCRATCH_SCRIPTS, SCRATCH_RUN_SCRIPT)}
+        for name, text in sources.items():
+            (root / name).parent.mkdir(parents=True, exist_ok=True)
+            (root / name).write_bytes(text.encode("utf-8"))
+        (root / "tests").mkdir()
+        for name, source in (("CoverageRecorder.cpp", recorder), ("WriterTurns.hpp", turns)):
+            (root / "tests" / name).write_bytes(pathlib.Path(source).read_bytes())
+
+        def call(what: str, command: list, cwd=root) -> bool:
+            done = subprocess.run([str(c) for c in command], cwd=cwd, **quiet)
+            if done.returncode != 0:
+                failures.append(f"{what}: exit code {done.returncode}\n{done.stdout}{done.stderr}")
+            return done.returncode == 0
+
+        def edit(name: str, old: str, new: str) -> None:
+            text = (root / name).read_text(encoding="utf-8")
+            if old not in text:
+                failures.append(f"the scratch file {name} does not hold {old!r}")
+            (root / name).write_bytes(text.replace(old, new).encode("utf-8"))
+
+        def step(name: str, wanted: set, full: bool = False, problem: str = None, removed: str = None,
+                 said: str = None, test_name: str = None) -> None:
+            # `problem`: a text that the driver must print as a problem, and
+            # then fail; `removed`: a file of the tree removed after the build;
+            # `said`: a text that the driver must print; `test_name`: a
+            # different ORBSIM_TEST_NAME in the driver's environment.
+            if "build" in failed:
+                return
+            steps.append(name)
+            if not call(f"{name}: the build", [cmake, "--build", tree]):
+                failed.extend((name, "build"))
+                return
+            if removed is not None:
+                (tree / removed).unlink()
+            (tree / STATE / REPORT).unlink(missing_ok=True)
+            done = subprocess.run([sys.executable, __file__, str(tree), "--ctest", ctest, "--root", str(root)]
+                                  + (["--full"] if full else []),
+                                  **{**quiet, "env": {**env, TEST_NAME_VARIABLE: test_name or env[TEST_NAME_VARIABLE]}})
+            try:
+                ran = set(outcomes((tree / STATE / REPORT).read_text(encoding="utf-8")))
+            except OSError:
+                ran = set()
+            failed_as_it_must = done.returncode != 0 and problem in done.stdout if problem else done.returncode == 0
+            if ran != wanted or not failed_as_it_must or (said is not None and said not in done.stdout):
+                failed.append(name)
+                failures.append(f"{name}: ran {sorted(ran)}, wanted {sorted(wanted)}, exit code "
+                                f"{done.returncode}" + (f", the problem {problem!r} wanted" if problem else "")
+                                + (f", the text {said!r} wanted" if said else "") + f"\n{done.stdout}{done.stderr}")
+            # What the driver said of the step: with "the compiled code" only
+            # where it read a program, because a program's bytes changed.
+            said = [line for line in done.stdout.splitlines() if " ran, " in line]
+            print(f"function-level: {name}: ran {sorted(ran)}; {said[-1] if said else 'no summary line'}")
+
+        call("git init", ["git", "init", "-q"])
+        if call("the configure", [cmake, "-S", root, "-B", tree, "-G", "Ninja", f"-DCMAKE_MAKE_PROGRAM={ninja}",
+                                  f"-DCMAKE_CXX_COMPILER={compiler}", f"-DCMAKE_AR={archiver}",
+                                  f"-DCMAKE_LINKER={linker}"]):
+            function_level_steps(root, step, edit)
+            call("the commit", ["git", "-c", "user.name=t", "-c", "user.email=t@t", "add", "-A"])
+            call("the commit", ["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "s"])
+            # The summaries kept (decision 714): a run that is not full
+            # deletes none, and the full run deletes only the summary of the
+            # object that no program links now. The driver reads prog_b too,
+            # because it compares each record with the hook's table of its
+            # program (decision 704).
+            name = script_module("compiled-code").SummaryCache.file_name
+            linked = {name(key) for key in ("CMakeFiles/prog_a.dir/main.cpp.obj", "core.lib(core.cpp.obj)",
+                                            "CMakeFiles/prog_b.dir/other.cpp.obj")}
+            gone = name("CMakeFiles/prog_a.dir/extra/extra.cpp.obj")
+            summaries = tree / STATE / OBJECTS
+
+            def listed() -> set:
+                return {p.name for p in summaries.iterdir()} if summaries.is_dir() else set()
+
+            full_step, before = "a full run: each test", listed()
+            step(full_step, {"a_alpha", "a_beta", "usage_alpha", "other_b", "elsewhere_b"}, full=True)
+            if "build" not in failed and (before != linked | {gone} or listed() != linked):
+                failed.append(full_step)
+                failures.append(f"the summaries {sorted(before)} before the full run and {sorted(listed())} after "
+                                "it: before it, those of the three objects with the hook that the programs link and "
+                                "of the one that prog_a no longer links; after it, only those of the three")
+    for failure in failures:
+        print(f"function-level FAILED: {failure}")
+    print(f"run-tests function-level: {len(steps) - len(set(failed) - {'build'})} of {len(steps)} steps, "
+          f"{len(failures)} failures, {time.monotonic() - began:.1f} s")
+    return 1 if failures else 0
+
+
+def function_level_steps(root: pathlib.Path, step, edit) -> None:
+    """The steps of run_tests_function_level before the full run, each a change
+    and the tests that it must run. The tests of prog_a that start it
+    directly, a_alpha and a_beta, and the test through the listed script,
+    usage_alpha, take it function by function; the two tests of prog_b go
+    through scripts that are not listed, and keep its bytes."""
+    of_a, of_b = {"a_alpha", "a_beta", "usage_alpha"}, {"other_b", "elsewhere_b"}
+    step("the first run: each test", of_a | of_b)
+    step("nothing changed, a different ORBSIM_TEST_NAME in the driver's environment: no test", set(),
+         test_name="a different test")
+    edit("main.cpp", "int alpha() { return 1; }", "int alpha() { volatile int one = 1; return one; }")
+    step("a function's body changed: only the tests that entered it, by their records", {"a_alpha", "usage_alpha"})
+    edit("main.cpp", "int unused() { return 3; }", "int unused() { return 30; }")
+    step("a function that no test entered changed: no test of its program", set())
+    edit("main.cpp", "#include <cstring>\n", "// A comment, which moves each line below it.\n#include <cstring>\n")
+    step("a comment added: no test", set())
+    edit("main.cpp", "int helper() { return 2; }\nint beta() { return helper() + coreValue(); }",
+         "int beta() { return 2 + coreValue(); }")
+    step("a function that a test entered removed: that test", {"a_beta"})
+    edit("plain.cpp", "return 5;", "return 50;")
+    step("an object without the hook changed: each test of its program", of_a)
+    edit("other.cpp", "return 7;", "return 70;")
+    step("a program that the scripts not listed name on the command line: its tests, by its bytes", of_b)
+    # The records of the two programs, which did not change, are examined from
+    # their kept tables; prog_a is then read in full for its function part,
+    # because its tests take it function by function, and prog_b is not read.
+    edit("cmake/Other.cmake", "endif()\n", "endif()\n# A script changed.\n")
+    step("a script changed: each test, and the records of the programs, which did not change, examined from their "
+         "kept tables", of_a | of_b, said="programs read in full: 1, from kept tables: 2")
+    edit("main.cpp", "return 30;", "return 31;")
+    step("a problem at the decision, the map of a changed program removed: the tests of the program run, and the "
+         "run fails", of_a, problem="prog_a.map is not there", removed="prog_a.map")
+    (root / "extra" / "extra.cpp").unlink()
+    step("an object removed from a program: each test of that program, which the step before did not store", of_a)
+
 # --- the self-test -------------------------------------------------------------------
 
 class StandInWorld:
@@ -1352,6 +2300,12 @@ class StandInWorld:
     def libraries(self, program) -> list:
         return self.library_map.get(norm(program), [])
 
+    def hooked(self, path) -> bool:
+        try:
+            return holds_hook_table(pathlib.Path(path).read_bytes())
+        except OSError:
+            return False
+
     def unignored_under(self, folder) -> list:
         return self.everything_under(folder)
 
@@ -1373,6 +2327,7 @@ def stand_in_run(tree: pathlib.Path, root: pathlib.Path) -> "Run":
     run.app = tree / (APPLICATION + (".exe" if os.name == "nt" else ""))
     run._machine, run._card, run._card_read, run._shared = "machine", {"gpu": "a card"}, True, {}
     run.leap_seconds = lambda: "3 "
+    run.start_function_level(None, None)
     return run
 
 
@@ -1469,14 +2424,16 @@ def each_part_moves_with_its_input(expect) -> None:
         suite_program, cmake, compiler = tree / f"suite{exe}", outside / f"cmake{exe}", outside / f"clang{exe}"
         compiler_library, suite_library = outside / "clang-support.dll", outside / "suite-support.dll"
         shader, document = tree / "shaders" / "sky.frag.spv", root / "docs" / "a.md"
+        linker = outside / f"lld-link{exe}"
         for path in (suite_program, tree / f"{APPLICATION}{exe}", shader, cmake, compiler, compiler_library,
-                     suite_library, root / "cmake" / "RunProbe.cmake", document):
+                     suite_library, root / "cmake" / "RunProbe.cmake", document, linker):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("x", encoding="utf-8")
             if os.name != "nt":
                 path.chmod(0o755)
         (tree / "CMakeCache.txt").write_text(
-            f"CMAKE_COMMAND:INTERNAL={cmake}\nCMAKE_CXX_COMPILER:FILEPATH={compiler}\n", encoding="utf-8")
+            f"CMAKE_COMMAND:INTERNAL={cmake}\nCMAKE_CXX_COMPILER:FILEPATH={compiler}\n"
+            f"CMAKE_LINKER:FILEPATH={linker}\n", encoding="utf-8")
         suite = {"name": "s", "command": [str(suite_program), "s"]}
         probe = {"name": "p", "command": [str(cmake), f"-DORBSIM={tree / (APPLICATION + exe)}", "-P",
                                           str(root / "cmake" / "RunProbe.cmake")],
@@ -1520,6 +2477,26 @@ def each_part_moves_with_its_input(expect) -> None:
         # value reads -- here a table of one second where there was none.
         expect("another leap-second table in the registry moves the machine part",
                part(suite, "machine", leap_seconds="3 1e00000000000000ff") != machine_after_library, True)
+        # Decision 583: the linker, for the code that is not in the tree and
+        # its own pieces of each program.
+        linker.write_text("a different linker", encoding="utf-8")
+        expect("a different linker moves the machine part", part(suite, "machine") != machine_after_library, True)
+
+        # Decision 706: the libraries that a program taken function by
+        # function loads at start, a part of their own; its bytes not in the
+        # part of the programs, because the store holds them.
+        def taken_part(name):
+            run = stand_in_run(tree, root)
+            run.world.library_map = {norm(suite_program): [str(suite_library)]}
+            return run.parts(suite, [], STAND_IN_ENVIRONMENT, taken={norm(suite_program)}).get(name)
+
+        libraries_before = taken_part("libraries")
+        suite_library.write_text("a library of the suite", encoding="utf-8")
+        expect("a changed library of a program taken function by function moves the libraries part",
+               taken_part("libraries") != libraries_before, True)
+        expect("and a program taken function by function is not in the part of the programs",
+               taken_part("programs"), None)
+        suite_library.write_text("x", encoding="utf-8")
 
         shaders_before = part(probe, "shaders")
         shader.write_text("another shader", encoding="utf-8")
@@ -1671,6 +2648,544 @@ def shader_record_cases(expect) -> None:
         texts, unreadable = shader_record_texts(folder)
         expect("the folder's shader records are read, the coverage recorder's beside them not",
                (texts, unreadable), ([shader_record("p", a_given)], []))
+
+
+# --- the self-test of the selection by function (M1-132) -------------------------
+
+# Microsoft's "Parsing C++ command-line arguments", the table "Results of
+# parsing command lines": each input, after the name of a program, and the
+# arguments after the program.
+DOCUMENTED_COMMAND_LINES = [
+    ('"abc" d e', ["abc", "d", "e"]),
+    (r'a\\b d"e f"g h', [r"a\\b", "de fg", "h"]),
+    (r'a\\\"b c d', [r'a\"b', "c", "d"]),
+    (r'a\\\\"b c" d e', [r"a\\b c", "d", "e"]),
+    ('a"b"" c d', ['ab" c d']),
+]
+# The first argument by its own rule: a quote only starts or ends quotes, and
+# a backslash before a quote is a character.
+PROGRAM_COMMAND_LINES = [
+    (r'"C:\Program Files\p.exe" x', [r"C:\Program Files\p.exe", "x"]),
+    (r'"C:\a\"b c', [r"C:\a\b", "c"]),
+    ("p.exe\ta\t\tb ", ["p.exe", "a", "b"]),
+    ('p.exe "a b', ["p.exe", "a b"]),
+    ('p.exe "" x ""', ["p.exe", "", "x", ""]),
+    ("", [""]),
+]
+# A command line that a coverage record gave, and the command that CTest
+# listed for the test: CTest 4.3.1, from CLion, on 2026-10-21, a scratch
+# project with add_test(NAME a COMMAND prog_a alpha "two words" [[a"b]] [[c\]]
+# "" [[d\"e]] [[f\g]]) -- the folder of the program made shorter.
+SAMPLE_RECORD_COMMAND = r'C:/x/build/prog_a.exe alpha "two words" "a\"b" c\ "" "d\\\"e" f\g'
+SAMPLE_CTEST_COMMAND = ["C:/x/build/prog_a.exe", "alpha", "two words", 'a"b', "c\\", "", 'd\\"e', "f\\g"]
+
+
+def quoted_argument(text: str) -> str:
+    """An argument with the quotes that libuv gives it when CTest starts a test
+    (quote_cmd_arg in libuv's src/win/process.c): a second implementation, the
+    opposite of split_command_line, for the self-test. Each backslash before a
+    quote or before the closing quote becomes two, and a quote gets a
+    backslash."""
+    if not text:
+        return '""'
+    if not any(c in text for c in ' \t"'):
+        return text
+    if not any(c in text for c in '"\\'):
+        return f'"{text}"'
+    out, slashes = ['"'], 0
+    for c in text:
+        if c == "\\":
+            slashes += 1
+            continue
+        out.append("\\" * (2 * slashes + 1) + '"' if c == '"' else "\\" * slashes + c)
+        slashes = 0
+    out.append("\\" * (2 * slashes) + '"')
+    return "".join(out)
+
+
+def coverage_record(program: str, command: str, test: str = "", flags: int = 0, addresses=(),
+                    ended: str = "normally", whole: bool = True) -> str:
+    """A coverage record as tests/CoverageRecorder.cpp writes it (decision 644):
+    without its `end` line when it is not complete."""
+    body = "".join(f"{address:x}\n" for address in addresses)
+    text = f"program {program}\ncommand {command}\ntest {test}\nended {ended}\nflags {flags}\n{body}"
+    return text + (f"end {len(addresses)}\n" if whole else "")
+
+
+def command_line_cases(expect) -> None:
+    """The arguments of a record's command line (decision 704)."""
+    for line, wanted in DOCUMENTED_COMMAND_LINES:
+        expect(f"the command line {line!r}, as Microsoft documents it", split_command_line("p.exe " + line),
+               ["p.exe"] + wanted)
+    for line, wanted in PROGRAM_COMMAND_LINES:
+        expect(f"the command line {line!r}", split_command_line(line), wanted)
+    tricky = ["C:\\Program Files\\x\\p.exe", "a", "two words", 'a"b', "c\\", "", 'd\\"e', "f\\g", "\\\\", 'x\\\\"y',
+              "tab\there", '""', "end\\\\"]
+    expect("the quotes of libuv, taken away again", split_command_line(" ".join(map(quoted_argument, tricky))), tricky)
+    expect("a command line that a record gave, as CTest listed it", split_command_line(SAMPLE_RECORD_COMMAND),
+           SAMPLE_CTEST_COMMAND)
+    record = split_command_line(SAMPLE_RECORD_COMMAND.replace("C:/x/build/", "c:\\X\\Build\\"))
+    expect("the program compared as Windows compares paths", same_command(record, SAMPLE_CTEST_COMMAND), True)
+    expect("each other argument compared with the same text",
+           same_command(record[:2] + ["Two words"] + record[3:], SAMPLE_CTEST_COMMAND), False)
+    expect("one argument fewer is a different command", same_command(record[:-1], SAMPLE_CTEST_COMMAND), False)
+
+
+def record_owner_cases(expect) -> None:
+    """Which test a coverage record belongs to (decisions 564, 590, 704 and
+    713 (2))."""
+    ran = {"suite": {"command": ["C:/t/build/suite.exe", "case one"]},
+           "named": {"command": ["C:/cmake/cmake.exe", "-P", "C:/t/cmake/RunProbe.cmake"]},
+           "twin": {"command": ["C:/t/build/twin.exe"]}, "twin too": {"command": ["C:/t/build/twin.exe"]},
+           "failed": {"command": ["C:/t/build/failed.exe"]}}
+    expect("a record with no test name: the test with its command line",
+           record_owner((r"C:\t\build\suite.exe", r'C:\T\BUILD\suite.exe "case one"', ""), ran), ("suite", None))
+    expect("a record with a test name: that test",
+           record_owner((r"C:\t\build\probe.exe", r"C:\t\build\probe.exe --probe x", "named"), ran), ("named", None))
+    owner, problem = record_owner((r"C:\t\build\suite.exe", r'C:\t\build\suite.exe "case two"', ""), ran)
+    expect("a record that matches no test: a problem that names the program and the command line",
+           (owner, "suite.exe" in (problem or "") and "case two" in (problem or "")), (None, True))
+    owner, problem = record_owner((r"C:\t\build\twin.exe", r"C:\t\build\twin.exe", ""), ran)
+    expect("a record that matches two tests: a problem", (owner, "matches 2 tests" in (problem or "")), (None, True))
+    owner, problem = record_owner((r"C:\t\build\x.exe", r"C:\t\build\x.exe", "not run"), ran)
+    expect("a record that names a test that did not run: a problem", (owner, "'not run'" in (problem or "")),
+           (None, True))
+
+    expect("the first lines of a record that is not complete",
+           record_head(coverage_record("C:\\p.exe", "C:\\p.exe a", "t", 2, [0x10], whole=False)),
+           ("C:\\p.exe", "C:\\p.exe a", "t"))
+    expect("a record cut off before its test line names no test", record_head("program C:\\p.exe\ncommand C:\\p"),
+           None)
+    expect("a record with a different line in place of its test line names no test",
+           record_head("program C:\\p.exe\ncommand C:\\p.exe\nended normally\nflags 1\n"), None)
+
+    suite_line = 'C:/t/build/suite.exe "case one"'
+    found = [(pathlib.Path("1.functions.txt"), coverage_record("C:/t/build/a.exe", "a", "named", 3, [0x10])),
+             (pathlib.Path("2.functions.txt"), coverage_record("C:/t/build/b.exe", "b", "named", 3, [0x20])),
+             (pathlib.Path("3.functions.txt"), coverage_record("C:/t/build/suite.exe", suite_line, "", 1, [0x30]))]
+    records, problems, loose = assign_records(found, ran, {"suite", "named"})
+    expect("the records of one named test put together", sorted(r.program for r in records.get("named", [])),
+           ["C:/t/build/a.exe", "C:/t/build/b.exe"])
+    expect("and a test's record by its command line, with no problem",
+           ([r.functions for r in records.get("suite", [])], problems, loose), ([[0x30]], {}, []))
+    cut = [(pathlib.Path("4.functions.txt"), coverage_record("C:/t/build/suite.exe", suite_line, "", 1, [0x30],
+                                                             whole=False)),
+           (pathlib.Path("5.functions.txt"), coverage_record("C:/x.exe", "x", "named", 3, [0x10], whole=False)),
+           (pathlib.Path("6.functions.txt"), coverage_record("C:/x.exe", "x", "other", 3, [0x10], whole=False)),
+           (pathlib.Path("7.functions.txt"), coverage_record("C:/t/build/failed.exe", "C:/t/build/failed.exe",
+                                                             "", 1, whole=False))]
+    ran_too = {**ran, "other": {"command": ["C:/python.exe", "C:/t/scripts/check.py"]}}
+    records, problems, loose = assign_records(cut, ran_too, {"suite", "named", "other"})
+    named_first = [(problems.get(test) or [""])[0].startswith(str(cut[i][0])) for i, test in
+                   enumerate(("suite", "named", "other"))]
+    expect("a record not complete: a problem that names the record and the test, for a test that starts its "
+           "program directly, through a listed script and through a different script",
+           (records, sorted(problems), named_first, loose), ({}, ["named", "other", "suite"], [True, True, True], []))
+    expect("a record not complete of a test that failed: no problem", "failed" in problems, False)
+    _, _, loose = assign_records([(pathlib.Path("8.functions.txt"), "program C:/p.exe\ncomma")], ran, set())
+    expect("a record that cannot be given to a test: a problem", [p.startswith("8.functions.txt") for p in loose],
+           [True])
+
+
+def script_cases(expect) -> None:
+    """Which programs a test takes function by function (decisions 703 and 713
+    (4))."""
+    root, cmake = pathlib.Path("C:/repo"), "C:/tools/cmake.exe"
+    for name in LISTED_SCRIPTS:
+        expect(f"the script {name}, known by its path",
+               listed_script([cmake, "-DX=1", "-P", f"C:/repo/cmake/{name}"], cmake, root), True)
+    expect("a listed script, its path in other letters and separators",
+           listed_script([cmake, "-P", r"c:\REPO\cmake\runprobe.cmake"], cmake, root), True)
+    expect("a script with the same name in a different folder is not known",
+           listed_script([cmake, "-P", "C:/repo/elsewhere/RunProbe.cmake"], cmake, root), False)
+    expect("a script with a different name is not known",
+           listed_script([cmake, "-P", "C:/repo/cmake/Other.cmake"], cmake, root), False)
+    expect("a listed script through a CMake that is not the tree's is not known",
+           listed_script(["C:/other/cmake.exe", "-P", "C:/repo/cmake/RunProbe.cmake"], cmake, root), False)
+    expect("a listed script named after the script that -P runs is not known",
+           listed_script([cmake, "-P", "C:/repo/cmake/Other.cmake", "C:/repo/cmake/RunProbe.cmake"], cmake, root),
+           False)
+    expect("-P with no script", listed_script([cmake, "-P"], cmake, root), False)
+
+    expect("a direct test: its program, and the other program on its command line by its bytes",
+           taken_programs("p", False, {"p", "q"}, {"p"}), {"p"})
+    expect("a program on a listed script's command line taken by its records",
+           taken_programs(None, True, {"app"}, {"app"}), {"app"})
+    expect("a program on a listed script's command line that its records do not name keeps its bytes",
+           taken_programs(None, True, {"app", "tool"}, {"app"}), {"app"})
+    expect("an other script test: the program on its command line keeps its bytes, and a program that only its "
+           "records name is taken", taken_programs(None, False, {"app"}, {"app", "child"}), {"child"})
+    expect("a direct test that starts a different program: that one taken too",
+           taken_programs("p", False, {"p"}, {"p", "child"}), {"p", "child"})
+
+
+def decision_cases(expect) -> None:
+    """The rule of decision 706 on made-up programs."""
+    calls = []
+
+    def function_part(keys):
+        calls.append(list(keys))
+        return answer[0]
+
+    stored = {"bytes": "b1", "part": "f1", "keys": ["k"]}
+    answer = ["f2"]
+    expect("the bytes equal: unchanged, and no digest computed", (program_unchanged(stored, "b1", function_part),
+                                                                  calls), (True, []))
+    answer = ["f1"]
+    expect("the bytes different and the function part equal: unchanged",
+           (program_unchanged(stored, "b2", function_part), calls), (True, [["k"]]))
+    answer = ["f2"]
+    expect("the bytes and the function part different: changed", program_unchanged(stored, "b2", function_part),
+           False)
+    answer = [None]
+    expect("no function part, a problem: changed", program_unchanged(stored, "b2", function_part), False)
+    expect("a stored program that is not there: changed", program_unchanged(stored, None, function_part), False)
+
+    entry = {"parts": {"libraries": "l1"}, "reads": [], "programs": {"p": stored}}
+    same = lambda path: MISSING  # noqa: E731
+    expect("the programs and each part unchanged: unchanged",
+           unchanged(entry, {"libraries": "l1"}, same, lambda programs: True), True)
+    expect("the libraries different: changed, the programs as they were",
+           unchanged(entry, {"libraries": "l2"}, same, lambda programs: True), False)
+    expect("a program changed: changed", unchanged(entry, {"libraries": "l1"}, same, lambda programs: False), False)
+    expect("a stored test with programs and no rule to examine them: changed",
+           unchanged(entry, {"libraries": "l1"}, same), False)
+
+
+def store_cases(expect) -> None:
+    """The store's tables and numbers (decision 709 (3)), through a write and
+    a read."""
+    store = {"version": STORE_VERSION, "listeners": {"x": True}, "tests": {
+        "a": {"parts": {"d": "1"}, "reads": [], "programs": {"C:/t/p.exe": {"bytes": "b", "part": "x",
+                                                                           "keys": ["?k2@@YAXXZ", "?k1@@YAXXZ"]}}},
+        "b": {"parts": {"d": "2"}, "reads": [], "programs": {
+            "C:/t/p.exe": {"bytes": "b", "part": "y", "keys": ["?k1@@YAXXZ"]},
+            "C:/t/q.exe": {"bytes": "c", "part": "z", "keys": ["CMakeFiles/q.dir/q.obj|local"]}}},
+        "c": {"parts": {"d": "3"}, "reads": [], "shaders": ["C:/t/shaders/a.spv"], "application": "h"}}}
+    written = with_numbers(store)
+    expect("one table of function names for each program, each name one time",
+           written.get(FUNCTIONS), {"C:/t/p.exe": ["?k1@@YAXXZ", "?k2@@YAXXZ"],
+                                    "C:/t/q.exe": ["CMakeFiles/q.dir/q.obj|local"]})
+    expect("each test with numbers into the table of its program",
+           [written["tests"][n]["programs"]["C:/t/p.exe"]["keys"] for n in ("a", "b")], [[1, 0], [0]])
+    with tempfile.TemporaryDirectory() as scratch:
+        state = pathlib.Path(scratch)
+        write_store(state, store)
+        text = (state / STORE).read_text(encoding="utf-8")
+        expect("through a write and a read: the store as it was", load_store(state), store)
+        expect("a name written one time", text.count("?k1@@YAXXZ"), 1)
+        broken = json.loads(text)
+        broken["tests"]["a"]["programs"]["C:/t/p.exe"]["keys"] = [0, 2]
+        (state / STORE).write_text(json.dumps(broken), encoding="utf-8")
+        expect("a number that the table does not hold: that test left out, so that it runs again",
+               sorted(load_store(state)["tests"]), ["b", "c"])
+        broken.pop(FUNCTIONS, None)
+        (state / STORE).write_text(json.dumps(broken), encoding="utf-8")
+        expect("a store with no table: its tests with programs left out, the others kept",
+               load_store(state)["tests"], {"c": store["tests"]["c"]})
+        (state / STORE).write_text(json.dumps({**written, "version": 2}), encoding="utf-8")
+        expect("a store of version 2 is not read", load_store(state)["tests"], {})
+
+
+def program_run(tree: pathlib.Path, root: pathlib.Path, link: str = "lld-link /out:{}") -> "Run":
+    """A stand-in Run over the made-up tree of compiled-code.py, with Ninja's
+    answers given: one link command for each target."""
+    run = stand_in_run(tree, root)
+    run.start_function_level("C:/tools/cmake.exe", "ninja")
+    run.ninja_commands = lambda targets: (0, "".join(link.format(t) + "\n" for t in targets))
+    return run
+
+
+def made_program(code, root: pathlib.Path, change=None, rebuilt: bool = False) -> pathlib.Path:
+    """compiled-code.py's made-up tree, with one change, and its program with
+    the bytes of the hook's table; `rebuilt` gives the program other bytes
+    with the same table. A change that removes `entered` from the map removes
+    its entry, and a change of "table" adds entries that the map does not
+    give, as made_tree does for the length of the section."""
+    change = change or {}
+    program = code.made_tree(root, change)
+    removed = change.get("map", {}).get("?entered@@YAHXZ", "kept") is None
+    addresses = [a for a in code.CODE_TABLE if not (removed and a == 0x1010)]
+    addresses += [0x2000 + code.TABLE_ENTRY * n for n in range(change.get("table", len(addresses)) - len(addresses))]
+    program.write_bytes(code.made_table_program(addresses, (".rdata",) if rebuilt else ()))
+    if os.name != "nt":
+        program.chmod(0o755)
+    return program
+
+
+def program_cases(expect) -> None:
+    """The programs taken function by function, read by compiled-code.py from
+    its made-up tree: a program, its map and its .pdb file, objects and
+    libraries (decisions 590, 704, 706, 713 and 714)."""
+    code = script_module("compiled-code")
+    read_record = script_module("check-coverage-recorder").read_record
+    with tempfile.TemporaryDirectory() as scratch:
+        root = pathlib.Path(scratch).resolve()
+        tree = root / "tree"
+        program = made_program(code, root)
+        test = {"name": "t", "command": [str(program), "x"]}
+        given = str(program).replace("/", "\\")
+
+        def record(**change):
+            fields = {"flags": code.CODE_ENTRIES, "addresses": code.CODE_RECORD, **change}
+            return read_record(coverage_record(fields.pop("program", given), f"{program} x", **fields))
+
+        run = program_run(tree, root)
+        taken, problems = run.taken_for(test, [record()])
+        expect("a direct test: its program, with the keys of its record", (taken, problems),
+               ({norm(program): set(code.CODE_KEYS)}, []))
+        _, problems = run.taken_for(test, [record(flags=code.CODE_ENTRIES + 1)])
+        expect("a record with a count of flags different from the table: a problem",
+               [f"{code.CODE_ENTRIES + 1} flags" in p for p in problems], [True])
+        _, problems = run.taken_for(test, [record(addresses=list(code.CODE_RECORD) + [0x1090])])
+        expect("a record with an address that is not one function: a problem that names it",
+               [("0x1090" in p) for p in problems], [True])
+        made_program(code, root, {"table": code.CODE_ENTRIES + 1})
+        _, problems = program_run(tree, root).taken_for(test, [record()])
+        expect("a program with a table that the two sources count differently: a problem that gives the two",
+               [("not one number" in p) for p in problems], [True])
+        made_program(code, root)
+        out_of_line = coverage_record(given, f"{program} x", "", code.CODE_ENTRIES).replace(
+            f"flags {code.CODE_ENTRIES}", f"flags {code.CODE_ENTRIES} out of line")
+        _, problems = run.taken_for(test, [read_record(out_of_line)])
+        expect("a record with its flags out of line: a problem", [("out of line" in p) for p in problems], [True])
+        _, problems = run.taken_for(test, [record(program=str(root / "outside" / "p.exe"))])
+        expect("a record of a program that is not one of the tree with the hook: a problem, and the direct test "
+               "with no record of its own", [("not a program of this tree" in p, "no complete" in p)
+                                              for p in problems], [(True, False), (False, True)])
+        _, problems = run.taken_for(test, [])
+        expect("a direct test that passed with no record: a problem", ["no complete coverage record" in p
+                                                                       for p in problems], [True])
+        stored = run.stored_programs(taken)
+        part = (stored or {}).get(norm(program), {})
+        expect("the stored program: its bytes, its function part and its keys",
+               (part.get("bytes") == run.world.file(program),
+                bool(re.fullmatch("[0-9a-f]{64}", part.get("part") or "")), part.get("keys")),
+               (True, True, sorted(code.CODE_KEYS)))
+        expect("no problem", run.all_problems(), [])
+
+        fresh = program_run(tree, root)
+        expect("the bytes equal: unchanged, and the program not read", (fresh.programs_unchanged(stored or {}),
+                                                                         fresh._codes), (True, {}))
+        for what, change, link, same in (
+                ("a function that no key names changed", code.changed_code("other", b"\xcc\x90\xc3"), None, True),
+                ("a function that a key names changed", code.changed_code("entered", b"\x90\x90\x90\xc3"), None, False),
+                ("a function that a key names removed",
+                 {"direct": {"entered": None, "entered entry": None}, "direct symbols": {"?entered@@YAHXZ": None},
+                  "map": {"?entered@@YAHXZ": None}, "entries": 5}, None, False),
+                ("another link command", {}, "lld-link /debug /out:{}", False)):
+            made_program(code, root, change, rebuilt=True)
+            fresh = program_run(tree, root, *([link] if link else []))
+            expect(f"the bytes different, {what}: {'unchanged' if same else 'changed'}, with no problem",
+                   (fresh.programs_unchanged(stored or {}), bool(fresh._codes), fresh.all_problems()),
+                   (same, True, []))
+        made_program(code, root, {"no": [("tree", "p.map")]}, rebuilt=True)
+        fresh = program_run(tree, root)
+        tests = {"t": test}
+        entry = {"t": {"parts": {"x": "1"}, "reads": [], "programs": stored or {}}}
+        expect("a problem at the decision: the test runs, and the problem fails the run",
+               (selection(tests, entry, {"t": {"x": "1"}}, fresh.world.file, set(), fresh.programs_unchanged),
+                any("p.map" in p for p in fresh.all_problems())), ({"t"}, True))
+        made_program(code, root, rebuilt=True)
+        fresh = program_run(tree, root)
+        fresh.ninja_commands = lambda targets: (1, "ninja: error: unknown target\n")
+        expect("Ninja gives no link command: changed, and a problem",
+               (fresh.programs_unchanged(stored or {}), [("link commands" in p) for p in fresh.all_problems()]),
+               (False, [True]))
+        fresh = program_run(tree, root)
+        fresh.ninja_commands = lambda targets: (0, "")
+        expect("Ninja gives fewer link commands than programs, with exit code 0: changed, and a problem",
+               (fresh.programs_unchanged(stored or {}), [("link commands" in p) for p in fresh.all_problems()]),
+               (False, [True]))
+
+        second = code.made_second(root)
+        both = {**(stored or {}), **(program_run(tree, root).stored_programs({norm(second): set()}) or {})}
+        made_program(code, root, rebuilt=True)
+        second.write_bytes(code.made_pe([".text", ".SCOV", ".SCOVP", ".rdata"],
+                                        {".SCOVP": (code.TABLE_MARKERS + code.TABLE_ENTRY, 512)}))
+        fresh, calls = program_run(tree, root), []
+        answer = fresh.ninja_commands
+        fresh.ninja_commands = lambda targets: calls.append(list(targets)) or answer(targets)
+        fresh.link_commands(fresh.changed_programs({"t": {"programs": both}, "u": {"programs": both}}))
+        expect("the link commands of the changed programs of each test, in one call of Ninja",
+               (fresh.programs_unchanged(both), calls), (True, [["p.exe", "q.exe"]]))
+
+        plain = tree / "plain.exe"
+        plain.write_bytes(code.made_pe([".text", ".rdata"]))
+        if os.name != "nt":
+            plain.chmod(0o755)
+        expect("a test that starts a program of the tree without the hook: no program taken, and no problem",
+               program_run(tree, root).taken_for({"name": "plain", "command": [str(plain)]}, []), ({}, []))
+
+        made_program(code, root)
+        found = tree / COVERAGE_RECORDS
+        found.mkdir(exist_ok=True)
+        (found / f"1-1{FUNCTION_RECORD}").write_bytes(
+            coverage_record(given, f"{program} x", "", code.CODE_ENTRIES, code.CODE_RECORD).encode("utf-8"))
+        def after_run(tests: dict, ninja=None) -> tuple:
+            run = program_run(tree, root)
+            run.tests = tests
+            if ninja is not None:
+                run.ninja_commands = ninja
+            return run.functions_of_run(found, list(tests), ["t"]), run.all_problems()
+
+        others = {"t": test, "u": {"name": "u", "command": ["C:/python.exe", "C:/check.py"]}}
+        taken, problems = after_run(others)
+        expect("the records of a run: the programs of each test that passed, for the store, and a test that failed "
+               "not kept", (sorted(taken), sorted((taken.get("t") or {}).get(norm(program), {}).get("keys") or []),
+                            problems), (["t"], sorted(code.CODE_KEYS), []))
+        (found / f"2-2{FUNCTION_RECORD}").write_bytes(coverage_record(given, f"{program} y", "", 6).encode("utf-8"))
+        taken, problems = after_run({"t": test})
+        expect("a record that belongs to no test: a problem, and no test of the run kept",
+               (taken, [("matches 0 tests" in p) for p in problems]), ({}, [True]))
+        (found / f"2-2{FUNCTION_RECORD}").unlink()
+        (found / f"3-3{FUNCTION_RECORD}").write_bytes(
+            coverage_record(given, f"{program} x", "", code.CODE_ENTRIES + 1, code.CODE_RECORD).encode("utf-8"))
+        taken, problems = after_run({"t": test})
+        expect("a record with a problem: the test not kept, and the problem names the test",
+               (taken, [p.startswith("the test t: ") and "flags" in p for p in problems]), ({}, [True]))
+        (found / f"3-3{FUNCTION_RECORD}").unlink()
+        made_program(code, root, {"no": [("tree", "p.pdb")]})
+        taken, problems = after_run({"t": test})
+        expect("a program with a problem after the run: the test not kept, and the problem fails the run",
+               (taken, any("p.pdb" in p for p in problems)), ({}, True))
+        made_program(code, root)
+        taken, problems = after_run({"t": test}, lambda targets: (1, ""))
+        expect("no link command after the run: the test not kept, and a problem",
+               (taken, any("link commands" in p for p in problems)), ({}, True))
+
+        # The rule of decision 629 holds for the application taken function by
+        # function: with no shader record, each shader.
+        application = tree / f"{APPLICATION}{'.exe' if os.name == 'nt' else ''}"
+        application.write_bytes(program.read_bytes())
+        if os.name != "nt":
+            application.chmod(0o755)
+        (tree / "shaders").mkdir(exist_ok=True)
+        (tree / "shaders" / "a.spv").write_bytes(b"a")
+        usage = {"name": "usage", "command": ["C:/tools/cmake.exe", f"-DORBSIM={application}", "-P",
+                                              str(root / "cmake" / "RunUsage.cmake")]}
+        expect("the application taken function by function, with no shader record: each shader",
+               "shaders" in program_run(tree, root).parts(usage, [], STAND_IN_ENVIRONMENT, None, {norm(application)}),
+               True)
+        application.unlink()
+
+        program.unlink()
+        expect("a stored program that is not there: changed", program_run(tree, root).programs_unchanged(stored or {}),
+               False)
+
+        made_program(code, root)
+        folder = tree / STATE / OBJECTS
+        run = program_run(tree, root)
+        run.stored_programs(run.taken_for(test, [record()])[0])
+        stray = folder / code.SummaryCache.file_name("CMakeFiles/gone.dir/gone.obj")
+        folder.mkdir(parents=True, exist_ok=True)
+        stray.write_bytes(b"{}")
+        kept = sorted(p.name for p in folder.iterdir())
+        expect("a run that is not full deletes no summary", (run.prune_summaries(False),
+                                                              sorted(p.name for p in folder.iterdir())), ([], kept))
+        expect("a full run deletes the summary of an object that no program links, and keeps the others",
+               (program_run(tree, root).prune_summaries(True), sorted(p.name for p in folder.iterdir())),
+               ([stray.name], sorted(set(kept) - {stray.name})))
+
+
+def table_cases(expect) -> None:
+    """The kept table of each program (decision 715 (1)): the driver examines
+    the records of a program that did not change from its kept table, with no
+    read of its map, its .pdb file, its libraries or its summaries, and reads
+    a program in full when its bytes or its map changed."""
+    code = script_module("compiled-code")
+    read_record = script_module("check-coverage-recorder").read_record
+    with tempfile.TemporaryDirectory() as scratch:
+        root = pathlib.Path(scratch).resolve()
+        tree = root / "tree"
+        program = made_program(code, root)
+        test = {"name": "t", "command": [str(program), "x"]}
+        given = str(program).replace("/", "\\")
+        # The file of the kept table, named as the summaries are named: from
+        # the SHA-256 of the program's key, computed here a second time.
+        kept = tree / STATE / "tables" / (hashlib.sha256(norm(program).encode("utf-8")).hexdigest() + ".json")
+
+        def record(**change):
+            fields = {"flags": code.CODE_ENTRIES, "addresses": code.CODE_RECORD, **change}
+            return read_record(coverage_record(given, f"{program} x", **fields))
+
+        def examined(*records, command=None) -> tuple:
+            """(keys, problems, programs read in full) of a run that examines
+            the records of one test."""
+            run = program_run(tree, root)
+            taken, problems = run.taken_for({"name": "t", "command": command or test["command"]}, list(records))
+            return sorted(set().union(*taken.values())), problems, len(run._codes)
+
+        expect("a first run reads the program in full, and keeps its table",
+               (examined(record()), kept.is_file()), ((sorted(code.CODE_KEYS), [], 1), True))
+        expect("a program that did not change: its record examined from the kept table, with no read in full",
+               examined(record()), (sorted(code.CODE_KEYS), [], 0))
+        _, problems, read = examined(record(addresses=list(code.CODE_RECORD) + [0x1090]))
+        expect("from the kept table: an address that is not an entry of the table is a problem",
+               ([("0x1090" in p) for p in problems], read), ([True], 0))
+        _, problems, read = examined(record(flags=code.CODE_ENTRIES + 1))
+        expect("from the kept table: a count of flags different from the table is a problem",
+               ([f"{code.CODE_ENTRIES + 1} flags" in p for p in problems], read), ([True], 0))
+        for what, change, rebuilt in (("the program's bytes changed", None, True), ("the bytes as before", None, False),
+                                      ("only the map changed", {"reverse": True}, False)):
+            made_program(code, root, change, rebuilt=rebuilt)
+            expect(f"{what}: read in full one time, and its table kept again",
+                   (examined(record())[1:], examined(record())[1:]), (([], 1), ([], 0)))
+        made_program(code, root, {"map": {"?alias@@YAHXZ": (1, 0x010, "direct.obj")}})
+        reads = [examined(record()) for _ in range(2)]
+        expect("from the kept table: an entry with two functions at its address is a problem, as from the program",
+               [([("0x1010" in p) for p in problems], read) for _, problems, read in reads], [([True], 1), ([True], 0)])
+
+        made_program(code, root)
+        examined(record())
+        for field, value in (("version", -1), ("key", "C:/t/other.exe"), ("program", "0" * 64), ("map", "0" * 64)):
+            text = json.loads(kept.read_bytes()) if kept.is_file() else {}
+            kept.parent.mkdir(parents=True, exist_ok=True)
+            kept.write_bytes(json.dumps({**text, field: value}).encode("utf-8"))
+            expect(f"a kept table with a different {field} is not used: the program is read in full",
+                   examined(record())[2], 1)
+
+        second = code.made_second(root)
+        second.write_bytes(code.made_table_program([0x1000]))
+        if os.name != "nt":
+            second.chmod(0o755)
+        q_record = read_record(coverage_record(str(second), str(second), "", 1, [0x1000]))
+        examined(q_record, command=[str(second)])
+        second_kept = kept.with_name(hashlib.sha256(norm(second).encode("utf-8")).hexdigest() + ".json")
+        second.unlink()
+        program_run(tree, root).prune_summaries(False)
+        not_full = second_kept.is_file()
+        program_run(tree, root).prune_summaries(True)
+        expect("only a full run deletes the kept table of a program that the tree does not hold, and keeps the others",
+               (not_full, second_kept.is_file(), kept.is_file()), (True, False, True))
+
+
+def test_name_cases(expect) -> None:
+    """ORBSIM_TEST_NAME in the driver's environment (decision 715 (2)): not in
+    the environment part, and not in the environment that CTest gets."""
+    base = {"PATH": "a", "ORBSIM_X": "c"}
+    expect("ORBSIM_TEST_NAME does not change the environment part",
+           (environment({**base, TEST_NAME_VARIABLE: "x"}), environment({**base, TEST_NAME_VARIABLE: "y"})),
+           (environment(base), environment(base)))
+    lower = environment({**base, TEST_NAME_VARIABLE.lower(): "x"}) == environment(base)
+    expect("ORBSIM_TEST_NAME in other letters: not in the environment part on Windows, which compares names so",
+           lower, os.name == "nt")
+    without = globals().get("without_test_name", lambda env: env)
+    expect("the environment that CTest gets has no ORBSIM_TEST_NAME, and keeps each other variable",
+           without({**base, TEST_NAME_VARIABLE: "x", "ORBSIM_Y": "y"}), {**base, "ORBSIM_Y": "y"})
+    expect("nor in other letters on Windows", TEST_NAME_VARIABLE.lower() in without({TEST_NAME_VARIABLE.lower(): "x"}),
+           os.name != "nt")
+
+
+def function_level_cases(expect) -> None:
+    table_cases(expect)
+    test_name_cases(expect)
+    command_line_cases(expect)
+    record_owner_cases(expect)
+    script_cases(expect)
+    decision_cases(expect)
+    store_cases(expect)
+    program_cases(expect)
 
 
 def self_test() -> int:
@@ -1846,6 +3361,7 @@ def self_test() -> int:
     each_part_moves_with_its_input(expect)
     tools_read_as_they_answer(expect)
     shader_record_cases(expect)
+    function_level_cases(expect)
 
     for failure in failures:
         print(f"self-test FAILED: {failure}")
@@ -1863,6 +3379,9 @@ def main() -> int:
     parser.add_argument("--pre-push", metavar="ROOT")
     parser.add_argument("--self-test", action="store_true")
     parser.add_argument("--end-to-end", nargs=3, metavar=("CMAKE", "CTEST", "NINJA"))
+    parser.add_argument("--function-level", nargs=8,
+                        metavar=("CMAKE", "CTEST", "NINJA", "CLANG++", "LLVM-AR", "LLD-LINK", "RECORDER", "TURNS"),
+                        help="the selection by function from end to end, on a scratch project with the hook")
     parser.add_argument("--in-tree", action="store_true", help="the driver on the tree's own programs")
     parser.add_argument("--suite", help="--in-tree: a program that carries the read-record listener")
     parser.add_argument("--without-listener", help="--in-tree: a program that does not")
@@ -1874,6 +3393,8 @@ def main() -> int:
         return self_test()
     if args.end_to_end:
         return end_to_end(*args.end_to_end)
+    if args.function_level:
+        return function_level(args.function_level)
     if args.in_tree:
         if not (args.tree and args.ctest and args.suite and args.without_listener):
             parser.error("--in-tree needs the tree, --ctest, --suite and --without-listener")

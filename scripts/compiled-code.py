@@ -835,6 +835,11 @@ TABLE_ENTRY = 16
 # FileAlignment and thus can be larger (Microsoft's PE format specification,
 # "Section Table").
 SECTION_VIRTUAL_SIZE = 8
+# The magic number of a PE32+ optional header, and the offset of its ImageBase,
+# the preferred base address (Microsoft's PE format specification, "Optional
+# Header Standard Fields" and "Optional Header Windows-Specific Fields").
+PE32_PLUS = 0x20B
+PE_IMAGE_BASE = 24
 # The names of the two markers in the linker's map (tests/CoverageRecorder.cpp).
 TABLE_START, TABLE_STOP = "__start___sancov_pcs", "__stop___sancov_pcs"
 # The length of the start marker. LLVM's SanitizerCoverage pass adds 8 bytes to
@@ -982,6 +987,50 @@ def table_entries(data: bytes) -> Optional[int]:
     if sizes is None or len(sizes) != 1 or sizes[0] < TABLE_MARKERS or (sizes[0] - TABLE_MARKERS) % TABLE_ENTRY:
         return None
     return (sizes[0] - TABLE_MARKERS) // TABLE_ENTRY
+
+
+def table_addresses(data: bytes) -> Optional[list]:
+    """The address of each entry of the hook's table of a PE program, less the
+    program's preferred base address, in the sequence of the table: the
+    addresses that a coverage record can name (decision 644). Read from the
+    bytes of the section `.SCOVP`, after the start marker: each entry is the
+    function's address and the value 1, 8 bytes each (decision 712), and the
+    address in the file has the preferred base, the ImageBase of the PE32+
+    optional header, added. None for a file that is not a PE32+ program, for
+    a program with no `.SCOVP` section or with two, and for a section that
+    does not hold the two markers and complete entries in the file. Thus the
+    caller keeps no table for such a program (decision 715 (1))."""
+    try:
+        if len(data) < 0x40 or data[0:2] != b"MZ":
+            return None
+        header = struct.unpack_from("<I", data, 0x3C)[0]
+        if data[header:header + 4] != b"PE\0\0":
+            return None
+        count, optional = struct.unpack_from("<H", data, header + 6)[0], struct.unpack_from("<H", data, header + 20)[0]
+        start = header + 24
+        if optional < PE_IMAGE_BASE + 8 or struct.unpack_from("<H", data, start)[0] != PE32_PLUS:
+            return None
+        base = struct.unpack_from("<Q", data, start + PE_IMAGE_BASE)[0]
+        first = start + optional
+        found = [first + COFF_SECTION_HEADER * n for n in range(count)
+                 if data[first + COFF_SECTION_HEADER * n:first + COFF_SECTION_HEADER * n + 8].rstrip(b"\0")
+                 == HOOK_SECTIONS["pe-program"][1].encode()]
+        if len(found) != 1:
+            return None
+        virtual, _, size, at = struct.unpack_from("<IIII", data, found[0] + SECTION_VIRTUAL_SIZE)
+        if virtual < TABLE_MARKERS or (virtual - TABLE_MARKERS) % TABLE_ENTRY or virtual > size \
+                or at + virtual > len(data):
+            return None
+        places = range(at + TABLE_START_LENGTH, at + virtual - (TABLE_MARKERS - TABLE_START_LENGTH), TABLE_ENTRY)
+        entries = [struct.unpack_from("<QQ", data, place) for place in places]
+    except struct.error:
+        return None
+    # The second word of each entry is the hook's value 1 (decision 712):
+    # measured 2026-10-21 in each entry of the 54 programs with the hook in
+    # each tree. A different value is a different layout.
+    if any(value != 1 for _, value in entries):
+        return None
+    return [address - base for address, _ in entries]
 
 
 # --- the digests of a program's functions (M1-132, decision 545) --------------
@@ -1594,6 +1643,107 @@ class SummaryCache:
         return unused
 
 
+# The version of the layout of a kept table. Change it when the layout or the
+# meaning of a table changes, so that a driver does not use a table kept in a
+# previous layout (decision 715 (1)).
+TABLE_VERSION = 1
+
+
+class TableCache:
+    """The table of each program with the hook, kept between runs in `folder`
+    (decision 715 (1)) -- the driver gives `<tree>/run-tests/tables/`. Each
+    program has one JSON file, with a name made from the program's key as
+    SummaryCache makes the name of a summary. The file holds the key,
+    TABLE_VERSION, the SHA-256 of the program's bytes and the SHA-256 of its
+    map, which the driver gives, and the table that ProgramCode.table gives.
+    The driver uses a table only when the key, the version and the two
+    SHA-256 agree; if not, it reads the program in full, and the new file
+    replaces the file of that key. Only a full run deletes files (`prune`, as
+    SummaryCache.prune). With no folder, no table is kept."""
+
+    file_name = staticmethod(SummaryCache.file_name)
+    prune = SummaryCache.prune
+
+    def __init__(self, folder: Optional[Path] = None):
+        self.folder = None if folder is None else Path(folder)
+
+    def get(self, key: str, program: str, linker_map: str) -> Optional[dict]:
+        """The table kept for the program with the key `key`, the SHA-256
+        `program` of its bytes and `linker_map` of its map, or None."""
+        if self.folder is None:
+            return None
+        try:
+            kept = json.loads((self.folder / self.file_name(key)).read_bytes())
+        except (OSError, ValueError):
+            return None
+        if not isinstance(kept, dict) or (kept.get("key"), kept.get("version"), kept.get("program"),
+                                          kept.get("map")) != (key, TABLE_VERSION, program, linker_map):
+            return None
+        table = kept.get("table")
+        return table if valid_table(table) else None
+
+    def put(self, key: str, program: str, linker_map: str, table: dict) -> None:
+        """Keep the table of the program with the key `key`: the new file
+        replaces the file of that key. Written with write_bytes, as
+        SummaryCache.put writes."""
+        if self.folder is not None:
+            self.folder.mkdir(parents=True, exist_ok=True)
+            kept = {"key": key, "version": TABLE_VERSION, "program": program, "map": linker_map, "table": table}
+            (self.folder / self.file_name(key)).write_bytes(json.dumps(kept, separators=(",", ":")).encode())
+
+
+def valid_table(table) -> bool:
+    """Examine if `table` has the layout that ProgramCode.table gives: so that a
+    file that is not complete, or that a person changed, is not used."""
+    if not isinstance(table, dict) or not isinstance(table.get("functions"), dict):
+        return False
+    if not (table.get("entries") is None or type(table.get("entries")) is int):
+        return False
+    if not (table.get("problem") is None or isinstance(table.get("problem"), str)):
+        return False
+    return all(isinstance(address, str) and isinstance(found, list) and len(found) == 2
+               and (found[0] is None or isinstance(found[0], str)) and isinstance(found[1], list)
+               and all(isinstance(problem, str) for problem in found[1])
+               for address, found in table["functions"].items())
+
+
+class ProgramTable:
+    """The record checks of one program from its kept table (decision 715
+    (1)), with the methods of ProgramCode that a record uses: table_entries,
+    keys and problems. It reads no map, .pdb file, library or summary."""
+
+    def __init__(self, name: str, table: dict):
+        self.name = name
+        self._table = table
+
+    @property
+    def problems(self) -> list:
+        """No problems: a program with a problem has no kept table."""
+        return []
+
+    def table_entries(self) -> tuple:
+        """(entries, problem), as ProgramCode.table_entries gave them."""
+        return self._table["entries"], self._table["problem"]
+
+    def keys(self, addresses: Iterable) -> tuple:
+        """(keys, problems) of a record's addresses, as ProgramCode.keys gives
+        them: the sorted keys, with the start-up functions left out, and a
+        problem for each address that is not one function, which names the
+        program. An address that is not an entry of the hook's table is a
+        problem too: the recorder writes only the addresses of the table."""
+        keys, problems = set(), []
+        for address in addresses:
+            found = self._table["functions"].get(f"{address:x}")
+            if found is None:
+                problems.append(f"{self.name}: the address {address:#x} is not an entry of the hook's table of "
+                                "the program")
+                continue
+            problems += [f"{self.name}: {problem}" for problem in found[1]]
+            if found[0] is not None:
+                keys.add(found[0])
+        return sorted(keys), problems
+
+
 class _Member(NamedTuple):
     name: str          # as the library names it
     key: str           # object_key, with the member's file name
@@ -1618,6 +1768,8 @@ class ProgramCode:
         self._reader = reader
         self._problems, self._binary = [], []
         self._program, self._index, self._key_of, self._unflagged = None, None, None, None
+        # The addresses of the hook's table, from the program's bytes (table_addresses), or None.
+        self._addresses = None
         self._table = (None, f"{name}: the hook's table is not counted: the program or its map cannot be read")
         # The sorted keys of the objects with the hook that the program links, as SummaryCache names them: a
         # full run gives the keys of each program to SummaryCache.prune (decision 714).
@@ -1650,6 +1802,26 @@ class ProgramCode:
         the map's markers and from the length of the section `.SCOVP`, which
         must agree (decision 712)."""
         return self._table
+
+    def table(self) -> Optional[dict]:
+        """The table that TableCache keeps for the program (decision 715 (1)),
+        or None: for a program with a problem, and for a program with table
+        addresses that cannot be read or that are not as many as the entries.
+        Then no table is kept, and the driver reads the program in full at
+        each run. "entries" and "problem" are what table_entries gives.
+        "functions" holds, for each address of the table in hexadecimal, what
+        keys gives for only that address: the key of its function -- None
+        for a start-up function, which keys leaves out (decisions 624 and 711
+        (6)), and for an address with a problem -- and its problems, without
+        the name of the program, which ProgramTable adds."""
+        if self.problems or self._addresses is None or len(self._addresses) != self._table[0]:
+            return None
+        start = set(self._reader.timed("digests", self._program.start_up))
+        functions = {}
+        for address in self._addresses:
+            keys, problems = record_functions(self._index, [address], self._key_of)
+            functions[f"{address:x}"] = [keys[0] if keys and keys[0] not in start else None, problems]
+        return {"entries": self._table[0], "problem": self._table[1], "functions": functions}
 
     def function_part(self, keys: Iterable, link_command: Optional[str] = None) -> Optional[str]:
         """One SHA-256 of the part of the program that a test with the
@@ -1833,6 +2005,7 @@ class CodeReader:
         code._index, code._key_of = address_index(linker_map), lambda s: symbol_key(s, paths, self.tree)
         count, problem = hook_table_entries(data, linker_map)
         code._table = (count, None if problem is None else f"{code.name}: {problem}")
+        code._addresses = table_addresses(data)
         if problem is not None:
             code.problem(problem)
 
@@ -1897,6 +2070,31 @@ def made_pe(names: list, sizes: Optional[dict] = None) -> bytes:
         virtual, raw = (sizes or {}).get(name, (0, 16))
         headers += name.encode().ljust(8, b"\0") + struct.pack("<IIIIIIHHI", virtual, 0, raw, 0, 0, 0, 0, 0, 0x40)
     return dos + b"PE\0\0" + struct.pack("<HHIIIHH", 0x8664, len(names), 0, 0, 0, 0, 0) + headers
+
+
+# The preferred base address of the made-up programs, as the made-up maps give it.
+MADE_BASE = 0x140000000
+
+
+def made_table_program(addresses: list, extra: tuple = (), base: int = MADE_BASE) -> bytes:
+    """A PE program with the bytes of the hook's table, as lld-link links it
+    with the recorder's markers (decision 712): the start of a PE32+ optional
+    header, to its ImageBase, and the section .SCOVP with its bytes -- the
+    start marker, an entry for each address, which is the address with `base`
+    added and the value 1, and the stop marker. `extra` names more sections,
+    so that a program can have other bytes and the same table."""
+    table = bytes(TABLE_START_LENGTH) + b"".join(struct.pack("<QQ", base + a, 1) for a in addresses) + bytes(8)
+    names = [".text", ".SCOV", ".SCOVP", *extra]
+    optional = struct.pack("<HBBIIIIIQ", PE32_PLUS, 0, 0, 0, 0, 0, 0, 0, base)
+    header = 0x40
+    raw = header + 4 + 20 + len(optional) + COFF_SECTION_HEADER * len(names)
+    headers = b""
+    for name in names:
+        size, at = (len(table), raw) if name == ".SCOVP" else (0, 0)
+        headers += name.encode().ljust(8, b"\0") + struct.pack("<IIIIIIHHI", size, 0, size, at, 0, 0, 0, 0, 0x40)
+    dos = b"MZ" + b"\0" * 0x3A + struct.pack("<I", header)
+    coff = struct.pack("<HHIIIHH", 0x8664, len(names), 0, 0, 0, len(optional), 0)
+    return dos + b"PE\0\0" + coff + optional + headers + table
 
 
 def made_elf(names: list, code: tuple = (), extended: bool = False) -> bytes:
@@ -3526,6 +3724,82 @@ def cache_cases(root: Path, program: Path, base: str, expect) -> None:
     expect("prune with no folder", SummaryCache(None).prune([direct]), [])
 
 
+# The entries of the hook's table of p.exe in the made-up tree, by address less
+# the base: main, entered, other, init, lib and spare, as CODE_MAP gives them.
+CODE_TABLE = [0x1000, 0x1010, 0x1020, 0x1040, 0x1100, 0x1110]
+
+
+def kept_table_cases(expect) -> None:
+    """The kept table of each program (decision 715 (1)): the addresses of the
+    hook's table read from the program, the key of each, the table that
+    TableCache keeps, and ProgramTable, which gives what ProgramCode gives for
+    a record."""
+    expect("the addresses of the hook's table, read from the program", table_addresses(made_table_program(CODE_TABLE)),
+           CODE_TABLE)
+    expect("a program with no optional header gives no addresses",
+           table_addresses(made_pe([".text", ".SCOVP"], {".SCOVP": (TABLE_MARKERS + TABLE_ENTRY, 512)})), None)
+    cut = made_table_program(CODE_TABLE)
+    expect("a table section cut off in the file gives no addresses", table_addresses(cut[:-9]), None)
+    # The last entry's second word is the 8 bytes before the stop marker.
+    other = cut[:-16] + struct.pack("<Q", 2) + cut[-8:]
+    expect("a table with a second word that is not the hook's 1 gives no addresses",
+           (len(other) == len(cut), table_addresses(other)), (True, None))
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary).resolve()
+        tree, program = root / "tree", made_tree(root)
+        program.write_bytes(made_table_program(CODE_TABLE))
+        code = CodeReader(tree).program(program)
+        table = code.table() or {}
+        expect("the table of a program: its count, and the key of each entry, none for the start-up function",
+               (table.get("entries"), table.get("problem"), sorted(table.get("functions") or {}),
+                (table.get("functions") or {}).get("1040"), (table.get("functions") or {}).get("1010")),
+               (CODE_ENTRIES, None, sorted(f"{a:x}" for a in CODE_TABLE), [None, []], ["?entered@@YAHXZ", []]))
+        kept = ProgramTable("p.exe", table)
+        expect("a record's keys from the kept table, as from the program", kept.keys(CODE_RECORD),
+               code.keys(CODE_RECORD))
+        expect("the count from the kept table, as from the program", kept.table_entries(), code.table_entries())
+        keys, problems = kept.keys([0x1000, 0x1090])
+        expect("an address that is not an entry of the table: a problem that names the program and the address",
+               (keys, [p.startswith("p.exe: ") and "0x1090" in p for p in problems]), (["main"], [True]))
+        made_tree(root, {"map": {"?alias@@YAHXZ": (1, 0x010, "direct.obj")}})
+        program.write_bytes(made_table_program(CODE_TABLE))
+        code = CodeReader(tree).program(program)
+        found = ProgramTable("p.exe", code.table() or {}).keys([0x1010])
+        expect("an entry that is not one function: its problem kept, as the program gives it",
+               (found, bool(found[1])), (code.keys([0x1010]), True))
+        made_tree(root, {"no": [("tree", "p.pdb")]})
+        program.write_bytes(made_table_program(CODE_TABLE))
+        expect("a program with a problem has no table", CodeReader(tree).program(program).table(), None)
+        made_tree(root, {"no": [CODE_RECORDER]})
+        program.write_bytes(made_table_program(CODE_TABLE))
+        code = CodeReader(tree).program(program)
+        expect("a program with a problem in its objects, and a table that can be read, has no table",
+               (bool(code.problems), code._addresses, code.table()), (True, CODE_TABLE, None))
+        made_tree(root)
+        expect("a program with a table that cannot be read has no table", CodeReader(tree).program(program).table(),
+               None)
+
+        cache, folder = TableCache(root / "tables"), root / "tables"
+        good = ("C:/t/p.exe", "a" * 64, "b" * 64)
+        cache.put(*good, table)
+        expect("a kept table read again", cache.get(*good), table)
+        for what, key in (("the key of a different program", ("C:/t/q.exe",) + good[1:]),
+                          ("other bytes of the program", (good[0], "c" * 64, good[2])),
+                          ("a different map", good[:2] + ("c" * 64,))):
+            expect(f"a kept table not used for {what}", cache.get(*key), None)
+        file = folder / TableCache.file_name(good[0])
+        kept_file = json.loads(file.read_bytes()) if file.is_file() else {}
+        for what, edit in (("a different version", {"version": TABLE_VERSION + 1}),
+                           ("a table that is not one", {"table": {"entries": 6, "functions": [1]}})):
+            file.write_bytes(json.dumps({**kept_file, **edit}).encode())
+            expect(f"a kept table with {what} is not used", cache.get(*good), None)
+        cache.put(*good, table)
+        cache.put("C:/t/q.exe", "d" * 64, "e" * 64, table)
+        expect("prune: the files of the programs that are not in the set",
+               (cache.prune([good[0]]), sorted(p.name for p in folder.iterdir())),
+               ([TableCache.file_name("C:/t/q.exe")], [file.name]))
+
+
 def self_test(tools: Optional[tuple] = None) -> int:
     failures = 0
 
@@ -3577,6 +3851,7 @@ def self_test(tools: Optional[tuple] = None) -> int:
     digest_cases(expect)
     ruling_cases(expect)
     program_cases(expect)
+    kept_table_cases(expect)
     if tools is not None:
         compiler, archiver, linker = (Path(tool) for tool in tools)
         compiled_cases(compiler, archiver, linker, expect)
