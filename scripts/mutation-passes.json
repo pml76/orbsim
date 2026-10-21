@@ -1002,6 +1002,35 @@
       "validation layer": "1.4.357 (variant 0), implementation 1"
     }
   },
+  "m1-132.json": {
+    "commit": "b1fce2dbc12fcaa9eecadb47c96bf7ba912c336f",
+    "tree": "build/debug",
+    "date": "2026-10-21",
+    "judges": {
+      "ctest compiled_code_self_test": "63beae8656fb5859",
+      "ctest coverage_hook_self_test": "e17a50de59323148",
+      "ctest run_tests_self_test": "10f4f11a8345008c",
+      "ctest run_tests_function_level": "947230e9b1a675f4",
+      "ctest run_tests_end_to_end": "7491270e7342dc13"
+    },
+    "judge_parts": {
+      "ctest compiled_code_self_test": {
+        "definition": "0027300b822457c3"
+      },
+      "ctest coverage_hook_self_test": {
+        "definition": "45111e056f87cf1e"
+      },
+      "ctest run_tests_self_test": {
+        "definition": "ce02c3ef17f08550"
+      },
+      "ctest run_tests_function_level": {
+        "definition": "b21abb43ddfb039b"
+      },
+      "ctest run_tests_end_to_end": {
+        "definition": "5d5949a766ac0671"
+      }
+    }
+  },
   "m1-135.json": {
     "commit": "85535a3eed3ae6f2519006b163917cf628159cf5",
     "tree": "build/debug",

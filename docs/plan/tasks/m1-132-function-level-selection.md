@@ -1,6 +1,6 @@
 # M1-132 — Tests chosen function by function
 
-Phase: B | Status: started 2026-10-20
+Phase: B | Status: **done 2026-10-21**; the push waits for the owner's word
 Prerequisites: M1-131
 Decided by: register decisions 543-553, 556-561, 564, 567, 569 and 570, ruled
 2026-10-15, 582-595, ruled 2026-10-16, and 624, ruled 2026-10-17; split out of
@@ -21,6 +21,10 @@ named by its key, which only a full run deletes.
 And 715, ruled the same day in step 4b: for each program, a file with the
 keys of its table's entries and its table count, and `ORBSIM_TEST_NAME`
 removed from the driver's environment.
+And 716-719, ruled 2026-10-21 before the mutant file: a missing case in the
+self-test of the start-up check, the mutants for the rulings 712-715, the
+five mutants that change no decision of the driver, and the contents of ADR
+0028.
 Reads what [M1-131](m1-131-coverage-hook.md) records; proved by
 [M1-133](m1-133-selection-proved.md).
 
@@ -183,16 +187,23 @@ an object in none of the two sets passed; a funclet counted alone; a start-up
 function counted as without a flag; `/INCLUDE` left out of the directives;
 the digests on request computing each section.
 
+*Written 2026-10-21 as `scripts/mutants/m1-132.json`: 37 mutants, with one for
+decision 716 and 11 for the rulings 712-715 (decision 717), and one declared
+survivor (decision 718). Its pass in `build/debug`: 36 caught, 1 survivor as
+declared, none invalid.*
+
 ## Done when
 
-- [ ] Every question the design raised ruled, and the rulings in the register.
+- [x] Every question the design raised ruled, and the rulings in the register.
       *The questions known before the work started: decisions 701-709,
-      2026-10-20.*
-- [ ] `check` passes in both trees, the digest cost measured (567).
-- [ ] ADR 0028 written (708).
-- [ ] The task's mutant file has run after the commit and its record is
+      2026-10-20; and the questions of the work: 710-719.*
+- [x] `check` passes in both trees, the digest cost measured (567).
+      *Measured in decisions 711 (8) and 715.*
+- [x] ADR 0028 written (708, 719).
+- [x] The task's mutant file has run after the commit and its record is
       committed. A commit at the end; the push only on the owner's go-ahead
-      (595).
+      (595). *37 mutants, 36 caught, 1 declared survivor.*
+- [ ] `check-full` in the two trees, and the push on the owner's word.
 
 ## Background, moved from M1-129 on 2026-10-16 (decision 596)
 

@@ -371,3 +371,10 @@ task has done, what is left, and the sequence.
 **Later on 2026-10-20** the owner ruled the questions of M1-132 before its
 work started, decisions 702-709, and the work started. Decision 701 put the
 method of work into section 1.
+
+**On 2026-10-21** M1-132 is done (decisions 701-719): in the two `check`
+trees, a test with a program that has the coverage hook also runs again only
+when a function that it entered has changed, as ADR 0028 records. Its
+mutation pass caught 36 of 37 mutants, and one survivor is declared. Its push
+waits for `check-full` in the two trees and the owner's word. Next, M1-133,
+then M1-134.
