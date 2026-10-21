@@ -1,0 +1,37 @@
+{
+  "task": "M1-133",
+  "tree": "build/debug",
+  "note": "The correction of open item (h) in M1-133 (register decisions 737-740): when the driver skips a test as unchanged, it gives the stored list of shaders of that test the hash of the current application. The three mutants of decision 740. Each changes a Python script, thus the harness builds nothing, and run_tests_self_test, which runs the driver's own cases, is the judge. Each was seen to make its case fail before this file was written (decision 739). The measurement scripts in docs/measurements/m1-133/ have no mutants (decision 733).",
+  "mutants": [
+    {
+      "name": "the new hash removed from the list of a skipped test",
+      "file": "scripts/run-tests.py",
+      "find": "            entry[\"application\"] = hashed\n            renewed.append(name)\n",
+      "replace": "            renewed.append(name)\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    },
+    {
+      "name": "the new hash given to a test that ran",
+      "file": "scripts/run-tests.py",
+      "find": "    for name in skipped:\n        entry = stored.get(name)\n",
+      "replace": "    for name in stored:\n        entry = stored.get(name)\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    },
+    {
+      "name": "the hash of a different file on the list of a skipped test",
+      "file": "scripts/run-tests.py",
+      "find": "    hashed = file_hash(application)\n",
+      "replace": "    hashed = file_hash(application.parent)\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    }
+  ]
+}
