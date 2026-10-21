@@ -30,6 +30,13 @@ each function that uses mutated data. A test can enter the mutant only if it
 entered one of these at its last pass. A test that cannot enter it cannot
 fail: it is not run, and its verdict is "passed".
 
+**R2a. R2 is proved before it is trusted.** The line tables of an optimised
+build can give code to an incorrect line. Thus, for each mutant of the mutant
+files, the functions with compiled bytes that change when the mutant is
+compiled must be functions that R2 found. A miss fails the proof,
+and that type of mutant uses the fallback of R4. The proof runs one time as a
+measurement, and again at each gate (R13).
+
 **R3. The cache of mutated digests.** At each run of a mutant, keep the
 mutated digests of the mutated function and of each function into which it is
 inlined.
@@ -37,7 +44,8 @@ inlined.
 **R4. When the cache stays correct.** While these are unchanged: the mutant's
 text; the usual digest of the mutated function; and the usual digests of the
 names that the replacement adds -- the functions, data, constants and types
-that it uses and the initial line does not use. If such a name cannot
+that it uses and the initial line does not use; and the usual digests of each
+function into which the mutated function is inlined (R3). If such a name cannot
 be found with no compile (a macro, an overload set), the compile fingerprint
 of the mutated object is also a part of the condition, for that mutant only.
 
@@ -52,7 +60,8 @@ Its verdict stays.
 
 **R7. A caught mutant costs nothing.** If one triple of a mutant is skipped by
 R6 with the verdict "failed", the mutant stays caught, and no other test of
-it runs.
+it runs. The kept verdicts of those other tests are marked "not run since"
+the commit of their last run, and the report names only the tests that ran.
 
 **R8. A survivor is proved again.** A mutant with no failing triple is
 skipped only if R6 skips each of its triples with a test that can enter it
@@ -74,9 +83,12 @@ and the paths of R5.
 Python through `sys.monitoring`, shaders by their compiled bytes, CMake by
 the configure inputs.
 
-**R13. The safety net.** A full pass at each phase gate finds what the rules
-cannot see: a test that enters different functions in a different run
-(decision 707), and start-up functions (decision 624).
+**R13. The safety net.** A full pass at each phase gate, and also when more
+than N commits came after the last full pass, finds what the rules cannot
+see: a test that enters different functions in a different run (decision
+707); start-up functions (decision 624); `constexpr` and `static_assert`
+effects in headers; code that the linker folds into one copy; and the changes
+that add up over a long interval, where kept verdicts are less accurate.
 
 ## The store
 
@@ -92,7 +104,7 @@ quantity of a change, not with the number of triples.
 1. The questions below ruled, and the rulings in the register.
 2. The tests that can enter each mutant (R2), and the names that a
    replacement adds (R4), from the usual build only, with self-tests on
-   samples compiled with the tree's own clang.
+   samples compiled with the tree's own clang; and the proof of R2a.
 3. The store and its index, in SQLite.
 4. The decision rules R5 to R10 in `scripts/mutate.py` or a script next to it,
    with self-tests on made-up inputs.
@@ -115,6 +127,20 @@ Each with its options, costs and a recommendation when the task is taken up:
 5. What is measured: the length of the index, the time of a look-up, the
    number of mutants that must use the fallback of R4, and the time of a full
    pass before and after.
+6. The proof of R2a: on which mutants, and what a miss changes.
+7. A triple with a changed test: does it run, also when R7 skips it?
+   This runs a changed test against the mutants that it must catch, at a
+   cost of more runs.
+8. The value of N in R13.
+9. How R5 records the functions that a test entered with the mutant: each
+   mutant run then has the coverage hook, at a cost of build time.
+
+Published work agrees with this method: Regression Mutation Testing (Zhang and
+others, 2012) also keeps the result of each pair of a mutant and a test, and
+uses it again when no change is on the test's path to the mutant; and trivial
+compiler equivalence (Papadakis and others, 2015) judges a mutant by its
+compiled bytes. R2a and the new parts of R4, R7 and R13 come from that work,
+compared with these rules on 2026-10-21.
 
 ## Done when
 
