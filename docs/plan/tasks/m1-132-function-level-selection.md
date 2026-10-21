@@ -18,6 +18,9 @@ library with the hook, a record that is not complete for a script test, a
 problem found before the tests run, and the smaller choices of the driver.
 And 714, ruled 2026-10-21 in step 4a: one summary file for each object,
 named by its key, which only a full run deletes.
+And 715, ruled the same day in step 4b: for each program, a file with the
+keys of its table's entries and its table count, and `ORBSIM_TEST_NAME`
+removed from the driver's environment.
 Reads what [M1-131](m1-131-coverage-hook.md) records; proved by
 [M1-133](m1-133-selection-proved.md).
 
