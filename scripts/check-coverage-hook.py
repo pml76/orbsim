@@ -606,6 +606,9 @@ def start_up_cases(verdict, obj, hooked, plain, on: str, off: str) -> None:
         "a C initialiser": start_up_object(hook_entry, (".CRT$XIU", ["init"])),
         "a thread callback": start_up_object(hook_entry, (".CRT$XLB", ["callback"])),
         "an exit table": start_up_object(hook_entry, (".CRT$XTZ", ["finish"])),
+        # The check accepts the hook's function only in the hook's own section (decision 716).
+        "another section that points at the hook's function":
+            start_up_object(hook_entry, (".CRT$XCU", [HOOK_CONSTRUCTOR])),
     }
     for name, data in whole.items():
         reason = None if name in ("the hook's own entry only", "no start-up entry") else "start-up entry"
