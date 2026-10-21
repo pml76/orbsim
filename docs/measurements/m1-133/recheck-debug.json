@@ -1,0 +1,56 @@
+{
+ "mutants": [
+  {
+   "build_seconds": 98.2,
+   "commit": "4444de7332bacca4464f137bc90276b89b062b2f",
+   "driver_exit": 8,
+   "driver_seconds": 50.7,
+   "failed_selected": [
+    "a backward step turns the other way",
+    "a step and its reverse come back to the start"
+   ],
+   "faults": [],
+   "file": "src/core/Math.hpp",
+   "name": "the backward-rotation comparison: the signed angle again",
+   "number": 10,
+   "planted": null,
+   "put_back": true,
+   "selected": 27,
+   "skipped": 563,
+   "skipped_seconds": 192.0,
+   "verdict": "CAUGHT, SELECTED"
+  },
+  {
+   "build_seconds": 94.7,
+   "commit": "4444de7332bacca4464f137bc90276b89b062b2f",
+   "driver_exit": 8,
+   "driver_seconds": 101.7,
+   "failed_selected": [
+    "angle_between_zero_aborts"
+   ],
+   "faults": [],
+   "file": "src/core/Math.hpp",
+   "name": "angleBetween without its assertion",
+   "number": 19,
+   "planted": null,
+   "put_back": true,
+   "selected": 90,
+   "skipped": 500,
+   "skipped_seconds": 122.0,
+   "verdict": "CAUGHT, SELECTED"
+  }
+ ],
+ "starts": [
+  {
+   "commit": "4444de7332bacca4464f137bc90276b89b062b2f",
+   "results": {
+    "a write the disk refuses only when the file is closed is reported": "skipped"
+   },
+   "selected": [
+    "a write the disk refuses only when the file is closed is reported"
+   ],
+   "skipped": 589,
+   "tree": "build/debug"
+  }
+ ]
+}

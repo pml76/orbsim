@@ -1,0 +1,5 @@
+start at 4444de7: 7 tests run with no mutant (a write the disk refuses only when the file is closed is reported, count_wraparound_subtraction_aborts, count_wraparound_addition_aborts, count_wraparound_multiplication_aborts, angle_between_zero_aborts, assertion_message_precondition, assertion_message_postcondition), 583 skipped
+CAUGHT, SELECTED                 10 the backward-rotation comparison: the signed angle again -- selected 33, skipped 557, failed selected 2
+NO TEST FAILED                   19 angleBetween without its assertion -- selected 30, skipped 560, failed selected 0
+
+2 mutants: 1 caught by a selected test, 0 at the build, 1 with no failed test, 0 faults, 0 invalid or with a problem

@@ -135,6 +135,25 @@ fail, until the probes run again (`check-full`, or
 The correction is for the owner to rule, and that ruling is not given at this
 time. Four alternatives went to the owner on 2026-10-21.
 
+**The correction, measured** (decisions 737-739). The owner ruled the
+correction on 2026-10-21: when the driver skips a test as unchanged, it gives
+the stored list of shaders of that test the hash of the current application,
+before CTest starts. After the correction (`75d2a9f`), the mutant check of
+mutants 10 and 19 ran again in the two trees, at `4444de7`:
+
+| | Debug | RelWithDebInfo |
+|---|---|---|
+| Mutant 10 | 27 selected, 2 failed, each selected | 33 selected, 2 failed, each selected |
+| Mutant 19 | 90 selected, 1 failed (`angle_between_zero_aborts`), selected | 30 selected, none failed |
+| `mutants_due_probe_shaders` | passed | passed |
+| Faults | 0 | 0 |
+| Records | [log](m1-133/recheck-debug.log), [results](m1-133/recheck-debug.json) | [log](m1-133/recheck-relwithdebinfo.log), [results](m1-133/recheck-relwithdebinfo.json) |
+
+The selections have the same number of tests as before the correction,
+thus the correction changed no selection. The driver's self-test has four new cases,
+and each of the three mutants of `scripts/mutants/m1-133.json` made one of
+them fail first; the pass of that file caught 3 of 3.
+
 ### Two more observations
 
 - **A new environment runs each test again.** At the start of the

@@ -1,0 +1,66 @@
+{
+ "mutants": [
+  {
+   "build_seconds": 97.9,
+   "commit": "4444de7332bacca4464f137bc90276b89b062b2f",
+   "driver_exit": 8,
+   "driver_seconds": 37.2,
+   "failed_selected": [
+    "a backward step turns the other way",
+    "a step and its reverse come back to the start"
+   ],
+   "faults": [],
+   "file": "src/core/Math.hpp",
+   "name": "the backward-rotation comparison: the signed angle again",
+   "number": 10,
+   "planted": null,
+   "put_back": true,
+   "selected": 33,
+   "skipped": 557,
+   "skipped_seconds": 83.0,
+   "verdict": "CAUGHT, SELECTED"
+  },
+  {
+   "build_seconds": 96.9,
+   "commit": "4444de7332bacca4464f137bc90276b89b062b2f",
+   "driver_exit": 0,
+   "driver_seconds": 37.5,
+   "failed_selected": [],
+   "faults": [],
+   "file": "src/core/Math.hpp",
+   "name": "angleBetween without its assertion",
+   "number": 19,
+   "planted": null,
+   "put_back": true,
+   "selected": 30,
+   "skipped": 560,
+   "skipped_seconds": 83.2,
+   "verdict": "NO TEST FAILED"
+  }
+ ],
+ "starts": [
+  {
+   "commit": "4444de7332bacca4464f137bc90276b89b062b2f",
+   "results": {
+    "a write the disk refuses only when the file is closed is reported": "skipped",
+    "angle_between_zero_aborts": "skipped",
+    "assertion_message_postcondition": "skipped",
+    "assertion_message_precondition": "skipped",
+    "count_wraparound_addition_aborts": "skipped",
+    "count_wraparound_multiplication_aborts": "skipped",
+    "count_wraparound_subtraction_aborts": "skipped"
+   },
+   "selected": [
+    "a write the disk refuses only when the file is closed is reported",
+    "count_wraparound_subtraction_aborts",
+    "count_wraparound_addition_aborts",
+    "count_wraparound_multiplication_aborts",
+    "angle_between_zero_aborts",
+    "assertion_message_precondition",
+    "assertion_message_postcondition"
+   ],
+   "skipped": 583,
+   "tree": "build/relwithdebinfo"
+  }
+ ]
+}
