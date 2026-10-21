@@ -426,6 +426,7 @@ runs in the two `check` trees, with a measurement script in
 docs/measurements/m1-133/. Then the replay runs in Debug, in a new
 worktree, with the items of decision 726.
 
-Also on 2026-10-21, the owner postponed M1-134 until the owner continues
-it (decision 735). After M1-133 comes M1-127. The discussion of M1-134 is
-kept in its task document, and it rules nothing.
+Also on 2026-10-21, the owner postponed M1-134 (decision 735), and after
+that, on the same day, made it the next task after M1-133 again (decision
+736). Its task document is written again from the start, on the owner's
+rules R1 to R13, with SQLite for its store.
