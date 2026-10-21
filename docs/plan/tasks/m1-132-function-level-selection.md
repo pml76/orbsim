@@ -1,6 +1,6 @@
 # M1-132 — Tests chosen function by function
 
-Phase: B | Status: **done 2026-10-21**; the push waits for the owner's word
+Phase: B | Status: **done 2026-10-21, and pushed the same day (`dcc5a13`)**
 Prerequisites: M1-131
 Decided by: register decisions 543-553, 556-561, 564, 567, 569 and 570, ruled
 2026-10-15, 582-595, ruled 2026-10-16, and 624, ruled 2026-10-17; split out of
@@ -203,7 +203,8 @@ declared, none invalid.*
 - [x] The task's mutant file has run after the commit and its record is
       committed. A commit at the end; the push only on the owner's go-ahead
       (595). *37 mutants, 36 caught, 1 declared survivor.*
-- [ ] `check-full` in the two trees, and the push on the owner's word.
+- [x] `check-full` in the two trees, and pushed on the word of the owner,
+      2026-10-21, up to `dcc5a13`.
 
 ## Background, moved from M1-129 on 2026-10-16 (decision 596)
 
