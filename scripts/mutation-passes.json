@@ -1031,6 +1031,19 @@
       }
     }
   },
+  "m1-133.json": {
+    "commit": "8dd9b42b0c71894f01f7d49b110d75ae973aac57",
+    "tree": "build/debug",
+    "date": "2026-10-21",
+    "judges": {
+      "ctest run_tests_self_test": "10f4f11a8345008c"
+    },
+    "judge_parts": {
+      "ctest run_tests_self_test": {
+        "definition": "ce02c3ef17f08550"
+      }
+    }
+  },
   "m1-135.json": {
     "commit": "85535a3eed3ae6f2519006b163917cf628159cf5",
     "tree": "build/debug",
