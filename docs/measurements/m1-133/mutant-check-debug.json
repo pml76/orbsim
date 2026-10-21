@@ -1,0 +1,382 @@
+{
+ "mutants": [
+  {
+   "build_seconds": 18.7,
+   "commit": "5ac4b2a302016a1a2b81bdd648935e73d2070f29",
+   "file": "src/core/Scalar.hpp",
+   "name": "wrapTau without its fix: a tiny negative angle wraps to 2 pi",
+   "number": 1,
+   "put_back": true,
+   "verdict": "BUILD FAILED AT A STATIC_ASSERT",
+   "why": "C:/Users/U439644/Projects/untitled/src\\core/Scalar.hpp:274:15: error: static assertion failed due to requirement 'bitsOf(foldRemainderIntoTau(-9.9999999999999995E-21)) == bitsOf(0.)': a tiny negative "
+  },
+  {
+   "build_seconds": 16.0,
+   "commit": "5ac4b2a302016a1a2b81bdd648935e73d2070f29",
+   "file": "src/core/Scalar.hpp",
+   "name": "wrapPi folds every negative remainder through 2 pi again",
+   "number": 2,
+   "put_back": true,
+   "verdict": "BUILD FAILED AT A STATIC_ASSERT",
+   "why": "C:/Users/U439644/Projects/untitled/src\\core/Scalar.hpp:278:15: error: static assertion failed due to requirement 'bitsOf(foldRemainderIntoPi(-9.9999999999999995E-21)) == bitsOf(-9.9999999999999995E-21"
+  },
+  {
+   "build_seconds": 17.6,
+   "commit": "5ac4b2a302016a1a2b81bdd648935e73d2070f29",
+   "driver_exit": 8,
+   "driver_seconds": 60.7,
+   "failed_selected": [
+    "the mean motion is exact at powers of two far beyond a^3's range",
+    "the mean motion is within its budget at the review's scales"
+   ],
+   "faults": [],
+   "file": "src/orbit/Orbit.cpp",
+   "name": "the cube back in orbitInfo's mean motion",
+   "number": 3,
+   "planted": null,
+   "put_back": true,
+   "selected": 41,
+   "skipped": 549,
+   "skipped_seconds": 258.1,
+   "verdict": "CAUGHT, SELECTED"
+  },
+  {
+   "build_seconds": 22.4,
+   "commit": "5ac4b2a302016a1a2b81bdd648935e73d2070f29",
+   "driver_exit": 8,
+   "driver_seconds": 65.7,
+   "failed_selected": [
+    "the mean motion is exact at powers of two far beyond a^3's range",
+    "the mean motion is within its budget at the review's scales"
+   ],
+   "faults": [],
+   "file": "src/orbit/Orbit.cpp",
+   "name": "the task's first form, sqrt(mu / a) / a",
+   "number": 4,
+   "planted": null,
+   "put_back": true,
+   "selected": 41,
+   "skipped": 549,
+   "skipped_seconds": 317.7,
+   "verdict": "CAUGHT, SELECTED"
+  },
+  {
+   "build_seconds": 24.0,
+   "commit": "5ac4b2a302016a1a2b81bdd648935e73d2070f29",
+   "driver_exit": 8,
+   "driver_seconds": 84.4,
+   "failed_selected": [
+    "the period is a double wherever it is one, even past the mean motion's range"
+   ],
+   "faults": [],
+   "file": "src/orbit/Orbit.cpp",
+   "name": "orbitInfo's period back to 2 pi / n",
+   "number": 5,
+   "planted": null,
+   "put_back": true,
+   "selected": 41,
+   "skipped": 549,
+   "skipped_seconds": 269.2,
+   "verdict": "CAUGHT, SELECTED"
+  },
+  {
+   "build_seconds": 17.5,
+   "commit": "5ac4b2a302016a1a2b81bdd648935e73d2070f29",
+   "driver_exit": 8,
+   "driver_seconds": 59.6,
+   "failed_selected": [
+    "the period is a double wherever it is one, even past the mean motion's range"
+   ],
+   "faults": [],
+   "file": "src/orbit/Orbit.cpp",
+   "name": "propagateElements' period back to its old form",
+   "number": 6,
+   "planted": null,
+   "put_back": true,
+   "selected": 37,
+   "skipped": 553,
+   "skipped_seconds": 279.0,
+   "verdict": "CAUGHT, SELECTED"
+  },
+  {
+   "build_seconds": 28.8,
+   "commit": "5ac4b2a302016a1a2b81bdd648935e73d2070f29",
+   "driver_exit": 8,
+   "driver_seconds": 77.5,
+   "failed_selected": [
+    "an anomaly past the asymptote is refused by name when propagated"
+   ],
+   "faults": [],
+   "file": "src/orbit/Orbit.cpp",
+   "name": "propagateElements without its unreachable-anomaly test",
+   "number": 7,
+   "planted": null,
+   "put_back": true,
+   "selected": 37,
+   "skipped": 553,
+   "skipped_seconds": 302.3,
+   "verdict": "CAUGHT, SELECTED"
+  },
+  {
+   "build_seconds": 10.6,
+   "commit": "5ac4b2a302016a1a2b81bdd648935e73d2070f29",
+   "file": "src/core/DoubleDouble.hpp",
+   "name": "double-double never scales, as before M1-118",
+   "number": 8,
+   "put_back": true,
+   "verdict": "BUILD FAILED AT A STATIC_ASSERT",
+   "why": "C:/Users/U439644/Projects/untitled/src\\core/DoubleDouble.hpp:340:15: error: static assertion expression is not an integral constant expression"
+  },
+  {
+   "build_seconds": 21.7,
+   "commit": "5ac4b2a302016a1a2b81bdd648935e73d2070f29",
+   "driver_exit": 8,
+   "driver_seconds": 67.8,
+   "failed_selected": [
+    "splitting survives the top of the range",
+    "the error term of a product is exact up to the largest double"
+   ],
+   "faults": [],
+   "file": "src/core/DoubleDouble.hpp",
+   "name": "double-double scales its error term back by half the factor",
+   "number": 9,
+   "planted": null,
+   "put_back": true,
+   "selected": 53,
+   "skipped": 537,
+   "skipped_seconds": 266.3,
+   "verdict": "CAUGHT, SELECTED"
+  },
+  {
+   "build_seconds": 155.9,
+   "commit": "5ac4b2a302016a1a2b81bdd648935e73d2070f29",
+   "driver_exit": 8,
+   "driver_seconds": 80.0,
+   "failed_selected": [
+    "a backward step turns the other way",
+    "a step and its reverse come back to the start",
+    "mutants_due_probe_shaders"
+   ],
+   "faults": [],
+   "file": "src/core/Math.hpp",
+   "name": "the backward-rotation comparison: the signed angle again",
+   "number": 10,
+   "planted": null,
+   "put_back": true,
+   "selected": 27,
+   "skipped": 563,
+   "skipped_seconds": 281.2,
+   "verdict": "CAUGHT, SELECTED"
+  },
+  {
+   "build_seconds": 23.0,
+   "commit": "5ac4b2a302016a1a2b81bdd648935e73d2070f29",
+   "driver_exit": 8,
+   "driver_seconds": 78.4,
+   "failed_selected": [
+    "Braeunig's elliptic worked example",
+    "Kepler equation solver",
+    "Weber's elliptic worked example",
+    "the elliptic converters agree with the half-angle formula"
+   ],
+   "faults": [],
+   "file": "src/orbit/Orbit.cpp",
+   "name": "the square roots swapped in trueToEccentricAnomaly",
+   "number": 11,
+   "planted": null,
+   "put_back": true,
+   "selected": 33,
+   "skipped": 557,
+   "skipped_seconds": 303.0,
+   "verdict": "CAUGHT, SELECTED"
+  },
+  {
+   "build_seconds": 20.6,
+   "commit": "5ac4b2a302016a1a2b81bdd648935e73d2070f29",
+   "driver_exit": 8,
+   "driver_seconds": 75.6,
+   "failed_selected": [
+    "Braeunig's elliptic worked example",
+    "Kepler equation solver",
+    "Weber's elliptic worked example",
+    "the elliptic converters agree with the half-angle formula"
+   ],
+   "faults": [],
+   "file": "src/orbit/Orbit.cpp",
+   "name": "the square roots swapped in eccentricToTrueAnomaly",
+   "number": 12,
+   "planted": null,
+   "put_back": true,
+   "selected": 32,
+   "skipped": 558,
+   "skipped_seconds": 294.5,
+   "verdict": "CAUGHT, SELECTED"
+  },
+  {
+   "build_seconds": 20.1,
+   "commit": "5ac4b2a302016a1a2b81bdd648935e73d2070f29",
+   "driver_exit": 8,
+   "driver_seconds": 77.9,
+   "failed_selected": [
+    "every anomaly converter refuses a parabola by name"
+   ],
+   "faults": [],
+   "file": "src/orbit/Orbit.cpp",
+   "name": "trueToEccentricAnomaly answers a parabola",
+   "number": 13,
+   "planted": null,
+   "put_back": true,
+   "selected": 33,
+   "skipped": 557,
+   "skipped_seconds": 302.7,
+   "verdict": "CAUGHT, SELECTED"
+  },
+  {
+   "build_seconds": 21.8,
+   "commit": "5ac4b2a302016a1a2b81bdd648935e73d2070f29",
+   "driver_exit": 8,
+   "driver_seconds": 86.0,
+   "failed_selected": [
+    "every anomaly converter refuses a parabola by name"
+   ],
+   "faults": [],
+   "file": "src/orbit/Orbit.cpp",
+   "name": "meanToEccentricAnomaly answers a parabola",
+   "number": 14,
+   "planted": null,
+   "put_back": true,
+   "selected": 29,
+   "skipped": 561,
+   "skipped_seconds": 298.9,
+   "verdict": "CAUGHT, SELECTED"
+  },
+  {
+   "build_seconds": 23.0,
+   "commit": "5ac4b2a302016a1a2b81bdd648935e73d2070f29",
+   "driver_exit": 8,
+   "driver_seconds": 68.5,
+   "failed_selected": [
+    "an anomaly past the asymptote has no eccentric anomaly"
+   ],
+   "faults": [],
+   "file": "src/orbit/Orbit.cpp",
+   "name": "trueToEccentricAnomaly answers past the asymptote",
+   "number": 15,
+   "planted": null,
+   "put_back": true,
+   "selected": 33,
+   "skipped": 557,
+   "skipped_seconds": 234.6,
+   "verdict": "CAUGHT, SELECTED"
+  },
+  {
+   "build_seconds": 17.4,
+   "commit": "5ac4b2a302016a1a2b81bdd648935e73d2070f29",
+   "driver_exit": 8,
+   "driver_seconds": 59.2,
+   "failed_selected": [
+    "a non-finite anomaly is reported as not finite"
+   ],
+   "faults": [],
+   "file": "src/orbit/Orbit.cpp",
+   "name": "trueToEccentricAnomaly takes a NaN",
+   "number": 16,
+   "planted": null,
+   "put_back": true,
+   "selected": 33,
+   "skipped": 557,
+   "skipped_seconds": 238.8,
+   "verdict": "CAUGHT, SELECTED"
+  },
+  {
+   "build_seconds": 26.1,
+   "commit": "5ac4b2a302016a1a2b81bdd648935e73d2070f29",
+   "driver_exit": 8,
+   "driver_seconds": 69.0,
+   "failed_selected": [
+    "a hyperbolic anomaly beyond cosh's range converts to just inside the asymptote"
+   ],
+   "faults": [],
+   "file": "src/orbit/Orbit.cpp",
+   "name": "eccentricToTrueAnomaly back to sinh and cosh, which overflow",
+   "number": 17,
+   "planted": null,
+   "put_back": true,
+   "selected": 32,
+   "skipped": 558,
+   "skipped_seconds": 244.3,
+   "verdict": "CAUGHT, SELECTED"
+  },
+  {
+   "build_seconds": 17.9,
+   "commit": "5ac4b2a302016a1a2b81bdd648935e73d2070f29",
+   "driver_exit": 8,
+   "driver_seconds": 77.8,
+   "failed_selected": [
+    "a mean anomaly beyond a double is reported, not infinite"
+   ],
+   "faults": [],
+   "file": "src/orbit/Orbit.cpp",
+   "name": "eccentricToMeanAnomaly returns an infinite mean anomaly",
+   "number": 18,
+   "planted": null,
+   "put_back": true,
+   "selected": 31,
+   "skipped": 559,
+   "skipped_seconds": 285.7,
+   "verdict": "CAUGHT, SELECTED"
+  },
+  {
+   "build_seconds": 111.7,
+   "commit": "5ac4b2a302016a1a2b81bdd648935e73d2070f29",
+   "driver_exit": 8,
+   "driver_seconds": 132.0,
+   "failed_selected": [
+    "angle_between_zero_aborts",
+    "mutants_due_probe_shaders"
+   ],
+   "faults": [],
+   "file": "src/core/Math.hpp",
+   "name": "angleBetween without its assertion",
+   "number": 19,
+   "planted": null,
+   "put_back": true,
+   "selected": 90,
+   "skipped": 500,
+   "skipped_seconds": 150.0,
+   "verdict": "CAUGHT, SELECTED"
+  },
+  {
+   "build_seconds": 18.2,
+   "commit": "5ac4b2a302016a1a2b81bdd648935e73d2070f29",
+   "driver_exit": 8,
+   "driver_seconds": 55.1,
+   "failed_selected": [
+    "an element set with no usable shape is reported, not asserted"
+   ],
+   "faults": [],
+   "file": "src/orbit/Orbit.cpp",
+   "name": "stateFromElements asserts the shape again instead of reporting it",
+   "number": 20,
+   "planted": null,
+   "put_back": true,
+   "selected": 45,
+   "skipped": 545,
+   "skipped_seconds": 246.9,
+   "verdict": "CAUGHT, SELECTED"
+  }
+ ],
+ "starts": [
+  {
+   "commit": "5ac4b2a302016a1a2b81bdd648935e73d2070f29",
+   "results": {
+    "a write the disk refuses only when the file is closed is reported": "skipped"
+   },
+   "selected": [
+    "a write the disk refuses only when the file is closed is reported"
+   ],
+   "skipped": 589,
+   "tree": "build/debug"
+  }
+ ]
+}

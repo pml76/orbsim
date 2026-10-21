@@ -1,0 +1,23 @@
+start at 5ac4b2a: 1 tests run with no mutant (a write the disk refuses only when the file is closed is reported), 589 skipped
+BUILD FAILED AT A STATIC_ASSERT   1 wrapTau without its fix: a tiny negative angle wraps to 2 pi -- C:/Users/U439644/Projects/untitled/src\core/Scalar.hpp:274:15: error: static assertion failed due to requirement 'bitsOf(foldRemainderIntoTau(-9.9999999999999995E-21)) == bitsOf(0.)': a tiny negative 
+BUILD FAILED AT A STATIC_ASSERT   2 wrapPi folds every negative remainder through 2 pi again -- C:/Users/U439644/Projects/untitled/src\core/Scalar.hpp:278:15: error: static assertion failed due to requirement 'bitsOf(foldRemainderIntoPi(-9.9999999999999995E-21)) == bitsOf(-9.9999999999999995E-21
+CAUGHT, SELECTED                  3 the cube back in orbitInfo's mean motion -- selected 41, skipped 549, failed selected 2
+CAUGHT, SELECTED                  4 the task's first form, sqrt(mu / a) / a -- selected 41, skipped 549, failed selected 2
+CAUGHT, SELECTED                  5 orbitInfo's period back to 2 pi / n -- selected 41, skipped 549, failed selected 1
+CAUGHT, SELECTED                  6 propagateElements' period back to its old form -- selected 37, skipped 553, failed selected 1
+CAUGHT, SELECTED                  7 propagateElements without its unreachable-anomaly test -- selected 37, skipped 553, failed selected 1
+BUILD FAILED AT A STATIC_ASSERT   8 double-double never scales, as before M1-118 -- C:/Users/U439644/Projects/untitled/src\core/DoubleDouble.hpp:340:15: error: static assertion expression is not an integral constant expression
+CAUGHT, SELECTED                  9 double-double scales its error term back by half the factor -- selected 53, skipped 537, failed selected 2
+CAUGHT, SELECTED                 10 the backward-rotation comparison: the signed angle again -- selected 27, skipped 563, failed selected 3
+CAUGHT, SELECTED                 11 the square roots swapped in trueToEccentricAnomaly -- selected 33, skipped 557, failed selected 4
+CAUGHT, SELECTED                 12 the square roots swapped in eccentricToTrueAnomaly -- selected 32, skipped 558, failed selected 4
+CAUGHT, SELECTED                 13 trueToEccentricAnomaly answers a parabola -- selected 33, skipped 557, failed selected 1
+CAUGHT, SELECTED                 14 meanToEccentricAnomaly answers a parabola -- selected 29, skipped 561, failed selected 1
+CAUGHT, SELECTED                 15 trueToEccentricAnomaly answers past the asymptote -- selected 33, skipped 557, failed selected 1
+CAUGHT, SELECTED                 16 trueToEccentricAnomaly takes a NaN -- selected 33, skipped 557, failed selected 1
+CAUGHT, SELECTED                 17 eccentricToTrueAnomaly back to sinh and cosh, which overflow -- selected 32, skipped 558, failed selected 1
+CAUGHT, SELECTED                 18 eccentricToMeanAnomaly returns an infinite mean anomaly -- selected 31, skipped 559, failed selected 1
+CAUGHT, SELECTED                 19 angleBetween without its assertion -- selected 90, skipped 500, failed selected 2
+CAUGHT, SELECTED                 20 stateFromElements asserts the shape again instead of reporting it -- selected 45, skipped 545, failed selected 1
+
+20 mutants: 17 caught by a selected test, 3 at the build, 0 with no failed test, 0 faults, 0 invalid or with a problem

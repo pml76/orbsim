@@ -1,0 +1,6 @@
+start at 5ac4b2a: 1 tests run with no mutant (a write the disk refuses only when the file is closed is reported), 589 skipped
+FAULT                             3 the cube back in orbitInfo's mean motion -- selected 40, skipped 550, failed selected 1
+                                    FAULT the mean motion is exact at powers of two far beyond a^3's range: failed
+
+1 mutants: 0 caught by a selected test, 0 at the build, 0 with no failed test, 1 faults, 0 invalid or with a problem
+the planted fault was found, and no other

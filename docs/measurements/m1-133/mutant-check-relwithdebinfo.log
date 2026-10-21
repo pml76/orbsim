@@ -1,0 +1,23 @@
+start at 5ac4b2a: 590 tests run with no mutant (TDB - TT changes within a day as the annual term does, TDB - TT is within 20 us of Circular 179 over 1900-2100, TDB is converted, not refused, at both ends of the calendar, TT to TDB and back is within 1 ps both ways over a seeded sweep, the annual term peaks and crosses zero where the physics says, every keyframe is 400 km up, and every point between within the chord's sag, grid-orbit is one revolution, in the orbit's period, the camera looks at the horizon, ahead along the track), 0 skipped
+BUILD FAILED AT A STATIC_ASSERT   1 wrapTau without its fix: a tiny negative angle wraps to 2 pi -- C:/Users/U439644/Projects/untitled/src\core/Scalar.hpp:274:15: error: static assertion failed due to requirement 'bitsOf(foldRemainderIntoTau(-9.9999999999999995E-21)) == bitsOf(0.)': a tiny negative 
+BUILD FAILED AT A STATIC_ASSERT   2 wrapPi folds every negative remainder through 2 pi again -- C:/Users/U439644/Projects/untitled/src\core/Scalar.hpp:278:15: error: static assertion failed due to requirement 'bitsOf(foldRemainderIntoPi(-9.9999999999999995E-21)) == bitsOf(-9.9999999999999995E-21
+CAUGHT, SELECTED                  3 the cube back in orbitInfo's mean motion -- selected 47, skipped 543, failed selected 2
+CAUGHT, SELECTED                  4 the task's first form, sqrt(mu / a) / a -- selected 47, skipped 543, failed selected 2
+CAUGHT, SELECTED                  5 orbitInfo's period back to 2 pi / n -- selected 47, skipped 543, failed selected 1
+CAUGHT, SELECTED                  6 propagateElements' period back to its old form -- selected 43, skipped 547, failed selected 1
+CAUGHT, SELECTED                  7 propagateElements without its unreachable-anomaly test -- selected 43, skipped 547, failed selected 1
+BUILD FAILED AT A STATIC_ASSERT   8 double-double never scales, as before M1-118 -- C:/Users/U439644/Projects/untitled/src\core/DoubleDouble.hpp:340:15: error: static assertion expression is not an integral constant expression
+CAUGHT, SELECTED                  9 double-double scales its error term back by half the factor -- selected 58, skipped 532, failed selected 2
+CAUGHT, SELECTED                 10 the backward-rotation comparison: the signed angle again -- selected 33, skipped 557, failed selected 3
+CAUGHT, SELECTED                 11 the square roots swapped in trueToEccentricAnomaly -- selected 39, skipped 551, failed selected 4
+CAUGHT, SELECTED                 12 the square roots swapped in eccentricToTrueAnomaly -- selected 38, skipped 552, failed selected 4
+CAUGHT, SELECTED                 13 trueToEccentricAnomaly answers a parabola -- selected 39, skipped 551, failed selected 1
+CAUGHT, SELECTED                 14 meanToEccentricAnomaly answers a parabola -- selected 35, skipped 555, failed selected 1
+CAUGHT, SELECTED                 15 trueToEccentricAnomaly answers past the asymptote -- selected 39, skipped 551, failed selected 1
+CAUGHT, SELECTED                 16 trueToEccentricAnomaly takes a NaN -- selected 39, skipped 551, failed selected 1
+CAUGHT, SELECTED                 17 eccentricToTrueAnomaly back to sinh and cosh, which overflow -- selected 38, skipped 552, failed selected 1
+CAUGHT, SELECTED                 18 eccentricToMeanAnomaly returns an infinite mean anomaly -- selected 37, skipped 553, failed selected 1
+CAUGHT, SELECTED                 19 angleBetween without its assertion -- selected 30, skipped 560, failed selected 1
+NO TEST FAILED                   20 stateFromElements asserts the shape again instead of reporting it -- selected 51, skipped 539, failed selected 0
+
+20 mutants: 16 caught by a selected test, 3 at the build, 1 with no failed test, 0 faults, 0 invalid or with a problem

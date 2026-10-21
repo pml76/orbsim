@@ -1,0 +1,38 @@
+{
+ "mutants": [
+  {
+   "build_seconds": 22.1,
+   "commit": "5ac4b2a302016a1a2b81bdd648935e73d2070f29",
+   "driver_exit": 8,
+   "driver_seconds": 70.3,
+   "failed_selected": [
+    "the mean motion is within its budget at the review's scales"
+   ],
+   "faults": [
+    "the mean motion is exact at powers of two far beyond a^3's range: failed"
+   ],
+   "file": "src/orbit/Orbit.cpp",
+   "name": "the cube back in orbitInfo's mean motion",
+   "number": 3,
+   "planted": "the mean motion is exact at powers of two far beyond a^3's range",
+   "put_back": true,
+   "selected": 40,
+   "skipped": 550,
+   "skipped_seconds": 287.4,
+   "verdict": "FAULT"
+  }
+ ],
+ "starts": [
+  {
+   "commit": "5ac4b2a302016a1a2b81bdd648935e73d2070f29",
+   "results": {
+    "a write the disk refuses only when the file is closed is reported": "skipped"
+   },
+   "selected": [
+    "a write the disk refuses only when the file is closed is reported"
+   ],
+   "skipped": 589,
+   "tree": "build/debug"
+  }
+ ]
+}

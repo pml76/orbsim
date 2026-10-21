@@ -63,8 +63,10 @@ task of its own, decided when it is taken up.
 
 - [x] All the questions of the work ruled, and the rulings in the register.
       *Decisions 720-734, 2026-10-21.*
-- [ ] No mutant of `m1-118.json` made a test fail that the selection skipped,
-      in the two `check` trees (722).
+- [x] No mutant of `m1-118.json` made a test fail that the selection skipped,
+      in the two `check` trees (722). *2026-10-21: 0 faults in Debug and in
+      RelWithDebInfo, seen to find a planted fault first; Part 1 of
+      [the measurement record](../../measurements/m1-133-selection-proved.md).*
 - [ ] M1-118's 16 commits measured by program and by function, with the
       causes, and written in the measurement record, ADR 0028 and
       `STATUS.md` (732).
