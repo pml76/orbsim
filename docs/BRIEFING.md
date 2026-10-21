@@ -425,3 +425,7 @@ in the two trees at `fddeefc`, and the owner pushes. First the mutant check
 runs in the two `check` trees, with a measurement script in
 docs/measurements/m1-133/. Then the replay runs in Debug, in a new
 worktree, with the items of decision 726.
+
+Also on 2026-10-21, the owner postponed M1-134 until the owner continues
+it (decision 735). After M1-133 comes M1-127. The discussion of M1-134 is
+kept in its task document, and it rules nothing.

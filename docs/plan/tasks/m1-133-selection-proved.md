@@ -53,7 +53,8 @@ In this sequence since decision 721:
 
 Points 3-5 of M1-129's "The order from here": mutation testing at function
 level, which is [M1-134](m1-134-mutants-chosen-like-tests.md) since
-2026-10-18 and comes next (decision 633); working agreement 9 applied to the
+2026-10-18 (decision 633), postponed since 2026-10-21 until the owner
+continues it, with M1-127 next (decision 735); working agreement 9 applied to the
 configure step, the tests run in both trees and the linting; and whether
 agreement 9 covers the documentation -- each of the last two may become a
 task of its own, decided when it is taken up.

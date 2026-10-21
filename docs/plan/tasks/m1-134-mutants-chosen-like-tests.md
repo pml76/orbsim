@@ -1,6 +1,6 @@
 # M1-134 — Mutation passes chosen the way the tests are
 
-Phase: B | Status: not started
+Phase: B | Status: postponed until the owner continues it (decision 735)
 Prerequisites: M1-133
 Decided by: register decision 633, ruled 2026-10-18 at the owner's request --
 point 3 of the order decision 543 set, "mutation testing at function level",
@@ -91,6 +91,59 @@ these were already visible on 2026-10-18:
 7. **How the rule is proved safe**, as M1-133 proves the test selection, and
    what is measured before and after: a full pass's time, and what M1-118's 16
    commits would have run, both ways.
+
+## Material from the discussion of 2026-10-21 (not ruled)
+
+The owner postponed this task on 2026-10-21 (decision 735). This section keeps
+what the discussion of that day found. It is material for the questions
+above, and it rules nothing.
+
+- **What the owner wants:** a mutant runs only if its run can find a fault.
+  No run is wasted time.
+- **The owner's first rule**, "a mutant runs if and only if the test that it
+  tests runs": the "if" part is safe. The "only if" part is not safe, because
+  with a mutant a test can go on a path that it does not go on without the
+  mutant (an error branch). Thus the records with the mutant are necessary.
+- **Errors found in this document's items** (2026-10-21):
+  E1 items 2 and 4 look only at functions, but a verdict also changes with the
+  data, the definition, the environment, the machine, the card, the shaders,
+  the directives and the link command (owner: "go ahead");
+  E2 a caught mutant "when the test that caught it" changed -- the owner
+  prefers: a changed test runs against all mutants that it is meant to catch,
+  thus the unit is the pair of a mutant and a test;
+  E3 item 4 compiles only the mutated file, but a header mutant changes
+  functions in each object that includes it (`Scalar.hpp`: 119 of 159
+  objects);
+  E4 compile-time mutants judged by the fingerprint of their compile (owner:
+  agreed);
+  E5 a changed or new mutant always runs (owner: agreed);
+  E6 each test that can enter the code of the mutant is a judge, not only the
+  named ones (owner: b);
+  E7 a stop at the first test that catches a mutant -- not used, because of
+  E2;
+  E8 the full pass at the gates is not wasted time (owner: agreed).
+- **The proposed rule** (R1-R9): the result of each pair is kept with a hash
+  of all its inputs as its key. A pair runs if and only if no result is kept
+  with its current hash as its key. The hash: the mutant; the hash of the inputs of the
+  mutated compile; the digests of the functions on the test's path with the
+  mutant; the test's registration; all other inputs of the test. No test run
+  for an equivalent mutant, a compile-time mutant, or a test that cannot
+  enter the code of the mutant. A hang, or a record that is not complete,
+  keeps no result. A full pass at each gate. Proved by the method of M1-133.
+- **No compile before a decision:** the digests of the mutated compile are
+  kept with the hash of its inputs as their key: the mutant, and the fingerprint of the
+  usual compile of each object that the mutant changes, from Ninja. A compile
+  occurs only when that hash is not kept, that is, when one of those objects
+  changed.
+- **The cost of the hashing:** many pairs (532 mutants, each with 76 to 450
+  tests that can enter its code). Proposed: an index from each function and
+  each other input to the pairs that use it, so that the work increases with
+  the quantity of a change, not with the number of pairs; a full hash only on
+  a miss; a look-up of the kept hashes for the touched pairs, so that a revert
+  costs no run. Not measured: the length of the index and the time of a
+  look-up.
+- **Not ruled:** the owner wants to think about the design; question 3 of
+  this document (shader and CMake mutants).
 
 ## Done when
 
