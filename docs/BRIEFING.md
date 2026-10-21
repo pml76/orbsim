@@ -418,3 +418,10 @@ mutation pass caught 36 of 37 mutants, and one survivor is declared. It is
 pushed up to `dcc5a13`. Next, M1-133, then M1-134. The next session starts
 with the questions of M1-133, all at one time, and with `check-full` in the
 two trees before the push of the local commits (`STATUS.md`).
+
+**Later on 2026-10-21** the owner ruled the questions of M1-133 before its
+work started, decisions 720-734, and its work started. `check-full` passed
+in the two trees at `fddeefc`, and the owner pushes. First the mutant check
+runs in the two `check` trees, with a measurement script in
+docs/measurements/m1-133/. Then the replay runs in Debug, in a new
+worktree, with the items of decision 726.
