@@ -70,6 +70,19 @@ judged by section, the start-up functions, and one digest of the linker
 directives of its objects; `object_key` gives the key of an object (decision
 711).
 
+**The part of each program** (`CodeReader`, `ProgramCode`, `SummaryCache`):
+scripts/run-tests.py makes one CodeReader for each run, and gets from it the
+part of each program with the hook that it examines (decision 713 (4)). The
+ProgramCode of a program reads its map, its .pdb file and each object and
+library that the map names. It gives the keys of a record's addresses, the
+count of the hook's table, one SHA-256 of the program's function part, and
+each problem, which names the program. The function part holds the digests
+of the functions that a test entered and of the functions without a flag, the
+bytes of the code without the hook, and the linker directives (decisions 583,
+585, 586, 711 and 713). SummaryCache keeps the summary of each object with the
+hook in the build tree between runs, one file for each object, and only a full
+run deletes files (decisions 567 and 714).
+
 Proven able to fail before it was trusted: --self-test reads made-up objects,
 programs, maps, archives and MSF files, each built here byte by byte, and exits
 non-zero unless each one is read as it was made -- a long name through the
@@ -79,7 +92,10 @@ hold, and the blocks of a stream out of sequence -- and unless a file that is
 none of these is refused rather than read as one with no sections. It computes
 the digests of made-up objects, each with one change, and exits non-zero
 unless the change gives a different digest to the correct functions and to no
-other. With --compiler,
+other. It writes a made-up build tree with a program, its map, its .pdb file,
+objects and libraries, changes it at one location for each case, and exits
+non-zero unless the function part changes only when it must, each problem is
+found, and the summaries kept give the same result. With --compiler,
 it also compiles small samples at -O0 and at -O2 with that clang, archives one
 with llvm-ar, links a DLL from the other and the archive with lld-link, and
 reads the results (decisions 591 and 709); and it compiles pairs of samples
@@ -98,6 +114,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path, PureWindowsPath
 from typing import Iterable, NamedTuple, Optional
 
@@ -1489,6 +1506,365 @@ class Program:
         return _sha("\0".join(found).encode())
 
 
+# --- the part of each program (M1-132 step 4, decision 713 (4)) ---------------
+#
+# scripts/run-tests.py makes one CodeReader for each run, and one ProgramCode
+# for each program with the hook that it examines. This part reads the map,
+# the .pdb file and the objects, keeps the summaries, and gives the keys of a
+# record, the digests, the functions without a flag, the directives and the
+# binary part. The driver keeps the records, the store, the rule that skips a
+# test, the link commands from Ninja and the problems.
+
+# The section of the hook's address table in an object: an object carries the
+# hook when it has this section (decision 584). COFF writes the name of each
+# section as text, in the section header or in the string table. Thus an
+# object that does not hold these bytes cannot have the section, and the
+# reader does not read it.
+HOOK_TABLE = HOOK_SECTIONS["coff-object"][1]
+# The text of the function part for a key that the program does not hold at
+# this time: a removed function counts as changed (decision 547).
+MISSING_FUNCTION = "missing"
+# The parts of the time that a CodeReader adds up (decisions 567 and 709 (2)).
+TIME_PARTS = ("reading", "summaries", "digests")
+
+
+class SummaryCache:
+    """The summary of each object with the hook, kept between runs in `folder`
+    (decisions 567, 711 (8) and 714) -- the driver gives
+    `<tree>/run-tests/objects/`. Each object has one JSON file, with a name
+    made from the object's key (decision 711 (4)): the SHA-256 of the key,
+    which is a safe file name for each key. The file holds the key, the
+    SHA-256 of the object's bytes, SUMMARY_VERSION and the summary. The reader
+    uses a summary only when the three agree with the object. If not, the
+    reader makes the summary again, and the new file replaces the file of that
+    key. Thus the folder holds one file for each object. Only a full run
+    deletes files (`prune`). With no folder, no summary is kept. `made` and
+    `loaded` count the summaries made from an object and read from a file."""
+
+    def __init__(self, folder: Optional[Path] = None):
+        self.folder = None if folder is None else Path(folder)
+        self.made, self.loaded = 0, 0
+
+    @staticmethod
+    def file_name(key: str) -> str:
+        """The name of the file of the object with the key `key`."""
+        return _sha(key.encode("utf-8", "surrogateescape")) + ".json"
+
+    def get(self, key: str, sha: str) -> Optional[dict]:
+        """The summary kept for the object with the key `key` and the SHA-256
+        `sha`, or None."""
+        if self.folder is None:
+            return None
+        try:
+            kept = json.loads((self.folder / self.file_name(key)).read_bytes())
+        except (OSError, ValueError):
+            return None
+        if not isinstance(kept, dict) or (kept.get("key"), kept.get("sha256"), kept.get("version")) != (
+                key, sha, SUMMARY_VERSION):
+            return None
+        summary = kept.get("summary")
+        if not isinstance(summary, dict) or summary.get("version") != SUMMARY_VERSION:
+            return None
+        self.loaded += 1
+        return summary
+
+    def put(self, key: str, sha: str, summary: dict) -> None:
+        """Keep the summary of the object with the key `key` and the SHA-256
+        `sha`: the new file replaces the file of that key. The file is written
+        with write_bytes: write_text adds CR to each line end on Windows."""
+        self.made += 1
+        if self.folder is not None:
+            self.folder.mkdir(parents=True, exist_ok=True)
+            kept = {"key": key, "sha256": sha, "version": SUMMARY_VERSION, "summary": summary}
+            (self.folder / self.file_name(key)).write_bytes(json.dumps(kept, separators=(",", ":")).encode())
+
+    def prune(self, keys: Iterable) -> list:
+        """Delete each file in the folder that is not the file of a key in
+        `keys` (decision 714) -- the file of an object that no program of the
+        tree links at this time, and each file that is not a summary file of this
+        layout -- and give their names, sorted. Only a full run calls it,
+        because only a full run reads each program with the hook: `keys` are
+        then the `objects` of each program with the hook of the tree."""
+        if self.folder is None or not self.folder.is_dir():
+            return []
+        wanted = {self.file_name(key) for key in keys}
+        unused = sorted(p.name for p in self.folder.iterdir() if p.is_file() and p.name not in wanted)
+        for name in unused:
+            (self.folder / name).unlink()
+        return unused
+
+
+class _Member(NamedTuple):
+    name: str          # as the library names it
+    key: str           # object_key, with the member's file name
+    kind: str          # "hooked", "without", "import" or "unreadable"
+    sha: str           # of its bytes
+    summary: Optional[dict]
+
+
+class _Library(NamedTuple):
+    sha: str           # of its bytes
+    hooked: bool       # a member carries the hook
+    members: dict      # {file name, casefolded: [_Member]}
+    problems: list
+
+
+class ProgramCode:
+    """The part of one program with the hook (decision 713 (4)), which
+    CodeReader.program makes. `problems` gives each problem found."""
+
+    def __init__(self, name: str, reader: "CodeReader"):
+        self.name = name
+        self._reader = reader
+        self._problems, self._binary = [], []
+        self._program, self._index, self._key_of, self._unflagged = None, None, None, None
+        self._table = (None, f"{name}: the hook's table is not counted: the program or its map cannot be read")
+        # The sorted keys of the objects with the hook that the program links, as SummaryCache names them: a
+        # full run gives the keys of each program to SummaryCache.prune (decision 714).
+        self.objects = []
+
+    def problem(self, text: str) -> None:
+        self._problems.append(f"{self.name}: {text}")
+
+    @property
+    def problems(self) -> list:
+        """Each problem found, as a text that starts with the program's name
+        (decisions 590, 704, 705, 710 (1) and 713 (3)). The digests add their
+        problems when the driver uses them: the driver examines this list
+        after the last call of function_part."""
+        return self._problems + [f"{self.name}: {p}" for p in (self._program.problems if self._program else ())]
+
+    def keys(self, addresses: Iterable) -> tuple:
+        """(keys, problems) of a record's addresses: the sorted keys of the
+        functions at the addresses (decisions 582 and 695), with the start-up
+        functions left out (decisions 624 and 711 (6)), and a problem for each
+        address that is not one function, which names the program."""
+        if self._program is None:
+            return [], [f"{self.name}: the addresses are not turned into functions: the program has problems"]
+        keys, problems = record_functions(self._index, addresses, self._key_of)
+        start = set(self._reader.timed("digests", self._program.start_up))
+        return [key for key in keys if key not in start], [f"{self.name}: {p}" for p in problems]
+
+    def table_entries(self) -> tuple:
+        """(entries, problem): the number of entries in the hook's table, from
+        the map's markers and from the length of the section `.SCOVP`, which
+        must agree (decision 712)."""
+        return self._table
+
+    def function_part(self, keys: Iterable, link_command: Optional[str] = None) -> Optional[str]:
+        """One SHA-256 of the part of the program that a test with the
+        functions `keys` uses (decision 583), or None when the program has a
+        problem: then its tests run (decision 713 (3)). The part holds, each in
+        a sequence that the files do not set:
+          - each key of `keys` and each function without a flag (decisions 586
+            and 711 (5)), with its digest, or MISSING_FUNCTION when the program
+            does not hold it at this time (decision 547). Only these digests are
+            computed (decision 711 (8));
+          - the binary part (decisions 583, 585 and 713 (1)): each library
+            without the hook with its SHA-256 and the names of the modules
+            taken from it, each object without the hook linked directly with
+            its SHA-256, and each member without the hook of a library with
+            the hook with its key and its SHA-256;
+          - the digest of the linker directives (decision 711 (7));
+          - `link_command`, the link command from Ninja (decision 709 (4)),
+            which the driver gives."""
+        if self._program is None:
+            return None
+        timed = self._reader.timed
+        if self._unflagged is None:
+            self._unflagged = timed("digests", self._program.unflagged)
+        wanted = sorted(set(keys) | set(self._unflagged))
+        digests = timed("digests", self._program.digests, wanted)
+        directives = timed("digests", self._program.directives)
+        if self.problems:
+            return None
+        part = {"functions": [[key, digests.get(key, MISSING_FUNCTION)] for key in wanted], "binary": self._binary,
+                "directives": directives, "link": link_command}
+        return _sha(json.dumps(part, sort_keys=True).encode())
+
+
+class CodeReader:
+    """The data that more than one program of a run uses (decision 713 (4)):
+    the SHA-256 of each library and each object read, the members of each
+    library, and the summary of each object with the hook, which `cache` also
+    keeps between runs. `seconds` adds up the time of the reading, the
+    summaries and the digests (decisions 567 and 709 (2)). `tree` is the build
+    tree, which the keys of the objects are relative to (decision 711 (4))."""
+
+    def __init__(self, tree, cache_folder: Optional[Path] = None):
+        self.tree = str(tree)
+        self.cache = SummaryCache(cache_folder)
+        self.seconds = dict.fromkeys(TIME_PARTS, 0.0)
+        self._objects, self._direct, self._libraries = {}, {}, {}
+
+    def timed(self, part: str, work, *arguments):
+        """The result of `work(*arguments)`, its time added to `seconds[part]`."""
+        start = time.perf_counter()
+        try:
+            return work(*arguments)
+        finally:
+            self.seconds[part] += time.perf_counter() - start
+
+    def _read(self, path) -> Optional[bytes]:
+        try:
+            return self.timed("reading", Path(path).read_bytes)
+        except OSError:
+            return None
+
+    def _object(self, data: bytes, key: str) -> tuple:
+        """(`kind`, SHA-256, summary) of the object or the member of a library
+        with the key `key`. The first item is "hooked", with the summary;
+        "import", an import member; "without", without the hook; or
+        "unreadable", when it holds the text of the hook's table and
+        read_object cannot read it."""
+        sha = self.timed("reading", _sha, data)
+        if (key, sha) not in self._objects:
+            self._objects[(key, sha)] = self._kind(data, key, sha)
+        return self._objects[(key, sha)][0], sha, self._objects[(key, sha)][1]
+
+    def _kind(self, data: bytes, key: str, sha: str) -> tuple:
+        if is_import_member(data):
+            return "import", None
+        if HOOK_TABLE.encode() not in data:
+            return "without", None
+        summary = self.timed("summaries", self.cache.get, key, sha)
+        if summary is None:
+            found = self.timed("summaries", read_object, data)
+            if found is None:
+                return "unreadable", None
+            if not any(s.name == HOOK_TABLE for s in found.sections):
+                return "without", None
+            summary = self.timed("summaries", object_summary, found)
+            self.timed("summaries", self.cache.put, key, sha, summary)
+        if not any(s[1] == HOOK_TABLE for s in summary["sections"]):
+            return "without", None
+        return "hooked", summary
+
+    def _library(self, path: str) -> Optional[_Library]:
+        """The members of a library, read one time in a run, or None for a
+        file that is not there or that is not an archive. A library carries
+        the hook when one of its members carries it. Then the decision 583
+        does not hash the library, each member that is not an import member
+        must be an object that read_object can read (decision 710 (1)), and no
+        two members can have one file name (decision 705)."""
+        if path in self._libraries:
+            return self._libraries[path]
+        key, data = object_key(self.tree, path), self._read(path)
+        members = None if data is None else self.timed("reading", archive_members, data)
+        if members is None:
+            self._libraries[path] = None
+            return None
+        found = []
+        for name, body in members:
+            member = object_key(self.tree, path, _file_name(name))
+            found.append(_Member(name, member, *self._object(body, member)))
+        problems = [f"the member {m.name} of the library {key} holds the text {HOOK_TABLE}, and read_object cannot "
+                    "read it" for m in found if m.kind == "unreadable"]
+        hooked = any(m.kind == "hooked" for m in found)
+        if hooked:
+            for place, (member, (_, body)) in enumerate(zip(found, members)):
+                if member.kind == "without" and self.timed("summaries", read_object, body) is None:
+                    found[place] = member._replace(kind="unreadable")
+                    problems.append(f"the member {member.name} of the library {key}, which carries the hook, is not "
+                                    "an import member, and read_object cannot read it")
+            problems += same_file_names(f"the library {key}, which carries the hook", [m.name for m in found])
+        by_name = {}
+        for member in found:
+            by_name.setdefault(_file_name(member.name).casefold(), []).append(member)
+        self._libraries[path] = _Library(self.timed("reading", _sha, data), hooked, by_name, problems)
+        return self._libraries[path]
+
+    def _linked(self, path: str) -> Optional[tuple]:
+        """_object of an object linked directly, read one time in a run, or None."""
+        if path not in self._direct:
+            data = self._read(path)
+            self._direct[path] = None if data is None else self._object(data, object_key(self.tree, path))
+        return self._direct[path]
+
+    def program(self, path) -> ProgramCode:
+        """The part of the program at `path`, which carries the hook, read from
+        the program, its map and its .pdb file (decision 705), and from each
+        object and library that the map names. A problem is kept in the
+        result, and does not stop the reader."""
+        path = Path(path)
+        code = ProgramCode(object_key(self.tree, str(path)), self)
+        data, text, pdb = self._read(path), self._read(path.with_suffix(".map")), self._read(path.with_suffix(".pdb"))
+        linker_map = None if text is None else self.timed("reading", read_map, text.decode("utf-8", "surrogateescape"))
+        modules = None if pdb is None else self.timed("reading", pdb_modules, pdb)
+        for found, file in ((data, path), (linker_map, path.with_suffix(".map")), (modules, path.with_suffix(".pdb"))):
+            if found is None:
+                code.problem(f"{object_key(self.tree, str(file))} is not there, or cannot be read")
+        if data is not None and linker_map is not None and modules is not None:
+            self._fill(code, data, linker_map, modules)
+        return code
+
+    def _fill(self, code: ProgramCode, data: bytes, linker_map: LinkerMap, modules: list) -> None:
+        paths, problems = module_paths(linker_map, modules)
+        problems += same_file_names("the objects linked directly", direct_objects(modules))
+        held, unhooked, binary, taken = {}, set(), [], {}
+        for (library, name), full in sorted(paths.items()):
+            if library:
+                taken.setdefault(full, []).append(name)
+                continue
+            key, found = object_key(self.tree, full), self._linked(full)
+            if found is None:
+                problems.append(f"the object {key}, linked directly, is not there, or cannot be read")
+            elif found[0] == "hooked":
+                held[key] = (key, found[2])
+            elif found[0] == "unreadable":
+                problems.append(f"the object {key}, linked directly, holds the text {HOOK_TABLE}, and read_object "
+                                "cannot read it")
+            else:
+                unhooked.add(key)
+                binary.append(["object", key, found[1]])
+        for full, names in sorted(taken.items()):
+            problems += self._take(full, names, held, unhooked, binary)
+        for text in problems:
+            code.problem(text)
+        keys = {pair: object_key(self.tree, full, pair[1] if pair[0] else None) for pair, full in paths.items()}
+        chosen = {}
+        for symbol in linker_map.symbols:
+            if not symbol.static and (symbol.library, symbol.object) in keys:
+                chosen.setdefault(symbol.name, keys[(symbol.library, symbol.object)])
+        summaries = {key: summary for key, (_, summary) in held.items()}
+        code._program = self.timed("digests", Program, summaries, chosen, unhooked)
+        code.objects = sorted({cached for cached, _ in held.values()})
+        code._binary = sorted(binary)
+        code._index, code._key_of = address_index(linker_map), lambda s: symbol_key(s, paths, self.tree)
+        count, problem = hook_table_entries(data, linker_map)
+        code._table = (count, None if problem is None else f"{code.name}: {problem}")
+        if problem is not None:
+            code.problem(problem)
+
+    def _take(self, path: str, names: list, held: dict, unhooked: set, binary: list) -> list:
+        """Add the modules `names` that the program takes from the library at
+        `path`, and give the problems. From a library without the hook: the
+        library's SHA-256 and the names (decision 585). From a library with
+        the hook: each member with the hook by its summary, into `held` with
+        its key in SummaryCache, and each member without it by the SHA-256 of
+        the member (decision 713 (1))."""
+        key, library = object_key(self.tree, path), self._library(path)
+        if library is None:
+            return [f"the library {key} is not there, or is not an archive"]
+        problems = list(library.problems)
+        if not library.hooked:
+            unhooked.update(object_key(self.tree, path, name) for name in names)
+            binary.append(["library", key, library.sha, sorted(names)])
+            return problems
+        for name in names:
+            found, member = library.members.get(_file_name(name).casefold(), []), object_key(self.tree, path, name)
+            if not found:
+                problems.append(f"the library {key} holds no member {name}")
+            elif len(found) == 1 and found[0].kind == "hooked":
+                held[member] = (found[0].key, found[0].summary)
+            elif len(found) == 1 and found[0].kind in ("without", "import"):
+                unhooked.add(member)
+                binary.append(["member", member, found[0].sha])
+            # Two members with one file name, or a member that read_object cannot read: library.problems
+            # names each.
+        return problems
+
+
 # --- self-test ----------------------------------------------------------------
 
 def made_coff(names: list, code: tuple = (), big: bool = False) -> bytes:
@@ -2194,9 +2570,15 @@ ADDR32NB, SECREL = 3, 11
 
 def made_sample(sections: dict, symbols: dict, order: Optional[list] = None,
                 symbol_order: Optional[list] = None) -> dict:
-    """The summary of a made-up object, built byte by byte with made_object and
-    read back with read_object. `sections` maps a label to a tuple: the name,
-    a type of MADE_FLAGS, the contents or a length, the relocations as (offset,
+    """The summary of a made-up object of made_sample_object, read back with read_object."""
+    return object_summary(read_object(made_sample_object(sections, symbols, order, symbol_order)))
+
+
+def made_sample_object(sections: dict, symbols: dict, order: Optional[list] = None,
+                       symbol_order: Optional[list] = None) -> bytes:
+    """A made-up object, built byte by byte with made_object. `sections` maps
+    a label to a tuple: the name, a type of MADE_FLAGS, the contents or a
+    length, the relocations as (offset,
     symbol, type), and the label of the section that it goes with or None.
     Each section gets its definition symbol, which a relocation names
     "#<label>". A number names a symbol index directly. `symbols` maps a name
@@ -2227,7 +2609,7 @@ def made_sample(sections: dict, symbols: dict, order: Optional[list] = None,
             made_symbols.append((name, value, number, complex_type, storage, aux))
             continue
         made_symbols.append((name, value, position[label] if label else number, complex_type, storage, []))
-    return object_summary(read_object(made_object(made_sections, made_symbols)))
+    return made_object(made_sections, made_symbols)
 
 
 # The made-up object of the digest cases. f calls g, reads a table that points
@@ -2812,6 +3194,338 @@ def digest_rulings(level: str, objects: dict, summaries: dict, expect) -> None:
                ({key: every.get(key)}, 1))
 
 
+# --- self-test: the part of each program (decision 713 (4)) -------------------
+
+# A made-up tree for the part of each program. The program p.exe links two
+# objects directly: direct.obj, with the hook, and recorder.obj, without it. It
+# takes two members from libh.lib, a library with the hook: hooked.obj, with
+# the hook, and data.obj, which holds no function and thus is without the hook
+# (decision 584). It takes ext1.obj from ext.lib, a library without the hook
+# that is not in the tree, and a DLL from an import library. In direct.obj, main calls
+# into hooked.obj and ext1.obj. `entered`, `other` and `init` have an entry in
+# the hook's table, and `nflag` has none (decision 586). `init` is a start-up
+# function (decision 624).
+CODE_DIRECT = {
+    "main": (".text", "code", b"\xe8\0\0\0\0\xe8\0\0\0\0\xc3", ((1, "?lib@@YAHXZ", REL32), (6, "ext_f", REL32)),
+             None),
+    "main entry": (".SCOVP$M", "data", bytes(16), ((0, "main", ADDR64),), "main"),
+    "entered": (".text", "code", b"\x90\xc3", (), None),
+    "entered entry": (".SCOVP$M", "data", bytes(16), ((0, "?entered@@YAHXZ", ADDR64),), "entered"),
+    "other": (".text", "code", b"\x90\x90\xc3", (), None),
+    "other entry": (".SCOVP$M", "data", bytes(16), ((0, "?other@@YAHXZ", ADDR64),), "other"),
+    "nflag": (".text", "code", b"\xcc\xc3", (), None),
+    "init": (".text", "code", b"\x90\x90\x90\xc3", (), None),
+    "init entry": (".SCOVP$M", "data", bytes(16), ((0, "init", ADDR64),), "init"),
+    "start": (".CRT$XCU", "data", bytes(8), ((0, "init", ADDR64),), None),
+    "directives": (".drectve", "info", b" /DEFAULTLIB:x.lib", (), None),
+}
+CODE_DIRECT_SYMBOLS = {
+    "main": (0, "main", "function"), "?entered@@YAHXZ": (0, "entered", "function"),
+    "?other@@YAHXZ": (0, "other", "function"), "?nflag@@YAHXZ": (0, "nflag", "function"),
+    "init": (0, "init", "static function"), "?lib@@YAHXZ": (0, None, "undefined"), "ext_f": (0, None, "undefined"),
+}
+CODE_HOOKED = {
+    "lib": (".text", "code", b"\x48\x8d\x05\0\0\0\0\xc3", ((3, "?table@@3HB", REL32),), None),
+    "lib entry": (".SCOVP$M", "data", bytes(16), ((0, "?lib@@YAHXZ", ADDR64),), "lib"),
+    "spare": (".text", "code", b"\x90\xc3", (), None),
+    "spare entry": (".SCOVP$M", "data", bytes(16), ((0, "?spare@@YAHXZ", ADDR64),), "spare"),
+}
+CODE_HOOKED_SYMBOLS = {"?lib@@YAHXZ": (0, "lib", "function"), "?spare@@YAHXZ": (0, "spare", "function"),
+                       "?table@@3HB": (0, None, "undefined")}
+# The map of p.exe: each public symbol with its section, its offset there and
+# its object, as `library:object` for a member. .text starts at 0x1000 and
+# .rdata at 0x2000, less the base. made_tree adds the markers of the hook's
+# table, which has 6 entries: main, entered, other and init, lib and spare.
+CODE_MAP = {
+    "main": (1, 0x000, "direct.obj"), "?entered@@YAHXZ": (1, 0x010, "direct.obj"),
+    "?other@@YAHXZ": (1, 0x020, "direct.obj"), "?nflag@@YAHXZ": (1, 0x030, "direct.obj"),
+    "?lib@@YAHXZ": (1, 0x100, "libh:hooked.obj"), "?spare@@YAHXZ": (1, 0x110, "libh:hooked.obj"),
+    "ext_f": (1, 0x200, "ext:ext1.obj"), "?record@@YAXXZ": (1, 0x300, "recorder.obj"),
+    "CloseHandle": (1, 0x400, "kernel32:KERNEL32.dll"), "?table@@3HB": (2, 0x000, "libh:data.obj"),
+    "__ImageBase": (0, 0, "<linker-defined>"),
+}
+CODE_ENTRIES = 6
+CODE_STATIC = {"init": (1, 0x040, "direct.obj")}
+# The modules of p.exe in its .pdb file. A tuple is a path, in parts from the
+# folder of the made-up files; a text is the text.
+CODE_DIRECT_OBJECT = ("tree", "CMakeFiles", "p.dir", "direct.obj")
+CODE_RECORDER = ("tree", "CMakeFiles", "p.dir", "recorder.obj")
+CODE_MODULES = [(CODE_DIRECT_OBJECT, CODE_DIRECT_OBJECT), ("hooked.obj", ("tree", "libh.lib")),
+                ("data.obj", ("tree", "libh.lib")), ("ext1.obj", ("outside", "ext.lib")),
+                ("KERNEL32.dll", ("outside", "kernel32.lib")), ("Import:KERNEL32.dll", ("outside", "kernel32.lib")),
+                (CODE_RECORDER, CODE_RECORDER), ("* Linker *", "")]
+# A record of p.exe: main, entered, init and lib.
+CODE_RECORD = [0x1000, 0x1010, 0x1040, 0x1100]
+CODE_KEYS = ["?entered@@YAHXZ", "?lib@@YAHXZ", "main"]
+
+
+def code_map(public: dict, static: dict, reverse: bool) -> str:
+    """The map of p.exe as lld-link writes it, the public lines in the other sequence when `reverse` is set."""
+    starts = {0: 0, 1: 0x1000, 2: 0x2000}
+
+    def line(name: str, place: tuple) -> str:
+        section, offset, where = place
+        address = 0x140000000 + starts[section] + offset
+        return f" {section:04x}:{offset:08x}       {name:26} {address:016x}     {where}\n"
+
+    lines = [line(name, place) for name, place in public.items()]
+    return (" p\n\n Preferred load address is 0000000140000000\n\n"
+            " 0001:00000000 00001000H .text                   CODE\n"
+            " 0002:00000000 00001000H .rdata                  DATA\n\n"
+            + "".join(lines[::-1] if reverse else lines) + "\n Static symbols\n\n"
+            + "".join(line(name, place) for name, place in static.items()))
+
+
+def made_tree(root: Path, change: Optional[dict] = None) -> Path:
+    """Write the made-up tree of the program cases into `root`, with one
+    change, and give the program's path. `change` maps a part to its value:
+    "direct", "direct symbols", "hooked" and "map" replace entries, and None
+    removes one; "data", "ext2" and "recorder" give other contents; "libh" and
+    "ext" add members, "modules" adds modules, and "files" adds files;
+    "entries" gives the number of entries in the hook's table, and "table"
+    gives a different number to the program only; "no" removes files; and
+    "reverse" puts the modules, the members of the library with the hook and
+    the map's lines in the other sequence."""
+    change = change or {}
+    reverse = change.get("reverse", False)
+    entries = change.get("entries", CODE_ENTRIES)
+
+    def path(where) -> str:
+        return str(root.joinpath(*where)) if isinstance(where, tuple) else where
+
+    def merged(base: dict, part: str) -> dict:
+        return {k: v for k, v in {**base, **change.get(part, {})}.items() if v is not None}
+
+    def one_function(name: str, code: bytes) -> bytes:
+        return made_sample_object({"f": (".text", "code", code, (), None)}, {name: (0, "f", "function")})
+
+    data = made_sample_object({"table": (".rdata", "data", change.get("data", b"\1\2\3\4"), (), None)},
+                              {"?table@@3HB": (0, "table", "external")})
+    hooked = [("hooked.obj", made_sample_object(merged(CODE_HOOKED, "hooked"), CODE_HOOKED_SYMBOLS)),
+              ("data.obj", data)] + change.get("libh", [])
+    modules = [(path(module), path(obj)) for module, obj in CODE_MODULES + change.get("modules", [])]
+    markers = {TABLE_START: (2, 0x100, "recorder.obj"),
+               TABLE_STOP: (2, 0x100 + TABLE_START_LENGTH + TABLE_ENTRY * entries, "recorder.obj")}
+    files = {
+        CODE_DIRECT_OBJECT: made_sample_object(merged(CODE_DIRECT, "direct"), merged(CODE_DIRECT_SYMBOLS,
+                                                                                     "direct symbols")),
+        CODE_RECORDER: one_function("?record@@YAXXZ", change.get("recorder", b"\xc3")),
+        ("tree", "libh.lib"): made_archive(hooked[::-1] if reverse else hooked),
+        ("outside", "ext.lib"): made_archive([("ext1.obj", one_function("ext_f", b"\xc3")),
+                                              ("ext2.obj", one_function("ext_g", change.get("ext2", b"\x90\xc3")))]
+                                             + change.get("ext", [])),
+        ("outside", "kernel32.lib"): made_archive([("KERNEL32.dll", made_import("CloseHandle", "KERNEL32.dll"))]),
+        ("tree", "p.exe"): made_pe([".text", ".SCOV", ".SCOVP"],
+                                   {".SCOVP": (TABLE_MARKERS + TABLE_ENTRY * change.get("table", entries), 512)}),
+        ("tree", "p.map"): code_map({**merged(CODE_MAP, "map"), **markers}, CODE_STATIC, reverse).encode(),
+        ("tree", "p.pdb"): made_pdb(made_dbi(modules[::-1] if reverse else modules)),
+        **change.get("files", {}),
+    }
+    for where, contents in files.items():
+        root.joinpath(*where).parent.mkdir(parents=True, exist_ok=True)
+        root.joinpath(*where).write_bytes(contents)
+    for where in change.get("no", ()):
+        root.joinpath(*where).unlink()
+    return root / "tree" / "p.exe"
+
+
+def changed_code(label: str, code: bytes, part: str = "direct") -> dict:
+    """A change of made_tree: the section `label` of direct.obj, or of
+    hooked.obj for the part "hooked", with other contents."""
+    name, kind, _, relocations, partner = (CODE_HOOKED if part == "hooked" else CODE_DIRECT)[label]
+    return {part: {label: (name, kind, code, relocations, partner)}}
+
+
+# Each case changes the made-up tree at one location: (what, the change, the
+# keys, the link command, the function part the same as before).
+CODE_PART_CASES = [
+    ("no change, read again", {}, CODE_KEYS, None, True),
+    ("the modules, the members and the map's lines in the other sequence", {"reverse": True}, CODE_KEYS, None,
+     True),
+    ("a function that the keys name changed", changed_code("entered", b"\x90\x90\x90\xc3"), CODE_KEYS, None, False),
+    ("a function that the keys do not name changed", changed_code("other", b"\xcc\x90\xc3"), CODE_KEYS, None, True),
+    ("a function of the library with the hook that the keys name changed",
+     changed_code("lib", b"\x48\x8d\x05\0\0\0\0\x90\xc3", "hooked"), CODE_KEYS, None, False),
+    ("a function of the library with the hook that the keys do not name changed",
+     changed_code("spare", b"\xcc\xc3", "hooked"), CODE_KEYS, None, True),
+    ("an import member added to the library with the hook",
+     {"libh": [("KERNEL32.dll", made_import("CloseHandle", "KERNEL32.dll"))]}, CODE_KEYS, None, True),
+    ("a function without a flag changed", changed_code("nflag", b"\xcc\xcc\xc3"), CODE_KEYS, None, False),
+    ("a function without a flag changed, for one key", changed_code("nflag", b"\xcc\xcc\xc3"), ["main"], None,
+     False),
+    ("a function without a flag changed, for no key", changed_code("nflag", b"\xcc\xcc\xc3"), [], None, False),
+    ("a start-up function changed", changed_code("init", b"\xcc\x90\x90\xc3"), CODE_KEYS, None, True),
+    ("debug information added", {"direct": {"lines": (".debug$S", "debug", b"line 2", (), "entered")}}, CODE_KEYS,
+     None, True),
+    ("a function that the keys name removed from the program",
+     {"direct": {"entered": None, "entered entry": None}, "direct symbols": {"?entered@@YAHXZ": None},
+      "map": {"?entered@@YAHXZ": None}, "entries": 5}, CODE_KEYS, None, False),
+    ("the library without the hook changed its bytes", {"ext2": b"\xcc\xc3"}, CODE_KEYS, None, False),
+    ("the program takes one more module from the library without the hook",
+     {"map": {"ext_g": (1, 0x210, "ext:ext2.obj")}, "modules": [("ext2.obj", ("outside", "ext.lib"))]}, CODE_KEYS,
+     None, False),
+    ("the member without the hook changed", {"data": b"\5\6\7\x08"}, CODE_KEYS, None, False),
+    ("the object without the hook linked directly changed", {"recorder": b"\x90\xc3"}, CODE_KEYS, None, False),
+    ("a linker directive changed", changed_code("directives", b" /DEFAULTLIB:y.lib"), CODE_KEYS, None, False),
+    ("a different link command", {}, CODE_KEYS, "lld-link.exe /out:p.exe", False),
+]
+# Each case gives the program a problem: (what, the change, a text that the
+# problems hold).
+CODE_PROBLEM_CASES = [
+    ("no .pdb file", {"no": [("tree", "p.pdb")]}, "p.pdb"),
+    ("no map", {"no": [("tree", "p.map")]}, "p.map"),
+    ("an object that the map names is not there", {"no": [CODE_RECORDER]}, "recorder.obj"),
+    ("a member of the library with the hook that cannot be read", {"libh": [("broken.obj", b"not an object")]},
+     "broken.obj"),
+    ("a member with the text of the hook's table that cannot be read, in a library without the hook",
+     {"ext": [("bad.obj", b"not an object, but .SCOVP$M")]}, "bad.obj"),
+    ("two members with one file name in the library with the hook",
+     {"libh": [("other\\hooked.obj", made_sample_object(CODE_HOOKED, CODE_HOOKED_SYMBOLS))]},
+     "libh.lib, which carries the hook: two objects with one file name"),
+    # DIRECT.OBJ is different from direct.obj only in upper case and lower case. module_paths gives no
+    # problem, because the map does not name DIRECT.OBJ.
+    ("two objects with one file name linked directly",
+     {"files": {("tree", "q", "DIRECT.OBJ"): made_sample_object(CODE_DIRECT, CODE_DIRECT_SYMBOLS)},
+      "modules": [(("tree", "q", "DIRECT.OBJ"), ("tree", "q", "DIRECT.OBJ"))]},
+     "the objects linked directly: two objects with one file name"),
+    ("a table count that does not agree", {"table": 7}, "7 entries"),
+]
+
+
+def program_cases(expect) -> None:
+    """The part of each program (decision 713 (4)), on the made-up tree."""
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary).resolve()
+        program, tree = made_tree(root), root / "tree"
+        code = CodeReader(tree).program(program)
+        expect("a program's code: no problem", code.problems, [])
+        expect("the keys of a record, the start-up function left out", code.keys(CODE_RECORD), (CODE_KEYS, []))
+        keys, problems = code.keys([0x1000, 0x1090])
+        expect("a record's address with no function: a problem that names the program and the address",
+               (keys, [p.startswith("p.exe: ") and "0x1090" in p for p in problems]), (["main"], [True]))
+        expect("the table count", code.table_entries(), (6, None))
+        base = code.function_part(CODE_KEYS)
+        expect("the function part: a SHA-256", isinstance(base, str) and re.fullmatch("[0-9a-f]{64}", base) is not None,
+               True)
+        expect("the function part two times", code.function_part(CODE_KEYS), base)
+        expect("the keys in a different sequence", code.function_part(CODE_KEYS[::-1]), base)
+        # Decision 547: a key that the program does not hold also gives a line.
+        expect("a key that the program does not hold is not the same as no key",
+               code.function_part(CODE_KEYS + ["?absent@@YAXXZ"]) != base, True)
+        references = {tuple(keys): code.function_part(keys) for keys in (CODE_KEYS, ["main"], [])}
+        for what, change, keys, link, same in CODE_PART_CASES:
+            made_tree(root, change)
+            found = CodeReader(tree).program(program)
+            part = found.function_part(keys, link)
+            expect(f"the function part: {what}", (part == references[tuple(keys)], part is not None, found.problems),
+                   (same, True, []))
+            made_tree(root)
+        for what, change, text in CODE_PROBLEM_CASES:
+            made_tree(root, change)
+            found = CodeReader(tree).program(program)
+            problems = found.problems
+            expect(f"a problem: {what}", (found.function_part(CODE_KEYS), bool(problems),
+                                          all(p.startswith("p.exe: ") for p in problems),
+                                          any(text in p for p in problems)), (None, True, True, True))
+            made_tree(root)
+        made_tree(root, {"no": [("tree", "p.map")]})
+        keys, problems = CodeReader(tree).program(program).keys(CODE_RECORD)
+        expect("no map: no key, and a problem", (keys, len(problems)), ([], 1))
+        made_tree(root)
+        cache_cases(root, program, base, expect)
+
+
+def made_second(root: Path) -> Path:
+    """A second program in the made-up tree, q.exe: one object with the hook,
+    q.obj, linked directly, with one function and one entry in the hook's
+    table. Its path."""
+    obj = ("tree", "CMakeFiles", "q.dir", "q.obj")
+    root.joinpath(*obj).parent.mkdir(parents=True, exist_ok=True)
+    root.joinpath(*obj).write_bytes(made_sample_object(
+        {"q": (".text", "code", b"\x90\x90\xc3", (), None),
+         "q entry": (".SCOVP$M", "data", bytes(16), ((0, "?q@@YAHXZ", ADDR64),), "q")},
+        {"?q@@YAHXZ": (0, "q", "function")}))
+    public = {"?q@@YAHXZ": (1, 0, "q.obj"), TABLE_START: (2, 0x100, "q.obj"),
+              TABLE_STOP: (2, 0x100 + TABLE_START_LENGTH + TABLE_ENTRY, "q.obj")}
+    tree = root / "tree"
+    (tree / "q.map").write_bytes(code_map(public, {}, False).encode())
+    (tree / "q.pdb").write_bytes(made_pdb(made_dbi([(str(root.joinpath(*obj)),) * 2, ("* Linker *", "")])))
+    (tree / "q.exe").write_bytes(made_pe([".text", ".SCOV", ".SCOVP"], {".SCOVP": (TABLE_MARKERS + TABLE_ENTRY, 512)}))
+    return tree / "q.exe"
+
+
+def cache_cases(root: Path, program: Path, base: str, expect) -> None:
+    """The summaries kept between runs, one file for each object (decisions
+    567, 711 (8) and 714)."""
+    tree, folder, second = root / "tree", root / "cache", made_second(root)
+    direct, hooked, q = "CMakeFiles/p.dir/direct.obj", "libh.lib(hooked.obj)", "CMakeFiles/q.dir/q.obj"
+
+    def name(key: str) -> str:
+        return _sha(key.encode()) + ".json"
+
+    def listed() -> list:
+        return sorted(p.name for p in folder.glob("*"))
+
+    def kept(key: str):
+        try:
+            return json.loads((folder / name(key)).read_bytes())
+        except (OSError, ValueError):
+            return None
+
+    def run(*programs: Path) -> tuple:
+        reader = CodeReader(tree, folder)
+        parts = [reader.program(path).function_part(CODE_KEYS) for path in programs]
+        return parts, reader.cache.made, reader.cache.loaded
+
+    cold = CodeReader(tree, folder)
+    code = cold.program(program)
+    expect("a cold run: the same part, and a file made for each object with the hook",
+           (code.function_part(CODE_KEYS), cold.program(second).function_part([]) is not None, cold.cache.made,
+            cold.cache.loaded, listed()), (base, True, 3, 0, sorted(name(key) for key in (direct, hooked, q))))
+    expect("the keys of the objects with the hook that the program links", code.objects, [direct, hooked])
+    expect("a cold run: each part of the time measured", sorted(k for k, v in cold.seconds.items() if v > 0),
+           ["digests", "reading", "summaries"])
+    sha = _sha(root.joinpath(*CODE_DIRECT_OBJECT).read_bytes())
+    found = kept(direct)
+    expect("a file holds the key, the SHA-256, the version and the summary, with no CR",
+           (sorted(found or ()), found and (found["key"], found["sha256"], found["version"]),
+            b"\r" in (folder / name(direct)).read_bytes() if found else None),
+           (["key", "sha256", "summary", "version"], (direct, sha, SUMMARY_VERSION), False))
+    q_file = (folder / name(q)).read_bytes() if found else None
+    expect("a warm run of one program: the same part, and no summary made", run(program), ([base], 0, 2))
+    expect("a run of one program with no prune: the files of the other programs stay",
+           (listed(), (folder / name(q)).read_bytes() if found else None), (sorted(map(name, (direct, hooked, q))),
+                                                                              q_file))
+    reader = CodeReader(tree, folder)
+    reader.program(program).function_part(CODE_KEYS)
+    reader.program(second).function_part([])
+    expect("one program, then a different program, with no prune: no summary made", (reader.cache.made,
+                                                                                    reader.cache.loaded), (0, 3))
+    made_tree(root, changed_code("entered", b"\x90\x90\x90\xc3"))
+    parts, made, loaded = run(program)
+    changed = _sha(root.joinpath(*CODE_DIRECT_OBJECT).read_bytes())
+    expect("a changed object: its new summary replaces its file, and the count of files stays",
+           (parts[0] != base, made, loaded, len(listed()), (kept(direct) or {}).get("sha256")),
+           (True, 1, 1, 3, changed))
+    made_tree(root)
+    expect("the object as before: its file replaced again", run(program), ([base], 1, 1))
+    good = (folder / name(direct)).read_bytes() if found else b""
+    folder.mkdir(exist_ok=True)
+    for what, edit in (("a different key", {"key": "CMakeFiles/p.dir/other.obj"}),
+                       ("a different SHA-256", {"sha256": "0" * 64}),
+                       ("a different version", {"version": SUMMARY_VERSION - 1})):
+        (folder / name(direct)).write_bytes(json.dumps({**(found or {}), **edit}).encode())
+        unused = SummaryCache(folder).get(direct, sha)
+        expect(f"a file with {what}: not used, and replaced",
+               (unused, run(program), (folder / name(direct)).read_bytes() == good), (None, ([base], 1, 1), True))
+    (folder / "unused.json").write_bytes(b"{}")
+    (folder / "notes.txt").write_bytes(b"not a summary")
+    expect("prune: the files of the keys that are not in the set, and each file that is not a summary",
+           (SummaryCache(folder).prune([direct, hooked]), listed()),
+           (sorted([name(q), "notes.txt", "unused.json"]), sorted([name(direct), name(hooked)])))
+    expect("prune with no folder", SummaryCache(None).prune([direct]), [])
+
+
 def self_test(tools: Optional[tuple] = None) -> int:
     failures = 0
 
@@ -2862,6 +3576,7 @@ def self_test(tools: Optional[tuple] = None) -> int:
     record_cases(expect)
     digest_cases(expect)
     ruling_cases(expect)
+    program_cases(expect)
     if tools is not None:
         compiler, archiver, linker = (Path(tool) for tool in tools)
         compiled_cases(compiler, archiver, linker, expect)
