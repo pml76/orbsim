@@ -1146,28 +1146,25 @@ catch this class of thing. Run all six before pushing a change to `core/`.
   producing a diff in which every line changed.
 - **Use CLion's bundled CMake (4.3.1), not the 3.31.2 on PATH.** The build
   tree was configured with the former.
-- **`FETCHCONTENT_SOURCE_DIR_<NAME>` silently overrides the pin.** The two
-  Windows trees point the fetched dependencies at a shared source cache under
-  `build/_deps-cache/`, and the WSL trees at `build/_deps-cache-linux/` --
-  **one clone per platform**, decided 2026-09-09, because a Linux build should
-  not compile a working tree that Windows git checked out. It saves re-cloning
-  SDL3 into every tree, and it costs this: when `FETCHCONTENT_SOURCE_DIR_x` is
-  set, CMake uses that directory exactly as it finds it and **never reads the
-  `GIT_TAG` in `CMakeLists.txt`**. Changing a pin therefore does nothing at
-  all until the cached clone is checked out at the new tag by hand. Both
-  caches hold Catch2 at `v3.16.0`, matching the pin.
+- **`FETCHCONTENT_SOURCE_DIR_<NAME>` silently overrides the pin.** When an
+  entry `FETCHCONTENT_SOURCE_DIR_x` is set, CMake uses that folder as it finds
+  it, and it **does not read the `GIT_TAG` in `CMakeLists.txt`**. Then a change
+  of a pin has no effect until the clone in that folder is checked out at the
+  new tag by hand.
 
-  **Three of the eight are not in either cache**, and for those the `GIT_TAG`
-  in `CMakeLists.txt` is the thing that actually decides the version -- which
-  is the right way round, at the cost of a clone per tree. They are
-  **Vulkan-Utility-Libraries** (added 2026-09-16), **mp-units** (2026-09-17)
-  and **ERFA** (2026-09-19); the five cached ones are SDL3, vk-bootstrap, VMA,
-  Vulkan-Headers and Catch2. Read off the `FETCHCONTENT_SOURCE_DIR_*` entries
-  in a tree's `CMakeCache.txt` rather than from here, since the setting is
-  per-tree. *(This named only mp-units and ERFA until 2026-09-21;
-  Vulkan-Utility-Libraries was pinned the day before mp-units and was never
-  added to the list.)* Point the caches at them when the re-cloning becomes
-  annoying; until then the pin being live is worth more than the disk.
+  **Measured 2026-10-21 in the `CMakeCache.txt` of each tree** (decision 747):
+  the Windows trees -- `debug`, `relwithdebinfo`, `asan`, `windows-msvc` and
+  `windows-fuzz` -- set no such entry, thus each tree downloads its pins and
+  the `GIT_TAG` sets each version. `linux-sanitize` and `linux-gcc` set
+  only the entry of Catch2, to `build/_deps-cache-linux/catch2`, and
+  `linux-fuzz` sets none. The folder `build/_deps-cache/` holds clones of
+  Catch2, SDL3, vk-bootstrap, VMA and Vulkan-Headers, which no tree uses. Read
+  the entries in a tree's `CMakeCache.txt`, not here, because each tree has
+  its own setting. *(Until 2026-10-21 this paragraph said that the Windows trees use
+  a shared cache in `build/_deps-cache/`, and the WSL trees one in
+  `build/_deps-cache-linux/`, one clone for each platform, ruled
+  2026-09-09; and that Vulkan-Utility-Libraries, mp-units and ERFA were the
+  three not in a cache. M1-133 found it incorrect.)*
 
   **Nor is ERFA** (added 2026-09-19), and it has a safeguard mp-units lacks:
   the configure step reads the version out of ERFA's own `meson.build` and
