@@ -195,7 +195,10 @@ file whose text changed, checks every document link and backticked path,
 checks every mutant's anchor, refuses a tree configured from stale text, and
 runs the tests through `scripts/run-tests.py`, which skips a test whose
 fingerprint -- program, command line, environment, every file it read -- is
-what it was at its last pass; a two-second run of the application under the
+what it was at its last pass; since M1-132, in the two `check` trees, a
+program with the coverage hook counts as unchanged also when no function that
+the test entered at its last pass has changed
+([ADR 0028](adr/0028-tests-run-when-a-function-they-entered-changes.md)); a two-second run of the application under the
 Vulkan validation layers fails on any validation error.
 `check-full` runs every test and stamps the commit, which the pre-push hook
 requires in both trees. Around it:

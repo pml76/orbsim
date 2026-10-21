@@ -198,7 +198,12 @@ only live in Debug. **While working, use the quick targets** -- `lint`,
 - **since M1-129 it runs only the tests whose inputs changed**
   ([`docs/adr/0027`](docs/adr/0027-tests-run-when-their-inputs-change.md)):
   a test whose program, command line, environment and every file it read are
-  as they were at its last pass is skipped, and the run says how many.
+  as they were at its last pass is skipped, and the run says how many;
+- **since M1-132, in the two `check` trees, a program with the coverage hook
+  counts as unchanged also when no function that the test entered at its last
+  pass has changed** ([`docs/adr/0028`](docs/adr/0028-tests-run-when-a-function-they-entered-changes.md)):
+  the hook examines our own code function by function, and the bytes examine
+  the code of all others.
 
 **Before every push, `check-full` passes in both trees**, at the commit being
 pushed, from a working tree with no change and no untracked file: it runs
