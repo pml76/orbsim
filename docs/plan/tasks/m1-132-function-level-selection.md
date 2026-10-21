@@ -16,6 +16,8 @@ record in the debug information counted as a procedure.
 And 713, ruled the same day before step 4: a member without the hook in a
 library with the hook, a record that is not complete for a script test, a
 problem found before the tests run, and the smaller choices of the driver.
+And 714, ruled 2026-10-21 in step 4a: one summary file for each object,
+named by its key, which only a full run deletes.
 Reads what [M1-131](m1-131-coverage-hook.md) records; proved by
 [M1-133](m1-133-selection-proved.md).
 
@@ -39,8 +41,9 @@ data that points at other data (545).
    digests (545), each object's summary kept in the build tree under the
    file's hash if reading them all takes more than a few seconds (567) --
    more than 3 s for one tree, in `<tree>/run-tests/objects/`, and the driver
-   deletes the summaries that the last run did not use (709) -- kept in the
-   two trees, and only the digests that the stored records use computed
+   deletes the summaries that the last run did not use (709) -- since
+   decision 714, one file for each object, named by its key, which only a
+   full run deletes -- kept in the two trees, and only the digests that the stored records use computed
    (711). And a reader of the module list in a program's .pdb file, which
    gives the path of each library that the program links (705); each member
    that the map names must be a module of its library there (710). The key
