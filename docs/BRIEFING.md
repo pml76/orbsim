@@ -434,3 +434,7 @@ rules R1 to R13, with SQLite for its store.
 Also on 2026-10-21, the owner added M1-137, the limits of the test
 selection, as the next task after M1-133 and before M1-134 (decision
 744).
+
+**On 2026-10-22** M1-133 stops for a new session, at the end of its
+replay. The next session starts with the list "Left for the next
+session" in M1-133's task document, and with `STATUS.md`.

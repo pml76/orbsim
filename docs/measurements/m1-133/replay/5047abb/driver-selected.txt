@@ -1,0 +1,158 @@
+TDB - TT is within 20 us of Circular 179 over 1900-2100
+a command holding a NaN or an infinity is refused, and the camera does not move
+a drag turns the camera a quarter of a degree a pixel, grabbing the world
+a field of view outside zero to half a turn is refused by name
+a pan is the drag over the screen's height, the ground following the pointer
+a pan on a screen with no height is refused by the controller, not flown
+a planet radius that is not a radius is refused by name
+a sequence of commands gives the pose worked out by hand, to 1e-12
+a start outside the distance limits is refused by name
+a start outside the tilt limits is refused by name
+a start that is not finite is refused by name
+a step in moves a tenth of the way, whatever the distance
+a turn is the same angle whatever the distance
+a wheel turned away moves the camera in, a step a notch
+every controller error describes itself
+panning across a pole is not special
+replaying the same commands gives the same pose, bit for bit
+the distance stops at its limits
+the same pan moves the focus forty times as far from 400 km as from 10 km
+the start is the pose worked out by hand, poles included
+the tilt reaches its limit exactly, and leaves it at once
+the tilt stops at its limit at both poles, and the picture does not flip
+only UT1 turns the Earth
+the composition is CIO-consistent
+the pole of date is the same with and without the Earth's rotation
+the rotation agrees with an independent implementation to 0.1 mas
+a write the disk refuses only when the file is closed is reported
+a file that is not there is FileNotFound
+the committed Earth-orientation fixture reads, as rotations
+the committed TDB - TT fixture reads, in seconds
+the generated Sun fixture reads, in metres
+degenerate orbits stay finite
+known analytic values
+propagation invariants
+orbitInfo's radius and speed stay within the elements' conditioning
+heliocentric circular orbits
+propagation is bit-identical across runs
+the prime meridian, the equator and the pole are where Skyfield puts them
+a lambert probe's sidecar records its light and its surface
+the Sun is where Horizons says it is
+the Sun's motion is continuous across fifty years
+below the bands nothing is drawn, and every pixel is opaque
+every band carries the ramp's radiance, to within one binary16 step
+the grey band's three channels are the same number
+exposure does not touch the HDR frame, and only the picture differs
+the inverse-square law holds on the GPU path: 4x at 0.5 AU, 1/4 at 2 AU
+the patch at 1 AU reads back 0.3 x 1361 / pi, within 0.5 %, at every pixel
+the patch lit from behind reads back no light at all, and is drawn
+the patch tilted 60 degrees from the Sun reads back half the radiance
+the quantisation floor is the format's, five times inside the budget
+the port check holds on clear's picture, to 1/255 and to 2/65535
+the port check holds on grid-400km's picture, to 1/255 and to 2/65535
+the port check holds on grid-jitter-1km-0's picture, to 1/255 and to 2/65535
+the port check holds on lambert's picture, to 1/255 and to 2/65535
+the port check holds on lambert-backlit's picture, to 1/255 and to 2/65535
+the port check holds on lambert-exposure's picture, to 1/255 and to 2/65535
+the port check holds on lambert-half-au's picture, to 1/255 and to 2/65535
+the port check holds on lambert-tilted-60's picture, to 1/255 and to 2/65535
+the port check holds on lambert-two-au's picture, to 1/255 and to 2/65535
+the port check holds on lines' picture, to 1/255 and to 2/65535
+the port check holds on tonemap-port's picture, to 1/255 and to 2/65535
+the tonemap-port frame holds the light the clamps act on
+each axis lands where the pinhole camera puts it, in its own colour
+the search finds nothing where nothing is drawn, so it can fail
+the square's corners and sides land where the pinhole camera puts them, in white
+from 1 km the crossing moves between frames as the pinhole camera predicts
+from 400 km the crossing moves between frames as the pinhole camera predicts
+grid-400km: the equator, the prime meridian and the grid land where Skyfield puts them
+grid-400km: the horizon lands where the sphere's limb is, in blue
+grid-400km: the search finds nothing where the colours would be swapped
+count_wraparound_subtraction_aborts
+count_wraparound_addition_aborts
+count_wraparound_multiplication_aborts
+angle_between_zero_aborts
+float_equal_guard
+float_equal_guard_self_test
+horizons_fixture_checksums
+t_erfa_c
+t_erfa_c_extra
+orbsim_smoke
+orbsim_smoke_bare
+probe_clear
+probe_clear_golden
+probe_clear_determinism
+probe_lambert
+probe_lambert-half-au
+probe_lambert-two-au
+probe_lambert-tilted-60
+probe_lambert-exposure
+probe_lambert-backlit
+probe_tonemap-port
+probe_lines
+probe_grid-400km
+probe_grid-jitter-0
+probe_grid-jitter-1
+probe_grid-jitter-2
+probe_grid-jitter-3
+probe_grid-jitter-4
+probe_grid-jitter-1km-0
+probe_grid-jitter-1km-1
+probe_grid-jitter-1km-2
+probe_grid-jitter-1km-3
+probe_grid-jitter-1km-4
+probe_lines_golden
+probe_grid-400km_golden
+broken_goldens
+probe_golden_block
+probe_golden_shift
+probe_golden_missing
+probe_golden_wrong_size
+probe_golden_no_card
+usage_accept_without_golden
+usage_accept_without_validation
+usage_golden_without_probe
+usage_golden_dir_without_probe
+usage_golden_and_golden_dir
+usage_bench_option_without_bench
+usage_bench_unknown_path
+usage_bench_unknown_quality
+usage_bench_zero_frames
+usage_bench_frames_not_a_number
+usage_bench_too_wide
+usage_bench_with_seconds
+usage_bench_with_probe
+usage_probe_with_bench
+usage_scene_unknown
+usage_scene_with_probe
+usage_scene_with_bench
+orbsim_bench_smoke
+shader_missing_is_reported
+mutate_self_test
+doc_links_self_test
+configure_current
+configure_current_self_test
+configure_guard
+mutants_due
+mutants_due_shaders
+mutants_due_scripts
+mutants_due_unmet_expectation_fails
+mutants_due_fingerprints
+mutants_due_probe_shaders
+mutants_due_unmet_current_fails
+mutants_due_gpu_identity
+mutants_due_self_test
+tonemap_constants
+tonemap_constants_self_test
+memory_pool
+memory_pool_self_test
+parallel_tests
+parallel_tests_self_test
+accept_golden
+accept_golden_self_test
+downsample_reference_self_test
+abort_listener
+abort_listener_self_test
+lint_deps
+lint_deps_self_test
+horizons_fixture_converter

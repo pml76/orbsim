@@ -1,0 +1,16 @@
+a write the disk refuses only when the file is closed is reported
+float_equal_guard
+configure_current
+mutants_due
+mutants_due_shaders
+mutants_due_scripts
+mutants_due_unmet_expectation_fails
+mutants_due_fingerprints
+mutants_due_probe_shaders
+mutants_due_unmet_current_fails
+mutants_due_gpu_identity
+tonemap_constants
+memory_pool
+parallel_tests
+accept_golden
+lint_deps

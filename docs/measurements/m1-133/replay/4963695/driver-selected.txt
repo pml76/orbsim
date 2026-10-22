@@ -1,0 +1,74 @@
+a sequence of commands gives the pose worked out by hand, to 1e-12
+a turn is the same angle whatever the distance
+replaying the same commands gives the same pose, bit for bit
+the tilt reaches its limit exactly, and leaves it at once
+the tilt stops at its limit at both poles, and the picture does not flip
+a write the disk refuses only when the file is closed is reported
+a tiny arc is interpolated, not rounded away
+a turn about one axis is the same fraction of its angle
+every branch is reached and each reproduces its matrix
+half a turn apart, the tie keeps the sign it was given
+identical orientations do not produce NaN
+isRotation accepts rounding and refuses what was never a rotation
+isUnitQuaternion accepts everything this project builds
+isUnitQuaternion refuses what was never a rotation
+just either side of half a turn, slerp takes the shorter way
+near a half turn the conversion keeps what the trace alone would lose
+q and -q are one orientation, and slerp does not spin between them
+slerp is exact at both ends
+slerp stays unit length to 1e-15
+slerp turns at a steady rate along the shortest arc
+the identity and the three half turns convert exactly
+wrapPi returns an angle already in range unchanged
+wrapTau and wrapPi land in their ranges at every magnitude
+wrapTau never returns 2 pi for a tiny negative angle
+Kepler equation solver
+an anomaly just before periapsis is not 2 pi
+degenerate orbits stay finite
+elements <-> state round trip
+failures are reported, not approximated
+hyperbolic trajectories
+known analytic values
+propagation invariants
+universal-variable vs Kepler-element propagation
+element propagation agrees with the state propagator on every conic
+elementsFromState is accurate to the resolution of a double
+orbitInfo's radius and speed stay within the elements' conditioning
+the conversion's magnitudes are identical on every toolchain
+the perifocal velocity keeps e - 1 where ecc cannot
+a nearly radial ellipse is closed, with its period
+a nearly radial hyperbola at a tiny scale is not reported as closed
+a nearly radial hyperbola is open, with its energy
+an eccentricity that rounds to 1 keeps the side of 1 its energy says
+an underflowing semi-major axis is not a NaN radius
+element propagation holds on both sides of a parabola
+element propagation holds outbound and over a long step
+element propagation keeps the semi-major axis it was given
+heliocentric circular orbits
+near-rectilinear orbits, e approaching 1
+non-finite inputs are refused by name
+orbitInfo's radius and speed hold near the radial limit
+parabolic trajectories
+propagation is bit-identical across runs
+randomised sweep across bodies, shapes and time steps
+states that are finite but are not orbits
+states with no orbital plane
+count_wraparound_subtraction_aborts
+count_wraparound_addition_aborts
+count_wraparound_multiplication_aborts
+float_equal_guard
+configure_current
+mutants_due
+mutants_due_shaders
+mutants_due_scripts
+mutants_due_unmet_expectation_fails
+mutants_due_fingerprints
+mutants_due_probe_shaders
+mutants_due_unmet_current_fails
+mutants_due_gpu_identity
+tonemap_constants
+memory_pool
+parallel_tests
+accept_golden
+abort_listener
+lint_deps

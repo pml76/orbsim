@@ -1,0 +1,92 @@
+374745f M1-118: the owner's rulings, after measuring
+   causes: {'7': 1, '8': 15, 'by program only (B)': 0}
+53f929b M1-118: the fuzzers run once, before the push (decision 474)
+   causes: {'7': 1, '8': 15, 'by program only (B)': 0}
+4963695 M1-118, finding 1.1: wrapTau never returns 2 pi, and wrapPi keeps smal
+   causes: {'1': 34, '1 changed': 34, '3': 16, '7': 5, '8': 19, 'by program only (B)': 432}
+   [1 changed] 29 tests: ?wrapTau@orb@@YANN@Z | orbsim_core_d.lib(Orbit.cpp.obj)
+   [1 changed] 4 tests: ?wrapPi@orb@@YANN@Z | CMakeFiles/test_orbit.dir/tests/test_orbit.cpp.obj
+   [1 changed] 5 tests: ?wrapPi@orb@@YANN@Z | orbsim_view_d.lib(CameraController.cpp.obj)
+   [1 changed] 5 tests: ?wrapTau@orb@@YANN@Z | orbsim_view_d.lib(CameraController.cpp.obj)
+   [1 changed] 2 tests: ?wrapPi@orb@@YANN@Z | CMakeFiles/test_orbit_scales.dir/tests/test_orbit_scales.cpp.obj
+0eb2c93 M1-118, finding 1.2: the mean motion is finite wherever it is a double
+   causes: {'1': 15, '1 changed': 15, '3': 12, '7': 4, '8': 15, 'by program only (B)': 12}
+   [1 changed] 15 tests: ?orbitInfo@orb@@YA?AUOrbitInfo@1@AEBUElements@1@VGravParam@1@@Z | orbsim_core_d.lib(Orbit.cpp.obj)
+e334905 M1-118, finding 1.4: propagateElements refuses an unreachable anomaly 
+   causes: {'1': 11, '1 changed': 11, '3': 7, '7': 3, '8': 15, 'by program only (B)': 23}
+   [1 changed] 11 tests: ?propagateElements@orb@@YA?AV?$expected@UElements@orb@@W4OrbitError@2@@std@@AEBUElements@1@VGravParam@1@U?$Sca | orbsim_core_d.lib(Orbit.cpp.obj)
+1399abf M1-118, finding 1.5: a backward step of angular velocity turns
+   causes: {'3': 18, '7': 5, '8': 15, 'by program only (B)': 290}
+adb1074 M1-118: the period at extreme scales and the probe script (decisions 4
+   causes: {'7': 2, '8': 14, 'by program only (B)': 0}
+937e49f M1-118, findings 1.6 and 3.1: the anomaly converters report, and are c
+   causes: {'1': 24, '1 changed': 9, '1 not changed': 19, '2': 9, '7': 12, '8': 15, 'by program only (B)': 14}
+   [1 changed] 2 tests: ?eccentricToMeanAnomaly@orb@@YA?AU?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@ | orbsim_core_d.lib(Orbit.cpp.obj)
+   [1 changed] 1 tests: ?eccentricToTrueAnomaly@orb@@YA?AU?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@ | orbsim_core_d.lib(Orbit.cpp.obj)
+   [1 changed] 2 tests: ?meanToEccentricAnomaly@orb@@YA?AV?$expected@U?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_ | orbsim_core_d.lib(Orbit.cpp.obj)
+   [1 changed] 2 tests: ?trueToEccentricAnomaly@orb@@YA?AU?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@ | orbsim_core_d.lib(Orbit.cpp.obj)
+   [1 changed] 2 tests: orbsim_core_d.lib(Orbit.cpp.obj)|??$safeguardedRoot@V<lambda_1>@?0??meanToEccentricAnomaly@orb@@YA?AV?$expecte | orbsim_core_d.lib(Orbit.cpp.obj)
+   [1 changed] 1 tests: orbsim_core_d.lib(Orbit.cpp.obj)|??$safeguardedRoot@V<lambda_2>@?0??meanToEccentricAnomaly@orb@@YA?AV?$expecte | orbsim_core_d.lib(Orbit.cpp.obj)
+   [1 changed] 2 tests: ?describe@orb@@YA?AV?$basic_string_view@DU?$char_traits@D@std@@@std@@W4OrbitError@1@@Z | CMakeFiles/test_orbit_elements.dir/tests/test_orbit_elements.cpp.obj
+   [1 changed] 2 tests: ?describe@orb@@YA?AV?$basic_string_view@DU?$char_traits@D@std@@@std@@W4OrbitError@1@@Z | CMakeFiles/test_orbit.dir/tests/test_orbit.cpp.obj
+   [1 changed] 3 tests: ?describe@orb@@YA?AV?$basic_string_view@DU?$char_traits@D@std@@@std@@W4OrbitError@1@@Z | CMakeFiles/test_orbit_scales.dir/tests/test_orbit_scales.cpp.obj
+   [1 not changed] 19 tests: orbsim_core_d.lib(Orbit.cpp.obj)|?solveUniversalAnomaly@?A0x8A323905@orb@@YA?AV?$expected@UUniversalSolution@? | orbsim_core_d.lib(Orbit.cpp.obj)
+   [1 not changed] 15 tests: orbsim_core_d.lib(Orbit.cpp.obj)|??$safeguardedRoot@V<lambda_0>@?0??solveUniversalAnomaly@?A0x8A323905@orb@@YA | orbsim_core_d.lib(Orbit.cpp.obj)
+   [2] 1 tests: ?run@?$Case@$2UCaseId@test@orbsim@@2V?$array@D$0IA@@std@@3D0EL@@0GF@@0HA@@0GM@@0GF@@0HC@@0CA@@0GF@@0HB@@0HF@@0 | CMakeFiles/test_orbit.dir/tests/test_orbit.cpp.obj
+   [2] 6 tests: ??D?$expected@VEccentricity@orb@@W4UnitError@2@@std@@QEGBAAEBVEccentricity@orb@@XZ | CMakeFiles/test_orbit.dir/tests/test_orbit.cpp.obj
+   [2] 1 tests: ?run@?$Case@$2UCaseId@test@orbsim@@2V?$array@D$0IA@@std@@3D0GG@@0GB@@0GJ@@0GM@@0HF@@0HC@@0GF@@0HD@@0CA@@0GB@@0 | CMakeFiles/test_orbit.dir/tests/test_orbit.cpp.obj
+   [2] 1 tests: CMakeFiles/test_orbit_scales.dir/tests/test_orbit_scales.cpp.obj|?checkOneEccentricity@?A0x27378D0@@YAXN@Z | CMakeFiles/test_orbit_scales.dir/tests/test_orbit_scales.cpp.obj
+8bc7be7 M1-118: the period is a double wherever it is one (decisions 475, 477)
+   causes: {'1': 24, '1 changed': 24, '1 not changed': 5, '3': 7, '7': 3, '8': 15, 'by program only (B)': 21}
+   [1 changed] 17 tests: ?orbitInfo@orb@@YA?AUOrbitInfo@1@AEBUElements@1@VGravParam@1@@Z | orbsim_core_d.lib(Orbit.cpp.obj)
+   [1 changed] 12 tests: ?propagateElements@orb@@YA?AV?$expected@UElements@orb@@W4OrbitError@2@@std@@AEBUElements@1@VGravParam@1@U?$Sca | orbsim_core_d.lib(Orbit.cpp.obj)
+   [1 not changed] 5 tests: ??$in@U?$derived_unit@Uradian@angular@mp_units@@U?$per@Usecond@si@mp_units@@$$V@3@@mp_units@@@?$quantity@$2U?$ | orbsim_core_d.lib(Orbit.cpp.obj)
+   [1 not changed] 5 tests: ??$numerical_value_in@U?$derived_unit@Uradian@angular@mp_units@@U?$per@Usecond@si@mp_units@@$$V@3@@mp_units@@@ | orbsim_core_d.lib(Orbit.cpp.obj)
+   [1 not changed] 5 tests: ?value@?$Scalar@$2U?$derived_unit@Uradian@angular@mp_units@@U?$per@Usecond@si@mp_units@@$$V@3@@mp_units@@2U?$d | orbsim_core_d.lib(Orbit.cpp.obj)
+73dc795 M1-118, finding 1.3: double-double is exact up to the largest double
+   causes: {'1': 29, '1 changed': 29, '2': 5, '3': 2, '7': 3, '8': 15, 'by program only (B)': 51}
+   [1 changed] 23 tests: ?split@orb@@YA?AUDoubleDouble@1@N@Z | orbsim_core_d.lib(Orbit.cpp.obj)
+   [1 changed] 23 tests: ?twoProduct@orb@@YA?AUDoubleDouble@1@NN@Z | orbsim_core_d.lib(Orbit.cpp.obj)
+   [1 changed] 4 tests: ?twoProduct@orb@@YA?AUDoubleDouble@1@NN@Z | CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj
+   [1 changed] 2 tests: ?split@orb@@YA?AUDoubleDouble@1@N@Z | CMakeFiles/test_planetary_grid.dir/tests/test_planetary_grid.cpp.obj
+   [1 changed] 2 tests: ?twoProduct@orb@@YA?AUDoubleDouble@1@NN@Z | CMakeFiles/test_planetary_grid.dir/tests/test_planetary_grid.cpp.obj
+   [1 changed] 3 tests: ?split@orb@@YA?AUDoubleDouble@1@N@Z | CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj
+   [2] 5 tests: ??$?RV?$mersenne_twister_engine@_K$0EA@$0BDI@$0JM@$0BP@$0?EKPNJAKFFGJJOGBH@$0BN@$0FFFFFFFFFFFFFFFF@$0BB@$0HBNG | CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj
+   [2] 5 tests: ??$_Eval@V?$mersenne_twister_engine@_K$0EA@$0BDI@$0JM@$0BP@$0?EKPNJAKFFGJJOGBH@$0BN@$0FFFFFFFFFFFFFFFF@$0BB@$0 | CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj
+   [2] 5 tests: ??$_Nrand_impl@NV?$mersenne_twister_engine@_K$0EA@$0BDI@$0JM@$0BP@$0?EKPNJAKFFGJJOGBH@$0BN@$0FFFFFFFFFFFFFFFF@ | CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj
+   [2] 5 tests: ??$generate_canonical@N$0DF@V?$mersenne_twister_engine@_K$0EA@$0BDI@$0JM@$0BP@$0?EKPNJAKFFGJJOGBH@$0BN@$0FFFFF | CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj
+   [2] 5 tests: ??0?$uniform_real_distribution@N@std@@QEAA@NN@Z | CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj
+   [2] 5 tests: ??0param_type@?$uniform_real_distribution@N@std@@QEAA@NN@Z | CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj
+   [2] 5 tests: ?_Init@param_type@?$uniform_real_distribution@N@std@@QEAAXNN@Z | CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj
+   [2] 1 tests: ?run@?$Case@$2UCaseId@test@orbsim@@2V?$array@D$0IA@@std@@3D0HB@@0HF@@0GJ@@0GD@@0GL@@0FE@@0HH@@0GP@@0FD@@0HF@@0 | CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj
+   [2] 5 tests: CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj|??0Sampler@?A0x489F40B2@@QEAA@XZ | CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj
+   [2] 4 tests: CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj|?atExponent@Sampler@?A0x489F40B2@@QEAANAEBU | CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj
+   [2] 1 tests: ?run@?$Case@$2UCaseId@test@orbsim@@2V?$array@D$0IA@@std@@3D0HD@@0HA@@0GM@@0GJ@@0HE@@0HE@@0GJ@@0GO@@0GH@@0CA@@0 | CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj
+   [2] 1 tests: ?run@?$Case@$2UCaseId@test@orbsim@@2V?$array@D$0IA@@std@@3D0HE@@0GI@@0GF@@0CA@@0GF@@0HC@@0HC@@0GP@@0HC@@0CA@@0 | CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj
+   [2] 1 tests: ?run@?$Case@$2UCaseId@test@orbsim@@2V?$array@D$0IA@@std@@3D0HE@@0GI@@0GF@@0CA@@0GF@@0HC@@0HC@@0GP@@0HC@@0CA@@0 | CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj
+   [2] 1 tests: CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj|?unit@Sampler@?A0x489F40B2@@QEAANXZ | CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj
+   [2] 1 tests: ?run@?$Case@$2UCaseId@test@orbsim@@2V?$array@D$0IA@@std@@3D0HE@@0GI@@0GF@@0CA@@0HB@@0HF@@0GP@@0HE@@0GJ@@0GF@@0 | CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj
+5047abb M1-118, finding 1.7: angleBetween refuses a zero vector
+   causes: {'1': 39, '1 changed': 19, '1 not changed': 22, '4': 25, '5': 81, '6': 99, '7': 3, '8': 18, 'by program only (B)': 202}
+   [1 changed] 7 tests: ??$angleBetween@$2Uone@mp_units@@2U?$derived_unit_impl@$$V@detail@2@2Uunit_interface@42@@2U?$expr_fractions@Uo | orbsim_view_d.lib(ProbeSidecar.cpp.obj)
+   [1 changed] 6 tests: ??$angleBetween@$2Uone@mp_units@@2U?$derived_unit_impl@$$V@detail@2@2Uunit_interface@42@@2U?$expr_fractions@Uo | orbsim_core_d.lib(Orbit.cpp.obj)
+   [1 changed] 1 tests: ??$angleBetween@$2Umetre@si@mp_units@@2U?$named_unit@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@ | CMakeFiles/test_orbit_scales.dir/tests/test_orbit_scales.cpp.obj
+   [1 changed] 3 tests: ??$angleBetween@$2Uone@mp_units@@2U?$derived_unit_impl@$$V@detail@2@2Uunit_interface@42@@2U?$expr_fractions@Uo | CMakeFiles/test_earth_orientation.dir/tests/test_earth_orientation.cpp.obj
+   [1 changed] 1 tests: ??$angleBetween@$2Umetre@si@mp_units@@2U?$named_unit@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@ | CMakeFiles/test_orbit.dir/tests/test_orbit.cpp.obj
+   [1 changed] 2 tests: ??$angleBetween@$2Umetre@si@mp_units@@2U?$named_unit@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@ | CMakeFiles/test_sun.dir/tests/test_sun.cpp.obj
+   [1 changed] 1 tests: ??$angleBetween@$2Umetre@si@mp_units@@2U?$named_unit@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@ | CMakeFiles/test_camera_controller.dir/tests/test_camera_controller.cpp.obj
+   [1 not changed] 21 tests: ?_Xlength@?$vector@Vstacktrace_entry@std@@V?$allocator@Vstacktrace_entry@std@@@2@@std@@CAXXZ | without a flag
+   [1 not changed] 1 tests: ??$?H$2Uone@mp_units@@2U?$derived_unit_impl@$$V@detail@1@2Uunit_interface@31@@2U?$expr_fractions@Uone@mp_units | orbsim_view_d.lib(ProbeSidecar.cpp.obj)
+   [1 not changed] 1 tests: ??Korb@@YA?AU?$Scalar@$2Uone@mp_units@@2U?$derived_unit_impl@$$V@detail@2@2Uunit_interface@42@@2U?$expr_fracti | orbsim_view_d.lib(ProbeSidecar.cpp.obj)
+2c5f1e8 M1-118: stateFromElements reports a shape it cannot use (decision 478)
+   causes: {'1': 21, '1 changed': 21, '3': 13, '7': 2, '8': 16, 'by program only (B)': 19}
+   [1 changed] 21 tests: ?stateFromElements@orb@@YA?AV?$expected@UStateVector@orb@@W4OrbitError@2@@std@@AEBUElements@1@VGravParam@1@@Z | orbsim_core_d.lib(Orbit.cpp.obj)
+27cd31b M1-118, finding 3.12: the fuzzers reach the element entry points and t
+   causes: {'4': 30, '5': 82, '7': 2, '8': 14, 'by program only (B)': 0}
+3479028 M1-118: an equivalent mutant replaced, an invalid one rewritten (decis
+   causes: {'4': 30, '5': 83, '7': 1, '8': 15, 'by program only (B)': 0}
+b554d5d Record M1-118's mutation pass: 20 of 20 caught
+   causes: {'4': 30, '5': 83, '7': 1, '8': 15, 'by program only (B)': 0}
+1edfbc4 Record that M1-118 is pushed
+   causes: {'7': 1, '8': 15, 'by program only (B)': 0}
+unsorted: []

@@ -1,0 +1,49 @@
+a write the disk refuses only when the file is closed is reported
+an anomaly past the asymptote is refused by name when propagated
+hyperbolic trajectories
+known analytic values
+propagation invariants
+universal-variable vs Kepler-element propagation
+element propagation agrees with the state propagator on every conic
+orbitInfo's radius and speed stay within the elements' conditioning
+the perifocal velocity keeps e - 1 where ecc cannot
+a nearly radial ellipse is closed, with its period
+a nearly radial hyperbola at a tiny scale is not reported as closed
+a nearly radial hyperbola is open, with its energy
+a zero time step is the identity on every conic
+an eccentricity that rounds to 1 keeps the side of 1 its energy says
+an underflowing semi-major axis is not a NaN radius
+element propagation holds on both sides of a parabola
+element propagation holds outbound and over a long step
+element propagation keeps the semi-major axis it was given
+heliocentric circular orbits
+length is exact at every binary scale
+near-rectilinear orbits, e approaching 1
+non-finite inputs are refused by name
+orbitInfo's radius and speed hold near the radial limit
+parabolic trajectories
+propagation composes: one long step equals two short ones
+propagation is bit-identical across runs
+randomised sweep across bodies, shapes and time steps
+states that are finite but are not orbits
+states with no orbital plane
+the mean motion is exact at powers of two far beyond a^3's range
+the mean motion is within its budget at the review's scales
+the period is a double wherever it is one, even past the mean motion's range
+two-body motion is invariant under canonical rescaling
+float_equal_guard
+configure_current
+mutants_due
+mutants_due_shaders
+mutants_due_scripts
+mutants_due_unmet_expectation_fails
+mutants_due_fingerprints
+mutants_due_probe_shaders
+mutants_due_unmet_current_fails
+mutants_due_gpu_identity
+tonemap_constants
+memory_pool
+parallel_tests
+accept_golden
+abort_listener
+lint_deps

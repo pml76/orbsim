@@ -1,0 +1,679 @@
+[
+ {
+  "label": "374745f",
+  "subject": "M1-118: the owner's rulings, after measuring",
+  "counts": {
+   "7": 1,
+   "8": 15,
+   "by program only (B)": 0
+  },
+  "functions": []
+ },
+ {
+  "label": "53f929b",
+  "subject": "M1-118: the fuzzers run once, before the push (decision 474)",
+  "counts": {
+   "7": 1,
+   "8": 15,
+   "by program only (B)": 0
+  },
+  "functions": []
+ },
+ {
+  "label": "4963695",
+  "subject": "M1-118, finding 1.1: wrapTau never returns 2 pi, and wrapPi keeps small angles",
+  "counts": {
+   "1 changed": 34,
+   "1": 34,
+   "3": 16,
+   "7": 5,
+   "8": 19,
+   "by program only (B)": 432
+  },
+  "functions": [
+   {
+    "function": "?wrapPi@orb@@YANN@Z",
+    "objects": [
+     "CMakeFiles/test_orbit.dir/tests/test_orbit.cpp.obj"
+    ],
+    "sort": "1 changed",
+    "tests": 4
+   },
+   {
+    "function": "?wrapPi@orb@@YANN@Z",
+    "objects": [
+     "CMakeFiles/test_orbit_scales.dir/tests/test_orbit_scales.cpp.obj"
+    ],
+    "sort": "1 changed",
+    "tests": 2
+   },
+   {
+    "function": "?wrapPi@orb@@YANN@Z",
+    "objects": [
+     "orbsim_view_d.lib(CameraController.cpp.obj)"
+    ],
+    "sort": "1 changed",
+    "tests": 5
+   },
+   {
+    "function": "?wrapTau@orb@@YANN@Z",
+    "objects": [
+     "orbsim_core_d.lib(Orbit.cpp.obj)"
+    ],
+    "sort": "1 changed",
+    "tests": 29
+   },
+   {
+    "function": "?wrapTau@orb@@YANN@Z",
+    "objects": [
+     "orbsim_view_d.lib(CameraController.cpp.obj)"
+    ],
+    "sort": "1 changed",
+    "tests": 5
+   }
+  ]
+ },
+ {
+  "label": "0eb2c93",
+  "subject": "M1-118, finding 1.2: the mean motion is finite wherever it is a double",
+  "counts": {
+   "1 changed": 15,
+   "1": 15,
+   "7": 4,
+   "3": 12,
+   "8": 15,
+   "by program only (B)": 12
+  },
+  "functions": [
+   {
+    "function": "?orbitInfo@orb@@YA?AUOrbitInfo@1@AEBUElements@1@VGravParam@1@@Z",
+    "objects": [
+     "orbsim_core_d.lib(Orbit.cpp.obj)"
+    ],
+    "sort": "1 changed",
+    "tests": 15
+   }
+  ]
+ },
+ {
+  "label": "e334905",
+  "subject": "M1-118, finding 1.4: propagateElements refuses an unreachable anomaly by name",
+  "counts": {
+   "3": 7,
+   "7": 3,
+   "8": 15,
+   "1 changed": 11,
+   "1": 11,
+   "by program only (B)": 23
+  },
+  "functions": [
+   {
+    "function": "?propagateElements@orb@@YA?AV?$expected@UElements@orb@@W4OrbitError@2@@std@@AEBUElements@1@VGravParam@1@U?$Scalar@$2Usecond@si@mp_units@@2U?$named_unit@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0HD@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0HD@@0A@@@@@$2U?$kind_of_@Utime@isq@mp_units@@@2@2U?$quantity_spec@$2Udim_time@isq@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0FE@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0FE@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@1@@Z",
+    "objects": [
+     "orbsim_core_d.lib(Orbit.cpp.obj)"
+    ],
+    "sort": "1 changed",
+    "tests": 11
+   }
+  ]
+ },
+ {
+  "label": "1399abf",
+  "subject": "M1-118, finding 1.5: a backward step of angular velocity turns",
+  "counts": {
+   "7": 5,
+   "3": 18,
+   "8": 15,
+   "by program only (B)": 290
+  },
+  "functions": []
+ },
+ {
+  "label": "adb1074",
+  "subject": "M1-118: the period at extreme scales and the probe script (decisions 475, 476)",
+  "counts": {
+   "7": 2,
+   "8": 14,
+   "by program only (B)": 0
+  },
+  "functions": []
+ },
+ {
+  "label": "937e49f",
+  "subject": "M1-118, findings 1.6 and 3.1: the anomaly converters report, and are checked",
+  "counts": {
+   "7": 12,
+   "2": 9,
+   "1 changed": 9,
+   "1": 24,
+   "1 not changed": 19,
+   "8": 15,
+   "by program only (B)": 14
+  },
+  "functions": [
+   {
+    "function": "??D?$expected@VEccentricity@orb@@W4UnitError@2@@std@@QEGBAAEBVEccentricity@orb@@XZ",
+    "objects": [
+     "CMakeFiles/test_orbit.dir/tests/test_orbit.cpp.obj"
+    ],
+    "sort": "2",
+    "tests": 6
+   },
+   {
+    "function": "?describe@orb@@YA?AV?$basic_string_view@DU?$char_traits@D@std@@@std@@W4OrbitError@1@@Z",
+    "objects": [
+     "CMakeFiles/test_orbit.dir/tests/test_orbit.cpp.obj"
+    ],
+    "sort": "1 changed",
+    "tests": 2
+   },
+   {
+    "function": "?describe@orb@@YA?AV?$basic_string_view@DU?$char_traits@D@std@@@std@@W4OrbitError@1@@Z",
+    "objects": [
+     "CMakeFiles/test_orbit_elements.dir/tests/test_orbit_elements.cpp.obj"
+    ],
+    "sort": "1 changed",
+    "tests": 2
+   },
+   {
+    "function": "?describe@orb@@YA?AV?$basic_string_view@DU?$char_traits@D@std@@@std@@W4OrbitError@1@@Z",
+    "objects": [
+     "CMakeFiles/test_orbit_scales.dir/tests/test_orbit_scales.cpp.obj"
+    ],
+    "sort": "1 changed",
+    "tests": 3
+   },
+   {
+    "function": "?eccentricToMeanAnomaly@orb@@YA?AU?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@mp_units@@2V?$basic_fixed_string@_Q$02@2@3_Q0HC@@0GB@@0GE@@0A@@@@2V?$basic_fixed_string@D$02@2@3D0HC@@0GB@@0GE@@0A@@@@@$2U?$kind_of_@Uangle@angular@mp_units@@@2@2U?$quantity_spec@$2Udim_angle@angular@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EB@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EB@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@1@U21@VEccentricity@1@@Z",
+    "objects": [
+     "orbsim_core_d.lib(Orbit.cpp.obj)"
+    ],
+    "sort": "1 changed",
+    "tests": 2
+   },
+   {
+    "function": "?eccentricToTrueAnomaly@orb@@YA?AU?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@mp_units@@2V?$basic_fixed_string@_Q$02@2@3_Q0HC@@0GB@@0GE@@0A@@@@2V?$basic_fixed_string@D$02@2@3D0HC@@0GB@@0GE@@0A@@@@@$2U?$kind_of_@Uangle@angular@mp_units@@@2@2U?$quantity_spec@$2Udim_angle@angular@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EB@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EB@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@1@U21@VEccentricity@1@@Z",
+    "objects": [
+     "orbsim_core_d.lib(Orbit.cpp.obj)"
+    ],
+    "sort": "1 changed",
+    "tests": 1
+   },
+   {
+    "function": "?meanToEccentricAnomaly@orb@@YA?AV?$expected@U?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@mp_units@@2V?$basic_fixed_string@_Q$02@2@3_Q0HC@@0GB@@0GE@@0A@@@@2V?$basic_fixed_string@D$02@2@3D0HC@@0GB@@0GE@@0A@@@@@$2U?$kind_of_@Uangle@angular@mp_units@@@2@2U?$quantity_spec@$2Udim_angle@angular@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EB@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EB@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@orb@@W4OrbitError@2@@std@@U?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@mp_units@@2V?$basic_fixed_string@_Q$02@2@3_Q0HC@@0GB@@0GE@@0A@@@@2V?$basic_fixed_string@D$02@2@3D0HC@@0GB@@0GE@@0A@@@@@$2U?$kind_of_@Uangle@angular@mp_units@@@2@2U?$quantity_spec@$2Udim_angle@angular@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EB@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EB@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@1@VEccentricity@1@@Z",
+    "objects": [
+     "orbsim_core_d.lib(Orbit.cpp.obj)"
+    ],
+    "sort": "1 changed",
+    "tests": 2
+   },
+   {
+    "function": "?run@?$Case@$2UCaseId@test@orbsim@@2V?$array@D$0IA@@std@@3D0EL@@0GF@@0HA@@0GM@@0GF@@0HC@@0CA@@0GF@@0HB@@0HF@@0GB@@0HE@@0GJ@@0GP@@0GO@@0CA@@0HD@@0GP@@0GM@@0HG@@0GF@@0HC@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@@@2V?$array@D$0EA@@5@3D0FL@@0GP@@0HC@@0GC@@0GJ@@0HE@@0FN@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@@@@@test@orbsim@@SAXXZ",
+    "objects": [
+     "CMakeFiles/test_orbit.dir/tests/test_orbit.cpp.obj"
+    ],
+    "sort": "2",
+    "tests": 1
+   },
+   {
+    "function": "?run@?$Case@$2UCaseId@test@orbsim@@2V?$array@D$0IA@@std@@3D0GG@@0GB@@0GJ@@0GM@@0HF@@0HC@@0GF@@0HD@@0CA@@0GB@@0HC@@0GF@@0CA@@0HC@@0GF@@0HA@@0GP@@0HC@@0HE@@0GF@@0GE@@0CM@@0CA@@0GO@@0GP@@0HE@@0CA@@0GB@@0HA@@0HA@@0HC@@0GP@@0HI@@0GJ@@0GN@@0GB@@0HE@@0GF@@0GE@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@@@2V?$array@D$0EA@@5@3D0FL@@0GP@@0HC@@0GC@@0GJ@@0HE@@0FN@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@@@@@test@orbsim@@SAXXZ",
+    "objects": [
+     "CMakeFiles/test_orbit.dir/tests/test_orbit.cpp.obj"
+    ],
+    "sort": "2",
+    "tests": 1
+   },
+   {
+    "function": "?trueToEccentricAnomaly@orb@@YA?AU?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@mp_units@@2V?$basic_fixed_string@_Q$02@2@3_Q0HC@@0GB@@0GE@@0A@@@@2V?$basic_fixed_string@D$02@2@3D0HC@@0GB@@0GE@@0A@@@@@$2U?$kind_of_@Uangle@angular@mp_units@@@2@2U?$quantity_spec@$2Udim_angle@angular@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EB@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EB@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@1@U21@VEccentricity@1@@Z",
+    "objects": [
+     "orbsim_core_d.lib(Orbit.cpp.obj)"
+    ],
+    "sort": "1 changed",
+    "tests": 2
+   },
+   {
+    "function": "CMakeFiles/test_orbit_scales.dir/tests/test_orbit_scales.cpp.obj|?checkOneEccentricity@?A0x27378D0@@YAXN@Z",
+    "objects": [
+     "CMakeFiles/test_orbit_scales.dir/tests/test_orbit_scales.cpp.obj"
+    ],
+    "sort": "2",
+    "tests": 1
+   },
+   {
+    "function": "orbsim_core_d.lib(Orbit.cpp.obj)|??$safeguardedRoot@V<lambda_0>@?0??solveUniversalAnomaly@?A0x8A323905@orb@@YA?AV?$expected@UUniversalSolution@?A0x8A323905@orb@@W4OrbitError@3@@std@@AEBUUniversalContext@34@N@Z@@?A0x8A323905@orb@@YA?AV?$expected@NW4OrbitError@orb@@@std@@AEBUBracket@01@V<lambda_0>@?0??solveUniversalAnomaly@01@YA?AV?$expected@UUniversalSolution@?A0x8A323905@orb@@W4OrbitError@3@@3@AEBUUniversalContext@01@N@Z@@Z",
+    "objects": [
+     "orbsim_core_d.lib(Orbit.cpp.obj)"
+    ],
+    "sort": "1 not changed",
+    "tests": 15
+   },
+   {
+    "function": "orbsim_core_d.lib(Orbit.cpp.obj)|??$safeguardedRoot@V<lambda_1>@?0??meanToEccentricAnomaly@orb@@YA?AV?$expected@U?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@mp_units@@2V?$basic_fixed_string@_Q$02@2@3_Q0HC@@0GB@@0GE@@0A@@@@2V?$basic_fixed_string@D$02@2@3D0HC@@0GB@@0GE@@0A@@@@@$2U?$kind_of_@Uangle@angular@mp_units@@@2@2U?$quantity_spec@$2Udim_angle@angular@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EB@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EB@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@orb@@W4OrbitError@2@@std@@U?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@mp_units@@2V?$basic_fixed_string@_Q$02@2@3_Q0HC@@0GB@@0GE@@0A@@@@2V?$basic_fixed_string@D$02@2@3D0HC@@0GB@@0GE@@0A@@@@@$2U?$kind_of_@Uangle@angular@mp_units@@@2@2U?$quantity_spec@$2Udim_angle@angular@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EB@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EB@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@3@VEccentricity@3@@Z@@?A0x8A323905@orb@@YA?AV?$expected@NW4OrbitError@orb@@@std@@AEBUBracket@01@V<lambda_1>@?0??meanToEccentricAnomaly@1@YA?AV?$expected@U?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@mp_units@@2V?$basic_fixed_string@_Q$02@2@3_Q0HC@@0GB@@0GE@@0A@@@@2V?$basic_fixed_string@D$02@2@3D0HC@@0GB@@0GE@@0A@@@@@$2U?$kind_of_@Uangle@angular@mp_units@@@2@2U?$quantity_spec@$2Udim_angle@angular@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EB@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EB@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@orb@@W4OrbitError@2@@3@U?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@mp_units@@2V?$basic_fixed_string@_Q$02@2@3_Q0HC@@0GB@@0GE@@0A@@@@2V?$basic_fixed_string@D$02@2@3D0HC@@0GB@@0GE@@0A@@@@@$2U?$kind_of_@Uangle@angular@mp_units@@@2@2U?$quantity_spec@$2Udim_angle@angular@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EB@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EB@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@1@VEccentricity@1@@Z@@Z",
+    "objects": [
+     "orbsim_core_d.lib(Orbit.cpp.obj)"
+    ],
+    "sort": "1 changed",
+    "tests": 2
+   },
+   {
+    "function": "orbsim_core_d.lib(Orbit.cpp.obj)|??$safeguardedRoot@V<lambda_2>@?0??meanToEccentricAnomaly@orb@@YA?AV?$expected@U?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@mp_units@@2V?$basic_fixed_string@_Q$02@2@3_Q0HC@@0GB@@0GE@@0A@@@@2V?$basic_fixed_string@D$02@2@3D0HC@@0GB@@0GE@@0A@@@@@$2U?$kind_of_@Uangle@angular@mp_units@@@2@2U?$quantity_spec@$2Udim_angle@angular@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EB@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EB@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@orb@@W4OrbitError@2@@std@@U?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@mp_units@@2V?$basic_fixed_string@_Q$02@2@3_Q0HC@@0GB@@0GE@@0A@@@@2V?$basic_fixed_string@D$02@2@3D0HC@@0GB@@0GE@@0A@@@@@$2U?$kind_of_@Uangle@angular@mp_units@@@2@2U?$quantity_spec@$2Udim_angle@angular@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EB@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EB@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@3@VEccentricity@3@@Z@@?A0x8A323905@orb@@YA?AV?$expected@NW4OrbitError@orb@@@std@@AEBUBracket@01@V<lambda_2>@?0??meanToEccentricAnomaly@1@YA?AV?$expected@U?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@mp_units@@2V?$basic_fixed_string@_Q$02@2@3_Q0HC@@0GB@@0GE@@0A@@@@2V?$basic_fixed_string@D$02@2@3D0HC@@0GB@@0GE@@0A@@@@@$2U?$kind_of_@Uangle@angular@mp_units@@@2@2U?$quantity_spec@$2Udim_angle@angular@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EB@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EB@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@orb@@W4OrbitError@2@@3@U?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@mp_units@@2V?$basic_fixed_string@_Q$02@2@3_Q0HC@@0GB@@0GE@@0A@@@@2V?$basic_fixed_string@D$02@2@3D0HC@@0GB@@0GE@@0A@@@@@$2U?$kind_of_@Uangle@angular@mp_units@@@2@2U?$quantity_spec@$2Udim_angle@angular@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EB@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EB@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@1@VEccentricity@1@@Z@@Z",
+    "objects": [
+     "orbsim_core_d.lib(Orbit.cpp.obj)"
+    ],
+    "sort": "1 changed",
+    "tests": 1
+   },
+   {
+    "function": "orbsim_core_d.lib(Orbit.cpp.obj)|?solveUniversalAnomaly@?A0x8A323905@orb@@YA?AV?$expected@UUniversalSolution@?A0x8A323905@orb@@W4OrbitError@3@@std@@AEBUUniversalContext@12@N@Z",
+    "objects": [
+     "orbsim_core_d.lib(Orbit.cpp.obj)"
+    ],
+    "sort": "1 not changed",
+    "tests": 19
+   }
+  ]
+ },
+ {
+  "label": "8bc7be7",
+  "subject": "M1-118: the period is a double wherever it is one (decisions 475, 477)",
+  "counts": {
+   "1 changed": 24,
+   "1": 24,
+   "7": 3,
+   "3": 7,
+   "8": 15,
+   "1 not changed": 5,
+   "by program only (B)": 21
+  },
+  "functions": [
+   {
+    "function": "??$in@U?$derived_unit@Uradian@angular@mp_units@@U?$per@Usecond@si@mp_units@@$$V@3@@mp_units@@@?$quantity@$2U?$derived_unit@Uradian@angular@mp_units@@U?$per@Usecond@si@mp_units@@$$V@3@@mp_units@@2U?$derived_unit_impl@Uradian@angular@mp_units@@U?$per@Usecond@si@mp_units@@$$V@3@@detail@2@2Uunit_interface@42@@2U?$expr_fractions@Uone@mp_units@@Uradian@angular@2@U?$per@Usecond@si@mp_units@@$$V@2@@42@2U?$expr_fractions_result@U?$type_list@Uradian@angular@mp_units@@@detail@mp_units@@U?$type_list@Usecond@si@mp_units@@@23@@42@@@@@N@mp_units@@QEBA?A_PU?$derived_unit@Uradian@angular@mp_units@@U?$per@Usecond@si@mp_units@@$$V@3@@1@@Z",
+    "objects": [
+     "orbsim_core_d.lib(Orbit.cpp.obj)"
+    ],
+    "sort": "1 not changed",
+    "tests": 5
+   },
+   {
+    "function": "??$numerical_value_in@U?$derived_unit@Uradian@angular@mp_units@@U?$per@Usecond@si@mp_units@@$$V@3@@mp_units@@@?$quantity@$2U?$derived_unit@Uradian@angular@mp_units@@U?$per@Usecond@si@mp_units@@$$V@3@@mp_units@@2U?$derived_unit_impl@Uradian@angular@mp_units@@U?$per@Usecond@si@mp_units@@$$V@3@@detail@2@2Uunit_interface@42@@2U?$expr_fractions@Uone@mp_units@@Uradian@angular@2@U?$per@Usecond@si@mp_units@@$$V@2@@42@2U?$expr_fractions_result@U?$type_list@Uradian@angular@mp_units@@@detail@mp_units@@U?$type_list@Usecond@si@mp_units@@@23@@42@@@@@N@mp_units@@QEBANU?$derived_unit@Uradian@angular@mp_units@@U?$per@Usecond@si@mp_units@@$$V@3@@1@@Z",
+    "objects": [
+     "orbsim_core_d.lib(Orbit.cpp.obj)"
+    ],
+    "sort": "1 not changed",
+    "tests": 5
+   },
+   {
+    "function": "?orbitInfo@orb@@YA?AUOrbitInfo@1@AEBUElements@1@VGravParam@1@@Z",
+    "objects": [
+     "orbsim_core_d.lib(Orbit.cpp.obj)"
+    ],
+    "sort": "1 changed",
+    "tests": 17
+   },
+   {
+    "function": "?propagateElements@orb@@YA?AV?$expected@UElements@orb@@W4OrbitError@2@@std@@AEBUElements@1@VGravParam@1@U?$Scalar@$2Usecond@si@mp_units@@2U?$named_unit@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0HD@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0HD@@0A@@@@@$2U?$kind_of_@Utime@isq@mp_units@@@2@2U?$quantity_spec@$2Udim_time@isq@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0FE@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0FE@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@1@@Z",
+    "objects": [
+     "orbsim_core_d.lib(Orbit.cpp.obj)"
+    ],
+    "sort": "1 changed",
+    "tests": 12
+   },
+   {
+    "function": "?value@?$Scalar@$2U?$derived_unit@Uradian@angular@mp_units@@U?$per@Usecond@si@mp_units@@$$V@3@@mp_units@@2U?$derived_unit_impl@Uradian@angular@mp_units@@U?$per@Usecond@si@mp_units@@$$V@3@@detail@2@2Uunit_interface@42@@2U?$expr_fractions@Uone@mp_units@@Uradian@angular@2@U?$per@Usecond@si@mp_units@@$$V@2@@42@2U?$expr_fractions_result@U?$type_list@Uradian@angular@mp_units@@@detail@mp_units@@U?$type_list@Usecond@si@mp_units@@@23@@42@@@@@@orb@@QEBANXZ",
+    "objects": [
+     "orbsim_core_d.lib(Orbit.cpp.obj)"
+    ],
+    "sort": "1 not changed",
+    "tests": 5
+   }
+  ]
+ },
+ {
+  "label": "73dc795",
+  "subject": "M1-118, finding 1.3: double-double is exact up to the largest double",
+  "counts": {
+   "3": 2,
+   "1 changed": 29,
+   "1": 29,
+   "7": 3,
+   "8": 15,
+   "2": 5,
+   "by program only (B)": 51
+  },
+  "functions": [
+   {
+    "function": "??$?RV?$mersenne_twister_engine@_K$0EA@$0BDI@$0JM@$0BP@$0?EKPNJAKFFGJJOGBH@$0BN@$0FFFFFFFFFFFFFFFF@$0BB@$0HBNGHPPPONKGAAAA@$0CF@$0?IBBCAAAAAAAAA@$0CL@$0FIFBPECNEMJFHPCN@@std@@@?$uniform_real_distribution@N@std@@QEAANAEAV?$mersenne_twister_engine@_K$0EA@$0BDI@$0JM@$0BP@$0?EKPNJAKFFGJJOGBH@$0BN@$0FFFFFFFFFFFFFFFF@$0BB@$0HBNGHPPPONKGAAAA@$0CF@$0?IBBCAAAAAAAAA@$0CL@$0FIFBPECNEMJFHPCN@@1@@Z",
+    "objects": [
+     "CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj"
+    ],
+    "sort": "2",
+    "tests": 5
+   },
+   {
+    "function": "??$_Eval@V?$mersenne_twister_engine@_K$0EA@$0BDI@$0JM@$0BP@$0?EKPNJAKFFGJJOGBH@$0BN@$0FFFFFFFFFFFFFFFF@$0BB@$0HBNGHPPPONKGAAAA@$0CF@$0?IBBCAAAAAAAAA@$0CL@$0FIFBPECNEMJFHPCN@@std@@@?$uniform_real_distribution@N@std@@AEBANAEAV?$mersenne_twister_engine@_K$0EA@$0BDI@$0JM@$0BP@$0?EKPNJAKFFGJJOGBH@$0BN@$0FFFFFFFFFFFFFFFF@$0BB@$0HBNGHPPPONKGAAAA@$0CF@$0?IBBCAAAAAAAAA@$0CL@$0FIFBPECNEMJFHPCN@@1@AEBUparam_type@01@@Z",
+    "objects": [
+     "CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj"
+    ],
+    "sort": "2",
+    "tests": 5
+   },
+   {
+    "function": "??$_Nrand_impl@NV?$mersenne_twister_engine@_K$0EA@$0BDI@$0JM@$0BP@$0?EKPNJAKFFGJJOGBH@$0BN@$0FFFFFFFFFFFFFFFF@$0BB@$0HBNGHPPPONKGAAAA@$0CF@$0?IBBCAAAAAAAAA@$0CL@$0FIFBPECNEMJFHPCN@@std@@@std@@YANAEAV?$mersenne_twister_engine@_K$0EA@$0BDI@$0JM@$0BP@$0?EKPNJAKFFGJJOGBH@$0BN@$0FFFFFFFFFFFFFFFF@$0BB@$0HBNGHPPPONKGAAAA@$0CF@$0?IBBCAAAAAAAAA@$0CL@$0FIFBPECNEMJFHPCN@@0@@Z",
+    "objects": [
+     "CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj"
+    ],
+    "sort": "2",
+    "tests": 5
+   },
+   {
+    "function": "??$generate_canonical@N$0DF@V?$mersenne_twister_engine@_K$0EA@$0BDI@$0JM@$0BP@$0?EKPNJAKFFGJJOGBH@$0BN@$0FFFFFFFFFFFFFFFF@$0BB@$0HBNGHPPPONKGAAAA@$0CF@$0?IBBCAAAAAAAAA@$0CL@$0FIFBPECNEMJFHPCN@@std@@@std@@YANAEAV?$mersenne_twister_engine@_K$0EA@$0BDI@$0JM@$0BP@$0?EKPNJAKFFGJJOGBH@$0BN@$0FFFFFFFFFFFFFFFF@$0BB@$0HBNGHPPPONKGAAAA@$0CF@$0?IBBCAAAAAAAAA@$0CL@$0FIFBPECNEMJFHPCN@@0@@Z",
+    "objects": [
+     "CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj"
+    ],
+    "sort": "2",
+    "tests": 5
+   },
+   {
+    "function": "??0?$uniform_real_distribution@N@std@@QEAA@NN@Z",
+    "objects": [
+     "CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj"
+    ],
+    "sort": "2",
+    "tests": 5
+   },
+   {
+    "function": "??0param_type@?$uniform_real_distribution@N@std@@QEAA@NN@Z",
+    "objects": [
+     "CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj"
+    ],
+    "sort": "2",
+    "tests": 5
+   },
+   {
+    "function": "?_Init@param_type@?$uniform_real_distribution@N@std@@QEAAXNN@Z",
+    "objects": [
+     "CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj"
+    ],
+    "sort": "2",
+    "tests": 5
+   },
+   {
+    "function": "?run@?$Case@$2UCaseId@test@orbsim@@2V?$array@D$0IA@@std@@3D0HB@@0HF@@0GJ@@0GD@@0GL@@0FE@@0HH@@0GP@@0FD@@0HF@@0GN@@0CA@@0GJ@@0HD@@0CA@@0GF@@0HI@@0GB@@0GD@@0HE@@0CA@@0HH@@0GI@@0GF@@0GO@@0CA@@0GJ@@0HE@@0HD@@0CA@@0HA@@0HC@@0GF@@0GD@@0GP@@0GO@@0GE@@0GJ@@0HE@@0GJ@@0GP@@0GO@@0CA@@0GI@@0GP@@0GM@@0GE@@0HD@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@@@2V?$array@D$0EA@@5@3D0FL@@0GD@@0GP@@0HC@@0GF@@0FN@@0FL@@0GE@@0GE@@0FN@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@@@@@test@orbsim@@SAXXZ",
+    "objects": [
+     "CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj"
+    ],
+    "sort": "2",
+    "tests": 1
+   },
+   {
+    "function": "?run@?$Case@$2UCaseId@test@orbsim@@2V?$array@D$0IA@@std@@3D0HD@@0HA@@0GM@@0GJ@@0HE@@0HE@@0GJ@@0GO@@0GH@@0CA@@0HD@@0HF@@0HC@@0HG@@0GJ@@0HG@@0GF@@0HD@@0CA@@0HE@@0GI@@0GF@@0CA@@0HE@@0GP@@0HA@@0CA@@0GP@@0GG@@0CA@@0HE@@0GI@@0GF@@0CA@@0HC@@0GB@@0GO@@0GH@@0GF@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@@@2V?$array@D$0EA@@5@3D0FL@@0GD@@0GP@@0HC@@0GF@@0FN@@0FL@@0GE@@0GE@@0FN@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@@@@@test@orbsim@@SAXXZ",
+    "objects": [
+     "CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj"
+    ],
+    "sort": "2",
+    "tests": 1
+   },
+   {
+    "function": "?run@?$Case@$2UCaseId@test@orbsim@@2V?$array@D$0IA@@std@@3D0HE@@0GI@@0GF@@0CA@@0GF@@0HC@@0HC@@0GP@@0HC@@0CA@@0HE@@0GF@@0HC@@0GN@@0CA@@0GP@@0GG@@0CA@@0GB@@0CA@@0HA@@0HC@@0GP@@0GE@@0HF@@0GD@@0HE@@0CA@@0GJ@@0HD@@0CA@@0GF@@0HI@@0GB@@0GD@@0HE@@0GM@@0HJ@@0CA@@0HH@@0GI@@0GB@@0HE@@0CA@@0GB@@0GO@@0CA@@0GG@@0GN@@0GB@@0CA@@0HC@@0GF@@0HA@@0GP@@0HC@@0HE@@0HD@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@@@2V?$array@D$0EA@@5@3D0FL@@0GD@@0GP@@0HC@@0GF@@0FN@@0FL@@0GE@@0GE@@0FN@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@@@@@test@orbsim@@SAXXZ",
+    "objects": [
+     "CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj"
+    ],
+    "sort": "2",
+    "tests": 1
+   },
+   {
+    "function": "?run@?$Case@$2UCaseId@test@orbsim@@2V?$array@D$0IA@@std@@3D0HE@@0GI@@0GF@@0CA@@0GF@@0HC@@0HC@@0GP@@0HC@@0CA@@0HE@@0GF@@0HC@@0GN@@0CA@@0GP@@0GG@@0CA@@0GB@@0CA@@0HD@@0HF@@0GN@@0CA@@0GJ@@0HD@@0CA@@0GF@@0HI@@0GB@@0GD@@0HE@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@@@2V?$array@D$0EA@@5@3D0FL@@0GD@@0GP@@0HC@@0GF@@0FN@@0FL@@0GE@@0GE@@0FN@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@@@@@test@orbsim@@SAXXZ",
+    "objects": [
+     "CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj"
+    ],
+    "sort": "2",
+    "tests": 1
+   },
+   {
+    "function": "?run@?$Case@$2UCaseId@test@orbsim@@2V?$array@D$0IA@@std@@3D0HE@@0GI@@0GF@@0CA@@0HB@@0HF@@0GP@@0HE@@0GJ@@0GF@@0GO@@0HE@@0CA@@0GB@@0GO@@0GE@@0CA@@0HE@@0GI@@0GF@@0CA@@0HD@@0HB@@0HF@@0GB@@0HC@@0GF@@0CA@@0HC@@0GP@@0GP@@0HE@@0CA@@0GB@@0HC@@0GF@@0CA@@0GD@@0GP@@0HC@@0HC@@0GF@@0GD@@0HE@@0CA@@0GC@@0GF@@0HJ@@0GP@@0GO@@0GE@@0CA@@0GB@@0CA@@0GE@@0GP@@0HF@@0GC@@0GM@@0GF@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@@@2V?$array@D$0EA@@5@3D0FL@@0GD@@0GP@@0HC@@0GF@@0FN@@0FL@@0GE@@0GE@@0FN@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@0A@@@@@@test@orbsim@@SAXXZ",
+    "objects": [
+     "CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj"
+    ],
+    "sort": "2",
+    "tests": 1
+   },
+   {
+    "function": "?split@orb@@YA?AUDoubleDouble@1@N@Z",
+    "objects": [
+     "CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj"
+    ],
+    "sort": "1 changed",
+    "tests": 3
+   },
+   {
+    "function": "?split@orb@@YA?AUDoubleDouble@1@N@Z",
+    "objects": [
+     "CMakeFiles/test_planetary_grid.dir/tests/test_planetary_grid.cpp.obj"
+    ],
+    "sort": "1 changed",
+    "tests": 2
+   },
+   {
+    "function": "?split@orb@@YA?AUDoubleDouble@1@N@Z",
+    "objects": [
+     "orbsim_core_d.lib(Orbit.cpp.obj)"
+    ],
+    "sort": "1 changed",
+    "tests": 23
+   },
+   {
+    "function": "?twoProduct@orb@@YA?AUDoubleDouble@1@NN@Z",
+    "objects": [
+     "CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj"
+    ],
+    "sort": "1 changed",
+    "tests": 4
+   },
+   {
+    "function": "?twoProduct@orb@@YA?AUDoubleDouble@1@NN@Z",
+    "objects": [
+     "CMakeFiles/test_planetary_grid.dir/tests/test_planetary_grid.cpp.obj"
+    ],
+    "sort": "1 changed",
+    "tests": 2
+   },
+   {
+    "function": "?twoProduct@orb@@YA?AUDoubleDouble@1@NN@Z",
+    "objects": [
+     "orbsim_core_d.lib(Orbit.cpp.obj)"
+    ],
+    "sort": "1 changed",
+    "tests": 23
+   },
+   {
+    "function": "CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj|??0Sampler@?A0x489F40B2@@QEAA@XZ",
+    "objects": [
+     "CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj"
+    ],
+    "sort": "2",
+    "tests": 5
+   },
+   {
+    "function": "CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj|?atExponent@Sampler@?A0x489F40B2@@QEAANAEBUExponentRange@2@@Z",
+    "objects": [
+     "CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj"
+    ],
+    "sort": "2",
+    "tests": 4
+   },
+   {
+    "function": "CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj|?unit@Sampler@?A0x489F40B2@@QEAANXZ",
+    "objects": [
+     "CMakeFiles/test_double_double.dir/tests/test_double_double.cpp.obj"
+    ],
+    "sort": "2",
+    "tests": 1
+   }
+  ]
+ },
+ {
+  "label": "5047abb",
+  "subject": "M1-118, finding 1.7: angleBetween refuses a zero vector",
+  "counts": {
+   "6": 99,
+   "1 not changed": 22,
+   "1": 39,
+   "1 changed": 19,
+   "7": 3,
+   "8": 18,
+   "5": 81,
+   "4": 25,
+   "by program only (B)": 202
+  },
+  "functions": [
+   {
+    "function": "??$?H$2Uone@mp_units@@2U?$derived_unit_impl@$$V@detail@1@2Uunit_interface@31@@2U?$expr_fractions@Uone@mp_units@@$$V@31@2U?$expr_fractions_result@U?$type_list@$$V@detail@mp_units@@U123@@31@@@@@$2U01@2U231@2U431@@2U531@2U631@@@@@@orb@@YA?AU?$Scalar@$2Uone@mp_units@@2U?$derived_unit_impl@$$V@detail@2@2Uunit_interface@42@@2U?$expr_fractions@Uone@mp_units@@$$V@42@2U?$expr_fractions_result@U?$type_list@$$V@detail@mp_units@@U123@@42@@@@@@0@U10@0@Z",
+    "objects": [
+     "orbsim_view_d.lib(ProbeSidecar.cpp.obj)"
+    ],
+    "sort": "1 not changed",
+    "tests": 1
+   },
+   {
+    "function": "??$angleBetween@$2Umetre@si@mp_units@@2U?$named_unit@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0GN@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0GN@@0A@@@@@$2U?$kind_of_@Ulength@isq@mp_units@@@2@2U?$quantity_spec@$2Udim_length@isq@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EM@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EM@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@$2U123@2U43@2U563@@@@@orb@@YA?AU?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@mp_units@@2V?$basic_fixed_string@_Q$02@2@3_Q0HC@@0GB@@0GE@@0A@@@@2V?$basic_fixed_string@D$02@2@3D0HC@@0GB@@0GE@@0A@@@@@$2U?$kind_of_@Uangle@angular@mp_units@@@2@2U?$quantity_spec@$2Udim_angle@angular@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EB@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EB@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@0@AEBU?$Vec3@$2Umetre@si@mp_units@@2U?$named_unit@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0GN@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0GN@@0A@@@@@$2U?$kind_of_@Ulength@isq@mp_units@@@2@2U?$quantity_spec@$2Udim_length@isq@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EM@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EM@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@0@0@Z",
+    "objects": [
+     "CMakeFiles/test_camera_controller.dir/tests/test_camera_controller.cpp.obj"
+    ],
+    "sort": "1 changed",
+    "tests": 1
+   },
+   {
+    "function": "??$angleBetween@$2Umetre@si@mp_units@@2U?$named_unit@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0GN@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0GN@@0A@@@@@$2U?$kind_of_@Ulength@isq@mp_units@@@2@2U?$quantity_spec@$2Udim_length@isq@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EM@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EM@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@$2U123@2U43@2U563@@@@@orb@@YA?AU?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@mp_units@@2V?$basic_fixed_string@_Q$02@2@3_Q0HC@@0GB@@0GE@@0A@@@@2V?$basic_fixed_string@D$02@2@3D0HC@@0GB@@0GE@@0A@@@@@$2U?$kind_of_@Uangle@angular@mp_units@@@2@2U?$quantity_spec@$2Udim_angle@angular@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EB@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EB@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@0@AEBU?$Vec3@$2Umetre@si@mp_units@@2U?$named_unit@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0GN@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0GN@@0A@@@@@$2U?$kind_of_@Ulength@isq@mp_units@@@2@2U?$quantity_spec@$2Udim_length@isq@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EM@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EM@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@0@0@Z",
+    "objects": [
+     "CMakeFiles/test_orbit.dir/tests/test_orbit.cpp.obj"
+    ],
+    "sort": "1 changed",
+    "tests": 1
+   },
+   {
+    "function": "??$angleBetween@$2Umetre@si@mp_units@@2U?$named_unit@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0GN@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0GN@@0A@@@@@$2U?$kind_of_@Ulength@isq@mp_units@@@2@2U?$quantity_spec@$2Udim_length@isq@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EM@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EM@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@$2U123@2U43@2U563@@@@@orb@@YA?AU?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@mp_units@@2V?$basic_fixed_string@_Q$02@2@3_Q0HC@@0GB@@0GE@@0A@@@@2V?$basic_fixed_string@D$02@2@3D0HC@@0GB@@0GE@@0A@@@@@$2U?$kind_of_@Uangle@angular@mp_units@@@2@2U?$quantity_spec@$2Udim_angle@angular@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EB@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EB@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@0@AEBU?$Vec3@$2Umetre@si@mp_units@@2U?$named_unit@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0GN@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0GN@@0A@@@@@$2U?$kind_of_@Ulength@isq@mp_units@@@2@2U?$quantity_spec@$2Udim_length@isq@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EM@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EM@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@0@0@Z",
+    "objects": [
+     "CMakeFiles/test_orbit_scales.dir/tests/test_orbit_scales.cpp.obj"
+    ],
+    "sort": "1 changed",
+    "tests": 1
+   },
+   {
+    "function": "??$angleBetween@$2Umetre@si@mp_units@@2U?$named_unit@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0GN@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0GN@@0A@@@@@$2U?$kind_of_@Ulength@isq@mp_units@@@2@2U?$quantity_spec@$2Udim_length@isq@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EM@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EM@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@$2U123@2U43@2U563@@@@@orb@@YA?AU?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@mp_units@@2V?$basic_fixed_string@_Q$02@2@3_Q0HC@@0GB@@0GE@@0A@@@@2V?$basic_fixed_string@D$02@2@3D0HC@@0GB@@0GE@@0A@@@@@$2U?$kind_of_@Uangle@angular@mp_units@@@2@2U?$quantity_spec@$2Udim_angle@angular@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EB@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EB@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@0@AEBU?$Vec3@$2Umetre@si@mp_units@@2U?$named_unit@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0GN@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0GN@@0A@@@@@$2U?$kind_of_@Ulength@isq@mp_units@@@2@2U?$quantity_spec@$2Udim_length@isq@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EM@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EM@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@0@0@Z",
+    "objects": [
+     "CMakeFiles/test_sun.dir/tests/test_sun.cpp.obj"
+    ],
+    "sort": "1 changed",
+    "tests": 2
+   },
+   {
+    "function": "??$angleBetween@$2Uone@mp_units@@2U?$derived_unit_impl@$$V@detail@2@2Uunit_interface@42@@2U?$expr_fractions@Uone@mp_units@@$$V@42@2U?$expr_fractions_result@U?$type_list@$$V@detail@mp_units@@U123@@42@@@@@$2U12@2U342@2U542@@2U642@2U742@@@@@@orb@@YA?AU?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@mp_units@@2V?$basic_fixed_string@_Q$02@2@3_Q0HC@@0GB@@0GE@@0A@@@@2V?$basic_fixed_string@D$02@2@3D0HC@@0GB@@0GE@@0A@@@@@$2U?$kind_of_@Uangle@angular@mp_units@@@2@2U?$quantity_spec@$2Udim_angle@angular@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EB@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EB@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@0@AEBU?$Vec3@$2Uone@mp_units@@2U?$derived_unit_impl@$$V@detail@2@2Uunit_interface@42@@2U?$expr_fractions@Uone@mp_units@@$$V@42@2U?$expr_fractions_result@U?$type_list@$$V@detail@mp_units@@U123@@42@@@@@@0@0@Z",
+    "objects": [
+     "CMakeFiles/test_earth_orientation.dir/tests/test_earth_orientation.cpp.obj"
+    ],
+    "sort": "1 changed",
+    "tests": 3
+   },
+   {
+    "function": "??$angleBetween@$2Uone@mp_units@@2U?$derived_unit_impl@$$V@detail@2@2Uunit_interface@42@@2U?$expr_fractions@Uone@mp_units@@$$V@42@2U?$expr_fractions_result@U?$type_list@$$V@detail@mp_units@@U123@@42@@@@@$2U12@2U342@2U542@@2U642@2U742@@@@@@orb@@YA?AU?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@mp_units@@2V?$basic_fixed_string@_Q$02@2@3_Q0HC@@0GB@@0GE@@0A@@@@2V?$basic_fixed_string@D$02@2@3D0HC@@0GB@@0GE@@0A@@@@@$2U?$kind_of_@Uangle@angular@mp_units@@@2@2U?$quantity_spec@$2Udim_angle@angular@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EB@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EB@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@0@AEBU?$Vec3@$2Uone@mp_units@@2U?$derived_unit_impl@$$V@detail@2@2Uunit_interface@42@@2U?$expr_fractions@Uone@mp_units@@$$V@42@2U?$expr_fractions_result@U?$type_list@$$V@detail@mp_units@@U123@@42@@@@@@0@0@Z",
+    "objects": [
+     "orbsim_view_d.lib(ProbeSidecar.cpp.obj)"
+    ],
+    "sort": "1 changed",
+    "tests": 7
+   },
+   {
+    "function": "??$angleBetween@$2Uone@mp_units@@2U?$derived_unit_impl@$$V@detail@2@2Uunit_interface@42@@2U?$expr_fractions@Uone@mp_units@@$$V@42@2U?$expr_fractions_result@U?$type_list@$$V@detail@mp_units@@U123@@42@@@@@$2Umetre@si@2@2U?$named_unit@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0GN@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0GN@@0A@@@@@$2U?$kind_of_@Ulength@isq@mp_units@@@2@2U?$quantity_spec@$2Udim_length@isq@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EM@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EM@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@2@2U542@@@@@orb@@YA?AU?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@mp_units@@2V?$basic_fixed_string@_Q$02@2@3_Q0HC@@0GB@@0GE@@0A@@@@2V?$basic_fixed_string@D$02@2@3D0HC@@0GB@@0GE@@0A@@@@@$2U?$kind_of_@Uangle@angular@mp_units@@@2@2U?$quantity_spec@$2Udim_angle@angular@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EB@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EB@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@0@AEBU?$Vec3@$2Uone@mp_units@@2U?$derived_unit_impl@$$V@detail@2@2Uunit_interface@42@@2U?$expr_fractions@Uone@mp_units@@$$V@42@2U?$expr_fractions_result@U?$type_list@$$V@detail@mp_units@@U123@@42@@@@@@0@AEBU?$Vec3@$2Umetre@si@mp_units@@2U?$named_unit@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0GN@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0GN@@0A@@@@@$2U?$kind_of_@Ulength@isq@mp_units@@@2@2U?$quantity_spec@$2Udim_length@isq@mp_units@@2U?$base_dimension@$2V?$symbol_text@$00$00@mp_units@@2V?$basic_fixed_string@_Q$00@2@3_Q0EM@@0A@@@@2V?$basic_fixed_string@D$00@2@3D0EM@@0A@@@@@@3@2Udimension_interface@detail@3@@@@@2@2Uquantity_spec_interface@detail@2@2Uquantity_spec_interface_base@82@@@@@@3@2Uunit_interface@detail@3@@@@@0@@Z",
+    "objects": [
+     "orbsim_core_d.lib(Orbit.cpp.obj)"
+    ],
+    "sort": "1 changed",
+    "tests": 6
+   },
+   {
+    "function": "??Korb@@YA?AU?$Scalar@$2Uone@mp_units@@2U?$derived_unit_impl@$$V@detail@2@2Uunit_interface@42@@2U?$expr_fractions@Uone@mp_units@@$$V@42@2U?$expr_fractions_result@U?$type_list@$$V@detail@mp_units@@U123@@42@@@@@@0@U10@N@Z",
+    "objects": [
+     "orbsim_view_d.lib(ProbeSidecar.cpp.obj)"
+    ],
+    "sort": "1 not changed",
+    "tests": 1
+   },
+   {
+    "function": "?_Xlength@?$vector@Vstacktrace_entry@std@@V?$allocator@Vstacktrace_entry@std@@@2@@std@@CAXXZ",
+    "objects": [
+     "without a flag"
+    ],
+    "sort": "1 not changed",
+    "tests": 21
+   }
+  ]
+ },
+ {
+  "label": "2c5f1e8",
+  "subject": "M1-118: stateFromElements reports a shape it cannot use (decision 478)",
+  "counts": {
+   "3": 13,
+   "1 changed": 21,
+   "1": 21,
+   "7": 2,
+   "8": 16,
+   "by program only (B)": 19
+  },
+  "functions": [
+   {
+    "function": "?stateFromElements@orb@@YA?AV?$expected@UStateVector@orb@@W4OrbitError@2@@std@@AEBUElements@1@VGravParam@1@@Z",
+    "objects": [
+     "orbsim_core_d.lib(Orbit.cpp.obj)"
+    ],
+    "sort": "1 changed",
+    "tests": 21
+   }
+  ]
+ },
+ {
+  "label": "27cd31b",
+  "subject": "M1-118, finding 3.12: the fuzzers reach the element entry points and time arithmetic",
+  "counts": {
+   "7": 2,
+   "5": 82,
+   "8": 14,
+   "4": 30,
+   "by program only (B)": 0
+  },
+  "functions": []
+ },
+ {
+  "label": "3479028",
+  "subject": "M1-118: an equivalent mutant replaced, an invalid one rewritten (decision 482)",
+  "counts": {
+   "7": 1,
+   "5": 83,
+   "8": 15,
+   "4": 30,
+   "by program only (B)": 0
+  },
+  "functions": []
+ },
+ {
+  "label": "b554d5d",
+  "subject": "Record M1-118's mutation pass: 20 of 20 caught",
+  "counts": {
+   "7": 1,
+   "5": 83,
+   "8": 15,
+   "4": 30,
+   "by program only (B)": 0
+  },
+  "functions": []
+ },
+ {
+  "label": "1edfbc4",
+  "subject": "Record that M1-118 is pushed",
+  "counts": {
+   "7": 1,
+   "8": 15,
+   "by program only (B)": 0
+  },
+  "functions": []
+ }
+]

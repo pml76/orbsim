@@ -1,0 +1,162 @@
+[
+ {
+  "label": "374745f",
+  "by function": 16,
+  "by program, the driver's store": 16,
+  "by program, a record of its own": 16,
+  "own record: C++": 1,
+  "own record: GPU": 1,
+  "own record: by program only": 0,
+  "own record: seconds": 121.56
+ },
+ {
+  "label": "53f929b",
+  "by function": 16,
+  "by program, the driver's store": 16,
+  "by program, a record of its own": 16,
+  "own record: C++": 1,
+  "own record: GPU": 1,
+  "own record: by program only": 0,
+  "own record: seconds": 121.56
+ },
+ {
+  "label": "4963695",
+  "by function": 74,
+  "by program, the driver's store": 506,
+  "by program, a record of its own": 506,
+  "own record: C++": 436,
+  "own record: GPU": 63,
+  "own record: by program only": 432,
+  "own record: seconds": 502.4
+ },
+ {
+  "label": "0eb2c93",
+  "by function": 46,
+  "by program, the driver's store": 482,
+  "by program, a record of its own": 58,
+  "own record: C++": 42,
+  "own record: GPU": 1,
+  "own record: by program only": 12,
+  "own record: seconds": 137.34
+ },
+ {
+  "label": "e334905",
+  "by function": 36,
+  "by program, the driver's store": 483,
+  "by program, a record of its own": 59,
+  "own record: C++": 43,
+  "own record: GPU": 1,
+  "own record: by program only": 23,
+  "own record: seconds": 137.42
+ },
+ {
+  "label": "1399abf",
+  "by function": 38,
+  "by program, the driver's store": 509,
+  "by program, a record of its own": 328,
+  "own record: C++": 261,
+  "own record: GPU": 63,
+  "own record: by program only": 290,
+  "own record: seconds": 431.09
+ },
+ {
+  "label": "adb1074",
+  "by function": 16,
+  "by program, the driver's store": 487,
+  "by program, a record of its own": 16,
+  "own record: C++": 1,
+  "own record: GPU": 1,
+  "own record: by program only": 0,
+  "own record: seconds": 121.56
+ },
+ {
+  "label": "937e49f",
+  "by function": 55,
+  "by program, the driver's store": 498,
+  "by program, a record of its own": 69,
+  "own record: C++": 53,
+  "own record: GPU": 1,
+  "own record: by program only": 14,
+  "own record: seconds": 140.49
+ },
+ {
+  "label": "8bc7be7",
+  "by function": 49,
+  "by program, the driver's store": 499,
+  "by program, a record of its own": 70,
+  "own record: C++": 54,
+  "own record: GPU": 1,
+  "own record: by program only": 21,
+  "own record: seconds": 140.59
+ },
+ {
+  "label": "73dc795",
+  "by function": 51,
+  "by program, the driver's store": 500,
+  "by program, a record of its own": 102,
+  "own record: C++": 86,
+  "own record: GPU": 1,
+  "own record: by program only": 51,
+  "own record: seconds": 154.5
+ },
+ {
+  "label": "5047abb",
+  "by function": 158,
+  "by program, the driver's store": 533,
+  "by program, a record of its own": 360,
+  "own record: C++": 272,
+  "own record: GPU": 63,
+  "own record: by program only": 202,
+  "own record: seconds": 446.17
+ },
+ {
+  "label": "2c5f1e8",
+  "by function": 52,
+  "by program, the driver's store": 399,
+  "by program, a record of its own": 71,
+  "own record: C++": 55,
+  "own record: GPU": 1,
+  "own record: by program only": 19,
+  "own record: seconds": 140.68
+ },
+ {
+  "label": "27cd31b",
+  "by function": 114,
+  "by program, the driver's store": 461,
+  "by program, a record of its own": 114,
+  "own record: C++": 30,
+  "own record: GPU": 61,
+  "own record: by program only": 0,
+  "own record: seconds": 359.77
+ },
+ {
+  "label": "3479028",
+  "by function": 114,
+  "by program, the driver's store": 461,
+  "by program, a record of its own": 114,
+  "own record: C++": 30,
+  "own record: GPU": 61,
+  "own record: by program only": 0,
+  "own record: seconds": 359.77
+ },
+ {
+  "label": "b554d5d",
+  "by function": 114,
+  "by program, the driver's store": 461,
+  "by program, a record of its own": 114,
+  "own record: C++": 30,
+  "own record: GPU": 61,
+  "own record: by program only": 0,
+  "own record: seconds": 359.77
+ },
+ {
+  "label": "1edfbc4",
+  "by function": 16,
+  "by program, the driver's store": 363,
+  "by program, a record of its own": 16,
+  "own record: C++": 1,
+  "own record: GPU": 1,
+  "own record: by program only": 0,
+  "own record: seconds": 121.56
+ }
+]

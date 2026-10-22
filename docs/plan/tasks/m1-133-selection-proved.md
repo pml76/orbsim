@@ -49,6 +49,37 @@ In this sequence since decision 721:
    dated section at the end of ADR 0028 (719), and their totals in
    `STATUS.md` with a link (732).
 
+## Where it stands (2026-10-22, the handover)
+
+Done:
+
+- **The mutant check**, in the two trees: no fault (Part 1 of
+  [the measurement record](../../measurements/m1-133-selection-proved.md)).
+- **Open item (h)**, the failure of `mutants_due_probe_shaders` for a cause
+  that is not the change, corrected in `scripts/run-tests.py` (decisions
+  737-742), seen to fail first, the mutant file `m1-133.json` 3 of 3, and
+  measured again with mutants 10 and 19 in the two trees.
+- **The base of the replay** in build/wt133: the items of decision 726, the
+  corrected driver, the second configure (745) and the Horizons files (746);
+  its full run passed 533 of 533.
+- **The replay:** The replay ran the 16 commits with no stop, and the script agreed with the driver at each commit: by function 965 test runs of the 8,771 listed, and by program with its own record 2,029 (decision 756); the C++ tests by function against by program, 434 of 1,396 (31.1 %), against the 18.1 % of the spike. These figures are not yet examined against the files.
+
+The scripts and the small results of the replay are in
+docs/measurements/m1-133/replay/, with the helper's report. The function
+digests of each commit stay in the scratch folder of the session, because
+they are large and the scripts can make them again.
+
+Left for the next session:
+
+1. Examine the figures of the replay against the files in
+   docs/measurements/m1-133/replay/.
+2. Write Part 2 of the measurement record, the dated section of ADR 0028
+   (decision 719), and the totals in `STATUS.md` (decision 732).
+3. Remove build/wt133, its branch scratch/m1-133-replay, and `build/wt129`
+   (decision 734).
+4. `check` in the two trees, and the last commit of the task.
+5. `check-full` in the two trees before the owner's push.
+
 ## Then
 
 Points 3-5 of M1-129's "The order from here": mutation testing at function

@@ -1,0 +1,12 @@
+{
+ "difference": [],
+ "failed": [
+  "mutants_due_probe_shaders"
+ ],
+ "problem lines": [],
+ "ran": 38,
+ "skipped by itself": [
+  "a write the disk refuses only when the file is closed is reported"
+ ],
+ "summary": "run-tests: 38 ran, 505 skipped as unchanged -- listed in C:\\Users\\U439644\\Projects\\untitled\\build\\wt133\\build\\debug\\run-tests\\skipped.txt; the fingerprints took 12.7 s; the compiled code: programs read in full: 41, from kept tables: 2, reading 3.9 s, summaries 2.0 s, digests 3.5 s, 31 summaries made, 45 read, 0 files deleted"
+}
