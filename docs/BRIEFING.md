@@ -438,3 +438,9 @@ selection, as the next task after M1-133 and before M1-134 (decision
 **On 2026-10-22** M1-133 stops for a new session, at the end of its
 replay. The next session starts with the list "Left for the next
 session" in M1-133's task document, and with `STATUS.md`.
+
+**On 2026-10-24** M1-133 is done (decisions 720-761). No mutant of M1-118
+made a skipped test fail. The replay of M1-118's 16 commits measured the runs
+that the selection by function removes (Part 2 of its measurement record).
+Next, M1-137, then M1-134. The commits after `fddeefc` wait for `check-full`
+in the two trees and for the owner's push.

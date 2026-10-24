@@ -1,6 +1,6 @@
 # M1-133 — The selection proved, and measured
 
-Phase: B | Status: **started 2026-10-21**
+Phase: B | Status: **done 2026-10-24**
 Prerequisites: M1-132
 Decided by: register decisions 543, 552, 553 and 561, ruled 2026-10-15, and
 592, ruled 2026-10-16; split out of M1-129 as its item 9's step E by decision
@@ -8,7 +8,10 @@ Decided by: register decisions 543, 552, 553 and 561, ruled 2026-10-15, and
 it, the sequence, the trees, the code and the tests of the mutant check, a
 write that Windows refuses, what the replay adds to each commit and how, its
 tree, how it counts and the causes, the figures and where they go, no mutant
-file, and the scratch folders.
+file, and the scratch folders. And 737-761, ruled during the work
+from 2026-10-21 to 2026-10-24. They rule the correction of open item (h), its
+mutant file and M1-137. They also rule the base of the replay, how it counts,
+Part 2, the data of the replay, a fact of `STATUS.md` and the hand sort.
 Measures [M1-129](m1-129-tests-by-fingerprint.md)'s whole-program
 fingerprints and [M1-132](m1-132-function-level-selection.md)'s function-level
 selection; the spike it is measured against is in M1-132's last section.
@@ -49,9 +52,7 @@ In this sequence since decision 721:
    dated section at the end of ADR 0028 (719), and their totals in
    `STATUS.md` with a link (732).
 
-## Where it stands (2026-10-22, the handover)
-
-Done:
+## Where it ended (2026-10-24)
 
 - **The mutant check**, in the two trees: no fault (Part 1 of
   [the measurement record](../../measurements/m1-133-selection-proved.md)).
@@ -59,26 +60,17 @@ Done:
   that is not the change, corrected in `scripts/run-tests.py` (decisions
   737-742), seen to fail first, the mutant file `m1-133.json` 3 of 3, and
   measured again with mutants 10 and 19 in the two trees.
-- **The base of the replay** in build/wt133: the items of decision 726, the
-  corrected driver, the second configure (745) and the Horizons files (746);
-  its full run passed 533 of 533.
-- **The replay:** The replay ran the 16 commits with no stop, and the script agreed with the driver at each commit: by function 965 test runs of the 8,771 listed, and by program with its own record 2,029 (decision 756); the C++ tests by function against by program, 434 of 1,396 (31.1 %), against the 18.1 % of the spike. These figures are not yet examined against the files.
-
-The scripts and the small results of the replay are in
-docs/measurements/m1-133/replay/, with the helper's report. The function
-digests of each commit stay in the scratch folder of the session, because
-they are large and the scripts can make them again.
-
-Left for the next session:
-
-1. Examine the figures of the replay against the files in
-   docs/measurements/m1-133/replay/.
-2. Write Part 2 of the measurement record, the dated section of ADR 0028
-   (decision 719), and the totals in `STATUS.md` (decision 732).
-3. Remove build/wt133, its branch scratch/m1-133-replay, and `build/wt129`
-   (decision 734).
-4. `check` in the two trees, and the last commit of the task.
-5. `check-full` in the two trees before the owner's push.
+- **The replay** of the 16 commits of M1-118, in Debug: by function, 434 runs
+  of a C++ test against 1,396 by program (31.1 %). The time was 468.23 s
+  against 932.53 s (50.2 %). The figures were examined against the files of
+  the replay on 2026-10-24 (decisions 757-761). Part 2 of the measurement
+  record and the dated section of ADR 0028 hold them.
+- **The scratch folders**: build/wt133, its branch, `build/wt129` and the
+  scratch folder of the replay were removed on 2026-10-24 (decisions 734 and
+  759). Before the removal, the work in `build/wt129` that was not committed
+  was compared with `4495ea0`: the same changes, and the same bytes.
+- **`check`** passed in the two trees on 2026-10-24. `check-full` in the two
+  trees comes before the owner's push.
 
 ## Then
 
@@ -95,15 +87,18 @@ task of its own, decided when it is taken up.
 ## Done when
 
 - [x] All the questions of the work ruled, and the rulings in the register.
-      *Decisions 720-734, 2026-10-21.*
+      *Decisions 720-734, 2026-10-21, and 737-761 during the work.*
 - [x] No mutant of `m1-118.json` made a test fail that the selection skipped,
       in the two `check` trees (722). *2026-10-21: 0 faults in Debug and in
       RelWithDebInfo, seen to find a planted fault first; Part 1 of
       [the measurement record](../../measurements/m1-133-selection-proved.md).*
-- [ ] M1-118's 16 commits measured by program and by function, with the
+- [x] M1-118's 16 commits measured by program and by function, with the
       causes, and written in the measurement record, ADR 0028 and
-      `STATUS.md` (732).
-- [ ] `check` passes in both trees.
-- [ ] The scratch folders removed as decision 734 says: `build/wt133` and its
-      branch, and `build/wt129`. A commit at the end; the push only on the
-      owner's go-ahead (595). No mutant file (733).
+      `STATUS.md` (732). *2026-10-24: Part 2 of the record, decisions
+      757-761.*
+- [x] `check` passes in the two trees. *2026-10-24.*
+- [x] The scratch folders removed as decision 734 says: `build/wt133` and its
+      branch, and `build/wt129`; and the scratch folder of the replay
+      (decision 759). A commit at the end; the push only on the owner's
+      go-ahead (595). The mutant file `m1-133.json` came with the correction
+      of decision 737 (decision 740). *2026-10-24.*
