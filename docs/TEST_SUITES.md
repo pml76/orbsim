@@ -116,6 +116,8 @@ and Linux trees were not run.
 
 **The change from 3,862,337 in 444 cases is +3 in +2, in one suite and nothing else** (M1-111, 2026-10-09): `test_file_replace` at 42 in 10 -- `writeText`'s case, and the `/dev/full` case, which Windows reports skipped. Every other suite read back what it read back before, in 41 suites, on the RTX A2000 machine. CTest counts **530** in both Windows trees, where it counted 528. The MSVC tree was not run; on Linux, `test_file_replace` alone, in `linux-sanitize` and `linux-gcc`, 44 in 10.
 
+**M1-138's step 1 (2026-10-24)** adds one CTest test, `read_record_self_test`, and no suite: CTest counts **591** in the two Windows trees, where it counted 590. M1-138 changes no suite, thus the assertions are as at M1-131's end.
+
 **M1-132's step 4 (2026-10-21)** adds one CTest test, `run_tests_function_level`, and no suite: CTest counts **590** in the two Windows trees, where it counted 589. M1-132 changed no suite, thus the assertions are as at M1-131's end.
 
 **M1-132's step 1 (2026-10-20)** adds one CTest test, `compiled_code_self_test`, and no suite: CTest counts **589** in the two Windows trees, where it counted 588.

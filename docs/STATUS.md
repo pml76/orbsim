@@ -59,7 +59,7 @@ opens a window and paces frames.** Nothing is drawn yet.
 ## Test suites
 
 **One by one, with their counts and what each covers: [`TEST_SUITES.md`](TEST_SUITES.md).**
-The totals, 2026-10-19, at M1-131's end, and 2026-10-20 for the count of CTest tests: CTest runs **590 tests in each `check` tree** since M1-132's steps 1 and 4 added `compiled_code_self_test` and `run_tests_function_level`;
+The totals, 2026-10-19, at M1-131's end, and 2026-10-20 for the count of CTest tests: CTest runs **591 tests in each `check` tree** since M1-138's step 1 added `read_record_self_test`, 2026-10-24;
 the suites hold **3,941,234 assertions in 483 test cases, in 44 suites**, summed from each suite's own
 summary in the Debug tree.
 

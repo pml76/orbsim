@@ -36,6 +36,22 @@ else()
 endif()
 set_tests_properties(doc_links_self_test PROPERTIES LABELS fixtures)
 
+# The read record of the Python processes of the script tests (M1-138,
+# register decisions 765, 770 and 780-785): scripts/check-read-record.py
+# starts Python with scripts/read-record/sitecustomize.py in a scratch tree,
+# makes each type of access one time, and makes sure that each line is in the
+# records, also with planted faults. CMake is the program that the probe starts as a
+# child. It runs at each `check`, also on the second machine (decision 772).
+if(ORBSIM_PYTHON)
+    add_test(NAME read_record_self_test
+            COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/check-read-record.py --self-test
+                    ${CMAKE_COMMAND}
+    )
+else()
+    add_test(NAME read_record_self_test COMMAND ${CMAKE_COMMAND} -E false)
+endif()
+set_tests_properties(read_record_self_test PROPERTIES LABELS fixtures)
+
 # A tree set up from text no longer on disk is refused (M1-98, register
 # decision 225). The configure fingerprints what it reads and fails if any of
 # it changed before the end (cmake/ConfigureInputs.cmake); `configure-current`
