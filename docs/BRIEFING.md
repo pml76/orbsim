@@ -43,6 +43,9 @@ recorded; confirm that, do not record it again.** In practice:
   scratch folder, and quote the number. Where a decision could be wrong, verify
   it before proposing it (a spike, a primary source, a second implementation),
   and say what was checked.
+- **Measure only to prevent a bug** (agreement 10, decision 776, 2026-10-24):
+  if a measurement does not prevent a bug, do not make it, unless the owner
+  tells you to make that measurement.
 - **During the work**, anything unforeseen goes back to the owner, with its
   measurement, before it is acted on.
 - **The method of work** (decision 701): give each long step of the work to
@@ -460,3 +463,10 @@ again with the figures of the spike (decision 769). The first `check` of
 that session ran all 590 tests in each tree, because the `PATH` of the
 session was different from the `PATH` at the last full run (decision 501;
 N8 in the task document).
+
+**At the end of that session** the owner added working agreement 10
+(decision 776): no measurement that does not prevent a bug, unless the owner
+tells you to make it. A `check` in Debug failed one time with five tests at
+their time limit; the next `check` passed, and the cause stays unknown. The
+next session starts with the list "Left for the next session" in M1-138's
+task document.

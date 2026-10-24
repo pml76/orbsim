@@ -164,6 +164,10 @@ note that exists only on one of them is a note that does not exist.
    change the result. Accuracy still outranks speed (agreement 3). The test
    selection of M1-129 and its function-level follow-on are this rule applied
    to the tests.
+10. **No measurement that does not prevent a bug** (added 2026-10-24). If a
+    measurement does not prevent a bug, do not make it, unless the owner
+    tells you to make that measurement. Register decision 776 gives the
+    owner's words.
 
 ## The definition of done
 

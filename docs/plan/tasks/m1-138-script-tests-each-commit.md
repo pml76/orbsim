@@ -1,8 +1,8 @@
 # M1-138 — The script tests that run at each commit
 
 Phase: B | Status: **started 2026-10-24. Its questions 1 to 4 and 6 to 12
-are ruled (decisions 764-775). Question 7 goes to the owner again with the
-figures of the spike (decision 769)**
+are ruled (decisions 764-775). The next session starts with "Left for the
+next session" below**
 Prerequisites: [M1-133](m1-133-selection-proved.md), which found the cost. It
 comes before M1-137 (decision 763).
 Decided by: **decision 763**, its position in the queue, and **decisions
@@ -369,6 +369,77 @@ Thus for these tests only rule 2 goes, when the trace shows no other child.
 8. `check` in the two trees, the commit, the mutant file of the task after
    its commit and the commit of its record and `STATUS.md`, `check-full` in
    the two trees, and the push on the owner's word.
+
+## Left for the next session (2026-10-24)
+
+The owner ended the first session of the work. Start here, in this
+sequence.
+
+1. *Done 2026-10-24.* **The handover is committed**, after `check` passed in
+   the two trees. It changes `CLAUDE.md` (working agreement 10), the register
+   (decision 776), this document, `STATUS.md` and the briefing. The commits
+   after `54db237` wait for the next push, after `check-full` in the two
+   trees.
+2. **The `check` in Debug failed, after the copy of decision 773 went back.** It ran
+   10,275.5 s. Five tests stopped at their time limit:
+   `probe_grid-jitter-1km-3` (2,979.73 s), `run_tests_function_level`
+   (3,036.46 s), `run_tests_end_to_end` (3,036.42 s),
+   `probe_grid-jitter-1km-2` (4,231.14 s) and `probe_grid-400km`
+   (2,798.36 s). The tests that CTest's `DEPENDS` property connects to the
+   three probes did not run. The cause was not examined. One possible cause
+   is open item (3) of `STATUS.md`: when a machine sleeps during a run, the
+   tests go past their time limits. The second `check` in RelWithDebInfo did
+   not run. The record file
+   is back byte for byte: its SHA-256 is the same as before the change.
+   *Later on 2026-10-24*, `check` ran again: it passed in Debug, where 53
+   tests ran, and in RelWithDebInfo, where 133 ran. The five time-outs did
+   not come again, and their cause stays unknown.
+3. **Working agreement 10 and this task: a question for the owner.**
+   Agreement 10 (decision 776) came after decisions 766, 768 and 773. These
+   decisions include measurements of time that do not prevent a bug: the
+   time that the hook adds (decision 766), the time that CMake's trace adds
+   (decision 768), the "after" figures of decision 773, and the figures
+   compared with the estimate in "Done when". Do these measurements stay?
+   - **A (recommended). Remove them.** Keep each measurement that prevents a
+     bug: Process Monitor compared with the records of the hook, the result
+     of each `cmake -P` test with the trace, and the mutant check of decision
+     767. Cost: the task gives no measured decrease of time; only the
+     estimate above shows it.
+   - B. Keep them. Decisions 766, 768 and 773 include them, and agreement 10
+     does not stop a measurement that the owner tells you to make. Cost:
+     about one hour more of runs of `check` and of the spike.
+4. **The figures that were measured before agreement 10.** A change to
+   documents only, the `check` before `a4e8bad`: in Debug, 22 tests ran and
+   568 were skipped, their times summed to 53.24 s, the test step used
+   44.3 s and all of `check` 46.5 s. In RelWithDebInfo: 28 ran, 562 were
+   skipped, 53.70 s, 36.7 s and 38.9 s. Decision 773, the empty line at the
+   end of `scripts/mutation-passes.json`: in Debug, 133 tests ran and 457
+   were skipped, their times summed to 547.89 s, CTest used 243.53 s, the
+   test step 255.5 s and all of `check` 257.6 s. In RelWithDebInfo: 133
+   ran, 457 were skipped, 486.29 s, 120.02 s, 127.7 s and 130.2 s. 133, not
+   132: the test that the driver does not store also ran.
+5. **The tools of the spike, not tested at this time.** They are in the folder
+   build/m1-138-spike of the checkout on the first machine, which git
+   ignores. The hook of decisions 765 and 770 as a measurement tool is
+   hook/sitecustomize.py; there are also hook_selftest.py, spike_run.py and
+   procmon_analyse.py, the scratch scripts of the measurements, and the logs
+   of the failed run. Before the spike, run hook_selftest.py, and then again
+   with `--plant open`, which must fail. Then let Process Monitor record a
+   short run of some script tests. Examine procmon_analyse.py on it, and
+   again with `--plant`, which must report a miss (decision 733). Then the
+   full runs, one tree at a time: the owner starts Process Monitor
+   (C:\Users\U439644\Procmon64.exe, as administrator, with the default
+   filter), and the assistant starts spike_run.py with `full`. Then
+   spike_run.py with `trace`, with no Process Monitor.
+6. **Found while the hook was written**, to examine before the code of
+   decision 770: a replacement of `os.stat` by a Python function changes the
+   checks such as `os.stat in os.supports_dir_fd`, which `shutil` makes when
+   it loads. With Python 3.14.0 on Windows, `os.supports_dir_fd` is empty,
+   thus `shutil.rmtree` does not change there. But `os.stat` is in
+   `os.supports_fd` and in `os.supports_follow_symlinks`, and a replacement
+   is not. On Linux, the replacement changes how `shutil.rmtree` works.
+7. Then question 7 goes to the owner again with the figures of the spike
+   (decision 769). No code starts before that ruling.
 
 ## Done when
 
