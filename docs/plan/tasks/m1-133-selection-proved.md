@@ -69,8 +69,9 @@ In this sequence since decision 721:
   scratch folder of the replay were removed on 2026-10-24 (decisions 734 and
   759). Before the removal, the work in `build/wt129` that was not committed
   was compared with `4495ea0`: the same changes, and the same bytes.
-- **`check`** passed in the two trees on 2026-10-24. `check-full` in the two
-  trees comes before the owner's push.
+- **`check`** passed in the two trees on 2026-10-24, and `check-full` at
+  `9253e87`. The owner pushed `9253e87` the same day at 07:03, from a terminal
+  of their own.
 
 ## Then
 
