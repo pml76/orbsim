@@ -359,10 +359,10 @@
   ],
   "causes": {
    "7": 12,
-   "2": 9,
    "1 changed": 9,
+   "1 not changed": 20,
+   "2": 9,
    "1": 24,
-   "1 not changed": 19,
    "8": 15,
    "by program only (B)": 14
   },
@@ -468,7 +468,7 @@
     "objects": [
      "orbsim_core_d.lib(Orbit.cpp.obj)"
     ],
-    "sort": "1 changed",
+    "sort": "1 not changed",
     "tests": 2
    },
    {
@@ -476,7 +476,7 @@
     "objects": [
      "orbsim_core_d.lib(Orbit.cpp.obj)"
     ],
-    "sort": "1 changed",
+    "sort": "1 not changed",
     "tests": 1
    },
    {
@@ -820,8 +820,8 @@
    "1": 39,
    "1 changed": 19,
    "7": 3,
-   "8": 18,
    "5": 81,
+   "8": 18,
    "4": 25,
    "by program only (B)": 202
   },

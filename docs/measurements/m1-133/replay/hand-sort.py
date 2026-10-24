@@ -30,16 +30,20 @@ CHANGED = {
     "0eb2c93": ["?orbitInfo@orb@@"],
     "e334905": ["?propagateElements@orb@@"],
     "937e49f": ["?eccentricToMeanAnomaly@orb@@", "?eccentricToTrueAnomaly@orb@@", "?meanToEccentricAnomaly@orb@@",
-                "?trueToEccentricAnomaly@orb@@", "?describe@orb@@",
-                "safeguardedRoot@V<lambda_1>@?0??meanToEccentricAnomaly",
-                "safeguardedRoot@V<lambda_2>@?0??meanToEccentricAnomaly"],
+                "?trueToEccentricAnomaly@orb@@", "?describe@orb@@"],
     "8bc7be7": ["?orbitInfo@orb@@", "?propagateElements@orb@@"],
     "73dc795": ["?split@orb@@", "?twoProduct@orb@@"],
     "5047abb": ["??$angleBetween@"],
     "2c5f1e8": ["?stateFromElements@orb@@"],
 }
 NOT_CHANGED = {
-    "937e49f": ["?solveUniversalAnomaly@", "safeguardedRoot@V<lambda_0>@?0??solveUniversalAnomaly"],
+    # The commit changes the text of none of these. Their code changes because
+    # the value of OrbitError::SolverDidNotConverge, which they return, goes
+    # from 4 to 5: the commit puts NoEccentricAnomaly before it. The three
+    # copies of safeguardedRoot keep their length, 1,226 bytes (decision 761).
+    "937e49f": ["?solveUniversalAnomaly@", "safeguardedRoot@V<lambda_0>@?0??solveUniversalAnomaly",
+                "safeguardedRoot@V<lambda_1>@?0??meanToEccentricAnomaly",
+                "safeguardedRoot@V<lambda_2>@?0??meanToEccentricAnomaly"],
     "8bc7be7": ["??$in@U?$derived_unit@Uradian", "??$numerical_value_in@", "?value@?$Scalar@"],
     "5047abb": ["??$?H$2Uone@mp_units", "??Korb@@", "?_Xlength@?$vector@Vstacktrace_entry"],
 }
@@ -52,10 +56,12 @@ def own_object(program: str) -> str:
 
 def sorted_by_hand(label: str, function: str, objects: list, programs: list, diff: set) -> str:
     """'1 changed', '1 not changed', '2', or 'unsorted'."""
-    if any(fragment in function for fragment in CHANGED.get(label, [])):
-        return "1 changed"
+    # NOT_CHANGED first: the name of a lambda holds the name of the function
+    # that holds the lambda, which can be in CHANGED (decision 761).
     if any(fragment in function for fragment in NOT_CHANGED.get(label, [])):
         return "1 not changed"
+    if any(fragment in function for fragment in CHANGED.get(label, [])):
+        return "1 changed"
     for program in programs:
         own = own_object(program)
         stem = pathlib.PurePosixPath(program).stem

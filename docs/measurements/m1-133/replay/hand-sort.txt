@@ -20,16 +20,16 @@ e334905 M1-118, finding 1.4: propagateElements refuses an unreachable anomaly
 adb1074 M1-118: the period at extreme scales and the probe script (decisions 4
    causes: {'7': 2, '8': 14, 'by program only (B)': 0}
 937e49f M1-118, findings 1.6 and 3.1: the anomaly converters report, and are c
-   causes: {'1': 24, '1 changed': 9, '1 not changed': 19, '2': 9, '7': 12, '8': 15, 'by program only (B)': 14}
+   causes: {'1': 24, '1 changed': 9, '1 not changed': 20, '2': 9, '7': 12, '8': 15, 'by program only (B)': 14}
    [1 changed] 2 tests: ?eccentricToMeanAnomaly@orb@@YA?AU?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@ | orbsim_core_d.lib(Orbit.cpp.obj)
    [1 changed] 1 tests: ?eccentricToTrueAnomaly@orb@@YA?AU?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@ | orbsim_core_d.lib(Orbit.cpp.obj)
    [1 changed] 2 tests: ?meanToEccentricAnomaly@orb@@YA?AV?$expected@U?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_ | orbsim_core_d.lib(Orbit.cpp.obj)
    [1 changed] 2 tests: ?trueToEccentricAnomaly@orb@@YA?AU?$Scalar@$2Uradian@angular@mp_units@@2U?$named_unit@$2V?$symbol_text@$02$02@ | orbsim_core_d.lib(Orbit.cpp.obj)
-   [1 changed] 2 tests: orbsim_core_d.lib(Orbit.cpp.obj)|??$safeguardedRoot@V<lambda_1>@?0??meanToEccentricAnomaly@orb@@YA?AV?$expecte | orbsim_core_d.lib(Orbit.cpp.obj)
-   [1 changed] 1 tests: orbsim_core_d.lib(Orbit.cpp.obj)|??$safeguardedRoot@V<lambda_2>@?0??meanToEccentricAnomaly@orb@@YA?AV?$expecte | orbsim_core_d.lib(Orbit.cpp.obj)
    [1 changed] 2 tests: ?describe@orb@@YA?AV?$basic_string_view@DU?$char_traits@D@std@@@std@@W4OrbitError@1@@Z | CMakeFiles/test_orbit_elements.dir/tests/test_orbit_elements.cpp.obj
    [1 changed] 2 tests: ?describe@orb@@YA?AV?$basic_string_view@DU?$char_traits@D@std@@@std@@W4OrbitError@1@@Z | CMakeFiles/test_orbit.dir/tests/test_orbit.cpp.obj
    [1 changed] 3 tests: ?describe@orb@@YA?AV?$basic_string_view@DU?$char_traits@D@std@@@std@@W4OrbitError@1@@Z | CMakeFiles/test_orbit_scales.dir/tests/test_orbit_scales.cpp.obj
+   [1 not changed] 2 tests: orbsim_core_d.lib(Orbit.cpp.obj)|??$safeguardedRoot@V<lambda_1>@?0??meanToEccentricAnomaly@orb@@YA?AV?$expecte | orbsim_core_d.lib(Orbit.cpp.obj)
+   [1 not changed] 1 tests: orbsim_core_d.lib(Orbit.cpp.obj)|??$safeguardedRoot@V<lambda_2>@?0??meanToEccentricAnomaly@orb@@YA?AV?$expecte | orbsim_core_d.lib(Orbit.cpp.obj)
    [1 not changed] 19 tests: orbsim_core_d.lib(Orbit.cpp.obj)|?solveUniversalAnomaly@?A0x8A323905@orb@@YA?AV?$expected@UUniversalSolution@? | orbsim_core_d.lib(Orbit.cpp.obj)
    [1 not changed] 15 tests: orbsim_core_d.lib(Orbit.cpp.obj)|??$safeguardedRoot@V<lambda_0>@?0??solveUniversalAnomaly@?A0x8A323905@orb@@YA | orbsim_core_d.lib(Orbit.cpp.obj)
    [2] 1 tests: ?run@?$Case@$2UCaseId@test@orbsim@@2V?$array@D$0IA@@std@@3D0EL@@0GF@@0HA@@0GM@@0GF@@0HC@@0CA@@0GF@@0HB@@0HF@@0 | CMakeFiles/test_orbit.dir/tests/test_orbit.cpp.obj
