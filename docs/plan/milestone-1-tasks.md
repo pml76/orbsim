@@ -1,6 +1,6 @@
 # Milestone 1 — the task queue
 
-Status: **planned 2026-09-08.** 137 tasks, in one order. (84 until 2026-09-13,
+Status: **planned 2026-09-08.** 138 tasks, in one order. (84 until 2026-09-13,
 when an audit found phase F had no gate although the rule below says every
 phase ends with one. The new task is **M1-85**, sitting between 77 and 78:
 renumbering seven tasks to make it "78" would have broken the identifiers that
@@ -55,7 +55,9 @@ postponed, none ruled yet. M1-135, a guard that every compiled file is linted,
 was ruled the same day and is built on a branch of its own; its line here
 lands with it, which makes the count 136. 136 until 2026-10-21, when the owner added the
 limits of the test selection: **M1-137**, after M1-133 and before M1-134 --
-decision 744.)
+decision 744. 137 until 2026-10-24, when the owner gave the instruction for a
+task from a finding of M1-133: **M1-138**, the script tests that run at each commit,
+proposed, its questions not ruled.)
 Which of them are done is in [`../STATUS.md`](../STATUS.md), not here.
 
 This is the working document for [milestone 1](milestone-1-earth.md): Earth, an
@@ -293,6 +295,7 @@ compilers' included -- passing.
 | [132](tasks/m1-132-function-level-selection.md) | Tests chosen function by function | 131 | A test reruns when what it ran changed |
 | [133](tasks/m1-133-selection-proved.md) | The selection proved, and measured | 132 | No failing test ever skipped |
 | [137](tasks/m1-137-selection-limits.md) | The limits of the test selection, measured and closed | 133 | Each limit of ADR 0028 measured, closed or named |
+| [138](tasks/m1-138-script-tests-each-commit.md) | The script tests that run at each commit -- **proposed, its questions not ruled**; after M1-137 if question 5 is ruled so | — | A script test reruns only when what it read changed |
 | [134](tasks/m1-134-mutants-chosen-like-tests.md) | Mutation passes chosen the way the tests are | 133 | A mutant reruns when what it ran changed |
 | [127](tasks/m1-127-asan-and-refactors.md) | The `asan` preset and four unasked-for refactors, reviewed | 134 | Two open sections ruled |
 | [130](tasks/m1-130-code-as-modules.md) | The code as C++20 modules, bottom up, with libraries as the fallback | 127 | Levels a change cannot cross |
