@@ -132,3 +132,38 @@ Debug (decision 715).
 - A test that runs through a script that is not one of the seven of decision
   703 keeps the bytes of its programs, which is on the safe side, until the
   driver also names that script.
+
+## Measured by M1-133, 2026-10-24
+
+[M1-133](../plan/tasks/m1-133-selection-proved.md) measured this rule on
+the mutants of M1-118 and on its 16 commits (register decisions 552, 592,
+719 and 720-761). [Its measurement record](../measurements/m1-133-selection-proved.md)
+holds the figures, the method and the limits.
+
+- **No skipped test failed.** For each of the 20 mutants of
+  `scripts/mutants/m1-118.json`, all 590 tests ran in each `check` tree. No
+  test that the driver skipped failed, in Debug or in RelWithDebInfo. The
+  check found a planted fault first. For each mutant that got to the tests,
+  the driver selected 27 to 90 of the 590 tests.
+- **One correction.** The check found that `mutants_due_probe_shaders`
+  failed when the bytes of the application changed, but no function that the
+  probe tests entered changed. Since `75d2a9f`, the driver gives the hash of
+  the current application to the stored shaders of each test that it skips
+  as unchanged (decisions 737-739).
+- **The runs that the rule removes.** The 16 commits of M1-118 ran again in
+  Debug with this rule. The C++ tests ran 434 times by function, against
+  1,396 times by program with a record of its own: 31.1 %. Their time was
+  468.23 s against 932.53 s: 50.2 %. All tests ran 965 times by function and
+  2,029 times by program, of 8,771 possible runs.
+- **The spike's 18 % is a different ratio** (decision 757). The tree of the
+  spike did not link reproducibly. Thus it counted 4,646 runs of a C++ test
+  by program, where the replay counts 1,396.
+- **What the rule does not remove.** 16 tests run at each commit, because
+  they read files that each commit changes. They use 121.56 s at each commit,
+  64 % of the time by function. A change to a file in `scripts/` runs 114
+  tests, and a change to `cmake/` also runs the tests of the cautious rule.
+- **On the safe side.** A function can change its compiled code with no
+  change to its text, and its tests then run. At `937e49f`, a new enumerator
+  changed a value that four functions return (decision 761). At `5047abb`,
+  the compiler gave different code to two operators that the commit did not
+  edit.
