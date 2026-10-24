@@ -1,9 +1,9 @@
 # M1-138 — The script tests that run at each commit
 
-Phase: B | Status: **started 2026-10-24. Its questions 1 to 4 and 6 to 12
-are ruled (decisions 764-775 and 777). The spike is done
-([its record](../../measurements/m1-138-spike.md)). Questions 7, 13 and 14
-below go to the owner before the code**
+Phase: B | Status: **started 2026-10-24. Its questions 1 to 14 are ruled
+(decisions 764-775 and 777-780). The spike is done
+([its record](../../measurements/m1-138-spike.md)). Next: the questions about
+how the code is done, then the code**
 Prerequisites: [M1-133](m1-133-selection-proved.md), which found the cost. It
 comes before M1-137 (decision 763).
 Decided by: **decision 763**, its position in the queue, and **decisions
@@ -360,15 +360,13 @@ Thus for these tests only rule 2 goes, when the trace shows no other child.
    (decision 773).
 3. *Done 2026-10-24.* The spike (decision 766), with only a measurement as
    its output: [the record](../../measurements/m1-138-spike.md).
-4. Question 7 to the owner again, with the figures of the spike (decision
-   769), and questions 13 and 14, which come from the spike and agreement
-   10.
+4. *Done 2026-10-24.* Question 7 to the owner again, with the figures of the
+   spike, and questions 13 and 14 (decisions 778-780).
 5. The code: the self-test cases of the driver first, seen to fail; then the
-   read record of the Python processes (decisions 765, 770 and 771), the trace
-   of the `cmake -P` tests (decisions 768 and 775), and the rule for the
-   children (decision 769).
-6. The "after" figures, in the two trees: one change to documents only, and
-   the change of decision 773.
+   read record of the Python processes (decisions 765, 770, 771 and 780), the
+   trace of the `cmake -P` tests (decisions 768 and 775), and the rules for
+   the children (decision 778).
+6. *Removed by decision 779:* the "after" figures.
 7. The safety, as decision 767 says.
 8. `check` in the two trees, the commit, the mutant file of the task after
    its commit and the commit of its record and `STATUS.md`, `check-full` in
@@ -412,10 +410,11 @@ Thus for these tests only rule 2 goes, when the trace shows no other child.
    question about a file, in 148 Python processes. Decision 777 lets that
    recording count for the two trees.
 
-The questions below go to the owner all at one time, before the code.
+The questions below went to the owner all at one time, before the code.
 
 **7 (again, with the figures of the spike). The tests with a child program
-that is not Python** (decision 769; the record, sections 5 and 7).
+that is not Python** (decision 769; the record, sections 5 and 7). *Ruled by
+decision 778: B.*
 
 - A. Rules 1 and 2 stay for each such test. Estimate: a change to documents
   runs 16 tests in Debug, about 97 s summed, and the test step stays at
@@ -458,6 +457,7 @@ that is not Python** (decision 769; the record, sections 5 and 7).
 not prevent a bug. The time of the trace is measured (the record, section
 6). Not measured: the time that the hook adds (decision 766), and the "after"
 figures of decision 773, which "Done when" compares with the estimate.
+*Ruled by decision 779: A.*
 
 - **A (recommended). No more of these measurements.** The "after" figures,
   the time of the hook and the comparison with the estimate go out of "Done
@@ -475,6 +475,7 @@ only when `os.stat` is in the last two (`shutil.py` of Python 3.14.0, lines
 804 to 807). With Python 3.14.0 on Windows, `os.supports_dir_fd` is empty,
 thus nothing changes there. On Linux, the replacement changes how
 `shutil.rmtree` works, and `check-full` runs there before a milestone.
+*Ruled by decision 780: A.*
 
 - **A (recommended). The module puts each replacement into each of these
   sets that holds the function before the replacement**, and a self-test
@@ -489,15 +490,13 @@ thus nothing changes there. On Linux, the replacement changes how
 ## Done when
 
 - [x] Each question above ruled before its code; the rulings in the register
-      (decisions 764-775).
-- [ ] Question 7 ruled again, with the figures of the spike (decision 769).
+      (decisions 764-775 and 777-780).
+- [x] Question 7 ruled again, with the figures of the spike (decision 778).
 - [x] The measurements of question 3, recorded: [the record of the
       spike](../../measurements/m1-138-spike.md).
 - [ ] A script test runs only when a file that it read changed, or by a rule
-      that the task document gives with its cause. This is measured before and
-      after, in the two `check` trees. One change is to documents only, and
-      one is to a record file in `scripts/`. The figures are compared with the
-      estimate above.
+      that the task document gives with its cause. *Decision 779: with no
+      measurement of time, and no comparison with the estimate.*
 - [ ] The safety proved as question 4 rules.
 - [ ] `check` passes in the two trees. The task's mutant file has run after
       its commit, and its record is committed. A commit at the end; the push
