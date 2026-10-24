@@ -452,3 +452,11 @@ and the owner pushed it the same day.
 commit, which M1-133 found. The next session starts with its questions 1 to 4,
 all at one time, and with `STATUS.md`. Check each measurement of its task
 document again first, because the trees move.
+
+**Later on 2026-10-24** the owner ruled the questions of M1-138, decisions
+764-775, and its work started. The spike of decision 766 comes first, with
+Process Monitor, which the owner starts. Then question 7 goes to the owner
+again with the figures of the spike (decision 769). The first `check` of
+that session ran all 590 tests in each tree, because the `PATH` of the
+session was different from the `PATH` at the last full run (decision 501;
+N8 in the task document).

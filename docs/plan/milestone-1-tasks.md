@@ -57,8 +57,8 @@ lands with it, which makes the count 136. 136 until 2026-10-21, when the owner a
 limits of the test selection: **M1-137**, after M1-133 and before M1-134 --
 decision 744. 137 until 2026-10-24, when the owner gave the instruction for a
 task from a finding of M1-133: **M1-138**, the script tests that run at each commit,
-proposed, its questions not ruled; the same day the owner made it the next
-task, before M1-137 -- decision 763.)
+proposed; the same day the owner made it the next task, before M1-137 --
+decision 763 -- and ruled its questions -- decisions 764-775.)
 Which of them are done is in [`../STATUS.md`](../STATUS.md), not here.
 
 This is the working document for [milestone 1](milestone-1-earth.md): Earth, an
