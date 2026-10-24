@@ -16,7 +16,8 @@ other than its programs (each cause but 1, 2, 3 and 4), or when the bytes of
 one of its programs differ from its record, or when a test that it depends on
 runs (DEPENDS). Each test that runs gets the bytes of this commit in its
 record. It supposes that each test that runs by program only passes; the
-function parts of its programs are unchanged.
+function parts of its programs are unchanged. It also gives the time of the
+C++ tests, by function and by program, from the same times (decision 757).
 
     shadow.py <label>...      the commits in sequence, the base before them
 """
@@ -128,12 +129,22 @@ def main() -> int:
                 current = (now.get(key) or {}).get("bytes")
                 if current is not None:
                     record[(name, key)] = current
-        seconds = sum(times.get(n, first.get(n, (0.0, None))[0]) for n in chosen)
+        def seconds_of(names) -> float:
+            return round(sum(times.get(n, first.get(n, (0.0, None))[0]) for n in names), 2)
+
+        by_function = set(function["selected"])
+        # The time of the C++ tests, by function and by program, is the
+        # figure that compares with the spike, which counted the C++ tests only
+        # (decision 757).
         rows.append({"label": label, "by function": function["all"], "by program, the driver's store":
                      result["program"]["all"], "by program, a record of its own": len(chosen),
                      "own record: C++": len(chosen & cpp), "own record: GPU": len(chosen & gpu),
-                     "own record: by program only": len(chosen - set(function["selected"])),
-                     "own record: seconds": round(seconds, 2)})
+                     "own record: by program only": len(chosen - by_function),
+                     "own record: seconds": seconds_of(chosen),
+                     "own record: C++ seconds": seconds_of(chosen & cpp),
+                     "by function: C++": len(by_function & cpp),
+                     "by function: seconds": seconds_of(by_function),
+                     "by function: C++ seconds": seconds_of(by_function & cpp)})
         print(rows[-1])
     (OUT / "shadow.json").write_bytes(json.dumps(rows, indent=1).encode("utf-8"))
     return 0

@@ -7,7 +7,11 @@
   "own record: C++": 1,
   "own record: GPU": 1,
   "own record: by program only": 0,
-  "own record: seconds": 121.56
+  "own record: seconds": 121.56,
+  "own record: C++ seconds": 0.17,
+  "by function: C++": 1,
+  "by function: seconds": 121.56,
+  "by function: C++ seconds": 0.17
  },
  {
   "label": "53f929b",
@@ -17,7 +21,11 @@
   "own record: C++": 1,
   "own record: GPU": 1,
   "own record: by program only": 0,
-  "own record: seconds": 121.56
+  "own record: seconds": 121.56,
+  "own record: C++ seconds": 0.17,
+  "by function: C++": 1,
+  "by function: seconds": 121.56,
+  "by function: C++ seconds": 0.17
  },
  {
   "label": "4963695",
@@ -27,7 +35,11 @@
   "own record: C++": 436,
   "own record: GPU": 63,
   "own record: by program only": 432,
-  "own record: seconds": 502.4
+  "own record: seconds": 502.4,
+  "own record: C++ seconds": 232.86,
+  "by function: C++": 55,
+  "by function: seconds": 152.02,
+  "by function: C++ seconds": 24.71
  },
  {
   "label": "0eb2c93",
@@ -37,7 +49,11 @@
   "own record: C++": 42,
   "own record: GPU": 1,
   "own record: by program only": 12,
-  "own record: seconds": 137.34
+  "own record: seconds": 137.34,
+  "own record: C++ seconds": 12.87,
+  "by function: C++": 30,
+  "by function: seconds": 133.84,
+  "by function: C++ seconds": 9.37
  },
  {
   "label": "e334905",
@@ -47,7 +63,11 @@
   "own record: C++": 43,
   "own record: GPU": 1,
   "own record: by program only": 23,
-  "own record: seconds": 137.42
+  "own record: seconds": 137.42,
+  "own record: C++ seconds": 12.95,
+  "by function: C++": 20,
+  "by function: seconds": 129.88,
+  "by function: C++ seconds": 5.41
  },
  {
   "label": "1399abf",
@@ -57,7 +77,11 @@
   "own record: C++": 261,
   "own record: GPU": 63,
   "own record: by program only": 290,
-  "own record: seconds": 431.09
+  "own record: seconds": 431.09,
+  "own record: C++ seconds": 164.4,
+  "by function: C++": 22,
+  "by function: seconds": 137.67,
+  "by function: C++ seconds": 13.2
  },
  {
   "label": "adb1074",
@@ -67,7 +91,11 @@
   "own record: C++": 1,
   "own record: GPU": 1,
   "own record: by program only": 0,
-  "own record: seconds": 121.56
+  "own record: seconds": 121.56,
+  "own record: C++ seconds": 0.17,
+  "by function: C++": 1,
+  "by function: seconds": 121.56,
+  "by function: C++ seconds": 0.17
  },
  {
   "label": "937e49f",
@@ -77,7 +105,11 @@
   "own record: C++": 53,
   "own record: GPU": 1,
   "own record: by program only": 14,
-  "own record: seconds": 140.49
+  "own record: seconds": 140.49,
+  "own record: C++ seconds": 16.03,
+  "by function: C++": 39,
+  "by function: seconds": 135.2,
+  "by function: C++ seconds": 10.73
  },
  {
   "label": "8bc7be7",
@@ -87,7 +119,11 @@
   "own record: C++": 54,
   "own record: GPU": 1,
   "own record: by program only": 21,
-  "own record: seconds": 140.59
+  "own record: seconds": 140.59,
+  "own record: C++ seconds": 16.13,
+  "by function: C++": 33,
+  "by function: seconds": 134.26,
+  "by function: C++ seconds": 9.79
  },
  {
   "label": "73dc795",
@@ -97,7 +133,11 @@
   "own record: C++": 86,
   "own record: GPU": 1,
   "own record: by program only": 51,
-  "own record: seconds": 154.5
+  "own record: seconds": 154.5,
+  "own record: C++ seconds": 30.03,
+  "by function: C++": 35,
+  "by function: seconds": 141.19,
+  "by function: C++ seconds": 16.72
  },
  {
   "label": "5047abb",
@@ -107,7 +147,11 @@
   "own record: C++": 272,
   "own record: GPU": 63,
   "own record: by program only": 202,
-  "own record: seconds": 446.17
+  "own record: seconds": 446.17,
+  "own record: C++ seconds": 167.57,
+  "by function: C++": 70,
+  "by function: seconds": 381.57,
+  "by function: C++ seconds": 102.97
  },
  {
   "label": "2c5f1e8",
@@ -117,7 +161,11 @@
   "own record: C++": 55,
   "own record: GPU": 1,
   "own record: by program only": 19,
-  "own record: seconds": 140.68
+  "own record: seconds": 140.68,
+  "own record: C++ seconds": 16.21,
+  "by function: C++": 36,
+  "by function: seconds": 136.32,
+  "by function: C++ seconds": 11.85
  },
  {
   "label": "27cd31b",
@@ -127,7 +175,11 @@
   "own record: C++": 30,
   "own record: GPU": 61,
   "own record: by program only": 0,
-  "own record: seconds": 359.77
+  "own record: seconds": 359.77,
+  "own record: C++ seconds": 87.6,
+  "by function: C++": 30,
+  "by function: seconds": 359.77,
+  "by function: C++ seconds": 87.6
  },
  {
   "label": "3479028",
@@ -137,7 +189,11 @@
   "own record: C++": 30,
   "own record: GPU": 61,
   "own record: by program only": 0,
-  "own record: seconds": 359.77
+  "own record: seconds": 359.77,
+  "own record: C++ seconds": 87.6,
+  "by function: C++": 30,
+  "by function: seconds": 359.77,
+  "by function: C++ seconds": 87.6
  },
  {
   "label": "b554d5d",
@@ -147,7 +203,11 @@
   "own record: C++": 30,
   "own record: GPU": 61,
   "own record: by program only": 0,
-  "own record: seconds": 359.77
+  "own record: seconds": 359.77,
+  "own record: C++ seconds": 87.6,
+  "by function: C++": 30,
+  "by function: seconds": 359.77,
+  "by function: C++ seconds": 87.6
  },
  {
   "label": "1edfbc4",
@@ -157,6 +217,10 @@
   "own record: C++": 1,
   "own record: GPU": 1,
   "own record: by program only": 0,
-  "own record: seconds": 121.56
+  "own record: seconds": 121.56,
+  "own record: C++ seconds": 0.17,
+  "by function: C++": 1,
+  "by function: seconds": 121.56,
+  "by function: C++ seconds": 0.17
  }
 ]
