@@ -230,7 +230,9 @@ with the three items that N2 to N4 add.*
   edit of a script after the measurement can start to read a document with no
   report, which is the fault of B.
 
-**3. What is measured before the work?** *Ruled by decision 766: A.*
+**3. What is measured before the work?** *Ruled by decision 766: A.
+Amended by decision 777: the complete Debug recording counts for the two
+trees.*
 
 - **A (recommended). A spike, with only a measurement as its output.** One
   full test run in each tree with Process Monitor, as decision 612 did, and
