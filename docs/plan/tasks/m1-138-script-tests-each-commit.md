@@ -1,8 +1,9 @@
 # M1-138 — The script tests that run at each commit
 
 Phase: B | Status: **started 2026-10-24. Its questions 1 to 4 and 6 to 12
-are ruled (decisions 764-775). The next session starts with "Left for the
-next session" below**
+are ruled (decisions 764-775 and 777). The spike is done
+([its record](../../measurements/m1-138-spike.md)). Questions 7, 13 and 14
+below go to the owner before the code**
 Prerequisites: [M1-133](m1-133-selection-proved.md), which found the cost. It
 comes before M1-137 (decision 763).
 Decided by: **decision 763**, its position in the queue, and **decisions
@@ -355,12 +356,13 @@ Thus for these tests only rule 2 goes, when the trace shows no other child.
 1. The rulings as register rows, decisions 764-775, and this document,
    `STATUS.md`, the briefing and the queue page. A commit of documents only;
    `check` before it gives the "before" figures of a document change (N8).
-2. The "before" figures of a change to a record file (decision 773).
-3. The spike (decision 766), with only a measurement as its output, recorded
-   in `docs/measurements/`. The owner starts Process Monitor.
+2. *Done 2026-10-24.* The "before" figures of a change to a record file
+   (decision 773).
+3. *Done 2026-10-24.* The spike (decision 766), with only a measurement as
+   its output: [the record](../../measurements/m1-138-spike.md).
 4. Question 7 to the owner again, with the figures of the spike (decision
-   769). If the figures change a different ruling, that question goes to the
-   owner again too.
+   769), and questions 13 and 14, which come from the spike and agreement
+   10.
 5. The code: the self-test cases of the driver first, seen to fail; then the
    read record of the Python processes (decisions 765, 770 and 771), the trace
    of the `cmake -P` tests (decisions 768 and 775), and the rule for the
@@ -372,10 +374,7 @@ Thus for these tests only rule 2 goes, when the trace shows no other child.
    its commit and the commit of its record and `STATUS.md`, `check-full` in
    the two trees, and the push on the owner's word.
 
-## Left for the next session (2026-10-24)
-
-The owner ended the first session of the work. Start here, in this
-sequence.
+## The work at this time, and the questions after the spike (2026-10-24)
 
 1. *Done 2026-10-24.* **The handover is committed**, after `check` passed in
    the two trees. It changes `CLAUDE.md` (working agreement 10), the register
@@ -396,21 +395,7 @@ sequence.
    *Later on 2026-10-24*, `check` ran again: it passed in Debug, where 53
    tests ran, and in RelWithDebInfo, where 133 ran. The five time-outs did
    not come again, and their cause stays unknown.
-3. **Working agreement 10 and this task: a question for the owner.**
-   Agreement 10 (decision 776) came after decisions 766, 768 and 773. These
-   decisions include measurements of time that do not prevent a bug: the
-   time that the hook adds (decision 766), the time that CMake's trace adds
-   (decision 768), the "after" figures of decision 773, and the figures
-   compared with the estimate in "Done when". Do these measurements stay?
-   - **A (recommended). Remove them.** Keep each measurement that prevents a
-     bug: Process Monitor compared with the records of the hook, the result
-     of each `cmake -P` test with the trace, and the mutant check of decision
-     767. Cost: the task gives no measured decrease of time; only the
-     estimate above shows it.
-   - B. Keep them. Decisions 766, 768 and 773 include them, and agreement 10
-     does not stop a measurement that the owner tells you to make. Cost:
-     about one hour more of runs of `check` and of the spike.
-4. **The figures that were measured before agreement 10.** A change to
+3. **The figures that were measured before agreement 10.** A change to
    documents only, the `check` before `a4e8bad`: in Debug, 22 tests ran and
    568 were skipped, their times summed to 53.24 s, the test step used
    44.3 s and all of `check` 46.5 s. In RelWithDebInfo: 28 ran, 562 were
@@ -420,35 +405,94 @@ sequence.
    test step 255.5 s and all of `check` 257.6 s. In RelWithDebInfo: 133
    ran, 457 were skipped, 486.29 s, 120.02 s, 127.7 s and 130.2 s. 133, not
    132: the test that the driver does not store also ran.
-5. **The tools of the spike, not tested at this time.** They are in the folder
-   build/m1-138-spike of the checkout on the first machine, which git
-   ignores. The hook of decisions 765 and 770 as a measurement tool is
-   hook/sitecustomize.py; there are also hook_selftest.py, spike_run.py and
-   procmon_analyse.py, the scratch scripts of the measurements, and the logs
-   of the failed run. Before the spike, run hook_selftest.py, and then again
-   with `--plant open`, which must fail. Then let Process Monitor record a
-   short run of some script tests. Examine procmon_analyse.py on it, and
-   again with `--plant`, which must report a miss (decision 733). Then the
-   full runs, one tree at a time: the owner starts Process Monitor
-   (C:\Users\U439644\Procmon64.exe, as administrator, with the default
-   filter), and the assistant starts spike_run.py with `full`. Then
-   spike_run.py with `trace`, with no Process Monitor.
-6. **Found while the hook was written**, to examine before the code of
-   decision 770: a replacement of `os.stat` by a Python function changes the
-   checks such as `os.stat in os.supports_dir_fd`, which `shutil` makes when
-   it loads. With Python 3.14.0 on Windows, `os.supports_dir_fd` is empty,
-   thus `shutil.rmtree` does not change there. But `os.stat` is in
-   `os.supports_fd` and in `os.supports_follow_symlinks`, and a replacement
-   is not. On Linux, the replacement changes how `shutil.rmtree` works.
-7. Then question 7 goes to the owner again with the figures of the spike
-   (decision 769). No code starts before that ruling.
+4. *Done 2026-10-24.* **The spike**, with its tools first tested on planted
+   faults: [the record](../../measurements/m1-138-spike.md), and the scripts
+   in [`../../measurements/m1-138/`](../../measurements/m1-138/). In the
+   complete Debug recording, the hook missed no file read, no listing and no
+   question about a file, in 148 Python processes. Decision 777 lets that
+   recording count for the two trees.
+
+The questions below go to the owner all at one time, before the code.
+
+**7 (again, with the figures of the spike). The tests with a child program
+that is not Python** (decision 769; the record, sections 5 and 7).
+
+- A. Rules 1 and 2 stay for each such test. Estimate: a change to documents
+  runs 16 tests in Debug, about 97 s summed, and the test step stays at
+  about 44 s; a change to a record file runs about 23 tests, about 335 s.
+- **B (recommended). A measured rule for each type of command in the
+  list below; rules 1 and 2 for each other type.**
+  1. Each program that a Python script test starts: its bytes, the libraries
+     that it loads, and each path on its command line, also a path after
+     `=`, as in `-c core.hooksPath=<path>`. A folder gives each file in it
+     that git does not ignore. This is decision 775, for the Python tests.
+  2. `ctest --show-only=json-v1`: the CTest files of the build tree.
+     Measured: it reads only the build tree.
+  3. `ninja -t <tool>`, also with `-C <tree>`: the four Ninja files of the
+     tree, and that each file that it queries is there, or is not there, as
+     before. Measured: it reads only these four files, and queries 900
+     object files.
+  4. `git ls-files` in the repository: the names that it gives. Measured: it
+     reads only `.git`.
+  5. A program with its working folder not in the repository or the tree:
+     rule 1 only. Measured: of 667 such processes, each one that read or
+     queried a file in the repository read only a path on its own
+     command line, or its own program file and its folder in the tree.
+  6. Each other type of command, for example `clang++`, `cmd`, `lld-link`, and a
+     different `git` command in the repository: rules 1 and 2 stay.
+
+  Estimate: a change to documents runs 3 tests in Debug (`float_equal_guard`,
+  `reproducible_build`, and the test that the driver does not store), about
+  32 s summed; the test step about 30 s, because `float_equal_guard` alone
+  uses about 25 s. A change to a record file runs about 9 tests, about 61 s
+  summed. Cost: code for six rules, each with a self-test case. A rule fits
+  only its measured type of command, thus a new type keeps rules 1 and 2.
+- C. B, and a rule for `clang++`: the files of `src/`, `tests/` and the tree
+  that it read, and that none of the about 300 header names that it
+  queries at the root is there. Estimate: a change to documents
+  runs 1 test. Cost: the most code, and the rule depends on the search path
+  of the compiler, which a different flag can change.
+
+**13. Working agreement 10 and decisions 766, 768 and 773.** Agreement 10
+(decision 776) came after them. They include measurements of time that do
+not prevent a bug. The time of the trace is measured (the record, section
+6). Not measured: the time that the hook adds (decision 766), and the "after"
+figures of decision 773, which "Done when" compares with the estimate.
+
+- **A (recommended). No more of these measurements.** The "after" figures,
+  the time of the hook and the comparison with the estimate go out of "Done
+  when". Each measurement that prevents a bug stays: the mutant check, and
+  the records compared with Process Monitor (decision 767). Cost: the task
+  gives no measured decrease of time; only the estimate shows it.
+- B. Keep them, because decisions 766 and 773 include them. Cost: about one
+  hour of runs of `check` and of the hook.
+
+**14. The replacement of `os.stat` and the sets of `os`** (decision 770; the
+record, section 7). A Python function that replaces `os.stat` is not in
+`os.supports_fd`, `os.supports_follow_symlinks` and `os.supports_dir_fd`,
+which `shutil` examines when it loads: it uses its safe form of `rmtree`
+only when `os.stat` is in the last two (`shutil.py` of Python 3.14.0, lines
+804 to 807). With Python 3.14.0 on Windows, `os.supports_dir_fd` is empty,
+thus nothing changes there. On Linux, the replacement changes how
+`shutil.rmtree` works, and `check-full` runs there before a milestone.
+
+- **A (recommended). The module puts each replacement into each of these
+  sets that holds the function before the replacement**, and a self-test
+  makes sure of it. Thus `shutil` gives the same answers. Cost: some lines
+  and one self-test case.
+- B. No replacement of `os.stat` and `os.lstat`; only the functions of
+  `os.path`. Cost: `getsize`, `getmtime` and `stat()` of `pathlib` are not
+  seen, which decision 770 includes.
+- C. Accept the change on Linux. Cost: a test can give a different result
+  in the Linux trees only.
 
 ## Done when
 
 - [x] Each question above ruled before its code; the rulings in the register
       (decisions 764-775).
 - [ ] Question 7 ruled again, with the figures of the spike (decision 769).
-- [ ] The measurements of question 3, recorded.
+- [x] The measurements of question 3, recorded: [the record of the
+      spike](../../measurements/m1-138-spike.md).
 - [ ] A script test runs only when a file that it read changed, or by a rule
       that the task document gives with its cause. This is measured before and
       after, in the two `check` trees. One change is to documents only, and

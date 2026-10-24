@@ -1,0 +1,3 @@
+{"label": "changed", "tree": "debug", "exit": 0, "whole_s": 257.6, "ran": 133, "skipped": 457, "ctest_real_s": 243.53, "summed_s": 547.89, "cases_in_report": 133, "test_step_s": 255.549}
+{"label": "changed", "tree": "relwithdebinfo", "exit": 0, "whole_s": 130.2, "ran": 133, "skipped": 457, "ctest_real_s": 120.02, "summed_s": 486.29, "cases_in_report": 133, "test_step_s": 127.662}
+{"label": "restored", "tree": "debug", "exit": 1, "whole_s": 10275.5, "ran": 133, "skipped": 457, "ctest_real_s": 10258.62, "summed_s": 16557.39, "cases_in_report": 133, "test_step_s": 255.549}

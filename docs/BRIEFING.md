@@ -467,6 +467,7 @@ N8 in the task document).
 **At the end of that session** the owner added working agreement 10
 (decision 776): no measurement that does not prevent a bug, unless the owner
 tells you to make it. A `check` in Debug failed one time with five tests at
-their time limit; the next `check` passed, and the cause stays unknown. The
-next session starts with the list "Left for the next session" in M1-138's
-task document.
+their time limit; the next `check` passed, and the cause stays unknown. Then
+the spike was done (decision 777; its record is in `docs/measurements/`), and
+questions 7, 13 and 14 of M1-138's task document go to the owner before the
+code.

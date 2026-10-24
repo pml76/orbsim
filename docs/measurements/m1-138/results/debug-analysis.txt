@@ -1,0 +1,17 @@
+events in each minute of the recording: [('7:32 PM', 120542), ('7:33 PM', 300115), ('7:34 PM', 322746), ('7:35 PM', 296385), ('7:36 PM', 236231), ('7:37 PM', 132815), ('7:38 PM', 75154), ('7:39 PM', 53697), ('7:40 PM', 29303)]
+processes: 2048; with a script test: 1337; script tests seen: 102 of 102
+Python processes compared with their logs: 148
+     213  (examine) a query of a folder with no probe line
+            ('abort_listener', 'c:\\users\\u439644\\projects\\untitled\\build\\debug')
+            ('abort_listener', 'c:\\users\\u439644\\projects\\untitled\\build\\m1-138-spike\\full-debug2')
+            ('abort_listener_self_test', 'c:\\users\\u439644\\projects\\untitled\\build\\debug')
+            ('abort_listener_self_test', 'c:\\users\\u439644\\projects\\untitled\\build\\m1-138-spike\\full-debug2')
+            ('accept_golden', 'c:\\users\\u439644\\projects\\untitled\\build\\debug')
+            ('accept_golden', 'c:\\users\\u439644\\projects\\untitled\\build\\m1-138-spike\\full-debug2')
+            ('accept_golden_self_test', 'c:\\users\\u439644\\projects\\untitled\\build\\debug')
+            ('accept_golden_self_test', 'c:\\users\\u439644\\projects\\untitled\\build\\m1-138-spike\\full-debug2')
+            ('compiled_code_self_test', 'c:\\users\\u439644\\projects\\untitled\\build\\debug')
+            ('compiled_code_self_test', 'c:\\users\\u439644\\projects\\untitled\\build\\m1-138-spike\\full-debug2')
+            ('configure_current', 'c:\\users\\u439644\\projects\\untitled\\build\\debug')
+            ('configure_current', 'c:\\users\\u439644\\projects\\untitled\\build\\m1-138-spike\\full-debug2')
+      47  (not a fault) a launcher of the interpreter
