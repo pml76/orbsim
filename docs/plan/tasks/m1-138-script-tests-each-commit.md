@@ -1,14 +1,15 @@
 # M1-138 — The script tests that run at each commit
 
-Phase: B | Status: **proposed 2026-10-24; its questions not ruled**
-Prerequisites: [M1-133](m1-133-selection-proved.md), which found the cost;
-question 5 gives its position in the queue
-Decided by: **nothing at this time.** The owner gave the instruction for this
-task on 2026-10-24, from a finding of M1-133. The questions below go to the
-owner before the work starts, all at one time (working agreement 1). No part
-of this task starts until each of them is ruled, and the rulings go into the
-register, [`../milestone-1-decisions.md`](../milestone-1-decisions.md) section
-9.
+Phase: B | Status: **the next task (decision 763); its questions 1 to 4 not
+ruled**
+Prerequisites: [M1-133](m1-133-selection-proved.md), which found the cost. It
+comes before M1-137 (decision 763).
+Decided by: **decision 763**, its position in the queue, ruled 2026-10-24. The
+owner gave the instruction for this task on 2026-10-24, from a finding of
+M1-133. Questions 1 to 4 below go to the owner before the work starts, all at
+one time (working agreement 1). No part of this task starts until each of them
+is ruled, and the rulings go into the register,
+[`../milestone-1-decisions.md`](../milestone-1-decisions.md) section 9.
 Builds on: [M1-129](m1-129-tests-by-fingerprint.md)'s fingerprints and read
 records (decisions 489, 498, 500, 510, 527 and 531),
 [M1-132](m1-132-function-level-selection.md) and M1-133.
@@ -99,8 +100,9 @@ trees move.
   files. A test with a child process that is not Python keeps the current
   rule, until a measurement shows what the child reads (question 3). Cost:
   code in the driver, and a module that each Python process of a test loads at
-  its start. Also, M1-137, item 3, must then compare the read records with the
-  files that the tests open.
+  its start. Also, the read records must then be compared with the files
+  that the tests open. M1-137, item 3, does that, but it comes after this task
+  (decision 763), thus questions 3 and 4 include it here.
 - B. The files of each test, written by hand in `CMakeLists.txt`. Cost:
   decisions 500, 510 and 531 refused that, because it goes out of date with no
   report.
@@ -132,7 +134,8 @@ trees move.
 - B. The task's own mutant file only. Cost: it proves the code of the task,
   but not that the skipped script tests are safe.
 
-**5. Where in the queue?**
+**5. Where in the queue?** *Ruled by decision 763, 2026-10-24: next, before
+M1-137.* The alternatives as they were put:
 
 - **A (recommended). After M1-137 and before M1-134.** M1-137, item 3,
   compares the read records with the files that the tests open, child

@@ -57,7 +57,8 @@ lands with it, which makes the count 136. 136 until 2026-10-21, when the owner a
 limits of the test selection: **M1-137**, after M1-133 and before M1-134 --
 decision 744. 137 until 2026-10-24, when the owner gave the instruction for a
 task from a finding of M1-133: **M1-138**, the script tests that run at each commit,
-proposed, its questions not ruled.)
+proposed, its questions not ruled; the same day the owner made it the next
+task, before M1-137 -- decision 763.)
 Which of them are done is in [`../STATUS.md`](../STATUS.md), not here.
 
 This is the working document for [milestone 1](milestone-1-earth.md): Earth, an
@@ -294,8 +295,8 @@ compilers' included -- passing.
 | [136](tasks/m1-136-fuzz-trees-lint-deps.md) | The fuzz trees' lint steps re-run on the fuzzers' objects -- **proposed, its questions not yet ruled**; after M1-135 once that lands | — | `lint_deps` passing in a fuzz tree |
 | [132](tasks/m1-132-function-level-selection.md) | Tests chosen function by function | 131 | A test reruns when what it ran changed |
 | [133](tasks/m1-133-selection-proved.md) | The selection proved, and measured | 132 | No failing test ever skipped |
+| [138](tasks/m1-138-script-tests-each-commit.md) | The script tests that run at each commit -- **next (decision 763); its questions 1 to 4 not ruled** | 133 | A script test reruns only when what it read changed |
 | [137](tasks/m1-137-selection-limits.md) | The limits of the test selection, measured and closed | 133 | Each limit of ADR 0028 measured, closed or named |
-| [138](tasks/m1-138-script-tests-each-commit.md) | The script tests that run at each commit -- **proposed, its questions not ruled**; after M1-137 if question 5 is ruled so | — | A script test reruns only when what it read changed |
 | [134](tasks/m1-134-mutants-chosen-like-tests.md) | Mutation passes chosen the way the tests are | 133 | A mutant reruns when what it ran changed |
 | [127](tasks/m1-127-asan-and-refactors.md) | The `asan` preset and four unasked-for refactors, reviewed | 134 | Two open sections ruled |
 | [130](tasks/m1-130-code-as-modules.md) | The code as C++20 modules, bottom up, with libraries as the fallback | 127 | Levels a change cannot cross |

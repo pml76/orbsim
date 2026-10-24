@@ -446,3 +446,9 @@ made a skipped test fail. The replay of M1-118's 16 commits measured the runs
 that the selection by function removes (Part 2 of its measurement record).
 Next, M1-137, then M1-134. `check-full` passed in the two trees at `9253e87`,
 and the owner pushed it the same day.
+
+**Also on 2026-10-24** the owner made M1-138 the next task, before M1-137
+(decision 763). M1-138 is the cost of the script tests that run at each
+commit, which M1-133 found. The next session starts with its questions 1 to 4,
+all at one time, and with `STATUS.md`. Check each measurement of its task
+document again first, because the trees move.

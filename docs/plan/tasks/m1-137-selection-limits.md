@@ -1,6 +1,7 @@
 # M1-137 — The limits of the test selection, measured and closed
 
-Phase: B | Status: not started; the next task after M1-133 (decision 744)
+Phase: B | Status: not started; the next task after M1-138 (decisions 744 and
+763)
 Prerequisites: M1-133
 Decided by: register decision 744, ruled 2026-10-21 on the owner's word, after
 the test selection was compared with published work: Ekstazi
