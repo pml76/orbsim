@@ -356,6 +356,8 @@ section 8 unless another place is named.
   assistant's shell then waits for a passphrase on a console that nobody can
   see. The assistant does not type a passphrase: stop the push, and the owner
   pushes from a terminal of their own, `git push origin <commit>:refs/heads/master`.
+  In PowerShell, the command must name the commit itself: PowerShell refuses
+  the `<` of `<commit>` (decision 762).
   Read the remote without a key: `git ls-remote https://github.com/pml76/orbsim.git`.
 - **`mutate.py` stops with `[Errno 22] Invalid argument`** when Windows refuses
   to cut a file that a different program has mapped into its memory. The
