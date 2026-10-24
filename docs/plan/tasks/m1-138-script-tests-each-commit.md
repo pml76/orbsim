@@ -1,9 +1,9 @@
 # M1-138 — The script tests that run at each commit
 
 Phase: B | Status: **started 2026-10-24. Its questions 1 to 14 are ruled
-(decisions 764-775 and 777-780). The spike is done
-([its record](../../measurements/m1-138-spike.md)). Next: the questions about
-how the code is done, then the code**
+(decisions 764-775 and 777-780), and questions 15 to 20 about how the code
+is done (decisions 781-786). The spike is done
+([its record](../../measurements/m1-138-spike.md)). The code has started**
 Prerequisites: [M1-133](m1-133-selection-proved.md), which found the cost. It
 comes before M1-137 (decision 763).
 Decided by: **decision 763**, its position in the queue, and **decisions
@@ -362,10 +362,15 @@ Thus for these tests only rule 2 goes, when the trace shows no other child.
    its output: [the record](../../measurements/m1-138-spike.md).
 4. *Done 2026-10-24.* Question 7 to the owner again, with the figures of the
    spike, and questions 13 and 14 (decisions 778-780).
-5. The code: the self-test cases of the driver first, seen to fail; then the
-   read record of the Python processes (decisions 765, 770, 771 and 780), the
-   trace of the `cmake -P` tests (decisions 768 and 775), and the rules for
-   the children (decision 778).
+5. The code, in small commits, each with `check` passing in the two trees and
+   its tests first seen to fail (questions 15 to 20, decisions 781-786):
+   1. the hook, scripts/read-record/sitecustomize.py, and its self-test,
+      `read_record_self_test` (decisions 765, 770, 771, 780-782 and 785);
+   2. the driver with the records of the Python processes, and its self-test
+      cases (decisions 783 and 786);
+   3. the trace of the `cmake -P` tests (decisions 768, 775 and 784);
+   4. the rules for the child programs (decision 778), and the end-to-end
+      test (decision 786).
 6. *Removed by decision 779:* the "after" figures.
 7. The safety, as decision 767 says.
 8. `check` in the two trees, the commit, the mutant file of the task after
@@ -486,6 +491,16 @@ thus nothing changes there. On Linux, the replacement changes how
   seen, which decision 770 includes.
 - C. Accept the change on Linux. Cost: a test can give a different result
   in the Linux trees only.
+
+**15 to 20. How the code is done.** *Ruled by decisions 781-786, each by its
+recommendation.* 15: the places and the names of the hook, the records and
+the two variables. 16: a record written at the start of a process and again
+at its exit, with `end` only at the exit, and a record required from the
+interpreter of the test's own script. 17: each record also into the folder
+of each outer test, for a driver that runs inside a test. 18: one CMake
+function for the trace arguments. 19: the self-test of the hook as a CTest
+test of its own. 20: a self-test case for each new part, and the end-to-end
+test with a Python script test and a `cmake -P` test.
 
 ## Done when
 
