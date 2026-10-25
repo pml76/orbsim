@@ -23,8 +23,10 @@ skipped when every part of its fingerprint is what it was at its last
 
   * its definition, as CTest describes it -- command line and properties;
   * its environment: PATH, each VK_* and ORBSIM_* variable (decision 501),
-    but ORBSIM_TEST_NAME, which the driver removes from the environment that
-    it gives CTest (decision 715 (2));
+    and PYTHONPATH (decision 796), but ORBSIM_TEST_NAME, which the driver
+    removes from the environment that it gives CTest (decision 715 (2)), and
+    ORBSIM_READ_RECORD_OWNER, the outer tests of a driver in a test (decision
+    781);
   * every program on its command line that this tree builds, by its bytes and
     those of every library it loads (decision 525), the libraries found from
     the program's import table with llvm-readobj on Windows and by ldd
@@ -52,6 +54,19 @@ skipped when every part of its fingerprint is what it was at its last
   * a test run through a program this tree does not build -- cmake, python:
     every file under scripts/ and cmake/, CMakeLists.txt and CMakePresets.json
     (decision 531), since scripts load other scripts;
+  * a test with complete records of its Python processes (M1-138): not the
+    two parts above, but its records. scripts/read-record/sitecustomize.py,
+    which this script puts first on PYTHONPATH for each test that it runs
+    (decisions 771 and 781), writes one record for each Python process into
+    `<tree>/test-reads/`: each file that the process read, and the names in
+    each folder that it examined, with their hash (decision 765). The
+    records are complete when each has its last line `end` and the `read`
+    line of the hook of this repository (decisions 782 and 793), one is of
+    the interpreter of the test's own script (decision 801 (7)), and none
+    has a child process.
+    The test is unchanged when each line is the line that the hook writes for
+    its path at this time (decision 792). Else the two parts above stay
+    (decision 801 (5));
   * the files it read, from its read record (decisions 489, 498 and 527):
     each must still hash to what the record says it was when the test read it;
   * the cautious rule (decisions 489 and 505): a test with no complete record,
@@ -76,7 +91,9 @@ skipped when every part of its fingerprint is what it was at its last
     C:\\Windows\\Globalization\\ICU\\ for time zones; elsewhere the two files
     of /usr/share/zoneinfo/ that libstdc++ reads, measured 2026-10-14 -- and
     the Python, CMake, CTest, compiler and linker programs, each with its
-    libraries (the linker since decision 583).
+    libraries (the linker since decision 583); and the physical memory and
+    the count of processors (decision 794), from which memory_pool and
+    parallel_tests calculate what they examine.
 
 **A coverage record that is incorrect or missing fails `check`** (decisions
 590, 704, 712 and 713): a record that matches no test or two tests, or that
@@ -179,8 +196,9 @@ EVERY_SHADER = "every"
 # a store of another version is not read, so every test runs once. 2: the
 # shaders a test's records name, and the application's hash (M1-131). 3: the
 # programs that a test takes function by function, and the table of function
-# names of each program (M1-132, decision 709 (3)).
-STORE_VERSION = 3
+# names of each program (M1-132, decision 709 (3)). 4: the key `listings` of
+# a test with the records of its Python processes (M1-138, decision 801 (1)).
+STORE_VERSION = 4
 # The coverage recorder's records, next to the application's shader records
 # (tests/CoverageRecorder.cpp, decision 644), and the first three lines of
 # each, which say which test it belongs to (decision 564).
@@ -234,6 +252,22 @@ CARD_PROBE_SECONDS = 120
 CARD_LINES = ("gpu", "gpu.vendor", "gpu.device", "driver.name", "driver.info", "driver.version",
               "vulkan.api", "validation.layer")
 MISSING = "missing"
+# The records of the Python processes of a test (M1-138, decisions 765, 781 and
+# 801 (2)): scripts/read-record/sitecustomize.py writes them into test-reads/,
+# with the records of the C++ tests, as `<escaped name>.py-<process>-<start>.txt`.
+# The head line of a record; the stamp of a file that the hook could not read
+# (decision 792); the folder of the hook, which the driver puts first on
+# PYTHONPATH (decision 771), and its file, which each record of this
+# repository's hook names (decision 793); and the two variables of the hook:
+# the folder of the records of the tree, and the outer tests of a driver in a
+# test (decisions 781 and 783).
+PYTHON_RECORD_HEAD = "python-read-record 1"
+PYTHON_RECORD = re.compile(r"(.+)\.py-[0-9]+-[0-9]+\.txt")
+UNREADABLE = "unreadable"
+HOOK_FOLDER = ("scripts", "read-record")
+HOOK_FILE = "sitecustomize.py"
+READ_RECORDS_VARIABLE = "ORBSIM_READ_RECORDS"
+OWNER_VARIABLE = "ORBSIM_READ_RECORD_OWNER"
 # Whether a Windows program's libraries are followed through the libraries
 # Windows loads only when a function in them is first called, as well as the
 # ones it loads at the start: not (register decision 539). None of this
@@ -416,14 +450,32 @@ def definition(test: dict) -> str:
 
 def environment(env: dict) -> str:
     """The variables a test's result can rest on (decision 501): PATH, every
-    VK_* and ORBSIM_*. Names compared without case on Windows, as Windows
-    does. ORBSIM_TEST_NAME is not one of them (decision 715 (2)): the driver
-    does not give it to CTest, and each test that uses it gets it from its own
-    definition, which is a part of its own."""
+    VK_* and ORBSIM_*, and PYTHONPATH (decision 796), which can change the
+    module that a script imports. Names compared without case on Windows, as
+    Windows does. ORBSIM_TEST_NAME is not one of them (decision 715 (2)): the
+    driver does not give it to CTest, and each test that uses it gets it from
+    its own definition, which is a part of its own. ORBSIM_READ_RECORD_OWNER
+    is also not one of them (decision 781): it names the outer tests of a
+    driver in a test, which do not change what a test does."""
     fold = (lambda n: n.upper()) if os.name == "nt" else (lambda n: n)
     kept = {fold(n): v for n, v in env.items()
-            if (fold(n) == "PATH" or fold(n).startswith(("VK_", "ORBSIM_"))) and fold(n) != TEST_NAME_VARIABLE}
+            if (fold(n) in ("PATH", "PYTHONPATH") or fold(n).startswith(("VK_", "ORBSIM_")))
+            and fold(n) not in (TEST_NAME_VARIABLE, OWNER_VARIABLE)}
     return digest(json.dumps(kept, sort_keys=True))
+
+
+def with_hook(env: dict, tree: pathlib.Path, root: pathlib.Path) -> dict:
+    """`env` with the hook of the records of the Python processes (M1-138,
+    decisions 771 and 781): ORBSIM_READ_RECORDS names test-reads/ of the tree,
+    and the folder of the hook comes first on PYTHONPATH, before the folders
+    that PYTHONPATH held. ORBSIM_READ_RECORD_OWNER stays: a driver in a test
+    gives the outer tests to the tests that it runs (decision 783). Names
+    compared without case on Windows, as Windows does."""
+    fold = (lambda n: n.upper()) if os.name == "nt" else (lambda n: n)
+    before = [value for name, value in env.items() if fold(name) == "PYTHONPATH" and value]
+    kept = {name: value for name, value in env.items() if fold(name) not in ("PYTHONPATH", READ_RECORDS_VARIABLE)}
+    return {**kept, READ_RECORDS_VARIABLE: str(tree / RECORDS),
+            "PYTHONPATH": os.pathsep.join([str(root.joinpath(*HOOK_FOLDER))] + before)}
 
 
 def without_test_name(env: dict) -> dict:
@@ -459,6 +511,17 @@ def leap_seconds_value() -> str:
     return f"{kind} {bytes(value or b'').hex()}"
 
 
+def machine_capacity() -> str:
+    """The physical memory and the count of processors of this machine, as text
+    for the machine part (decision 794): memory_pool and parallel_tests
+    calculate what they examine from them, and no record can show them. The
+    memory from physical_memory_mib() of scripts/check-memory-pool.py itself,
+    so that the two cannot read it differently; the processors from
+    os.cpu_count(), as scripts/check-parallel-tests.py reads them."""
+    memory = script_module("check-memory-pool").physical_memory_mib()
+    return f"memory {memory} MiB, processors {os.cpu_count()}"
+
+
 def cache_value(tree: pathlib.Path, key: str):
     try:
         for line in (tree / "CMakeCache.txt").read_text(encoding="utf-8", errors="replace").splitlines():
@@ -469,19 +532,110 @@ def cache_value(tree: pathlib.Path, key: str):
     return None
 
 
+def parse_python_record(text: str):
+    """The record of one Python process (M1-138, decisions 765 and 782), as
+    {"argv", "cwd", "reads": [(stamp, path)], "listings": [(stamp, path)],
+    "children": [JSON]}; or None where it is not complete: not the head line,
+    then `argv` with a JSON list of text and `cwd`, then only `read`, `list`
+    and `child` lines, and the last line `end` with its newline. A stamp is a
+    SHA-256, `missing` or `unreadable`."""
+    lines = text.split("\n")
+    if len(lines) < 5 or lines[0] != PYTHON_RECORD_HEAD or lines[-2:] != ["end", ""]:
+        return None
+    if not lines[1].startswith("argv ") or not lines[2].startswith("cwd "):
+        return None
+    try:
+        argv = json.loads(lines[1][len("argv "):])
+    except ValueError:
+        return None
+    if not isinstance(argv, list) or not all(isinstance(a, str) for a in argv):
+        return None
+    found = {"argv": argv, "cwd": lines[2][len("cwd "):], "reads": [], "listings": [], "children": []}
+    for line in lines[3:-2]:
+        kind, _, rest = line.partition(" ")
+        if kind in ("read", "list"):
+            stamp, _, path = rest.partition(" ")
+            if not path or not (stamp in (MISSING, UNREADABLE) or re.fullmatch(r"[0-9a-f]{64}", stamp)):
+                return None
+            found["reads" if kind == "read" else "listings"].append((stamp, path))
+        elif kind == "child":
+            try:
+                found["children"].append(json.loads(rest))
+            except ValueError:
+                return None
+        else:
+            return None
+    return found
+
+
+def python_reads(texts: list, command: list, hook: str):
+    """(reads, listings) for the store, from the texts of the records of the
+    Python processes of one test, each line one time, sorted; or None, and
+    then the test keeps the rules of decisions 500, 510 and 531 (decision 801
+    (5)): there is no record; a record could not be read (None) or is not
+    complete (decision 782); no record is of the interpreter of the test's own
+    script, with an argv that, without its first item, is the command of the
+    test without its first item, because the launcher of PyManager starts the
+    interpreter with the same arguments (decision 801 (7)); a record has no
+    `read` line for `hook`, the hook of this repository, thus a copy of the
+    hook in a different repository wrote it (decision 793); or a record has a
+    child process (decision 765, until step 4 of M1-138)."""
+    parsed = [None if text is None else parse_python_record(text) for text in texts]
+    if not parsed or not command or any(record is None for record in parsed):
+        return None
+    if not any(record["argv"] and record["argv"][1:] == command[1:] for record in parsed):
+        return None
+    if not all(any(norm(path) == norm(hook) for _, path in record["reads"]) for record in parsed):
+        return None
+    if any(record["children"] for record in parsed):
+        return None
+    return (sorted({line for record in parsed for line in record["reads"]}),
+            sorted({line for record in parsed for line in record["listings"]}))
+
+
+def python_record_files(folder: pathlib.Path, names) -> dict:
+    """{test: [record file]} for the tests `names`: each file in `folder` that
+    PYTHON_RECORD gives to one of them, by all of its file name (decision 801
+    (2)) -- `a` and `a.py-1` are two test names that start with the same text.
+    The pattern gives the longest name before the last `.py-<digits>-<digits>`,
+    which the hook adds."""
+    by_escape = {escaped_name(name): name for name in names}
+    try:
+        entries = sorted(folder.iterdir())
+    except OSError:
+        return {}
+    found = {}
+    for path in entries:
+        match = PYTHON_RECORD.fullmatch(path.name)
+        if match and match.group(1) in by_escape:
+            found.setdefault(by_escape[match.group(1)], []).append(path)
+    return found
+
+
 # --- the decision, pure ------------------------------------------------------------
 
-def unchanged(stored, parts: dict, current_hash, programs_unchanged=None) -> bool:
+def unchanged(stored, parts: dict, current_hash, programs_unchanged=None, current_line=None) -> bool:
     """Examine if a test can be skipped: stored at a passing run, each part as
     it was, each file that its record names with the hash that it had when
     the test read it, and each program that the test takes function by
     function unchanged by the rule of decision 706, which
     `programs_unchanged` examines. A stored test with such programs and no
-    such function counts as changed."""
+    such function counts as changed. For a test with the records of its
+    Python processes, which the key `listings` shows (decision 801 (1)), each
+    `read` line and each `list` line must be the line that `current_line`
+    gives for its path at this time, as the hook writes it (decision 792),
+    and a line with `unreadable` is at no time unchanged; a stored test with
+    such lines and no `current_line` counts as changed."""
     if stored is None or stored.get("parts") != parts:
         return False
     if stored.get("programs") and not (programs_unchanged is not None and programs_unchanged(stored["programs"])):
         return False
+    if "listings" in stored:
+        if current_line is None:
+            return False
+        lines = ([("read", stamp, path) for stamp, path in stored.get("reads") or []]
+                 + [("list", stamp, path) for stamp, path in stored["listings"]])
+        return all(stamp != UNREADABLE and current_line(kind, path) == (kind, stamp) for kind, stamp, path in lines)
     return all(current_hash(path) == stamp for stamp, path in stored.get("reads") or [])
 
 
@@ -499,12 +653,14 @@ def with_dependents(chosen: set, tests: dict) -> set:
     return chosen
 
 
-def selection(tests: dict, store: dict, parts: dict, current_hash, forced: set, programs_unchanged=None) -> set:
+def selection(tests: dict, store: dict, parts: dict, current_hash, forced: set, programs_unchanged=None,
+              current_line=None) -> set:
     """The tests to run: each test that is not unchanged, each forced test,
     and each test with DEPENDS on one of them. The driver computes no digest
     for a forced test."""
     chosen = {name for name in tests
-              if name in forced or not unchanged(store.get(name), parts[name], current_hash, programs_unchanged)}
+              if name in forced or not unchanged(store.get(name), parts[name], current_hash, programs_unchanged,
+                                                 current_line)}
     return with_dependents(chosen, tests)
 
 
@@ -894,6 +1050,10 @@ class World:
         self._where = {}
         self._folders = {}
         self._hooked = {}
+        # The lines that the hook writes at this time (hook_line), for the
+        # records of the Python processes.
+        self._read_lines = {}
+        self._names = {}
         system = os.path.join(os.environ.get("SystemRoot", r"C:\Windows"), "System32")
         self._search = [system] + [p for p in os.environ.get("PATH", "").split(os.pathsep) if p]
 
@@ -908,6 +1068,43 @@ class World:
 
     def files(self, paths) -> str:
         return digest("\n".join(f"{self.file(p)} {norm(p)}" for p in sorted(paths, key=norm)))
+
+    def hook_line(self, kind: str, path: str) -> tuple:
+        """(kind, stamp): the line that scripts/read-record/sitecustomize.py writes
+        for `path` at this time (decision 792), by its rules. A folder gives
+        `list` and the hash of its names. Else a `read` line gives `read` and the
+        SHA-256 of the file, `missing` where there is no file, and `unreadable`
+        for each other error; a `list` line gives `list`, with `missing` or
+        `unreadable` as os.listdir fails. file() is not used: it gives `missing`
+        also for a folder, thus with it a path that was not there and is a
+        folder at this time counts as unchanged."""
+        if kind == "list" or os.path.isdir(path):
+            return "list", self.names(path)
+        key = norm(path)
+        if key not in self._read_lines:
+            try:
+                self._read_lines[key] = hashlib.sha256(pathlib.Path(path).read_bytes()).hexdigest()
+            except FileNotFoundError:
+                self._read_lines[key] = MISSING
+            except OSError:
+                self._read_lines[key] = UNREADABLE
+        return "read", self._read_lines[key]
+
+    def names(self, folder: str) -> str:
+        """The hash of the names in `folder`, as the hook makes it (decision 765):
+        the SHA-256 of the sorted names with a line end between them, in UTF-8
+        with surrogateescape; `missing` where there is no folder, and
+        `unreadable` for each other error."""
+        key = norm(folder)
+        if key not in self._names:
+            try:
+                names = sorted(os.listdir(folder))
+                self._names[key] = hashlib.sha256("\n".join(names).encode("utf-8", "surrogateescape")).hexdigest()
+            except FileNotFoundError:
+                self._names[key] = MISSING
+            except (OSError, UnicodeError):
+                self._names[key] = UNREADABLE
+        return self._names[key]
 
     def hooked(self, path) -> bool:
         """Examine if a program holds the hook's address table (decision 584),
@@ -1117,6 +1314,9 @@ class Run:
         # The registry's leap seconds, read through this so that the
         # self-test can hand the machine part another table.
         self.leap_seconds = leap_seconds_value
+        # The memory and the processors, read through this for the same cause
+        # (decision 794).
+        self.capacity = machine_capacity
         self._machine = None
         self._card = None
         self._card_read = False
@@ -1164,7 +1364,7 @@ class Run:
             found = [str(p) for p in zones]
             for program in self.machine_programs():
                 found += [str(program)] + self.world.libraries(program)
-            self._machine = digest(f"{self.world.files(sorted(set(found)))}\n{self.leap_seconds()}")
+            self._machine = digest(f"{self.world.files(sorted(set(found)))}\n{self.leap_seconds()}\n{self.capacity()}")
         return self._machine
 
     def card(self):
@@ -1210,7 +1410,7 @@ class Run:
                     found.append(pathlib.Path(candidate))
         return found
 
-    def parts(self, test: dict, reads, env: dict, shaders=None, taken=frozenset()) -> dict:
+    def parts(self, test: dict, reads, env: dict, shaders=None, taken=frozenset(), listings=None) -> dict:
         """What `test` is fingerprinted on, part by part. The environment is
         handed in rather than read here, so that the self-test can give it
         one (register decision 602); and the shaders its records named, as
@@ -1219,8 +1419,15 @@ class Run:
         each as norm gives it: their bytes are not in the part of the
         programs, because the store holds them next to the function part for
         the rule of decision 706, and the libraries that they load at start
-        are a part of their own."""
+        are a part of their own. `listings` holds the `list` lines of a test
+        with complete records of its Python processes (M1-138), or None for
+        each other test: such a test has no part for the build tree, for a
+        folder of the repository on its command line, or for scripts/
+        (decisions 764, 765 and 801), because its reads and its listings show
+        what it read; the files and the programs on its command line stay,
+        and the cautious rule also examines its listings (decision 801 (6))."""
         tree, root = norm(self.tree), norm(self.root)
+        recorded = listings is not None
         found = {"definition": definition(test), "environment": environment(env),
                  "machine": self.machine()}
         files, programs, built, built_program = [], [], [], False
@@ -1228,7 +1435,8 @@ class Run:
         for index, path in enumerate(self.arguments(test)):
             key = norm(path)
             if key == tree:
-                found["build tree"] = self.tree_inputs()
+                if not recorded:
+                    found["build tree"] = self.tree_inputs()
             elif under(key, tree):
                 if path.is_file() and is_program(path):
                     built.append(path)
@@ -1239,7 +1447,10 @@ class Run:
                 # Anything else in the tree is a test's output, judged by the
                 # dependency rule (decision 508), never hashed before the run.
             elif under(key, root):
-                files += self.world.unignored_under(path) if path.is_dir() else [path]
+                if not path.is_dir():
+                    files.append(path)
+                elif not recorded:
+                    files += self.world.unignored_under(path)
             elif path.is_file():
                 (programs if is_program(path) else files).append(path)
         if programs:
@@ -1248,9 +1459,9 @@ class Run:
             found["libraries"] = self.libraries_part(taken)
         if files:
             found["files"] = self.world.files(files)
-        if not built_program:
+        if not built_program and not recorded:
             found["scripts"] = self.script_inputs()
-        if cautious(reads, self.root):
+        if cautious(list(reads or []) + list(listings) if recorded else reads, self.root):
             found["cautious"] = self.cautious_inputs()
         # The compiled files its records name, each read in full (decisions
         # 629 and 635): which shaders a run asks for follows from what the
@@ -1279,6 +1490,24 @@ class Run:
             return parse_record(self.record_path(name).read_text(encoding="utf-8"))
         except OSError:
             return None
+
+    def python_records(self, names: list) -> dict:
+        """{test: (reads, listings) or None} for the tests `names`, from the
+        records of their Python processes in test-reads/ (python_reads). A
+        record that cannot be read counts as not complete. Read as the hook
+        writes them, in UTF-8 with surrogateescape."""
+        hook = str(self.root.joinpath(*HOOK_FOLDER, HOOK_FILE))
+        files = python_record_files(self.tree / RECORDS, names)
+        found = {}
+        for name in names:
+            texts = []
+            for path in files.get(name, []):
+                try:
+                    texts.append(path.read_bytes().decode("utf-8", errors="surrogateescape"))
+                except OSError:
+                    texts.append(None)
+            found[name] = python_reads(texts, self.tests[name].get("command") or [], hook)
+        return found
 
     def carries_listener(self, program: pathlib.Path, known: dict) -> bool:
         key = self.world.program(program)
@@ -1626,15 +1855,18 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
     # environment part does not move with it.
     records = tree / COVERAGE_RECORDS
     env = {**os.environ, RECORDS_VARIABLE: str(records)}
-    env = without_test_name(env)
+    # The hook of the records of the Python processes (M1-138, decisions 771
+    # and 781), in the environment of each test, thus also in its part.
+    env = with_hook(without_test_name(env), tree, root)
     parts = {name: run.parts(test, (stored.get(name) or {}).get("reads"), env,
                              (stored.get(name) or {}).get("shaders"),
-                             set((stored.get(name) or {}).get("programs") or ()))
+                             set((stored.get(name) or {}).get("programs") or ()),
+                             (stored.get(name) or {}).get("listings"))
              for name, test in run.tests.items()}
     # The link commands of the programs that the decision computes function
     # parts for, in one call of Ninja (decision 709 (4)).
     run.link_commands(run.changed_programs({n: e for n, e in stored.items() if n in run.tests and n not in forced}))
-    chosen = selection(run.tests, stored, parts, run.world.file, forced, run.programs_unchanged)
+    chosen = selection(run.tests, stored, parts, run.world.file, forced, run.programs_unchanged, run.world.hook_line)
     decided = time.monotonic()
     skipped = sorted(set(run.tests) - chosen)
     order = [name for name in run.tests if name in chosen]
@@ -1650,11 +1882,19 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
         write_store(run.state, store)
     for name in order:
         run.record_path(name).unlink(missing_ok=True)
+    # The records of the Python processes of each test that runs: else the
+    # driver reads a record of an earlier run as a record of this run.
+    for paths in python_record_files(tree / RECORDS, order).values():
+        for path in paths:
+            path.unlink(missing_ok=True)
 
     code, results = 0, {}
     if order:
         report = run.state / REPORT
         report.unlink(missing_ok=True)
+        # The hook writes no record into a folder that is not there (decision
+        # 801 (4)).
+        (tree / RECORDS).mkdir(parents=True, exist_ok=True)
         # Emptied first (decision 570): a record left from an earlier run
         # would be read as this one's.
         left = empty_folder(records)
@@ -1689,6 +1929,15 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
     problems = [f"{name}: passed without its read record, though its program carries {LISTENER}: is the "
                 "name escaped differently here and in tests/TestReads.cpp, or the record not written?"
                 for name in sorted(missing_records)]
+    # The tests with complete records of their Python processes (M1-138): their
+    # reads join those of a record of a C++ program, after the driver examined
+    # the C++ records above, and their listings go into the store. Each other
+    # test keeps the rules before M1-138 (decision 801 (5)).
+    listings = {}
+    for name, found in run.python_records(passed).items():
+        if found is not None:
+            reads[name] = sorted(set(map(tuple, reads[name] or [])) | set(found[0]))
+            listings[name] = found[1]
     # The shaders each test's runs asked for (decision 629). A record that
     # cannot be read belongs to a test this cannot name, so nothing this run
     # ran is remembered, and every one of them runs again.
@@ -1702,8 +1951,11 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
     taken = run.functions_of_run(records, order, passed) if order else {}
     for name in order:
         if name in passed and name not in missing_records and not unreadable and name in taken:
-            entry = {"parts": run.parts(run.tests[name], reads[name], env, shaders.get(name), set(taken[name])),
+            entry = {"parts": run.parts(run.tests[name], reads[name], env, shaders.get(name), set(taken[name]),
+                                        listings.get(name)),
                      "reads": reads[name]}
+            if name in listings:
+                entry["listings"] = listings[name]
             if taken[name]:
                 entry["programs"] = taken[name]
             if name in shaders:
@@ -2354,6 +2606,7 @@ def stand_in_run(tree: pathlib.Path, root: pathlib.Path) -> "Run":
     run.app = tree / (APPLICATION + (".exe" if os.name == "nt" else ""))
     run._machine, run._card, run._card_read, run._shared = "machine", {"gpu": "a card"}, True, {}
     run.leap_seconds = lambda: "3 "
+    run.capacity = lambda: "memory 1 MiB, processors 1"
     run.start_function_level(None, None)
     return run
 
@@ -2468,12 +2721,13 @@ def each_part_moves_with_its_input(expect) -> None:
         folder = {"name": "f", "command": [str(cmake), "-P", str(root / "cmake" / "RunProbe.cmake"),
                                            str(root / "docs")]}
 
-        def part(test, name, env=None, leap_seconds="3 "):
+        def part(test, name, env=None, leap_seconds="3 ", capacity="memory 1 MiB, processors 1"):
             # A fresh Run each time, so that nothing it computed earlier is
             # reused; the machine part computed rather than stood in for.
             run = stand_in_run(tree, root)
             run.ctest, run._machine = str(cmake), None
             run.leap_seconds = lambda: leap_seconds
+            run.capacity = lambda: capacity
             run.world.library_map = {norm(compiler): [str(compiler_library)]}
             return run.parts(test, [], STAND_IN_ENVIRONMENT if env is None else env).get(name)
 
@@ -2504,6 +2758,12 @@ def each_part_moves_with_its_input(expect) -> None:
         # value reads -- here a table of one second where there was none.
         expect("another leap-second table in the registry moves the machine part",
                part(suite, "machine", leap_seconds="3 1e00000000000000ff") != machine_after_library, True)
+        # Decision 794: the memory and the processors, from which memory_pool
+        # and parallel_tests calculate what they examine.
+        expect("more memory moves the machine part",
+               part(suite, "machine", capacity="memory 2 MiB, processors 1") != machine_after_library, True)
+        expect("more processors move the machine part",
+               part(suite, "machine", capacity="memory 1 MiB, processors 2") != machine_after_library, True)
         # Decision 583: the linker, for the code that is not in the tree and
         # its own pieces of each program.
         linker.write_text("a different linker", encoding="utf-8")
@@ -2583,6 +2843,9 @@ def tools_read_as_they_answer(expect) -> None:
     expect("a card judged without the validation layer is not taken", card_values(without_layer), None)
     without_device = "".join(line + "\n" for line in SAMPLE_SIDECAR.splitlines() if not line.startswith("gpu.device"))
     expect("a sidecar that does not name the device is not taken", card_values(without_device), None)
+
+    expect("the memory and the processors of this machine, read",
+           bool(re.fullmatch(r"memory [1-9][0-9]* MiB, processors [1-9][0-9]*", machine_capacity())), True)
 
     expect("the listener, found", lists_listener(0, SAMPLE_LISTENERS), True)
     expect("no listener, none found",
@@ -3234,6 +3497,149 @@ def function_level_cases(expect) -> None:
     program_cases(expect)
 
 
+def python_record(argv: list, *lines, end: bool = True) -> str:
+    """A record of a Python process as scripts/read-record/sitecustomize.py writes
+    it (decision 765)."""
+    head = [PYTHON_RECORD_HEAD, "argv " + json.dumps(argv), "cwd C:/t"]
+    return "\n".join(head + list(lines) + (["end"] if end else [])) + "\n"
+
+
+def python_record_cases(expect) -> None:
+    """The records of the Python processes of a test (M1-138, decisions 765, 771,
+    781-783, 792, 793 and 801)."""
+    h, g = "a" * 64, "b" * 64
+    child = 'child {"argv": ["git", "status"], "cwd": "C:/r"}'
+    whole = python_record(["C:/py.exe", "s.py"], f"read {h} C:/r/a.txt", f"read {MISSING} C:/r/m",
+                          f"read {UNREADABLE} C:/r/u", f"list {g} C:/r/d", child)
+    expect("a whole record of a Python process", parse_python_record(whole),
+           {"argv": ["C:/py.exe", "s.py"], "cwd": "C:/t",
+            "reads": [(h, "C:/r/a.txt"), (MISSING, "C:/r/m"), (UNREADABLE, "C:/r/u")],
+            "listings": [(g, "C:/r/d")], "children": [{"argv": ["git", "status"], "cwd": "C:/r"}]})
+    for name, text in (("no last line end", python_record(["p"], f"read {h} C:/r/a", end=False)),
+                       ("the line end before its last line", python_record(["p"], "end", f"read {h} C:/r/a")),
+                       ("a stamp that is not a hash", python_record(["p"], "read abc C:/r/a")),
+                       ("a line of a different type", python_record(["p"], "open C:/r/a")),
+                       ("a read line with no path", python_record(["p"], f"read {h}")),
+                       ("a child line that is not JSON", python_record(["p"], "child {")),
+                       ("an argv that is not a list of text", python_record(["p"]).replace('argv ["p"]', "argv 5")),
+                       ("no head line", python_record(["p"]).replace(PYTHON_RECORD_HEAD + "\n", "")),
+                       ("no cwd line", python_record(["p"]).replace("cwd C:/t\n", "")),
+                       ("only the lines of the start", python_record(["p"], end=False)),
+                       ("no newline after its last line", python_record(["p"])[:-1])):
+        expect(f"a record with {name} is not complete", parse_python_record(text), None)
+
+    # Which tests get the new rules (decisions 782, 793 and 801 (7)).
+    hook = "C:/r/scripts/read-record/sitecustomize.py"
+    command = ["C:/PyManager/python3.exe", "C:/r/scripts/s.py", "--x"]
+    own = python_record(["C:/Python/python.exe", "C:/r/scripts/s.py", "--x"], f"read {h} {hook}",
+                        f"read {h} C:/r/a.txt", f"list {g} C:/r/d")
+    other = python_record(["C:/Python/python.exe", "-c", "x"], f"read {h} {hook}", f"read {g} C:/r/b.txt",
+                          f"read {h} C:/r/a.txt")
+    expect("the records of a test: each read and each listing one time, sorted",
+           python_reads([own, other], command, hook),
+           (sorted([(h, hook), (h, "C:/r/a.txt"), (g, "C:/r/b.txt")]), [(g, "C:/r/d")]))
+    expect("no record: the rules before M1-138", python_reads([], command, hook), None)
+    expect("a record that could not be read", python_reads([own, None], command, hook), None)
+    expect("a record that is not complete",
+           python_reads([own, python_record(["p"], f"read {h} {hook}", end=False)], command, hook), None)
+    expect("no record of the interpreter of the test's own script", python_reads([other], command, hook), None)
+    expect("a record of the interpreter with different arguments",
+           python_reads([own.replace('"--x"', '"--y"')], command, hook), None)
+    expect("a record without the line of the hook of this repository",
+           python_reads([own, other.replace(f"read {h} {hook}\n", "")], command, hook), None)
+    expect("a record from the hook of a different repository",
+           python_reads([own.replace(hook, "C:/scratch/scripts/read-record/sitecustomize.py")], command, hook), None)
+    expect("a record with a child process, until step 4",
+           python_reads([own, python_record(["C:/Python/python.exe", "-c", "y"], f"read {h} {hook}", child)],
+                        command, hook), None)
+    expect("the line of the hook with the separators of Windows",
+           python_reads([own.replace(hook, hook.replace("/", "\\"))], command, hook) is not None, True)
+
+    # The records of each test, by all of the file name (decision 801 (2)).
+    with tempfile.TemporaryDirectory() as scratch:
+        folder = pathlib.Path(scratch)
+        for name in ("a.py-1-2.txt", "a.py-1.py-3-4.txt", "a.txt", "a.py-x-2.txt", "b.py-1-2.txt",
+                     "a%3Ab.py-5-6.txt", "a.py-1-2.txt.tmp"):
+            (folder / name).write_text("x", encoding="utf-8")
+        found = python_record_files(folder, ["a", "a.py-1", "a:b", "c"])
+        expect("the records of each test, by all of the file name",
+               {test: sorted(p.name for p in paths) for test, paths in found.items()},
+               {"a": ["a.py-1-2.txt"], "a.py-1": ["a.py-1.py-3-4.txt"], "a:b": ["a%3Ab.py-5-6.txt"]})
+        expect("no folder: no record", python_record_files(folder / "none", ["a"]), {})
+
+    # The environment that the driver gives CTest (decisions 771, 781 and 783).
+    tree, root = pathlib.Path("C:/r/build"), pathlib.Path("C:/r")
+    folder = str(root.joinpath(*HOOK_FOLDER))
+    hooked = with_hook({"PATH": "p", "PYTHONPATH": "C:/other", OWNER_VARIABLE: "[]",
+                        READ_RECORDS_VARIABLE: "C:/elsewhere"}, tree, root)
+    expect("the folder of the hook first on PYTHONPATH, the folder before it after it", hooked.get("PYTHONPATH"),
+           os.pathsep.join([folder, "C:/other"]))
+    expect("the records into test-reads/ of the tree", hooked.get(READ_RECORDS_VARIABLE), str(tree / RECORDS))
+    expect("the outer tests of a driver in a test kept", hooked.get(OWNER_VARIABLE), "[]")
+    expect("no PYTHONPATH before: the folder of the hook only",
+           with_hook({"PATH": "p"}, tree, root).get("PYTHONPATH"), folder)
+    if os.name == "nt":
+        mixed = with_hook({"PythonPath": "C:/other"}, tree, root)
+        expect("on Windows, PYTHONPATH in different letters is the same variable",
+               [(n, v) for n, v in mixed.items() if n.upper() == "PYTHONPATH"],
+               [("PYTHONPATH", os.pathsep.join([folder, "C:/other"]))])
+
+    # Each line in the store, against the line that the hook writes for its
+    # path at this time (decision 792).
+    with tempfile.TemporaryDirectory() as scratch:
+        base = pathlib.Path(scratch)
+        file, later, gone, listed_folder = base / "f.txt", base / "later", base / "gone", base / "d"
+        file.write_text("x", encoding="utf-8")
+        listed_folder.mkdir()
+        (listed_folder / "b").write_text("b", encoding="utf-8")
+        (listed_folder / "a").write_text("a", encoding="utf-8")
+        expect("the names of a folder, hashed as the hook hashes them",
+               World(base, base).names(str(listed_folder)), hashlib.sha256(b"a\nb").hexdigest())
+        expect("a folder at the path of a read line: the list line that the hook writes for it",
+               World(base, base).hook_line("read", str(listed_folder)), ("list", hashlib.sha256(b"a\nb").hexdigest()))
+
+        def now(kind, path):
+            return World(base, base).hook_line(kind, str(path))
+
+        def as_stored(*lines):
+            return {"parts": {}, "reads": [[s, str(p)] for k, s, p in lines if k == "read"],
+                    "listings": [[s, str(p)] for k, s, p in lines if k == "list"]}
+
+        def same(*lines):
+            # A new World each time, so that nothing that it calculated before is used.
+            return unchanged(as_stored(*lines), {}, World(base, base).file, None, now)
+
+        read_file = ("read", now("read", file)[1], file)
+        expect("a file as it was: unchanged", same(read_file), True)
+        file.write_text("y", encoding="utf-8")
+        expect("a file changed: changed", same(read_file), False)
+        expect("a path that was not there and is not there: unchanged", same(("read", MISSING, later)), True)
+        later.mkdir()
+        expect("a path that was not there and is a folder at this time: changed",
+               same(("read", MISSING, later)), False)
+        later.rmdir()
+        later.write_text("z", encoding="utf-8")
+        expect("a path that was not there and is a file at this time: changed", same(("read", MISSING, later)), False)
+        listed = ("list", now("list", listed_folder)[1], listed_folder)
+        expect("a folder as it was: unchanged", same(listed), True)
+        (listed_folder / "c").write_text("c", encoding="utf-8")
+        expect("a new name in a folder: changed", same(listed), False)
+        listed = ("list", now("list", listed_folder)[1], listed_folder)
+        shutil.rmtree(listed_folder)
+        listed_folder.write_text("a file at this time", encoding="utf-8")
+        expect("a folder that is a file at this time: changed", same(listed), False)
+        read_file = ("read", now("read", file)[1], file)
+        file.unlink()
+        file.mkdir()
+        expect("a file that is a folder at this time: changed", same(read_file), False)
+        expect("a folder that was not there and is not there: unchanged", same(("list", MISSING, gone)), True)
+        expect("a line with unreadable: changed at each decision, also when the path is unreadable at this time",
+               unchanged(as_stored(("read", UNREADABLE, gone)), {}, World(base, base).file, None,
+                         lambda kind, path: (kind, UNREADABLE)), False)
+        expect("a stored test with listings and no rule for its lines: changed",
+               unchanged(as_stored(("list", MISSING, gone)), {}, World(base, base).file), False)
+
+
 def self_test() -> int:
     failures, cases = [], []
 
@@ -3307,6 +3713,10 @@ def self_test() -> int:
     expect("PATH", environment({**base, "PATH": "z"}) != environment(base), True)
     expect("a VK_ variable", environment({**base, "VK_ICD_FILENAMES": "z"}) != environment(base), True)
     expect("an ORBSIM_ variable", environment({**base, "ORBSIM_Y": "z"}) != environment(base), True)
+    # M1-138: the outer tests of a driver in a test are not in the part
+    # (decision 781), and PYTHONPATH is (decision 796).
+    expect("ORBSIM_READ_RECORD_OWNER", environment({**base, OWNER_VARIABLE: "[]"}), environment(base))
+    expect("PYTHONPATH", environment({**base, "PYTHONPATH": "z"}) != environment(base), True)
 
     # outcomes(): only a clean run is a pass.
     report = ('<testsuite><testcase name="a" status="run"/>'
@@ -3358,7 +3768,8 @@ def self_test() -> int:
         tree = root / "build"
         exe = ".exe" if os.name == "nt" else ""
         for path in (tree / f"suite{exe}", tree / f"{APPLICATION}{exe}", outside / f"cmake{exe}",
-                     root / "cmake" / "RunProbe.cmake", root / "scripts" / "check.py", tree / "probes" / "x"):
+                     root / "cmake" / "RunProbe.cmake", root / "scripts" / "check.py", tree / "probes" / "x",
+                     outside / f"python{exe}"):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text("x", encoding="utf-8")
             if os.name != "nt":
@@ -3388,6 +3799,26 @@ def self_test() -> int:
                sorted(always + ["programs", "files", "scripts", "shaders", "card"]))
         expect("a test naming the tree: the tree's own files", keys(reader),
                sorted(always + ["programs", "files", "scripts", "build tree"]))
+        # M1-138 (decisions 764, 765 and 801): a Python test with complete
+        # records of its Python processes, which `listings` gives, has no
+        # part for the build tree, for a folder of the repository on its
+        # command line, or for scripts/. The files and the programs on its
+        # command line stay, and the cautious rule examines its reads and its
+        # listings.
+        python = {"name": "y", "command": [str(outside / f"python{exe}"), str(root / "scripts" / "check.py"),
+                                           str(tree), str(root / "scripts")]}
+        only_script = {**python, "command": python["command"][:2]}
+        expect("a Python test by the rules before M1-138", keys(python),
+               sorted(always + ["programs", "files", "scripts", "build tree"]))
+        expect("a Python test with complete records: its program and its files only",
+               sorted(run.parts(python, [], env, listings=[])), sorted(always + ["programs", "files"]))
+        expect("and a folder of the repository on its command line is not in its files",
+               run.parts(python, [], env, listings=[]).get("files"),
+               run.parts(only_script, [], env, listings=[]).get("files"))
+        expect("a Python test that read a file under data/: and the cautious rule",
+               "cautious" in run.parts(python, [(h, str(root / "data" / "f.txt"))], env, listings=[]), True)
+        expect("a Python test that listed cmake/: and the cautious rule",
+               "cautious" in run.parts(python, [], env, listings=[(h, str(root / "cmake"))]), True)
         before = run.parts(probe, recorded, env)
         run._card = {"gpu": "another card"}
         expect("another card moves a GPU test's fingerprint", run.parts(probe, recorded, env) != before, True)
@@ -3408,6 +3839,7 @@ def self_test() -> int:
     tools_read_as_they_answer(expect)
     shader_record_cases(expect)
     function_level_cases(expect)
+    python_record_cases(expect)
 
     for failure in failures:
         print(f"self-test FAILED: {failure}")

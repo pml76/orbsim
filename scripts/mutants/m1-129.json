@@ -646,8 +646,8 @@
     {
       "name": "a folder on a command line is hashed as one file",
       "file": "scripts/run-tests.py",
-      "find": "files += self.world.unignored_under(path) if path.is_dir() else [path]",
-      "replace": "files += [path]",
+      "find": "                    files += self.world.unignored_under(path)",
+      "replace": "                    files += [path]",
       "expect": "caught",
       "suites": [],
       "targets": [],
@@ -968,8 +968,8 @@
     {
       "name": "the machine part leaves out Windows' leap seconds",
       "file": "scripts/run-tests.py",
-      "find": "            self._machine = digest(f\"{self.world.files(sorted(set(found)))}\\n{self.leap_seconds()}\")",
-      "replace": "            self._machine = digest(f\"{self.world.files(sorted(set(found)))}\")",
+      "find": "            self._machine = digest(f\"{self.world.files(sorted(set(found)))}\\n{self.leap_seconds()}\\n{self.capacity()}\")",
+      "replace": "            self._machine = digest(f\"{self.world.files(sorted(set(found)))}\\n{self.capacity()}\")",
       "expect": "caught",
       "suites": [],
       "targets": [],

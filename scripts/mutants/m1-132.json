@@ -461,8 +461,8 @@
     {
       "name": "ORBSIM_TEST_NAME stays in the environment of the run",
       "file": "scripts/run-tests.py",
-      "find": "    env = without_test_name(env)",
-      "replace": "    pass",
+      "find": "    env = with_hook(without_test_name(env), tree, root)",
+      "replace": "    env = with_hook(env, tree, root)",
       "expect": "caught",
       "suites": [],
       "targets": [],
@@ -473,8 +473,8 @@
     {
       "name": "ORBSIM_TEST_NAME is in the environment part",
       "file": "scripts/run-tests.py",
-      "find": "and fold(n) != TEST_NAME_VARIABLE}",
-      "replace": "}",
+      "find": "            and fold(n) not in (TEST_NAME_VARIABLE, OWNER_VARIABLE)}",
+      "replace": "            and fold(n) != OWNER_VARIABLE}",
       "expect": "caught",
       "suites": [],
       "targets": [],

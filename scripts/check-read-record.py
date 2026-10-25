@@ -35,11 +35,16 @@ and 785):
     scripts/run-tests.py escape it (decision 528);
   * each replaced function of os in each set of os that holds the function
     before the replacement, so that shutil gives the same answers (decision
-    780).
+    780);
+  * the driver, scripts/run-tests.py, which reads these records (decision
+    795): it reads each record with the last line `end` as complete and each
+    other record as not complete, and for each `read` line and each `list`
+    line it makes the same line for that path at this time.
 
 Proven able to fail before it was trusted: the self-test then removes each
 type of line from the records, one at a time, and makes sure that the check
-fails for each.
+fails for each; and it changes the hash of one `list` line, and makes sure
+that the driver then finds a difference.
 """
 
 import importlib.util
@@ -312,6 +317,47 @@ def problems_of(tree, outside, inner, sets, outer, inner_records, plant=None) ->
     return problems
 
 
+def driver_problems(tree: pathlib.Path, found: list) -> list:
+    """Each difference between the driver and the hook (decision 795), for the
+    records `found`, [(file name, lines)]: a record that the driver reads as
+    complete without the last line `end`, or as not complete with it; and a
+    `read` line or a `list` line for which the driver makes a different line
+    for that path at this time."""
+    run_tests = driver()
+    world = run_tests.World(tree, ROOT)
+    problems = []
+    for name, lines in found:
+        parsed = run_tests.parse_python_record("\n".join(lines) + "\n")
+        complete = bool(lines) and lines[-1] == "end"
+        if (parsed is not None) != complete:
+            problems.append(f"the driver reads the record {name} as {'complete' if parsed else 'not complete'}")
+            continue
+        for kind, key in (("read", "reads"), ("list", "listings")):
+            for stamp, path in (parsed or {}).get(key, []):
+                made = world.hook_line(kind, path)
+                if made != (kind, stamp):
+                    problems.append(f"the driver makes {made} for the line `{kind} {stamp} {path}` of {name}")
+    return problems
+
+
+def changed_listing(found: list) -> list:
+    """The records `found` with a different hash in the first `list` line of a
+    record with the last line `end`: a planted fault, which the driver must
+    find. Only in such a record: the driver does not examine the lines of a
+    record that is not complete, and the records come in the sequence of
+    their file names, which hold the numbers of their processes."""
+    changed, done = [], False
+    for name, lines in found:
+        new = []
+        for line in lines:
+            if not done and lines and lines[-1] == "end" and line.startswith("list "):
+                kind, _, path = line.split(" ", 2)
+                line, done = f"{kind} {'0' * 64} {path}", True
+            new.append(line)
+        changed.append((name, new))
+    return changed
+
+
 def self_test(cmake: str) -> int:
     with tempfile.TemporaryDirectory() as scratch_name:
         scratch = pathlib.Path(scratch_name)
@@ -319,6 +365,7 @@ def self_test(cmake: str) -> int:
         outer = records(tree / "test-reads", OUTER_TEST)
         inner_records = records(inner / "test-reads", INNER_TEST)
         problems = problems_of(tree, outside, inner, sets, outer, inner_records)
+        problems += driver_problems(tree, outer + inner_records)
         if done.returncode != 0:
             problems.insert(0, f"the probe exited with {done.returncode}: {done.stderr.strip()[-400:]}")
         for problem in problems:
@@ -330,7 +377,12 @@ def self_test(cmake: str) -> int:
                 problems.append(kind)
             else:
                 planted += 1
-    print(f"read-record self-test: {len(problems)} problems; {planted} of 5 planted faults found; "
+        if not driver_problems(tree, changed_listing(outer + inner_records)):
+            print("read-record FAILED: the driver found no difference with one `list` line changed")
+            problems.append("driver")
+        else:
+            planted += 1
+    print(f"read-record self-test: {len(problems)} problems; {planted} of 6 planted faults found; "
           f"{len(outer)} records of the outer test, {len(inner_records)} of the inner test")
     return 1 if problems else 0
 
