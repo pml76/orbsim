@@ -368,8 +368,9 @@ Thus for these tests only rule 2 goes, when the trace shows no other child.
 5. The code, in small commits, each with `check` passing in the two trees and
    its tests first seen to fail (questions 15 to 20, decisions 781-786, and
    questions 25 to 35, decisions 791-801):
-   0. the correction of the hook for a fault on a different thread, and its
-      case in `check-read-record.py` (decision 791), before step 2;
+   0. *Done 2026-10-25, `9d39113`.* The correction of the hook for a fault
+      on a different thread, and its case in `check-read-record.py`
+      (decision 791), before step 2;
    1. *Done 2026-10-24, `a56c1f3`.* The hook,
       [`scripts/read-record/sitecustomize.py`](../../../scripts/read-record/sitecustomize.py),
       and its self-test, `read_record_self_test` (decisions 765, 770, 771,
@@ -545,8 +546,11 @@ The owner ended the session after step 1. Start here: step 2 is next. Each
 point below comes from the work of this session; read it before the code.
 
 *Added 2026-10-25:* the owner ruled questions 25 to 35 before step 2
-(decisions 791-801). First comes the correction of the hook (decision 791),
-in a commit of its own. Then step 2, with decisions 792-796 and 801; step 3,
+(decisions 791-801). The correction of the hook (decision 791) is committed
+(`9d39113`): two child processes of `check-read-record.py` plant a fault on a
+second thread, through the audit hook and through `os.stat`, because the
+correction sets the flag in these two functions. Next, step 2, with decisions
+792-796 and 801; step 3,
 with decisions 797 and 798; and step 4, with decision 799. The files of the
 spike in point 6 stay until this task ends (decision 800).
 
