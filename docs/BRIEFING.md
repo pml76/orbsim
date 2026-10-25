@@ -475,4 +475,4 @@ and step 1 of the code is committed. The next session starts with the list
 **On 2026-10-25** the owner ruled questions 25 to 35 of M1-138 before its
 step 2 (decisions 791-801). The session examined the hook and the driver, and
 measured three faults that could skip a test that must run. The correction
-of the hook (decision 791) comes first, then step 2.
+of the hook (decision 791) and step 2 are committed. Next, step 3.

@@ -375,8 +375,9 @@ Thus for these tests only rule 2 goes, when the trace shows no other child.
       [`scripts/read-record/sitecustomize.py`](../../../scripts/read-record/sitecustomize.py),
       and its self-test, `read_record_self_test` (decisions 765, 770, 771,
       780-782 and 785);
-   2. the driver with the records of the Python processes, and its self-test
-      cases (decisions 783 and 786);
+   2. *Done 2026-10-25, `e95dcef`.* The driver with the records of the
+      Python processes, and its self-test cases (decisions 783, 786, 792-796,
+      801 and 802);
    3. the trace of the `cmake -P` tests (decisions 768, 775 and 784);
    4. the rules for the child programs (decisions 778 and 787-790), and the
       end-to-end test (decision 786).
@@ -549,10 +550,17 @@ point below comes from the work of this session; read it before the code.
 (decisions 791-801). The correction of the hook (decision 791) is committed
 (`9d39113`): two child processes of `check-read-record.py` plant a fault on a
 second thread, through the audit hook and through `os.stat`, because the
-correction sets the flag in these two functions. Next, step 2, with decisions
-792-796 and 801; step 3,
-with decisions 797 and 798; and step 4, with decision 799. The files of the
-spike in point 6 stay until this task ends (decision 800).
+correction sets the flag in these two functions. **Step 2 is committed
+(`e95dcef`), thus points 1 and 2 below are done.** The driver sets the hook
+for each test that it runs. In each `check` tree, the 22 Python tests with no
+child process have complete records, and the store holds their listings.
+Four mutants of M1-129 and M1-132 have new anchors (decision 802). Before the
+commit, `check` in RelWithDebInfo found a fault of the new case of decision
+795: its planted fault went into a record with no line `end` when the
+numbers of the processes put such a record first, and the driver does not
+examine such a record. Next, step 3, with decisions 797 and 798; and step 4,
+with decision 799. The files of the spike in point 6 stay until this task
+ends (decision 800).
 
 1. **Where the work is.** Step 1 is `a56c1f3`: the hook and `read_record_self_test`.
    No test uses the hook at this time, because the driver does not set
