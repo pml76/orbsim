@@ -24,8 +24,10 @@ and 785):
   * the source of a module loaded from its cached .pyc file, and the hook's
     own file;
   * each process started, and the record of each child Python process: one
-    with a test name of its own, one with none, and one that ends with
-    os._exit, and its record must have no last line `end`;
+    with a test name of its own, one with none, one that ends with os._exit,
+    and two with a fault of the hook on a second thread, through the audit
+    hook and through a replaced function; the record of each of the last
+    three must have no last line `end` (decisions 782 and 791);
   * a child that names records of its own, as a driver in a test does:
     its record goes into its own folder and into the folder of the outer test,
     each with the files of its own tree only (decision 783);
@@ -98,6 +100,26 @@ child("open(" + repr(str(tree / "different.txt")) + ").read()", env)
 env = {k: v for k, v in os.environ.items() if k.upper() != "ORBSIM_TEST_NAME"}
 child("open(" + repr(str(tree / "no-name.txt")) + ").read()", env)
 child("import os; open(" + repr(str(tree / "dies.txt")) + ").read(); os._exit(0)")
+
+def thread_fault(name, call):
+    # A fault of the hook on a second thread (decision 791): the hook raises an
+    # exception for one file, and the main thread, which writes the record at
+    # exit, must see it. `call` goes through the audit hook, or through one of
+    # the replaced functions.
+    child("import os, sitecustomize, threading\n"
+          "real = sitecustomize._text\n"
+          "def failing(path):\n"
+          "    if " + repr(name) + " in str(path):\n"
+          "        raise RuntimeError('a planted fault of the hook')\n"
+          "    return real(path)\n"
+          "sitecustomize._text = failing\n"
+          "thread = threading.Thread(target=lambda: " + call.format(repr(str(tree / name))) + ")\n"
+          "thread.start()\n"
+          "thread.join()\n"
+          "sitecustomize._text = real\n")
+
+thread_fault("thread-open.txt", "open({}).close()")
+thread_fault("thread-stat.txt", "os.stat({})")
 env = dict(os.environ, ORBSIM_READ_RECORDS=str(inner / "test-reads"), ORBSIM_TEST_NAME="inner test")
 child("open(" + repr(str(tree / "nested.txt")) + ").read(); open(" + repr(str(inner / "inner.txt")) + ").read()", env)
 subprocess.run([str(cmake), "-E", "echo", "x"], cwd=outside, check=True, capture_output=True)
@@ -149,7 +171,8 @@ def make_tree(scratch: pathlib.Path) -> tuple:
     tree, outside, inner = scratch / "tree", scratch / "outside", scratch / "inner"
     for name in ("read-open.txt", "read-pathlib.txt", "read-os-open.txt", "stat.txt", "lstat.txt", "exists.txt",
                  "lexists.txt", "isfile.txt", "pathlib-exists.txt", "pathlib-is-file.txt", "pathlib-stat.txt",
-                 "child.txt", "different.txt", "no-name.txt", "dies.txt", "nested.txt"):
+                 "child.txt", "different.txt", "no-name.txt", "dies.txt", "nested.txt", "thread-open.txt",
+                 "thread-stat.txt"):
         write(tree / name)
     for folder in ("isdir", "pathlib-is-dir", "list-listdir", "list-scandir", "list-glob", "list-iterdir"):
         write(tree / folder / "a.txt")
@@ -245,11 +268,13 @@ def problems_of(tree, outside, inner, sets, outer, inner_records, plant=None) ->
     children = [words(json.loads(l[len("child "):]).get("argv", [])) for l in top if l.startswith("child ")]
     if not any(c and c[0].lower().endswith(("cmake", "cmake.exe")) for c in children):
         problems.append("no `child` line for the program that the probe started")
-    if len([c for c in children if "-c" in c]) != 5:
-        problems.append("not one `child` line for each of the five child Python processes")
+    if len([c for c in children if "-c" in c]) != 7:
+        problems.append("not one `child` line for each of the seven child Python processes")
     others = {name: lines for name, lines in outer if lines is not top}
-    for name, wanted in (("child.txt", "end"), ("different.txt", "end"), ("no-name.txt", "end"),
-                         ("nested.txt", "end"), ("dies.txt", None)):
+    for name, wanted, how in (("child.txt", "end", ""), ("different.txt", "end", ""), ("no-name.txt", "end", ""),
+                              ("nested.txt", "end", ""), ("dies.txt", None, "ends with os._exit"),
+                              ("thread-open.txt", None, "has a fault of the audit hook on a second thread"),
+                              ("thread-stat.txt", None, "has a fault of a replaced function on a second thread")):
         found = [lines for lines in others.values() if any(a.endswith(name + "').read()") or name + "')" in a
                                                            for a in argv_of(lines))]
         if len(found) != 1:
@@ -259,9 +284,9 @@ def problems_of(tree, outside, inner, sets, outer, inner_records, plant=None) ->
         if wanted == "end" and (not lines or lines[-1] != "end"):
             problems.append(f"the record of the child that reads {name} has no last line `end`")
         if wanted is None and "end" in lines:
-            problems.append(f"the record of the child that reads {name} and ends with os._exit has a line `end`")
+            problems.append(f"the record of the child that reads {name} and {how} has a line `end`")
         if wanted is None and (not lines or lines[0] != HEAD):
-            problems.append(f"the child that reads {name} and ends with os._exit left no record from its start")
+            problems.append(f"the child that reads {name} and {how} left no record from its start")
         if wanted == "end" and t(name) not in paths(lines, "read"):
             problems.append(f"the record of the child that reads {name} has no `read` line for it")
         if name == "nested.txt" and any(os.path.normcase(str(inner)) in p for p in paths(lines, "read")):

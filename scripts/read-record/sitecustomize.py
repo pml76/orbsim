@@ -26,7 +26,8 @@ build tree of the record go in (decision 765). The file is written at the
 start of the process with its first three lines, and again at its exit, and
 only the exit adds the last line `end` (decision 782): a process that is
 killed, or that ends with os._exit, writes only a record with no `end`, and its
-test then runs by the rules before M1-138.
+test then runs by the rules before M1-138. A fault of the hook on one of the
+threads of the process also stops the line `end` (decision 791).
 
 **Where the records go** (decisions 781 and 783). Each record goes into
 `<folder>/<test>.py-<process>-<start>.txt` for its own test, ORBSIM_TEST_NAME
@@ -77,6 +78,11 @@ _OS_SETS = ("supports_fd", "supports_follow_symlinks", "supports_dir_fd", "suppo
 _local = threading.local()
 _lock = threading.Lock()
 _files, _folders, _children = set(), set(), []
+# Set by a fault of the hook on one of the threads, and then the record gets
+# no line `end` (decision 791). One value for all of the process: the main
+# thread writes the record at exit, and only the thread that sets a value of
+# threading.local() can see it.
+_failed = threading.Event()
 
 
 def _escaped_name(name):
@@ -155,7 +161,7 @@ def _hook(event, args):
             with _lock:
                 _children.append({"event": event, "argv": repr(args), "cwd": os.getcwd()})
     except Exception:  # noqa: BLE001 -- the record must not change what the process does
-        _local.failed = True
+        _failed.set()
     finally:
         _local.busy = False
 
@@ -170,7 +176,7 @@ def _wrap(module, name, sets):
                 with _lock:
                     _files.add(_text(path))
             except Exception:  # noqa: BLE001
-                _local.failed = True
+                _failed.set()
             finally:
                 _local.busy = False
         return original(path, *args, **kwargs)
@@ -236,7 +242,7 @@ def _write(destinations, body):
             lines = [_HEAD, "argv " + json.dumps(_ARGV), "cwd " + _CWD]
             if body:
                 lines += _lines_for(os.path.dirname(os.path.abspath(folder)))
-                if not getattr(_local, "failed", False):
+                if not _failed.is_set():
                     lines.append("end")
             with open(target, "w", encoding="utf-8", errors="surrogateescape", newline="\n") as out:
                 out.write("\n".join(lines) + "\n")
