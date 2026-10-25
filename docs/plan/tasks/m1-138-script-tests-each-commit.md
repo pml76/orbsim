@@ -1,9 +1,11 @@
 # M1-138 — The script tests that run at each commit
 
 Phase: B | Status: **started 2026-10-24. Its questions 1 to 14 are ruled
-(decisions 764-775 and 777-780), and questions 15 to 20 about how the code
-is done (decisions 781-786). The spike is done
-([its record](../../measurements/m1-138-spike.md)). The code has started**
+(decisions 764-775 and 777-780), questions 15 to 20 about how the code is
+done (decisions 781-786), and questions 21 to 24 about the rules of decision
+778 (decisions 787-790). The spike is done
+([its record](../../measurements/m1-138-spike.md)). Step 1 of the code is
+committed. The next session starts with "Left for the next session" below**
 Prerequisites: [M1-133](m1-133-selection-proved.md), which found the cost. It
 comes before M1-137 (decision 763).
 Decided by: **decision 763**, its position in the queue, and **decisions
@@ -364,13 +366,15 @@ Thus for these tests only rule 2 goes, when the trace shows no other child.
    spike, and questions 13 and 14 (decisions 778-780).
 5. The code, in small commits, each with `check` passing in the two trees and
    its tests first seen to fail (questions 15 to 20, decisions 781-786):
-   1. the hook, scripts/read-record/sitecustomize.py, and its self-test,
-      `read_record_self_test` (decisions 765, 770, 771, 780-782 and 785);
+   1. *Done 2026-10-24, `a56c1f3`.* The hook,
+      [`scripts/read-record/sitecustomize.py`](../../../scripts/read-record/sitecustomize.py),
+      and its self-test, `read_record_self_test` (decisions 765, 770, 771,
+      780-782 and 785);
    2. the driver with the records of the Python processes, and its self-test
       cases (decisions 783 and 786);
    3. the trace of the `cmake -P` tests (decisions 768, 775 and 784);
-   4. the rules for the child programs (decision 778), and the end-to-end
-      test (decision 786).
+   4. the rules for the child programs (decisions 778 and 787-790), and the
+      end-to-end test (decision 786).
 6. *Removed by decision 779:* the "after" figures.
 7. The safety, as decision 767 says.
 8. `check` in the two trees, the commit, the mutant file of the task after
@@ -501,6 +505,71 @@ of each outer test, for a driver that runs inside a test. 18: one CMake
 function for the trace arguments. 19: the self-test of the hook as a CTest
 test of its own. 20: a self-test case for each new part, and the end-to-end
 test with a Python script test and a `cmake -P` test.
+
+**21 to 24. The rules of decision 778, for the code.** *Ruled by decisions
+787-790, each by its recommendation.* 21: for `ninja -t`, which of the
+outputs that `build.ninja` names are there. 22: a path not in the
+repository or the tree counts by its bytes, by the names in it, or as
+`missing`. 23: the CTest files of the tree are each `CTestTestfile.cmake`
+and `DartConfiguration.tcl`, each file of Catch2's test discovery, and each
+program of the tree. 24: the driver runs the same `git ls-files` command
+again and hashes its output.
+
+## Left for the next session (2026-10-25)
+
+The owner ended the session after step 1. Start here: step 2 is next. Each
+point below comes from the work of this session; read it before the code.
+
+1. **Where the work is.** Step 1 is `a56c1f3`: the hook and `read_record_self_test`.
+   No test uses the hook at this time, because the driver does not set
+   `ORBSIM_READ_RECORDS`. The commits after `54db237` wait for `check-full`
+   in the two trees and for the owner's push. The first `check` of a session
+   can run all tests, because of a different `PATH` (N8).
+2. **Step 2, the driver** (`scripts/run-tests.py`, decisions 765, 781-783 and
+   786):
+   - the environment that the driver gives CTest gets `ORBSIM_READ_RECORDS`,
+     the tree's `test-reads` folder, and `PYTHONPATH` with
+     `<root>/scripts/read-record` first. The driver does not remove
+     `ORBSIM_READ_RECORD_OWNER`, because a driver in a test must give the
+     outer chain to its tests (decision 783), and `environment()` does not
+     include it (decision 781). The environment part changes one time, thus the
+     first `check` after step 2 runs all tests;
+   - before the run, the driver deletes the Python records of each test that
+     it runs: `<escaped name>.py-<process>-<start>.txt` in `test-reads`;
+   - after the run, the records of a test are complete only if each one has
+     the head line and `end`, and if one of them comes from the interpreter
+     of the test's own script: its `argv` without the first item agrees with
+     the test's command without the first item, because the launcher of
+     PyManager starts the interpreter with the same arguments (decision
+     782);
+   - a `read` line goes into the stored `reads`, which `unchanged()` examines
+     as at this time; a `list` line must get a new examination with the hash of the hook
+     (SHA-256 of the sorted names, with a line end between them, in UTF-8 with
+     `surrogateescape`); `unreadable` counts as changed at each decision;
+   - in `parts()`, a Python test with complete records and no child process
+     gets no part for the build tree, for a folder of the repository on its
+     command line, or for `scripts/`. The cautious rule of decision 505
+     stays. Until step 4, a test with a child process keeps rules 1 and 2;
+   - a self-test case for each new part (decision 786).
+3. **Step 3, the trace** (decisions 768, 775 and 784): one CMake function for
+   the three arguments, at the 17 places that add the 57 tests. From the
+   trace: the `file` field of each entry (the scripts that ran);
+   `file(READ|STRINGS|SHA256|SIZE)` as a read; `file(GLOB)` as a listing of the
+   folder of the pattern; `if` and `elseif` with `EXISTS`, and
+   `get_filename_component` with `REALPATH`, as a question about a file;
+   `execute_process` as a child. The known commands are in section 6 of the
+   record of the spike; a different one keeps rules 1 and 2.
+4. **Step 4, the rules for the children** (decisions 778 and 787-790), and
+   then the end-to-end test (decision 786). Its scratch repository must hold
+   a copy of `scripts/read-record/`, because the hook finds its repository from
+   the folder of its own file.
+5. **Then** the safety proof (decision 767); the mutant file `m1-138.json`,
+   with the five faults of the hook that step 1 tried, as mutants;
+   `check-full` in the two trees; and the push on the owner's word.
+6. **Files of the spike on the first machine**, in build/m1-138-spike, which
+   git ignores: the complete Debug recording `procmon-debug2.*` and the short
+   one `procmon-probe3.*`, about 4 GB. They can be deleted on the owner's
+   word.
 
 ## Done when
 

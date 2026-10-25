@@ -468,6 +468,6 @@ N8 in the task document).
 (decision 776): no measurement that does not prevent a bug, unless the owner
 tells you to make it. A `check` in Debug failed one time with five tests at
 their time limit; the next `check` passed, and the cause stays unknown. Then
-the spike was done (decision 777; its record is in `docs/measurements/`), and
-questions 7, 13 and 14 of M1-138's task document go to the owner before the
-code.
+the spike was done, the questions of the code were ruled (decisions 777-790),
+and step 1 of the code is committed. The next session starts with the list
+"Left for the next session" in M1-138's task document.
