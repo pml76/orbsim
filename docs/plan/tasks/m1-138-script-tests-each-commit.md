@@ -2,8 +2,9 @@
 
 Phase: B | Status: **started 2026-10-24. Its questions 1 to 14 are ruled
 (decisions 764-775 and 777-780), questions 15 to 20 about how the code is
-done (decisions 781-786), and questions 21 to 24 about the rules of decision
-778 (decisions 787-790). The spike is done
+done (decisions 781-786), questions 21 to 24 about the rules of decision
+778 (decisions 787-790), and questions 25 to 35 before step 2 (decisions
+791-801). The spike is done
 ([its record](../../measurements/m1-138-spike.md)). Step 1 of the code is
 committed. The next session starts with "Left for the next session" below**
 Prerequisites: [M1-133](m1-133-selection-proved.md), which found the cost. It
@@ -365,7 +366,10 @@ Thus for these tests only rule 2 goes, when the trace shows no other child.
 4. *Done 2026-10-24.* Question 7 to the owner again, with the figures of the
    spike, and questions 13 and 14 (decisions 778-780).
 5. The code, in small commits, each with `check` passing in the two trees and
-   its tests first seen to fail (questions 15 to 20, decisions 781-786):
+   its tests first seen to fail (questions 15 to 20, decisions 781-786, and
+   questions 25 to 35, decisions 791-801):
+   0. the correction of the hook for a fault on a different thread, and its
+      case in `check-read-record.py` (decision 791), before step 2;
    1. *Done 2026-10-24, `a56c1f3`.* The hook,
       [`scripts/read-record/sitecustomize.py`](../../../scripts/read-record/sitecustomize.py),
       and its self-test, `read_record_self_test` (decisions 765, 770, 771,
@@ -515,10 +519,36 @@ and `DartConfiguration.tcl`, each file of Catch2's test discovery, and each
 program of the tree. 24: the driver runs the same `git ls-files` command
 again and hashes its output.
 
+**25 to 35. Before step 2, 2026-10-25.** The next session examined the code
+of step 1 and the driver before step 2, and measured each finding in a
+scratch folder. *Ruled by decisions 791-801, each by its recommendation.*
+25: the flag of a fault of the hook is one value for all of the process,
+because a value for each thread does not stop the line `end` after a fault on
+a different thread. 26: for the records of the Python processes, the driver
+makes the line that the hook writes for a path at this time, because
+`World.file()` gives `missing` for a folder. 27: the driver uses a record only
+if it holds the `read` line of its own hook, because a copy of the hook in a
+different repository keeps the paths of that repository. 28: the physical
+memory and `os.cpu_count()` go into the machine part, because `memory_pool`
+and `parallel_tests` use them and no record can show them. 29:
+`check-read-record.py` compares the reading of the driver with the records of
+the hook itself. 30: `PYTHONPATH` goes into the environment part. 31: from a
+trace, the driver uses only the files that are not in the build tree. 32:
+the CMake function of the trace stops the configure for a test name that the
+escape changes. 33: the tests that read the store of the driver run at each
+`check` after step 4, as before this task. 34: the files of the spike stay
+until this task ends. 35: the rules of step 2 that no earlier decision gives.
+
 ## Left for the next session (2026-10-25)
 
 The owner ended the session after step 1. Start here: step 2 is next. Each
 point below comes from the work of this session; read it before the code.
+
+*Added 2026-10-25:* the owner ruled questions 25 to 35 before step 2
+(decisions 791-801). First comes the correction of the hook (decision 791),
+in a commit of its own. Then step 2, with decisions 792-796 and 801; step 3,
+with decisions 797 and 798; and step 4, with decision 799. The files of the
+spike in point 6 stay until this task ends (decision 800).
 
 1. **Where the work is.** Step 1 is `a56c1f3`: the hook and `read_record_self_test`.
    No test uses the hook at this time, because the driver does not set

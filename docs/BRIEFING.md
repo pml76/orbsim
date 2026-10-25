@@ -471,3 +471,8 @@ their time limit; the next `check` passed, and the cause stays unknown. Then
 the spike was done, the questions of the code were ruled (decisions 777-790),
 and step 1 of the code is committed. The next session starts with the list
 "Left for the next session" in M1-138's task document.
+
+**On 2026-10-25** the owner ruled questions 25 to 35 of M1-138 before its
+step 2 (decisions 791-801). The session examined the hook and the driver, and
+measured three faults that could skip a test that must run. The correction
+of the hook (decision 791) comes first, then step 2.
