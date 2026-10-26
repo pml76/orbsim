@@ -89,8 +89,9 @@ else()
     add_test(NAME configure_current COMMAND ${CMAKE_COMMAND} -E false)
     add_test(NAME configure_current_self_test COMMAND ${CMAKE_COMMAND} -E false)
 endif()
+orbsim_trace_arguments(orbsim_trace configure_guard)
 add_test(NAME configure_guard
-        COMMAND ${CMAKE_COMMAND}
+        COMMAND ${CMAKE_COMMAND} ${orbsim_trace}
                 -DMODULE=${CMAKE_CURRENT_SOURCE_DIR}/cmake/ConfigureInputs.cmake
                 -DWORK=${CMAKE_CURRENT_BINARY_DIR}/configure_guard
                 -DGENERATOR=${CMAKE_GENERATOR}
@@ -554,8 +555,9 @@ set_tests_properties(run_tests_in_tree PROPERTIES LABELS fixtures)
 # own file(SHA256) (M1-129, register decisions 498, 527 and 528):
 # cmake/VerifyReadRecord.cmake says what it checks.
 orbsim_configure_input("${CMAKE_CURRENT_SOURCE_DIR}/cmake/VerifyReadRecord.cmake")
+orbsim_trace_arguments(orbsim_trace read_record_written)
 add_test(NAME read_record_written
-        COMMAND ${CMAKE_COMMAND}
+        COMMAND ${CMAKE_COMMAND} ${orbsim_trace}
                 -DPROGRAM=$<TARGET_FILE:test_read_records>
                 -DRECORDS=${CMAKE_BINARY_DIR}/test-reads
                 -DDATA=${CMAKE_CURRENT_SOURCE_DIR}/data

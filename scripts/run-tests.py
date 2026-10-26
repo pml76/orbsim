@@ -67,6 +67,14 @@ skipped when every part of its fingerprint is what it was at its last
     The test is unchanged when each line is the line that the hook writes for
     its path at this time (decision 792). Else the two parts above stay
     (decision 801 (5));
+  * a `cmake -P` test with a complete trace (M1-138): not the part of
+    scripts/, but the files of its trace that are not in the build tree.
+    The arguments of cmake/TraceArguments.cmake make CMake write the trace
+    into `<tree>/test-reads/<test name>.trace.json` (decisions 768 and 784).
+    The driver uses only the commands that it knows, and a child only when
+    the command line of the test names it (decisions 775, 803, 805 and 806);
+    the part of the build tree, the parts of the folders on its command line
+    and the cautious part stay (decision 809 (2));
   * the files it read, from its read record (decisions 489, 498 and 527):
     each must still hash to what the record says it was when the test read it;
   * the cautious rule (decisions 489 and 505): a test with no complete record,
@@ -198,7 +206,9 @@ EVERY_SHADER = "every"
 # programs that a test takes function by function, and the table of function
 # names of each program (M1-132, decision 709 (3)). 4: the key `listings` of
 # a test with the records of its Python processes (M1-138, decision 801 (1)).
-STORE_VERSION = 4
+# 5: the key `trace` of a `cmake -P` test with a complete trace (decision 809
+# (1)).
+STORE_VERSION = 5
 # The coverage recorder's records, next to the application's shader records
 # (tests/CoverageRecorder.cpp, decision 644), and the first three lines of
 # each, which say which test it belongs to (decision 564).
@@ -268,6 +278,35 @@ HOOK_FOLDER = ("scripts", "read-record")
 HOOK_FILE = "sitecustomize.py"
 READ_RECORDS_VARIABLE = "ORBSIM_READ_RECORDS"
 OWNER_VARIABLE = "ORBSIM_READ_RECORD_OWNER"
+# The trace of a `cmake -P` test (M1-138, decisions 768, 784 and 803-809):
+# `<escaped name>.trace.json` in test-reads/, which the arguments of
+# cmake/TraceArguments.cmake name. The commands of the scripts of these
+# tests, as section 6 of docs/measurements/m1-138-spike.md lists them, and a
+# function that the same trace defines (decision 805).
+TRACE = ".trace.json"
+TRACE_COMMANDS = frozenset(("if", "elseif", "else", "endif", "string", "list", "math", "set", "file", "foreach",
+                            "endforeach", "continue", "return", "message", "execute_process",
+                            "get_filename_component", "function", "endfunction"))
+# The subcommands of file() that read a file, and those that read none.
+TRACE_FILE_READS = frozenset(("READ", "STRINGS", "SHA256", "SIZE"))
+TRACE_FILE_NO_READS = frozenset(("TO_CMAKE_PATH", "REMOVE", "REMOVE_RECURSE", "WRITE", "MAKE_DIRECTORY"))
+# The operators of if() that examine a file. EXISTS is a read; each other
+# keeps the rules before M1-138, and IS_NEWER_THAN compares dates, which
+# decision 526 does not trust.
+TRACE_FILE_QUESTIONS = frozenset(("EXISTS", "IS_DIRECTORY", "IS_NEWER_THAN", "IS_READABLE", "IS_WRITABLE",
+                                  "IS_EXECUTABLE", "IS_SYMLINK"))
+# The keywords of execute_process() that the scripts use, measured in the
+# traces of the spike; they name no file. Each other keyword keeps the rules
+# before M1-138: WORKING_DIRECTORY or INPUT_FILE, for example, change what a
+# child reads.
+TRACE_PROCESS_KEYWORDS = frozenset(("RESULT_VARIABLE", "OUTPUT_VARIABLE", "ERROR_VARIABLE"))
+# Each keyword of execute_process() in the documentation of CMake 4.3, so that
+# a trace is read as CMake reads the arguments: a keyword ends a COMMAND.
+EXECUTE_PROCESS_KEYWORDS = frozenset((
+    "WORKING_DIRECTORY", "TIMEOUT", "RESULT_VARIABLE", "RESULTS_VARIABLE", "OUTPUT_VARIABLE", "ERROR_VARIABLE",
+    "INPUT_FILE", "OUTPUT_FILE", "ERROR_FILE", "OUTPUT_QUIET", "ERROR_QUIET", "COMMAND_ECHO",
+    "OUTPUT_STRIP_TRAILING_WHITESPACE", "ERROR_STRIP_TRAILING_WHITESPACE", "ENCODING", "ECHO_OUTPUT_VARIABLE",
+    "ECHO_ERROR_VARIABLE", "COMMAND_ERROR_IS_FATAL"))
 # Whether a Windows program's libraries are followed through the libraries
 # Windows loads only when a function in them is first called, as well as the
 # ones it loads at the start: not (register decision 539). None of this
@@ -610,6 +649,143 @@ def python_record_files(folder: pathlib.Path, names) -> dict:
         if match and match.group(1) in by_escape:
             found.setdefault(by_escape[match.group(1)], []).append(path)
     return found
+
+
+def trace_test(command: list, cmake) -> bool:
+    """Examine if a test runs a script with the tree's CMake and `-P`, and
+    thus has a trace (decision 784). Paths compared as Windows compares paths."""
+    return (bool(command) and bool(cmake) and windows_path(command[0]) == windows_path(str(cmake))
+            and "-P" in command[1:])
+
+
+def _trace_entries(text: str):
+    """The entries of a trace, or None where it is not complete (decision 804):
+    the first line is not the version line with 1 in its field `major`, or a
+    different line is not an entry with `cmd`, `args` as text and `file`."""
+    lines = text.split("\n")
+    if len(lines) < 2 or lines[-1] != "":
+        return None
+    try:
+        version = json.loads(lines[0]).get("version")
+        entries = [json.loads(line) for line in lines[1:-1]]
+    except (ValueError, AttributeError):
+        return None
+    if not isinstance(version, dict) or version.get("major") != 1:
+        return None
+    for entry in entries:
+        if not (isinstance(entry, dict) and isinstance(entry.get("cmd"), str) and isinstance(entry.get("file"), str)
+                and isinstance(entry.get("args"), list) and all(isinstance(a, str) for a in entry["args"])):
+            return None
+    return entries
+
+
+def _glob_patterns(args: list) -> list:
+    """The patterns of file(GLOB <variable> ...), read as CMake reads them: the
+    keyword LIST_DIRECTORIES and RELATIVE each with its value, and
+    CONFIGURE_DEPENDS, are not patterns."""
+    patterns, skip = [], False
+    for arg in args:
+        if skip:
+            skip = False
+        elif arg in ("LIST_DIRECTORIES", "RELATIVE"):
+            skip = True
+        elif arg != "CONFIGURE_DEPENDS":
+            patterns.append(arg)
+    return patterns
+
+
+def _child_known(args: list, named: set, tree: str) -> bool:
+    """Decisions 775, 803 and 806, for the arguments of one execute_process(),
+    which are read as CMake reads them, by its list of keywords: each COMMAND
+    has a program that the command line of the test names; each argument of
+    a child that is a path, also after `=`, is in the build tree or named on
+    that command line; and each other keyword is one that the scripts use,
+    which names no file."""
+    commands, group, value = 0, None, False
+    for arg in args:
+        if value:
+            value = False
+        elif arg == "COMMAND":
+            if group == []:
+                return False
+            commands, group = commands + 1, []
+        elif arg in EXECUTE_PROCESS_KEYWORDS:
+            if arg not in TRACE_PROCESS_KEYWORDS or group == []:
+                return False
+            group, value = None, True
+        elif group is not None:
+            if not group and norm(arg) not in named:
+                return False
+            for part in (arg, arg.split("=", 1)[1] if "=" in arg else None):
+                if part and os.path.isabs(part) and not under(norm(part), tree) and norm(part) not in named:
+                    return False
+            group.append(arg)
+    return commands > 0 and group != []
+
+
+def trace_inputs(text: str, command: list, named: set, cwd: str, tree: str):
+    """([read path], [folder of a glob]) from the trace of a `cmake -P`
+    test, each one time, sorted, and none in the build tree (decision 797);
+    or None, and then the test keeps the rules of decisions 500, 510 and 531 (decisions
+    805 and 806). `named` holds each path on the command line, as norm gives
+    it; a relative path counts from `cwd`, the working folder of the test.
+      - A read: the `file` field of each entry, file(READ|STRINGS|SHA256|SIZE),
+        if() or elseif() with EXISTS, and get_filename_component(REALPATH).
+      - A listing: file(GLOB) with a wildcard in its last part only.
+      - None for each other command, but a function that the trace defined
+        before; for each other file subcommand, GLOB_RECURSE and a wildcard
+        in a folder; for each other operator of if() about a file, and
+        get_filename_component(PROGRAM); and for a child of execute_process
+        that _child_known refuses."""
+    entries = _trace_entries(text)
+    if entries is None or not command:
+        return None
+    tree_key = norm(tree)
+    reads, folders, defined = set(), set(), set()
+
+    def resolved(path):
+        return os.path.normpath(path if os.path.isabs(path) else os.path.join(cwd, path))
+
+    for entry in entries:
+        cmd, args = entry["cmd"].lower(), entry["args"]
+        if cmd not in TRACE_COMMANDS and cmd not in defined:
+            return None
+        reads.add(resolved(entry["file"]))
+        if cmd == "function" and args:
+            defined.add(args[0].lower())
+        elif cmd == "file":
+            if not args:
+                return None
+            if args[0] in TRACE_FILE_READS:
+                if len(args) < 2:
+                    return None
+                reads.add(resolved(args[1]))
+            elif args[0] == "GLOB":
+                patterns = _glob_patterns(args[2:])
+                if not patterns:
+                    return None
+                for pattern in patterns:
+                    folder, _ = os.path.split(resolved(pattern))
+                    if any(c in folder for c in "*?["):
+                        return None
+                    folders.add(folder)
+            elif args[0] not in TRACE_FILE_NO_READS:
+                return None
+        elif cmd in ("if", "elseif"):
+            for at, arg in enumerate(args):
+                if arg in TRACE_FILE_QUESTIONS:
+                    if arg != "EXISTS" or at + 1 == len(args):
+                        return None
+                    reads.add(resolved(args[at + 1]))
+        elif cmd == "get_filename_component" and len(args) >= 3:
+            if args[2] == "PROGRAM":
+                return None
+            if args[2] == "REALPATH":
+                reads.add(resolved(args[1]))
+        elif cmd == "execute_process" and not _child_known(args, named, tree_key):
+            return None
+    keep = lambda paths: sorted(p for p in paths if not under(norm(p), tree_key))  # noqa: E731
+    return keep(reads), keep(folders)
 
 
 # --- the decision, pure ------------------------------------------------------------
@@ -1410,7 +1586,8 @@ class Run:
                     found.append(pathlib.Path(candidate))
         return found
 
-    def parts(self, test: dict, reads, env: dict, shaders=None, taken=frozenset(), listings=None) -> dict:
+    def parts(self, test: dict, reads, env: dict, shaders=None, taken=frozenset(), listings=None,
+              traced=False) -> dict:
         """What `test` is fingerprinted on, part by part. The environment is
         handed in rather than read here, so that the self-test can give it
         one (register decision 602); and the shaders its records named, as
@@ -1425,9 +1602,14 @@ class Run:
         folder of the repository on its command line, or for scripts/
         (decisions 764, 765 and 801), because its reads and its listings show
         what it read; the files and the programs on its command line stay,
-        and the cautious rule also examines its listings (decision 801 (6))."""
+        and the cautious rule also examines its listings (decision 801 (6)).
+        `traced` marks a `cmake -P` test with a complete trace, with its
+        lines in `reads` and `listings` too: it has no part for scripts/, but
+        the part of the build tree, the parts of the folders on its command
+        line and the cautious part stay (decisions 775 and 809 (2)), because
+        its children have no record of what they read."""
         tree, root = norm(self.tree), norm(self.root)
-        recorded = listings is not None
+        recorded = listings is not None and not traced
         found = {"definition": definition(test), "environment": environment(env),
                  "machine": self.machine()}
         files, programs, built, built_program = [], [], [], False
@@ -1459,9 +1641,9 @@ class Run:
             found["libraries"] = self.libraries_part(taken)
         if files:
             found["files"] = self.world.files(files)
-        if not built_program and not recorded:
+        if not built_program and listings is None:
             found["scripts"] = self.script_inputs()
-        if cautious(list(reads or []) + list(listings) if recorded else reads, self.root):
+        if traced or cautious(list(reads or []) + list(listings) if recorded else reads, self.root):
             found["cautious"] = self.cautious_inputs()
         # The compiled files its records name, each read in full (decisions
         # 629 and 635): which shaders a run asks for follows from what the
@@ -1490,6 +1672,43 @@ class Run:
             return parse_record(self.record_path(name).read_text(encoding="utf-8"))
         except OSError:
             return None
+
+    def trace_path(self, name: str) -> pathlib.Path:
+        """Where the trace of a `cmake -P` test is (decision 784):
+        test-reads/<escaped name>.trace.json, as cmake/TraceArguments.cmake names
+        it for a name that the escape does not change (decision 798)."""
+        return self.tree / RECORDS / (escaped_name(name) + TRACE)
+
+    def traces(self, names: list) -> dict:
+        """{test: (reads, listings) or None} for each `cmake -P` test of `names`
+        (trace_test), from its trace (trace_inputs), each path with the line that
+        the hook writes for it (decision 792): the value that this run
+        calculated before CTest started, where there is one; if not, the
+        value at this time (decision 807). A trace that is not there, or that
+        cannot be read, keeps the rules of decisions 500, 510 and 531 (decision 784)."""
+        found = {}
+        for name in names:
+            test = self.tests[name]
+            command = test.get("command") or []
+            if not trace_test(command, self.cmake):
+                continue
+            try:
+                text = self.trace_path(name).read_bytes().decode("utf-8", errors="replace")
+            except OSError:
+                found[name] = None
+                continue
+            named = {norm(p) for p in self.arguments(test)} | {norm(command[0])}
+            cwd = properties(test).get("WORKING_DIRECTORY") or str(self.tree)
+            paths = trace_inputs(text, command, named, cwd, str(self.tree))
+            if paths is None:
+                found[name] = None
+                continue
+            reads, listings = [], []
+            for kind, path in [("read", p) for p in paths[0]] + [("list", p) for p in paths[1]]:
+                line, stamp = self.world.hook_line(kind, path)
+                (reads if line == "read" else listings).append((stamp, path))
+            found[name] = (sorted(set(reads)), sorted(set(listings)))
+        return found
 
     def python_records(self, names: list) -> dict:
         """{test: (reads, listings) or None} for the tests `names`, from the
@@ -1861,7 +2080,8 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
     parts = {name: run.parts(test, (stored.get(name) or {}).get("reads"), env,
                              (stored.get(name) or {}).get("shaders"),
                              set((stored.get(name) or {}).get("programs") or ()),
-                             (stored.get(name) or {}).get("listings"))
+                             (stored.get(name) or {}).get("listings"),
+                             traced=bool((stored.get(name) or {}).get("trace")))
              for name, test in run.tests.items()}
     # The link commands of the programs that the decision computes function
     # parts for, in one call of Ninja (decision 709 (4)).
@@ -1887,6 +2107,9 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
     for paths in python_record_files(tree / RECORDS, order).values():
         for path in paths:
             path.unlink(missing_ok=True)
+    # And the trace of each such test (decision 809 (3)).
+    for name in order:
+        run.trace_path(name).unlink(missing_ok=True)
 
     code, results = 0, {}
     if order:
@@ -1938,6 +2161,14 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
         if found is not None:
             reads[name] = sorted(set(map(tuple, reads[name] or [])) | set(found[0]))
             listings[name] = found[1]
+    # The `cmake -P` tests with a complete trace (decisions 768, 784 and
+    # 803-809), the same way; the store marks them with `trace`.
+    traced = set()
+    for name, found in run.traces(passed).items():
+        if found is not None and name not in listings:
+            reads[name] = sorted(set(map(tuple, reads[name] or [])) | set(found[0]))
+            listings[name] = found[1]
+            traced.add(name)
     # The shaders each test's runs asked for (decision 629). A record that
     # cannot be read belongs to a test this cannot name, so nothing this run
     # ran is remembered, and every one of them runs again.
@@ -1952,10 +2183,12 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
     for name in order:
         if name in passed and name not in missing_records and not unreadable and name in taken:
             entry = {"parts": run.parts(run.tests[name], reads[name], env, shaders.get(name), set(taken[name]),
-                                        listings.get(name)),
+                                        listings.get(name), traced=name in traced),
                      "reads": reads[name]}
             if name in listings:
                 entry["listings"] = listings[name]
+            if name in traced:
+                entry["trace"] = True
             if taken[name]:
                 entry["programs"] = taken[name]
             if name in shaders:
@@ -3640,6 +3873,100 @@ def python_record_cases(expect) -> None:
                unchanged(as_stored(("list", MISSING, gone)), {}, World(base, base).file), False)
 
 
+def cmake_trace(script, *entries, major: int = 1) -> str:
+    """A trace of CMake as `--trace-format=json-v1 --trace-redirect` writes it:
+    the version line, then one entry for each command, each with the newline
+    after it (measured with CMake 4.3.1). Each entry is (command, argument...)."""
+    head = json.dumps({"version": {"major": major, "minor": 2}}, separators=(",", ":"))
+    lines = [json.dumps({"args": [str(a) for a in args], "cmd": cmd, "file": str(script), "frame": 1, "line": 1},
+                        separators=(",", ":")) for cmd, *args in entries]
+    return "\n".join([head] + lines) + "\n"
+
+
+def trace_cases(expect) -> None:
+    """The trace of a `cmake -P` test as its read record (M1-138, decisions 768,
+    784 and 803-809)."""
+    base = pathlib.Path(tempfile.gettempdir())
+    root, tools = base / "repo", base / "tools"
+    tree = root / "build"
+    script, program = root / "cmake" / "Run.cmake", tree / "orbsim.exe"
+    cmake, ninja = tools / "cmake.exe", tools / "ninja.exe"
+    command = [str(cmake), f"-DORBSIM={program}", f"-DMAKE={ninja}", "-P", str(script)]
+    named = {norm(p) for p in (cmake, program, ninja, script)}
+
+    def inputs(text, cwd=tree):
+        return trace_inputs(text, command, named, str(cwd), str(tree))
+
+    def path(p):
+        return os.path.normpath(str(p))
+
+    expect("a cmake -P test of the tree's CMake", trace_test(command, cmake), True)
+    expect("a test of a different CMake", trace_test([str(tools / "other.exe"), "-P", str(script)], cmake), False)
+    expect("a CMake test with no -P", trace_test([str(cmake), "-E", "true"], cmake), False)
+
+    whole = cmake_trace(
+        script,
+        ("set", "X", "1"),
+        ("if", "EXISTS", root / "tests" / "golden" / "a.png"), ("endif",),
+        ("if", "DEFINED", "X"), ("endif",),
+        ("file", "READ", root / "tests" / "probe.cpp", "text"),
+        ("file", "SHA256", tree / "probes" / "x.png", "hash"),
+        ("file", "SIZE", "relative.bin", "size"),
+        ("file", "GLOB", "found", root / "data" / "*.txt"),
+        ("get_filename_component", "real", root / "src" / "a.cpp", "REALPATH"),
+        ("get_filename_component", "name", root / "src" / "b.cpp", "NAME"),
+        ("function", "helper", "a"), ("endfunction",), ("helper", "1"),
+        ("execute_process", "COMMAND", program, "--probe-out", tree / "probes", "RESULT_VARIABLE", "code"),
+        ("execute_process", "COMMAND", cmake, "-E", "compare_files", tree / "a", tree / "b", "RESULT_VARIABLE", "d"),
+        ("execute_process", "COMMAND", cmake, "-S", tree / "s", f"-DCMAKE_MAKE_PROGRAM={ninja}",
+         "OUTPUT_VARIABLE", "out", "ERROR_VARIABLE", "out"),
+        ("file", "WRITE", tree / "out.txt", "x"),
+        ("message", "STATUS", "done"))
+    expect("a whole trace: the scripts and the files that are not in the tree, and the folder of a glob",
+           inputs(whole),
+           (sorted({path(script), path(root / "tests" / "golden" / "a.png"), path(root / "tests" / "probe.cpp"),
+                    path(root / "src" / "a.cpp")}), [path(root / "data")]))
+    expect("a relative path counts from the working folder of the test",
+           inputs(cmake_trace(script, ("file", "READ", "near.txt", "t")), cwd=root),
+           (sorted({path(script), path(root / "near.txt")}), []))
+    expect("the keywords of a glob and their values are not patterns",
+           inputs(cmake_trace(script, ("file", "GLOB", "v", "LIST_DIRECTORIES", "false", "RELATIVE", root / "x" / "y",
+                                       "CONFIGURE_DEPENDS", root / "data" / "*.txt")), cwd=root),
+           ([path(script)], [path(root / "data")]))
+    for name, text in (
+            ("no version line", '{"cmd":"set"}\n'),
+            ("a different major version", cmake_trace(script, ("set", "X"), major=2)),
+            ("a line that is not JSON", cmake_trace(script, ("set", "X")) + "{\n"),
+            ("an entry with no file", cmake_trace(script, ("set", "X")) + '{"args":[],"cmd":"set"}\n'),
+            ("an argument that is not text",
+             cmake_trace(script, ("set", "X")) + '{"args":[1],"cmd":"set","file":"f"}\n'),
+            ("a command that is not known", cmake_trace(script, ("include", root / "cmake" / "X.cmake"))),
+            ("a call of a function that the trace did not define", cmake_trace(script, ("helper2", "1"))),
+            ("a different file subcommand", cmake_trace(script, ("file", "COPY", root / "a", "DESTINATION", tree))),
+            ("a file read with no path", cmake_trace(script, ("file", "READ"))),
+            ("GLOB_RECURSE", cmake_trace(script, ("file", "GLOB_RECURSE", "v", root / "data" / "*.txt"))),
+            ("a wildcard in a folder of the pattern",
+             cmake_trace(script, ("file", "GLOB", "v", root / "d*" / "x.txt"))),
+            ("IS_NEWER_THAN", cmake_trace(script, ("if", root / "a", "IS_NEWER_THAN", root / "b"))),
+            ("EXISTS with no path", cmake_trace(script, ("if", "EXISTS"))),
+            ("get_filename_component with PROGRAM", cmake_trace(script, ("get_filename_component", "p", "git",
+                                                                         "PROGRAM"))),
+            ("a child that the command line does not name",
+             cmake_trace(script, ("execute_process", "COMMAND", tools / "git.exe", "status", "RESULT_VARIABLE", "r"))),
+            ("a child by its name only, which PATH finds",
+             cmake_trace(script, ("execute_process", "COMMAND", "git", "status", "RESULT_VARIABLE", "r"))),
+            ("a program of the tree that the command line does not name",
+             cmake_trace(script, ("execute_process", "COMMAND", tree / "other.exe", "RESULT_VARIABLE", "r"))),
+            ("a path of a child that is not in the tree and not on the command line",
+             cmake_trace(script, ("execute_process", "COMMAND", program, root / "scripts" / "x.py"))),
+            ("such a path after =",
+             cmake_trace(script, ("execute_process", "COMMAND", program, f"--input={root / 'docs' / 'a.md'}"))),
+            ("a keyword of execute_process that the scripts do not use",
+             cmake_trace(script, ("execute_process", "COMMAND", program, "WORKING_DIRECTORY", root))),
+            ("execute_process with no program", cmake_trace(script, ("execute_process", "COMMAND")))):
+        expect(f"a trace with {name}: the rules before M1-138", inputs(text), None)
+
+
 def self_test() -> int:
     failures, cases = [], []
 
@@ -3819,6 +4146,22 @@ def self_test() -> int:
                "cautious" in run.parts(python, [(h, str(root / "data" / "f.txt"))], env, listings=[]), True)
         expect("a Python test that listed cmake/: and the cautious rule",
                "cautious" in run.parts(python, [], env, listings=[(h, str(root / "cmake"))]), True)
+        # M1-138, step 3 (decisions 775 and 809): a test with a complete trace
+        # loses only the part of decision 531. The part of the build tree, the
+        # part of a folder of the repository on its command line and the
+        # cautious part stay.
+        traced = {"name": "t", "command": [str(outside / f"cmake{exe}"), f"-DTREE={tree}",
+                                           f"-DDIR={root / 'scripts'}", "-P", str(root / "cmake" / "RunProbe.cmake")]}
+        expect("a cmake -P test by the rules before M1-138", keys(traced),
+               sorted(always + ["programs", "files", "scripts", "build tree"]))
+        expect("a cmake -P test with a complete trace: no scripts part, and the cautious part",
+               sorted(run.parts(traced, [], env, listings=[], traced=True)),
+               sorted(always + ["programs", "files", "build tree", "cautious"]))
+        expect("and a folder of the repository on its command line stays in its files",
+               run.parts(traced, [], env, listings=[], traced=True).get("files"),
+               run.parts(traced, recorded, env).get("files"))
+        expect("the trace of a test: in test-reads/ of the tree, by the escape of decision 528",
+               run.trace_path("a:b"), tree / RECORDS / "a%3Ab.trace.json")
         before = run.parts(probe, recorded, env)
         run._card = {"gpu": "another card"}
         expect("another card moves a GPU test's fingerprint", run.parts(probe, recorded, env) != before, True)
@@ -3840,6 +4183,7 @@ def self_test() -> int:
     shader_record_cases(expect)
     function_level_cases(expect)
     python_record_cases(expect)
+    trace_cases(expect)
 
     for failure in failures:
         print(f"self-test FAILED: {failure}")

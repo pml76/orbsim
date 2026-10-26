@@ -954,6 +954,12 @@ target_link_libraries(test_file_replace PRIVATE orbsim_view)
 # implementation's own decoder, which is the check that the file is one.
 target_link_libraries(test_image_files PRIVATE orbsim_view OpenEXR::OpenEXRCore)
 
+# The trace of each `cmake -P` test, its read record (M1-138, register
+# decisions 768 and 784): orbsim_trace_arguments gives the three arguments of
+# CMake's trace for a test name, before -D and -P on its command line.
+orbsim_configure_input("${CMAKE_CURRENT_SOURCE_DIR}/cmake/TraceArguments.cmake")
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/TraceArguments.cmake)
+
 # The run-time half of Count's wraparound guard (M1-12, register decision 136).
 #
 # Programs of their own, because the claim is that an assertion fires and an
@@ -978,8 +984,9 @@ foreach(operation IN LISTS ORBSIM_COUNT_WRAPAROUND_OPERATIONS)
             orbsim_warnings
             orbsim_sanitizers
     )
+    orbsim_trace_arguments(orbsim_trace count_wraparound_${operation}_aborts)
     add_test(NAME count_wraparound_${operation}_aborts
-            COMMAND ${CMAKE_COMMAND}
+            COMMAND ${CMAKE_COMMAND} ${orbsim_trace}
                     -DPROBE=$<TARGET_FILE:count_wraparound_${operation}>
                     "-DCLAIM=the count's wraparound guard on ${operation}"
                     -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/VerifyAssertionProbe.cmake
@@ -1000,8 +1007,9 @@ target_link_libraries(angle_between_zero_probe PRIVATE
         orbsim_warnings
         orbsim_sanitizers
 )
+orbsim_trace_arguments(orbsim_trace angle_between_zero_aborts)
 add_test(NAME angle_between_zero_aborts
-        COMMAND ${CMAKE_COMMAND}
+        COMMAND ${CMAKE_COMMAND} ${orbsim_trace}
                 -DPROBE=$<TARGET_FILE:angle_between_zero_probe>
                 "-DCLAIM=angleBetween's refusal of a zero vector"
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/VerifyAssertionProbe.cmake
@@ -1033,8 +1041,9 @@ foreach(kind precondition postcondition)
     else()
         set(orbsim_tripped provokedPostcondition)
     endif()
+    orbsim_trace_arguments(orbsim_trace assertion_message_${kind})
     add_test(NAME assertion_message_${kind}
-            COMMAND ${CMAKE_COMMAND}
+            COMMAND ${CMAKE_COMMAND} ${orbsim_trace}
                     -DPROBE=$<TARGET_FILE:assertion_message_probe>
                     -DSOURCE=${CMAKE_CURRENT_SOURCE_DIR}/tests/assertion_message_probe.cpp
                     -DKIND=${kind}
@@ -1223,8 +1232,9 @@ endif()
 # output is not redistributed, so a fresh clone has none: the script then
 # prints SKIPPED, which CTest reports as a skip in its summary rather than
 # counting as a pass. A fixture present with the wrong hash fails.
+orbsim_trace_arguments(orbsim_trace horizons_fixture_checksums)
 add_test(NAME horizons_fixture_checksums
-        COMMAND ${CMAKE_COMMAND}
+        COMMAND ${CMAKE_COMMAND} ${orbsim_trace}
                 -DDIRECTORY=${CMAKE_CURRENT_SOURCE_DIR}/data/horizons
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/VerifyFixtureChecksums.cmake
 )
@@ -1562,14 +1572,16 @@ set_tests_properties(orbsim_smoke_bare PROPERTIES LABELS gpu RESOURCE_LOCK gpu)
 # would not have run at all. Measured with a throwaway CTest project on
 # 2026-10-03, CMake 4.3.1. The cost is one more render, about a second.
 set(ORBSIM_GOLDEN_DIR "${CMAKE_CURRENT_SOURCE_DIR}/tests/golden")
+orbsim_trace_arguments(orbsim_trace probe_clear)
 add_test(NAME probe_clear
-        COMMAND ${CMAKE_COMMAND}
+        COMMAND ${CMAKE_COMMAND} ${orbsim_trace}
                 -DORBSIM=$<TARGET_FILE:orbsim>
                 -DPROBE=clear
                 -DOUT=${ORBSIM_PROBE_DIR}
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/RunProbe.cmake)
+orbsim_trace_arguments(orbsim_trace probe_clear_golden)
 add_test(NAME probe_clear_golden
-        COMMAND ${CMAKE_COMMAND}
+        COMMAND ${CMAKE_COMMAND} ${orbsim_trace}
                 -DORBSIM=$<TARGET_FILE:orbsim>
                 -DPROBE=clear
                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}/probes-golden
@@ -1582,8 +1594,9 @@ add_test(NAME probe_clear_golden
 # this build wrote -- in a whole `check` and when CTest is asked for it alone.
 set_tests_properties(probe_clear_golden PROPERTIES
         LABELS gpu RESOURCE_LOCK gpu FIXTURES_SETUP probe_clear_reruns)
+orbsim_trace_arguments(orbsim_trace probe_clear_determinism)
 add_test(NAME probe_clear_determinism
-        COMMAND ${CMAKE_COMMAND}
+        COMMAND ${CMAKE_COMMAND} ${orbsim_trace}
                 -DORBSIM=$<TARGET_FILE:orbsim>
                 -DPROBE=clear
                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}/probes-rerun
@@ -1649,8 +1662,9 @@ set(ORBSIM_NUMERIC_PROBES
         grid-jitter-1km-4
 )
 foreach(probe IN LISTS ORBSIM_NUMERIC_PROBES)
+    orbsim_trace_arguments(orbsim_trace probe_${probe})
     add_test(NAME probe_${probe}
-            COMMAND ${CMAKE_COMMAND}
+            COMMAND ${CMAKE_COMMAND} ${orbsim_trace}
                     -DORBSIM=$<TARGET_FILE:orbsim>
                     -DPROBE=${probe}
                     -DOUT=${ORBSIM_PROBE_DIR}
@@ -1681,8 +1695,9 @@ add_executable(test_probe_lines tests/test_probe_lines.cpp)
 target_link_libraries(test_probe_lines PRIVATE orbsim_abort_behaviour orbsim_test_support)
 catch_discover_tests(test_probe_lines
         PROPERTIES FIXTURES_REQUIRED probe_data LABELS gpu RESOURCE_LOCK gpu)
+orbsim_trace_arguments(orbsim_trace probe_lines_golden)
 add_test(NAME probe_lines_golden
-        COMMAND ${CMAKE_COMMAND}
+        COMMAND ${CMAKE_COMMAND} ${orbsim_trace}
                 -DORBSIM=$<TARGET_FILE:orbsim>
                 -DPROBE=lines
                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}/probes-golden
@@ -1705,8 +1720,9 @@ add_executable(test_probe_grid tests/test_probe_grid.cpp)
 target_link_libraries(test_probe_grid PRIVATE orbsim_abort_behaviour orbsim_test_support)
 catch_discover_tests(test_probe_grid
         PROPERTIES FIXTURES_REQUIRED probe_data LABELS gpu RESOURCE_LOCK gpu)
+orbsim_trace_arguments(orbsim_trace probe_grid-400km_golden)
 add_test(NAME probe_grid-400km_golden
-        COMMAND ${CMAKE_COMMAND}
+        COMMAND ${CMAKE_COMMAND} ${orbsim_trace}
                 -DORBSIM=$<TARGET_FILE:orbsim>
                 -DPROBE=grid-400km
                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}/probes-golden
@@ -1742,8 +1758,9 @@ set_tests_properties(broken_goldens PROPERTIES
         FIXTURES_SETUP broken_goldens FIXTURES_REQUIRED probe_clear_frame)
 
 function(orbsim_add_golden_test name golden expect_exit)
+    orbsim_trace_arguments(orbsim_trace probe_golden_${name})
     add_test(NAME probe_golden_${name}
-            COMMAND ${CMAKE_COMMAND}
+            COMMAND ${CMAKE_COMMAND} ${orbsim_trace}
                     -DORBSIM=$<TARGET_FILE:orbsim>
                     -DPROBE=clear
                     -DOUT=${CMAKE_CURRENT_BINARY_DIR}/probes-golden-${name}
@@ -1786,8 +1803,9 @@ orbsim_add_golden_test(wrong_size ${ORBSIM_BROKEN_GOLDEN_DIR}/clear-wrong-size.p
 # directory; a golden accepted into it by hand would end the run with 0, and
 # fail this test, rather than pass it.
 set(ORBSIM_NO_CARD_GOLDEN_DIR "${CMAKE_CURRENT_BINARY_DIR}/golden-no-card")
+orbsim_trace_arguments(orbsim_trace probe_golden_no_card)
 add_test(NAME probe_golden_no_card
-        COMMAND ${CMAKE_COMMAND}
+        COMMAND ${CMAKE_COMMAND} ${orbsim_trace}
                 -DORBSIM=$<TARGET_FILE:orbsim>
                 -DPROBE=clear
                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}/probes-golden-no-card
@@ -1803,8 +1821,9 @@ set_tests_properties(probe_golden_no_card PROPERTIES LABELS gpu RESOURCE_LOCK gp
 # made: the arguments are refused first. `--accept-golden` never appears here
 # beside `--golden`, which the CTest test accept_golden refuses (decision 233).
 function(orbsim_add_usage_test name arguments expect)
+    orbsim_trace_arguments(orbsim_trace usage_${name})
     add_test(NAME usage_${name}
-            COMMAND ${CMAKE_COMMAND}
+            COMMAND ${CMAKE_COMMAND} ${orbsim_trace}
                     -DORBSIM=$<TARGET_FILE:orbsim>
                     "-DARGS=${arguments}"
                     "-DEXPECT=${expect}"
@@ -1855,8 +1874,9 @@ orbsim_add_usage_test(scene_with_bench "--bench|grid-orbit|--scene|none"
 # the display and the report, checked on every run of `check` -- and no frame
 # time asserted, which register decision 5 rules out. cmake/RunBench.cmake
 # says what it checks.
+orbsim_trace_arguments(orbsim_trace orbsim_bench_smoke)
 add_test(NAME orbsim_bench_smoke
-        COMMAND ${CMAKE_COMMAND}
+        COMMAND ${CMAKE_COMMAND} ${orbsim_trace}
                 -DORBSIM=$<TARGET_FILE:orbsim>
                 -DOUT=${CMAKE_CURRENT_BINARY_DIR}/bench-smoke
                 -DFRAMES=30
@@ -1869,8 +1889,9 @@ set_tests_properties(orbsim_bench_smoke PROPERTIES LABELS gpu RESOURCE_LOCK gpu)
 # needs a device to get as far as loading shaders, so it is `gpu` too. The
 # script checks the exit code and the message, which no single CTest property
 # does; it says why.
+orbsim_trace_arguments(orbsim_trace shader_missing_is_reported)
 add_test(NAME shader_missing_is_reported
-        COMMAND ${CMAKE_COMMAND}
+        COMMAND ${CMAKE_COMMAND} ${orbsim_trace}
                 -DORBSIM=$<TARGET_FILE:orbsim>
                 -DMISSING=${CMAKE_CURRENT_BINARY_DIR}/no-such-shader-directory
                 -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/VerifyMissingShader.cmake
