@@ -382,8 +382,9 @@ Thus for these tests only rule 2 goes, when the trace shows no other child.
       801 and 802);
    3. *Done 2026-10-26, `01c3868`.* The trace of the `cmake -P` tests
       (decisions 768, 775, 784, 797, 798 and 803-810);
-   4. the rules for the child programs (decisions 778 and 787-790), and the
-      end-to-end test (decision 786).
+   4. *Done 2026-10-26, `863d41d`.* The rules for the child programs
+      (decisions 778, 787-790 and 811-817), and the end-to-end test
+      (decisions 786, 808 and 816).
 6. *Removed by decision 779:* the "after" figures.
 7. The safety, as decision 767 says.
 8. `check` in the two trees, the commit, the mutant file of the task after
@@ -590,8 +591,13 @@ examine such a record. **Step 3 is committed (`01c3868`), with decisions 797,
 its trace in the store: 57 in Debug, and 51 in RelWithDebInfo, where 6 tests
 skip themselves. During step 3, a measurement found that CMake stops
 `cmake -P` when the folder of the trace is not there; thus the configure
-makes `test-reads/` (decision 810). Next, step 4, with decisions 799, 808
-and 811-817 (ruled 2026-10-26). The files of the spike in point 6 stay until this task
+makes `test-reads/` (decision 810). **Step 4 is committed (`863d41d`), with
+decisions 799, 808 and 811-817.** In each `check` tree, 34 Python tests have
+complete records: 22 with no child, and 12 with children of rule 2 or 5 of
+decision 778. `run_tests_end_to_end` has the twelve steps of decision 816.
+Thus points 3 and 4 below are done. Next, the safety proof of decision 767
+(point 5), with Process Monitor, which the owner starts; then the mutant
+file of the task. The files of the spike in point 6 stay until this task
 ends (decision 800).
 
 1. **Where the work is.** Step 1 is `a56c1f3`: the hook and `read_record_self_test`.
