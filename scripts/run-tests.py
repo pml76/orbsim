@@ -61,9 +61,13 @@ skipped when every part of its fingerprint is what it was at its last
     `<tree>/test-reads/`: each file that the process read, and the names in
     each folder that it examined, with their hash (decision 765). The
     records are complete when each has its last line `end` and the `read`
-    line of the hook of this repository (decisions 782 and 793), one is of
-    the interpreter of the test's own script (decision 801 (7)), and none
-    has a child process.
+    line of the hook of this repository (decisions 782 and 793), and one is
+    of the interpreter of the test's own script (decision 801 (7)). Each
+    child must be of rule 2 or 5 of decision 778 (decisions 811-817):
+    `ctest --show-only=json-v1` in the tree, with the CTest files of the
+    tree in the part of its children, or a child with its working folder
+    not in the repository or the tree, by its program and the paths on its
+    command line.
     The test is unchanged when each line is the line that the hook writes for
     its path at this time (decision 792). Else the two parts above stay
     (decision 801 (5));
@@ -207,8 +211,9 @@ EVERY_SHADER = "every"
 # names of each program (M1-132, decision 709 (3)). 4: the key `listings` of
 # a test with the records of its Python processes (M1-138, decision 801 (1)).
 # 5: the key `trace` of a `cmake -P` test with a complete trace (decision 809
-# (1)).
-STORE_VERSION = 5
+# (1)). 6: the key `children` of a Python test with children of rules 2 and 5
+# (decision 817 (1)).
+STORE_VERSION = 6
 # The coverage recorder's records, next to the application's shader records
 # (tests/CoverageRecorder.cpp, decision 644), and the first three lines of
 # each, which say which test it belongs to (decision 564).
@@ -608,8 +613,10 @@ def parse_python_record(text: str):
 
 
 def python_reads(texts: list, command: list, hook: str):
-    """(reads, listings) for the store, from the texts of the records of the
-    Python processes of one test, each line one time, sorted; or None, and
+    """(reads, listings, children) for the store, from the texts of the records
+    of the Python processes of one test: each read and each listing one time,
+    sorted, and each child line one time, which child_rules examines (decision
+    778); or None, and
     then the test keeps the rules of decisions 500, 510 and 531 (decision 801
     (5)): there is no record; a record could not be read (None) or is not
     complete (decision 782); no record is of the interpreter of the test's own
@@ -617,8 +624,7 @@ def python_reads(texts: list, command: list, hook: str):
     test without its first item, because the launcher of PyManager starts the
     interpreter with the same arguments (decision 801 (7)); a record has no
     `read` line for `hook`, the hook of this repository, thus a copy of the
-    hook in a different repository wrote it (decision 793); or a record has a
-    child process (decision 765, until step 4 of M1-138)."""
+    hook in a different repository wrote it (decision 793)."""
     parsed = [None if text is None else parse_python_record(text) for text in texts]
     if not parsed or not command or any(record is None for record in parsed):
         return None
@@ -626,10 +632,61 @@ def python_reads(texts: list, command: list, hook: str):
         return None
     if not all(any(norm(path) == norm(hook) for _, path in record["reads"]) for record in parsed):
         return None
-    if any(record["children"] for record in parsed):
-        return None
+    children = []
+    for record in parsed:
+        children += [child for child in record["children"] if child not in children]
     return (sorted({line for record in parsed for line in record["reads"]}),
-            sorted({line for record in parsed for line in record["listings"]}))
+            sorted({line for record in parsed for line in record["listings"]}), children)
+
+
+def child_rules(lines: list, tree: str, root: str):
+    """[{"kind", "program", "paths"}] for the store, each child one time,
+    sorted, from the `child` lines of the records of one test (decisions 778
+    and 811-817); or None, and then the test keeps the rules of decisions
+    500, 510 and 531. `paths` holds each path on the command line of the
+    child, also after `=`, which counts as decision 788 says.
+      - A child with its working folder not in the repository or the tree is
+        of rule 5: "program".
+      - A child with the arguments `--show-only=json-v1` and no other, a
+        program named ctest and its working folder the tree, is of rule 2:
+        "ctest" (decision 815).
+      - None for each other child (rule 6): also for a child that os.system,
+        startfile, spawn, exec or posix_spawn started (decision 817 (3)), one
+        with a program that is not an absolute path (decision 812), and one
+        with a path of the repository or the tree in its arguments (decision
+        813). The command line of a child of subprocess is one text on
+        Windows, which split_command_line makes into its arguments by the
+        rules of the C runtime (decision 817 (2))."""
+    tree_key, root_key = norm(tree), norm(root)
+    inside = lambda path: under(norm(path), tree_key) or under(norm(path), root_key)  # noqa: E731
+    found = {}
+    for line in lines:
+        if not isinstance(line, dict) or "event" in line or not isinstance(line.get("cwd"), str):
+            return None
+        argv = line.get("argv")
+        if isinstance(argv, str) and os.name == "nt":
+            argv = split_command_line(argv)
+        if not isinstance(argv, list) or not argv or not all(isinstance(a, str) for a in argv):
+            return None
+        if not os.path.isabs(argv[0]):
+            return None
+        paths = set()
+        for arg in argv[1:]:
+            for part in (arg, arg.split("=", 1)[1] if "=" in arg else None):
+                if part and os.path.isabs(part):
+                    if inside(part):
+                        return None
+                    paths.add(os.path.normpath(part))
+        if not inside(line["cwd"]):
+            kind = "program"
+        elif (os.path.basename(argv[0]).lower() in ("ctest", "ctest.exe") and argv[1:] == ["--show-only=json-v1"]
+              and norm(line["cwd"]) == tree_key):
+            kind = "ctest"
+        else:
+            return None
+        child = {"kind": kind, "program": argv[0], "paths": sorted(paths)}
+        found[(kind, norm(argv[0]), tuple(child["paths"]))] = child
+    return [found[key] for key in sorted(found)]
 
 
 def python_record_files(folder: pathlib.Path, names) -> dict:
@@ -1587,7 +1644,7 @@ class Run:
         return found
 
     def parts(self, test: dict, reads, env: dict, shaders=None, taken=frozenset(), listings=None,
-              traced=False) -> dict:
+              traced=False, children=None) -> dict:
         """What `test` is fingerprinted on, part by part. The environment is
         handed in rather than read here, so that the self-test can give it
         one (register decision 602); and the shaders its records named, as
@@ -1607,7 +1664,9 @@ class Run:
         lines in `reads` and `listings` too: it has no part for scripts/, but
         the part of the build tree, the parts of the folders on its command
         line and the cautious part stay (decisions 775 and 809 (2)), because
-        its children have no record of what they read."""
+        its children have no record of what they read. `children` holds the
+        children of a Python test with complete records, as child_rules
+        gives them: their part is children_part (decision 817 (4))."""
         tree, root = norm(self.tree), norm(self.root)
         recorded = listings is not None and not traced
         found = {"definition": definition(test), "environment": environment(env),
@@ -1645,6 +1704,8 @@ class Run:
             found["scripts"] = self.script_inputs()
         if traced or cautious(list(reads or []) + list(listings) if recorded else reads, self.root):
             found["cautious"] = self.cautious_inputs()
+        if children:
+            found["children"] = self.children_part(children)
         # The compiled files its records name, each read in full (decisions
         # 629 and 635): which shaders a run asks for follows from what the
         # other parts hold. Every shader where they cannot say.
@@ -1711,10 +1772,13 @@ class Run:
         return found
 
     def python_records(self, names: list) -> dict:
-        """{test: (reads, listings) or None} for the tests `names`, from the
-        records of their Python processes in test-reads/ (python_reads). A
-        record that cannot be read counts as not complete. Read as the hook
-        writes them, in UTF-8 with surrogateescape."""
+        """{test: (reads, listings, children) or None} for the tests `names`,
+        from the records of their Python processes in test-reads/
+        (python_reads), with the rules for their children (child_rules): the
+        paths on the command line of a child go in as the lines that the hook
+        writes for them (decisions 788 and 817 (5)). A record that cannot be
+        read counts as not complete. Read as the hook writes them, in UTF-8
+        with surrogateescape."""
         hook = str(self.root.joinpath(*HOOK_FOLDER, HOOK_FILE))
         files = python_record_files(self.tree / RECORDS, names)
         found = {}
@@ -1725,8 +1789,41 @@ class Run:
                     texts.append(path.read_bytes().decode("utf-8", errors="surrogateescape"))
                 except OSError:
                     texts.append(None)
-            found[name] = python_reads(texts, self.tests[name].get("command") or [], hook)
+            parsed = python_reads(texts, self.tests[name].get("command") or [], hook)
+            children = None if parsed is None else child_rules(parsed[2], str(self.tree), str(self.root))
+            if children is None:
+                found[name] = None
+                continue
+            reads, listings = list(parsed[0]), list(parsed[1])
+            for path in sorted({p for child in children for p in child["paths"]}):
+                line, stamp = self.world.hook_line("read", path)
+                (reads if line == "read" else listings).append((stamp, path))
+            found[name] = (sorted(set(reads)), sorted(set(listings)), children)
         return found
+
+    def ctest_files(self) -> str:
+        """The CTest files of the tree, which `ctest --show-only=json-v1` reads
+        (decisions 789 and 815): each CTestTestfile.cmake and
+        DartConfiguration.tcl, each file of the test discovery of Catch2, and
+        each program in the top folder of the tree, found by one walk of the
+        tree in a run, when they are necessary for a test."""
+        def walk():
+            found = [p for p in self.tree.rglob("*") if p.name in ("CTestTestfile.cmake", "DartConfiguration.tcl")
+                     or p.name.endswith(("_include.cmake", "_tests.cmake", "_test-list.cmake"))]
+            return self.world.files(found + tree_programs(self.tree))
+        return self.shared("ctest files", walk)
+
+    def children_part(self, children: list) -> str:
+        """The part of the children of a Python test (decision 817 (4)): each
+        program by its bytes and its libraries, and for a ctest child also the
+        CTest files of the tree."""
+        lines = []
+        for child in sorted(children, key=lambda c: (c["kind"], norm(c["program"]))):
+            program = self.world.program(pathlib.Path(child["program"]))
+            lines.append(f"{child['kind']} {norm(child['program'])} {program}")
+            if child["kind"] == "ctest":
+                lines.append(f"ctest files {self.ctest_files()}")
+        return digest("\n".join(lines))
 
     def carries_listener(self, program: pathlib.Path, known: dict) -> bool:
         key = self.world.program(program)
@@ -2081,7 +2178,8 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
                              (stored.get(name) or {}).get("shaders"),
                              set((stored.get(name) or {}).get("programs") or ()),
                              (stored.get(name) or {}).get("listings"),
-                             traced=bool((stored.get(name) or {}).get("trace")))
+                             traced=bool((stored.get(name) or {}).get("trace")),
+                             children=(stored.get(name) or {}).get("children"))
              for name, test in run.tests.items()}
     # The link commands of the programs that the decision computes function
     # parts for, in one call of Ninja (decision 709 (4)).
@@ -2156,11 +2254,13 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
     # reads join those of a record of a C++ program, after the driver examined
     # the C++ records above, and their listings go into the store. Each other
     # test keeps the rules before M1-138 (decision 801 (5)).
-    listings = {}
+    listings, children = {}, {}
     for name, found in run.python_records(passed).items():
         if found is not None:
             reads[name] = sorted(set(map(tuple, reads[name] or [])) | set(found[0]))
             listings[name] = found[1]
+            if found[2]:
+                children[name] = found[2]
     # The `cmake -P` tests with a complete trace (decisions 768, 784 and
     # 803-809), the same way; the store marks them with `trace`.
     traced = set()
@@ -2183,12 +2283,14 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
     for name in order:
         if name in passed and name not in missing_records and not unreadable and name in taken:
             entry = {"parts": run.parts(run.tests[name], reads[name], env, shaders.get(name), set(taken[name]),
-                                        listings.get(name), traced=name in traced),
+                                        listings.get(name), traced=name in traced, children=children.get(name)),
                      "reads": reads[name]}
             if name in listings:
                 entry["listings"] = listings[name]
             if name in traced:
                 entry["trace"] = True
+            if name in children:
+                entry["children"] = children[name]
             if taken[name]:
                 entry["programs"] = taken[name]
             if name in shaders:
@@ -2415,6 +2517,115 @@ def shader_records_end_to_end(cmake: str, ctest: str, ninja: str, steps: list) -
     return failures
 
 
+# The third scratch project (M1-138, decision 816): a Python test, `py`, that
+# reads inputs/p.txt, lists inputs/ and starts `ctest --show-only=json-v1`, the
+# child of rule 2; and a `cmake -P` test, `cm`, with a script that reads
+# inputs/c.txt, which its command line does not name, with the trace arguments of
+# cmake/TraceArguments.cmake of this repository.
+SCRATCH_CHECK = """import os, subprocess, sys
+root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+with open(os.path.join(root, "inputs", "p.txt"), encoding="utf-8") as stream:
+    stream.read()
+os.listdir(os.path.join(root, "inputs"))
+subprocess.run([sys.argv[1], "--show-only=json-v1"], check=True, capture_output=True)
+"""
+
+SCRATCH_RUN = 'file(READ "${CMAKE_CURRENT_LIST_DIR}/../inputs/c.txt" text)\n'
+
+SCRATCH_RECORDS_PROJECT = """cmake_minimum_required(VERSION 3.25)
+project(scratch NONE)
+enable_testing()
+include(${TRACE_ARGUMENTS})
+add_test(NAME py COMMAND ${PY} ${CMAKE_SOURCE_DIR}/scripts/check.py ${CTEST})
+set_tests_properties(py PROPERTIES ENVIRONMENT ORBSIM_TEST_NAME=py)
+orbsim_trace_arguments(trace cm)
+add_test(NAME cm COMMAND ${CMAKE_COMMAND} ${trace} -P ${CMAKE_SOURCE_DIR}/cmake/Run.cmake)
+"""
+
+SCRATCH_REFUSED_PROJECT = """cmake_minimum_required(VERSION 3.25)
+project(refused NONE)
+include(${TRACE_ARGUMENTS})
+orbsim_trace_arguments(trace "a:b")
+"""
+
+
+def script_records_end_to_end(cmake: str, ctest: str, ninja: str, steps: list) -> list:
+    """The records of the Python processes, the trace and a child of rule 2
+    through the driver (M1-138, decisions 786, 808 and 816): the twelve steps
+    of decision 816, each with the tests that must run. The scratch project
+    holds a copy of the hook, because the hook finds its repository from the
+    folder of its own file."""
+    failures = []
+    trace_arguments = (ROOT / "cmake" / "TraceArguments.cmake").as_posix()
+    with tempfile.TemporaryDirectory() as scratch:
+        root = pathlib.Path(scratch) / "repo"
+        tree = root / "build"
+        files = {"scripts/check.py": SCRATCH_CHECK, "scripts/other.py": "# read by no test\n",
+                 "cmake/Run.cmake": SCRATCH_RUN, "inputs/p.txt": "p\n", "inputs/c.txt": "c\n",
+                 "docs/a.md": "a\n", "CMakeLists.txt": SCRATCH_RECORDS_PROJECT, ".gitignore": "build/\n"}
+        for name, text in files.items():
+            (root / name).parent.mkdir(parents=True, exist_ok=True)
+            (root / name).write_bytes(text.encode("utf-8"))
+        (root / "scripts" / "read-record").mkdir()
+        shutil.copy(ROOT.joinpath(*HOOK_FOLDER, HOOK_FILE), root.joinpath(*HOOK_FOLDER, HOOK_FILE))
+        # A repository, because the rules before M1-138 list its files with git.
+        subprocess.run(["git", "init", "-q"], capture_output=True, check=True, cwd=root)
+        configure = [cmake, "-S", str(root), "-B", str(tree), "-G", "Ninja", f"-DCMAKE_MAKE_PROGRAM={ninja}",
+                     f"-DPY={sys.executable}", f"-DCTEST={ctest}", f"-DTRACE_ARGUMENTS={trace_arguments}"]
+        subprocess.run(configure, capture_output=True, check=True, cwd=root)
+
+        def step(name: str, wanted: set) -> None:
+            (tree / STATE / REPORT).unlink(missing_ok=True)
+            done = subprocess.run([sys.executable, __file__, str(tree), "--ctest", ctest, "--root", str(root)],
+                                  capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
+            try:
+                ran = set(outcomes((tree / STATE / REPORT).read_text(encoding="utf-8")))
+            except OSError:
+                ran = set()
+            steps.append(name)
+            if ran != wanted or done.returncode != 0:
+                failures.append(f"{name}: ran {sorted(ran)}, wanted {sorted(wanted)}, exit "
+                                f"{done.returncode}\n{done.stdout}{done.stderr}")
+
+        def change(name: str, text: str) -> None:
+            (root / name).write_bytes(text.encode("utf-8"))
+
+        step("script records: the first run", {"py", "cm"})
+        step("script records: nothing changed", set())
+        change("scripts/other.py", "# read by no test, changed\n")
+        step("script records: a script that no test reads, in scripts/", set())
+        change("scripts/new.py", "# new\n")
+        step("script records: a new file in scripts/, which the Python test lists", {"py"})
+        change("inputs/p.txt", "p changed\n")
+        step("script records: the file that the Python test reads", {"py"})
+        change("inputs/c.txt", "c changed\n")
+        step("script records: the file that the script of the cmake -P test reads", {"cm"})
+        change("inputs/q.txt", "q\n")
+        step("script records: a new file in the folder that the Python test lists", {"py"})
+        change("scripts/check.py", SCRATCH_CHECK + "# changed\n")
+        step("script records: the script of the Python test", {"py"})
+        change("cmake/Run.cmake", SCRATCH_RUN + "# changed\n")
+        step("script records: the script of the cmake -P test", {"cm"})
+        change("docs/a.md", "a changed\n")
+        step("script records: a document", set())
+        change("CMakeLists.txt", SCRATCH_RECORDS_PROJECT + "add_test(NAME added COMMAND ${CMAKE_COMMAND} -E true)\n")
+        subprocess.run(configure, capture_output=True, check=True, cwd=root)
+        step("script records: a new test: it, the ctest child of the Python test, and the cautious part",
+             {"added", "py", "cm"})
+
+        refused = pathlib.Path(scratch) / "refused"
+        refused.mkdir()
+        (refused / "CMakeLists.txt").write_bytes(SCRATCH_REFUSED_PROJECT.encode("utf-8"))
+        done = subprocess.run([cmake, "-S", str(refused), "-B", str(refused / "build"), "-G", "Ninja",
+                               f"-DCMAKE_MAKE_PROGRAM={ninja}", f"-DTRACE_ARGUMENTS={trace_arguments}"],
+                              capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
+        steps.append("script records: a test name that the escape changes stops the configure")
+        if done.returncode == 0 or "orbsim_trace_arguments" not in done.stdout + done.stderr:
+            failures.append(f"a test name that the escape changes: the configure ended with {done.returncode}\n"
+                            f"{done.stdout}{done.stderr}")
+    return failures
+
+
 def end_to_end(cmake: str, ctest: str, ninja: str) -> int:
     """The driver on a scratch project: each change runs exactly the tests it
     should, a full run runs all and stamps its commit, and a full run from a
@@ -2507,6 +2718,7 @@ def end_to_end(cmake: str, ctest: str, ninja: str) -> int:
         step("after a full run, nothing changed", always)
         failures += push_through_the_hook(root, pathlib.Path(scratch) / "remote.git", head, steps)
     failures += shader_records_end_to_end(cmake, ctest, ninja, steps)
+    failures += script_records_end_to_end(cmake, ctest, ninja, steps)
 
     for failure in failures:
         print(f"end-to-end FAILED: {failure}")
@@ -3768,9 +3980,9 @@ def python_record_cases(expect) -> None:
                         f"read {h} C:/r/a.txt", f"list {g} C:/r/d")
     other = python_record(["C:/Python/python.exe", "-c", "x"], f"read {h} {hook}", f"read {g} C:/r/b.txt",
                           f"read {h} C:/r/a.txt")
-    expect("the records of a test: each read and each listing one time, sorted",
+    expect("the records of a test: each read and each listing one time, sorted, and no child",
            python_reads([own, other], command, hook),
-           (sorted([(h, hook), (h, "C:/r/a.txt"), (g, "C:/r/b.txt")]), [(g, "C:/r/d")]))
+           (sorted([(h, hook), (h, "C:/r/a.txt"), (g, "C:/r/b.txt")]), [(g, "C:/r/d")], []))
     expect("no record: the rules before M1-138", python_reads([], command, hook), None)
     expect("a record that could not be read", python_reads([own, None], command, hook), None)
     expect("a record that is not complete",
@@ -3782,9 +3994,12 @@ def python_record_cases(expect) -> None:
            python_reads([own, other.replace(f"read {h} {hook}\n", "")], command, hook), None)
     expect("a record from the hook of a different repository",
            python_reads([own.replace(hook, "C:/scratch/scripts/read-record/sitecustomize.py")], command, hook), None)
-    expect("a record with a child process, until step 4",
-           python_reads([own, python_record(["C:/Python/python.exe", "-c", "y"], f"read {h} {hook}", child)],
-                        command, hook), None)
+    # Since step 4 the child lines go to the rules of decision 778, which
+    # child_rules applies and child_cases examines.
+    expect("a record with a child process: its child lines, for the rules of decision 778",
+           (python_reads([own, python_record(["C:/Python/python.exe", "-c", "y"], f"read {h} {hook}", child)],
+                         command, hook) or (None, None, None))[2],
+           [{"argv": ["git", "status"], "cwd": "C:/r"}])
     expect("the line of the hook with the separators of Windows",
            python_reads([own.replace(hook, hook.replace("/", "\\"))], command, hook) is not None, True)
 
@@ -3871,6 +4086,80 @@ def python_record_cases(expect) -> None:
                          lambda kind, path: (kind, UNREADABLE)), False)
         expect("a stored test with listings and no rule for its lines: changed",
                unchanged(as_stored(("list", MISSING, gone)), {}, World(base, base).file), False)
+
+
+def child_cases(expect) -> None:
+    """The rules for the children of a Python test (M1-138, decisions 778, 788,
+    789 and 811-817)."""
+    base = pathlib.Path(tempfile.gettempdir())
+    root, tools, scratch = base / "repo", base / "tools", base / "scratch"
+    tree = root / "build"
+    ctest, program = tools / "ctest.exe", tree / "probe.exe"
+
+    def rules(*lines):
+        return child_rules(list(lines), str(tree), str(root))
+
+    def line(argv, cwd):
+        return {"argv": [str(a) for a in argv], "cwd": str(cwd)}
+
+    ctest_child = {"kind": "ctest", "program": str(ctest), "paths": []}
+    expect("no child: no rule", rules(), [])
+    expect("a ctest child of rule 2", rules(line([ctest, "--show-only=json-v1"], tree)), [ctest_child])
+    expect("a child two times: one time", rules(*[line([ctest, "--show-only=json-v1"], tree)] * 2), [ctest_child])
+    expect("a child with its working folder outside, of rule 5: its program and the paths on its command line",
+           rules(line([program, "--out", scratch / "o", f"--in={scratch / 'i.txt'}"], scratch)),
+           [{"kind": "program", "program": str(program),
+             "paths": sorted([os.path.normpath(str(scratch / "o")), os.path.normpath(str(scratch / "i.txt"))])}])
+    if os.name == "nt":
+        expect("a command line in one text, as the hook gets it on Windows",
+               rules({"argv": f'"{ctest}" --show-only=json-v1', "cwd": str(tree)}), [ctest_child])
+    for name, child in (
+            ("a child of os.system", {"event": "os.system", "argv": "('dir',)", "cwd": str(tree)}),
+            ("a child of os.startfile, also with its program as a path",
+             {"event": "os.startfile", "argv": [str(program)], "cwd": str(scratch)}),
+            ("a child with no program", line([], scratch)),
+            ("a program by its name only", line(["git", "init"], scratch)),
+            ("ctest with different arguments", line([ctest, "-R", "x"], tree)),
+            ("ctest in a different folder of the repository", line([ctest, "--show-only=json-v1"], root)),
+            ("ninja -t in the tree (decision 811)", line([tools / "ninja.exe", "-t", "query", "x"], tree)),
+            ("git ls-files in the repository (decision 811)", line([tools / "git.exe", "ls-files"], root)),
+            ("a Python child in the tree (decision 814)",
+             line([tools / "python.exe", root / "scripts" / "x.py"], tree)),
+            ("a different program in the tree", line([tools / "clang++.exe", "-c", "a.cpp"], tree)),
+            ("a path of the repository in the arguments", line([program, root / "docs" / "a.md"], scratch)),
+            ("a path of the tree in the arguments", line([program, tree / "x"], scratch)),
+            ("such a path after =", line([program, f"--in={root / 'a.txt'}"], scratch))):
+        expect(f"{name}: the rules before M1-138", rules(child), None)
+    expect("a known child and a child of rule 6: the rules before M1-138",
+           rules(line([ctest, "--show-only=json-v1"], tree), line([tools / "git.exe", "status"], root)), None)
+
+    # Through Run.python_records, on a record in a scratch tree: a file on the
+    # command line of a child goes into the store as a read line (decisions
+    # 788 and 817 (5)), and a folder there as a listing.
+    with tempfile.TemporaryDirectory() as folder:
+        base = pathlib.Path(folder)
+        root, outside = base / "repo", base / "outside"
+        tree = root / "build"
+        (tree / RECORDS).mkdir(parents=True)
+        (outside / "listed").mkdir(parents=True)
+        (outside / "input.txt").write_text("i", encoding="utf-8")
+        hook = root.joinpath(*HOOK_FOLDER, HOOK_FILE)
+        command = [str(outside / "python.exe"), str(root / "scripts" / "s.py")]
+        child = json.dumps({"argv": [str(outside / "tool.exe"), str(outside / "input.txt"), str(outside / "listed")],
+                            "cwd": str(outside)})
+        record = python_record([str(outside / "python.exe"), str(root / "scripts" / "s.py")],
+                               f"read {'a' * 64} {hook}", f"child {child}")
+        (tree / RECORDS / "t.py-1-2.txt").write_bytes(record.encode("utf-8"))
+        run = stand_in_run(tree, root)
+        run.world = World(tree, root)
+        run.tests = {"t": {"name": "t", "command": command}}
+        reads, listings, children = run.python_records(["t"])["t"]
+        expect("a file on the command line of a child: a read line with its hash",
+               (run.world.hook_line("read", os.path.normpath(str(outside / "input.txt")))[1],
+                os.path.normpath(str(outside / "input.txt"))) in reads, True)
+        expect("a folder on the command line of a child: a listing",
+               [path for _, path in listings], [os.path.normpath(str(outside / "listed"))])
+        expect("and the child, of rule 5", [c["kind"] for c in children], ["program"])
 
 
 def cmake_trace(script, *entries, major: int = 1) -> str:
@@ -4162,6 +4451,26 @@ def self_test() -> int:
                run.parts(traced, recorded, env).get("files"))
         expect("the trace of a test: in test-reads/ of the tree, by the escape of decision 528",
                run.trace_path("a:b"), tree / RECORDS / "a%3Ab.trace.json")
+        # M1-138, step 4 (decisions 778, 789 and 817): the part of the children
+        # of a Python test: the bytes of the program of each child, and for a
+        # ctest child also the CTest files of the tree.
+        ctest_child = [{"kind": "ctest", "program": str(outside / f"cmake{exe}"), "paths": []}]
+        program_child = [{"kind": "program", "program": str(outside / f"python{exe}"), "paths": []}]
+
+        def child_part(children):
+            return stand_in_run(tree, root).parts(python, [], env, listings=[], children=children).get("children")
+
+        (tree / "CTestTestfile.cmake").write_text("a", encoding="utf-8")
+        ctest_before, program_before = child_part(ctest_child), child_part(program_child)
+        expect("a Python test with children: and the part of its children", ctest_before is not None, True)
+        expect("a Python test with no child: no part of its children", child_part([]), None)
+        (tree / "CTestTestfile.cmake").write_text("b", encoding="utf-8")
+        expect("a changed CTest file moves the part of a ctest child", child_part(ctest_child) != ctest_before, True)
+        expect("and leaves the part of a different child alone", child_part(program_child), program_before)
+        (outside / f"python{exe}").write_text("another python", encoding="utf-8")
+        expect("a changed program of a child moves the part of its children",
+               child_part(program_child) != program_before, True)
+        (outside / f"python{exe}").write_text("x", encoding="utf-8")
         before = run.parts(probe, recorded, env)
         run._card = {"gpu": "another card"}
         expect("another card moves a GPU test's fingerprint", run.parts(probe, recorded, env) != before, True)
@@ -4184,6 +4493,7 @@ def self_test() -> int:
     function_level_cases(expect)
     python_record_cases(expect)
     trace_cases(expect)
+    child_cases(expect)
 
     for failure in failures:
         print(f"self-test FAILED: {failure}")
