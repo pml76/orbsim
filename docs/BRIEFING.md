@@ -477,4 +477,5 @@ step 2 (decisions 791-801). The session examined the hook and the driver, and
 measured three faults that could skip a test that must run. The correction
 of the hook (decision 791) and step 2 are committed. Next, step 3. **On
 2026-10-26** the owner ruled questions 36 to 42 before step 3 (decisions
-803-809).
+803-809), and question 43 during it (decision 810). Step 3 is committed.
+Next, step 4.

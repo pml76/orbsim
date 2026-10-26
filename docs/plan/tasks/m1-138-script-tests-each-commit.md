@@ -379,7 +379,8 @@ Thus for these tests only rule 2 goes, when the trace shows no other child.
    2. *Done 2026-10-25, `e95dcef`.* The driver with the records of the
       Python processes, and its self-test cases (decisions 783, 786, 792-796,
       801 and 802);
-   3. the trace of the `cmake -P` tests (decisions 768, 775 and 784);
+   3. *Done 2026-10-26, `01c3868`.* The trace of the `cmake -P` tests
+      (decisions 768, 775, 784, 797, 798 and 803-810);
    4. the rules for the child programs (decisions 778 and 787-790), and the
       end-to-end test (decision 786).
 6. *Removed by decision 779:* the "after" figures.
@@ -572,8 +573,12 @@ Four mutants of M1-129 and M1-132 have new anchors (decision 802). Before the
 commit, `check` in RelWithDebInfo found a fault of the new case of decision
 795: its planted fault went into a record with no line `end` when the
 numbers of the processes put such a record first, and the driver does not
-examine such a record. Next, step 3, with decisions 797, 798 and 803-809
-(ruled 2026-10-26); and step 4, with decisions 799 and 808. The files of the spike in point 6 stay until this task
+examine such a record. **Step 3 is committed (`01c3868`), with decisions 797,
+798 and 803-810.** In each `check` tree, each `cmake -P` test that passed has
+its trace in the store: 57 in Debug, and 51 in RelWithDebInfo, where 6 tests
+skip themselves. During step 3, a measurement found that CMake stops
+`cmake -P` when the folder of the trace is not there; thus the configure
+makes `test-reads/` (decision 810). Next, step 4, with decisions 799 and 808. The files of the spike in point 6 stay until this task
 ends (decision 800).
 
 1. **Where the work is.** Step 1 is `a56c1f3`: the hook and `read_record_self_test`.
