@@ -3,8 +3,9 @@
 Phase: B | Status: **started 2026-10-24. Its questions 1 to 14 are ruled
 (decisions 764-775 and 777-780), questions 15 to 20 about how the code is
 done (decisions 781-786), questions 21 to 24 about the rules of decision
-778 (decisions 787-790), and questions 25 to 35 before step 2 (decisions
-791-801). The spike is done
+778 (decisions 787-790), questions 25 to 35 before step 2 (decisions
+791-801), and questions 36 to 42 before step 3 (decisions 803-809). The
+spike is done
 ([its record](../../measurements/m1-138-spike.md)). Step 1 of the code is
 committed. The next session starts with "Left for the next session" below**
 Prerequisites: [M1-133](m1-133-selection-proved.md), which found the cost. It
@@ -541,6 +542,19 @@ escape changes. 33: the tests that read the store of the driver run at each
 `check` after step 4, as before this task. 34: the files of the spike stay
 until this task ends. 35: the rules of step 2 that no earlier decision gives.
 
+**36 to 42. Before step 3, 2026-10-26.** The session examined the 57 traces
+of the spike, the 9 scripts and the properties of the 57 tests in CTest.
+*Ruled by decisions 803-809, each by its recommendation.* 36: the CMake of
+the test is a known child. 37: the trace of a test that passed is complete
+when its first line is the version line and each other line is an entry. 38:
+the commands and the subcommands that the driver uses from a trace, and the
+rules for each other command. 39: a child with a path that is not in the
+build tree and not on the command line of the test keeps rules 1 and 2. 40:
+the driver stores the value of a file from before CTest where it has one. 41:
+the function is in cmake/TraceArguments.cmake, and the end-to-end test of
+step 4 uses it, also with a test name that the escape changes. 42: the rules
+of step 3 that no earlier decision gives.
+
 ## Left for the next session (2026-10-25)
 
 The owner ended the session after step 1. Start here: step 2 is next. Each
@@ -558,8 +572,8 @@ Four mutants of M1-129 and M1-132 have new anchors (decision 802). Before the
 commit, `check` in RelWithDebInfo found a fault of the new case of decision
 795: its planted fault went into a record with no line `end` when the
 numbers of the processes put such a record first, and the driver does not
-examine such a record. Next, step 3, with decisions 797 and 798; and step 4,
-with decision 799. The files of the spike in point 6 stay until this task
+examine such a record. Next, step 3, with decisions 797, 798 and 803-809
+(ruled 2026-10-26); and step 4, with decisions 799 and 808. The files of the spike in point 6 stay until this task
 ends (decision 800).
 
 1. **Where the work is.** Step 1 is `a56c1f3`: the hook and `read_record_self_test`.
