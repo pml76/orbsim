@@ -4,7 +4,8 @@ Phase: B | Status: **started 2026-10-24. Its questions 1 to 14 are ruled
 (decisions 764-775 and 777-780), questions 15 to 20 about how the code is
 done (decisions 781-786), questions 21 to 24 about the rules of decision
 778 (decisions 787-790), questions 25 to 35 before step 2 (decisions
-791-801), and questions 36 to 42 before step 3 (decisions 803-809). The
+791-801), questions 36 to 42 before step 3 (decisions 803-809), question 43
+(decision 810), and questions 44 to 50 before step 4 (decisions 811-817). The
 spike is done
 ([its record](../../measurements/m1-138-spike.md)). Step 1 of the code is
 committed. The next session starts with "Left for the next session" below**
@@ -554,7 +555,18 @@ build tree and not on the command line of the test keeps rules 1 and 2. 40:
 the driver stores the value of a file from before CTest where it has one. 41:
 the function is in cmake/TraceArguments.cmake, and the end-to-end test of
 step 4 uses it, also with a test name that the escape changes. 42: the rules
-of step 3 that no earlier decision gives.
+of step 3 that no earlier decision gives. 43, during step 3: the configure
+makes `test-reads/` (decision 810).
+
+**44 to 50. Before step 4, 2026-10-26.** The session sorted each child of
+each Python test of the spike by the types of decision 778. *Ruled by
+decisions 811-817, each by its recommendation.* 44: no rule for `ninja -t` and
+`git ls-files` at this time, because only two tests start them, and those run
+at each `check` (decision 799). 45: a child with its program by its name only
+keeps rules 1 and 2. 46: a path in the repository or the build tree in the
+arguments of a child keeps rules 1 and 2. 47: a Python child has no rule of
+its own. 48: rule 2 for the code. 49: the end-to-end test of steps 2 to 4,
+with its twelve steps. 50: the rules of step 4 that no earlier decision gives.
 
 ## Left for the next session (2026-10-25)
 
@@ -578,7 +590,8 @@ examine such a record. **Step 3 is committed (`01c3868`), with decisions 797,
 its trace in the store: 57 in Debug, and 51 in RelWithDebInfo, where 6 tests
 skip themselves. During step 3, a measurement found that CMake stops
 `cmake -P` when the folder of the trace is not there; thus the configure
-makes `test-reads/` (decision 810). Next, step 4, with decisions 799 and 808. The files of the spike in point 6 stay until this task
+makes `test-reads/` (decision 810). Next, step 4, with decisions 799, 808
+and 811-817 (ruled 2026-10-26). The files of the spike in point 6 stay until this task
 ends (decision 800).
 
 1. **Where the work is.** Step 1 is `a56c1f3`: the hook and `read_record_self_test`.
