@@ -1,0 +1,39 @@
+{
+ "about": "The five mutants of the mutant check of M1-138 (register decision 819), one of each new type of input that decision 767 names. For mutants 2 to 5, a run with no failed test is a problem of the check, not a pass. Run with docs/measurements/m1-138/mutant-check.py.",
+ "mutants": [
+  {
+   "name": "a document: one more line at the end of docs/STATUS.md",
+   "expect": "no test fails",
+   "file": "docs/STATUS.md",
+   "find": "here: they are what was true when the decision was taken.",
+   "replace": "here: they are what was true when the decision was taken.\nA line of mutant 1 of the mutant check of M1-138 (decision 819)."
+  },
+  {
+   "name": "a script that a different script loads: encode_power() adds OFFSET",
+   "expect": "downsample_reference_self_test fails",
+   "file": "scripts/srgb-reference.py",
+   "find": "    return SCALE * power(linear, Decimal(1) / EXPONENT) - OFFSET",
+   "replace": "    return SCALE * power(linear, Decimal(1) / EXPONENT) + OFFSET"
+  },
+  {
+   "name": "a new file in a listed folder: a test file that opens a file itself",
+   "expect": "test_reads fails",
+   "file": "tests/zz_reads_a_file.cpp",
+   "add": "// Mutant 3 of the mutant check of M1-138 (register decision 819): a file in\n// tests/ that opens a file itself, not through tests/TestReads.hpp. No target\n// compiles it. scripts/check-test-reads.py must refuse it, thus the test\n// test_reads must fail.\n#include <fstream>\n\nnamespace {\n[[maybe_unused]] std::ifstream openedHere() { return std::ifstream(\"orbsim-mutant-3.txt\"); }\n} // namespace\n"
+  },
+  {
+   "name": "a record file: the last } of scripts/mutation-passes.json removed",
+   "expect": "the mutants_due tests that read it fail",
+   "file": "scripts/mutation-passes.json",
+   "find": "\n}\n",
+   "replace": "\n"
+  },
+  {
+   "name": "a CMake script: cmake/RunUsage.cmake accepts only the exit code 3",
+   "expect": "the 17 usage_* tests fail",
+   "file": "cmake/RunUsage.cmake",
+   "find": "if(NOT exit_code EQUAL 2)",
+   "replace": "if(NOT exit_code EQUAL 3)"
+  }
+ ]
+}

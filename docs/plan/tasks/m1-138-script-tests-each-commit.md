@@ -642,10 +642,10 @@ done.
    the push on the owner's word.
 6. **Facts of 2026-10-27 for the next work:**
    - Decisions 799 and 811 have corrections. Only a test with the new rules
-     runs at each `check` because it reads the store. `mutants_due`,
-     `mutants_due_fingerprints` and `mutants_due_gpu_identity` keep the
-     earlier rules, and the store is not one of their inputs. This goes into
-     item 2 of M1-137 (decision 826).
+     runs at each `check` because it reads the store. Some `mutants_due`
+     tests keep the earlier rules, and the store is not one of their inputs.
+     These are not the same tests between the trees and between runs
+     (decision 826, corrected). This goes into item 2 of M1-137.
    - `accept_golden` runs at each `check`, because of an `unreadable` read
      line (decision 827).
    - Run each scratch Python script with `-I -B`. Without `-B`, Python writes
