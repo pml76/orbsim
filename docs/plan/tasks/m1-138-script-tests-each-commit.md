@@ -593,9 +593,13 @@ questions about the mutant file go to the owner after the safety proof.
 The owner told the assistant to write this handover before the first file of
 the safety proof, and to stop all other work (decision 825). Start here.
 Steps 1 to 4 are committed, and the rulings of the safety proof, decisions
-818-828, are in the register. No file of the safety proof is written. The
-part of 2026-10-25 below gives the earlier work, and its points 1 to 4 are
+818-828, are in the register. The part of 2026-10-25 below gives the earlier work, and its points 1 to 4 are
 done.
+
+*Added 2026-10-27, after the handover:* on the owner's word "pls go ahead", the
+mutant check of point 2 is done, with no fault in the two trees (Part 1 of
+[the record](../../measurements/m1-138-safety.md)). The script is `8df5bcf`.
+Next, point 3, the records compared with Process Monitor.
 
 1. **Where the work is.** The last commit of the code is `863d41d`, step 4.
    After it come `d917dd6`, `9b832ea` (`prompts.txt`, decision 821) and the
@@ -603,7 +607,7 @@ done.
    in the two trees and for the owner's push. Start with `git status`. The
    working tree must have no change, because the mutant check refuses to
    start with a change (decision 821).
-2. **First, the mutant check** (decisions 818-820 and 824). Copy
+2. **Done: first, the mutant check** (decisions 818-820 and 824). Copy
    `docs/measurements/m1-133/mutant-check.py` to
    docs/measurements/m1-138/mutant-check.py, and make these two changes only:
    - in `driver_env()`, give the skipped tests the environment that the

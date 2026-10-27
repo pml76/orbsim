@@ -483,6 +483,7 @@ is committed. Next, the safety proof of decision 767.
 
 **On 2026-10-27** the owner ruled questions 51 to 61 of M1-138 before its
 safety proof (decisions 818-828). Then the owner stopped the session for a
-handover, before the first file of the safety proof. The next session
-starts with the list "Left for the next session (2026-10-27)" in M1-138's
+handover, before the first file of the safety proof. After that, on the same day,
+the mutant check of the safety proof found no fault in the two trees. The next
+session starts with the list "Left for the next session (2026-10-27)" in M1-138's
 task document.
