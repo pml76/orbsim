@@ -33,6 +33,12 @@ safe.
    fingerprint of the test that wrote that output. If the writer runs again,
    the reader runs too, and CTest's fixtures run the writer first. Decision
    737 corrects one example of this type; this item closes the type.
+   *Added 2026-10-27 (decision 826):* the store of the driver,
+   `<tree>/run-tests/fingerprints.json`, is an output of the same type,
+   which the driver writes. `mutants_due`, `mutants_due_fingerprints` and
+   `mutants_due_gpu_identity` read it, and keep the rules of decisions 500,
+   510 and 531. The store is not an input of these rules, thus a change of
+   the store alone does not make them run. This item examines them too.
 3. **The read records compared again.** At each phase gate, the read records
    are compared again with the files that the tests actually open (decision
    612, Process Monitor), with the reads of child processes.

@@ -5,10 +5,11 @@ Phase: B | Status: **started 2026-10-24. Its questions 1 to 14 are ruled
 done (decisions 781-786), questions 21 to 24 about the rules of decision
 778 (decisions 787-790), questions 25 to 35 before step 2 (decisions
 791-801), questions 36 to 42 before step 3 (decisions 803-809), question 43
-(decision 810), and questions 44 to 50 before step 4 (decisions 811-817). The
-spike is done
-([its record](../../measurements/m1-138-spike.md)). Step 1 of the code is
-committed. The next session starts with "Left for the next session" below**
+(decision 810), questions 44 to 50 before step 4 (decisions 811-817), and
+questions 51 to 61 before the safety proof (decisions 818-828). The spike is
+done ([its record](../../measurements/m1-138-spike.md)). Steps 1 to 4 of the
+code are committed. The next session starts with "Left for the next session
+(2026-10-27)" below**
 Prerequisites: [M1-133](m1-133-selection-proved.md), which found the cost. It
 comes before M1-137 (decision 763).
 Decided by: **decision 763**, its position in the queue, and **decisions
@@ -568,6 +569,88 @@ keeps rules 1 and 2. 46: a path in the repository or the build tree in the
 arguments of a child keeps rules 1 and 2. 47: a Python child has no rule of
 its own. 48: rule 2 for the code. 49: the end-to-end test of steps 2 to 4,
 with its twelve steps. 50: the rules of step 4 that no earlier decision gives.
+
+**51 to 57. Before the safety proof, 2026-10-27.** *Ruled by decisions
+818-824: question 55 by alternative B, which the owner selected, and each other question by its
+recommendation.* 51: the mutant check is a copy of the script of M1-133, with
+two changes. 52: the five mutants, one of each type that decision 767 names.
+53: the mutant check runs in the two `check` trees. 54: `prompts.txt` is
+committed before the mutant check (`9b832ea`). 55: Process Monitor records
+one full run in each `check` tree, and the owner starts and stops each
+recording. 56: what counts as a miss when the records are compared with
+Process Monitor. 57: the results, and their sequence: the mutant check first,
+then the recordings.
+
+**58 to 61. Also before the safety proof, 2026-10-27.** *Ruled by decisions
+825-828, each by its recommendation.* 58: the handover of 2026-10-27, and one
+commit with the rulings. 59: the three tests that keep the earlier rules and
+read the store of the driver go into item 2 of M1-137. 60: `accept_golden`
+runs at each `check`, and the driver gets no rule for its path. 61: the
+questions about the mutant file go to the owner after the safety proof.
+
+## Left for the next session (2026-10-27)
+
+The owner told the assistant to write this handover before the first file of
+the safety proof, and to stop all other work (decision 825). Start here.
+Steps 1 to 4 are committed, and the rulings of the safety proof, decisions
+818-828, are in the register. No file of the safety proof is written. The
+part of 2026-10-25 below gives the earlier work, and its points 1 to 4 are
+done.
+
+1. **Where the work is.** The last commit of the code is `863d41d`, step 4.
+   After it come `d917dd6`, `9b832ea` (`prompts.txt`, decision 821) and the
+   commit of this handover. The commits after `54db237` wait for `check-full`
+   in the two trees and for the owner's push. Start with `git status`. The
+   working tree must have no change, because the mutant check refuses to
+   start with a change (decision 821).
+2. **First, the mutant check** (decisions 818-820 and 824). Copy
+   `docs/measurements/m1-133/mutant-check.py` to
+   docs/measurements/m1-138/mutant-check.py, and make these two changes only:
+   - in `driver_env()`, give the skipped tests the environment that the
+     driver gives CTest at this time, through `with_hook()` of
+     `scripts/run-tests.py` (decisions 771 and 781);
+   - let a mutant add a file, and delete that file when the script puts the
+     tree back.
+
+   Write the five mutants of decision 819 into a mutant list next to the
+   script. Mutants 2 to 5 must make tests fail. If no test fails, the check
+   has a problem, and it is not a pass. Run `--plant` first, and continue
+   only if the script finds the planted fault (decision 733). Then run the
+   check in Debug, and after it in RelWithDebInfo. Before the runs, make the
+   app keep the computer awake: if the computer sleeps, the runs stop at
+   their time limits.
+3. **Then, compare the records with Process Monitor** (decisions 822 and
+   823). Write the script with the rules of decision 823. Its planted
+   fault is one `read` line removed from a copy of the store, and the script
+   must report that path. The spike read its recordings with
+   `docs/measurements/m1-138/procmon_analyse.py` and
+   `docs/measurements/m1-138/last_events.py`. Then the owner makes the
+   recordings: one run of the driver with `--full` in each `check` tree, with
+   the configuration `docs/measurements/m1-138/m1-138.pmc`. The owner starts
+   and stops Process Monitor. If a recording does not hold events in each
+   minute of its run and for each test of the run, the owner makes it again.
+   The recordings go into `build/`, which git ignores. Each miss goes to the
+   owner before a change.
+4. **The record**, docs/measurements/m1-138-safety.md, with the scripts and
+   the small results in `docs/measurements/m1-138/`, and no figures of time
+   (decisions 779 and 824).
+5. **Then the questions about the mutant file**,
+   scripts/mutants/m1-138.json, all at one time, before the file is written
+   (decision 828). Point 5 of the part of 2026-10-25 names the five faults of
+   the hook that step 1 tried, which are mutants of the file. Then the
+   commit, the mutant file and its record, `check-full` in the two trees, and
+   the push on the owner's word.
+6. **Facts of 2026-10-27 for the next work:**
+   - Decisions 799 and 811 have corrections. Only a test with the new rules
+     runs at each `check` because it reads the store. `mutants_due`,
+     `mutants_due_fingerprints` and `mutants_due_gpu_identity` keep the
+     earlier rules, and the store is not one of their inputs. This goes into
+     item 2 of M1-137 (decision 826).
+   - `accept_golden` runs at each `check`, because of an `unreadable` read
+     line (decision 827).
+   - Run each scratch Python script with `-I -B`. Without `-B`, Python writes
+     the folder scripts/__pycache__, and then `mutants_due_self_test` runs
+     again.
 
 ## Left for the next session (2026-10-25)
 

@@ -480,3 +480,9 @@ of the hook (decision 791) and step 2 are committed. Next, step 3. **On
 803-809), and question 43 during it (decision 810). Step 3 is committed.
 Its questions 44 to 50 for step 4 are ruled (decisions 811-817), and step 4
 is committed. Next, the safety proof of decision 767.
+
+**On 2026-10-27** the owner ruled questions 51 to 61 of M1-138 before its
+safety proof (decisions 818-828). Then the owner stopped the session for a
+handover, before the first file of the safety proof. The next session
+starts with the list "Left for the next session (2026-10-27)" in M1-138's
+task document.
