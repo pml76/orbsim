@@ -638,8 +638,11 @@ new steps, and each of the three mutants makes it fail.
   keep the earlier rules (decision 826, item 2), and the `.pdb` files that
   programs read in Debug (decision 833, item 6).
 - **Scratch on the first machine:** build/m1-138-spike, build/m1-138-safety
-  and the three folders build/m1-138-mutant-check-*. They stay until the
-  owner rules on them; decision 800 deletes the first on the owner's word.
+  and the three folders build/m1-138-mutant-check-*, about 7.8 GB, were
+  deleted by the owner on 2026-10-29 (decision 839).
+- **At the end** (decisions 839-841): item 5 of M1-137 also names the two
+  limits of decision 834, and the commits after `889fc03` wait for the next
+  push, with the first commits of M1-137.
 
 ## Left for the next session (2026-10-27)
 

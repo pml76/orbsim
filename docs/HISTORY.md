@@ -2149,7 +2149,9 @@ directory contained, task by task.
   the build tree, that its fingerprint does not hold. The hook lists its own folder since decision 832, and the `.pdb`
   files go into M1-137 (decision 833). **Its mutation pass**, `m1-138.json`, 2026-10-29 in `build/debug`: 47
   mutants, 47 caught, after decisions 835 and 836 gave `run_tests_end_to_end` four steps. `check-full` passed in
-  the two trees at `889fc03`, and the commits up to it were pushed the same day, on the owner's word.
+  the two trees at `889fc03`, and the commits up to it were pushed the same day, on the owner's word. The
+  scratch of M1-138 in `build/`, about 7.8 GB, was deleted by the owner the same day (decision 839), and item 5
+  of M1-137 also names the two limits of decision 834 (decision 840).
 
   `STATUS.md`'s next-task row as it stood on 2026-10-29, before the end of the task, word for word:
 

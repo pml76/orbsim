@@ -50,6 +50,10 @@ safe.
 5. **The limits named.** One line in `docs/BRIEFING.md` and in `CLAUDE.md`
    gives the limits of ADR 0028 -- start-up code, coverage that changes between
    runs, outputs of other tests -- and the full run that finds them.
+   *Added 2026-10-29 (decision 840):* the line also names the two limits of
+   decision 834: a file that comes into the top folder of the tree and that
+   the program does not import, and a file that comes into
+   `build/SystemResources`.
 6. **The `.pdb` files of the programs** (decision 833, added 2026-10-29).
    In Debug, seven programs read their own `.pdb` file, in 7 script tests,
    because an assertion prints its call chain. The part of the programs
