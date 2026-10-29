@@ -1,6 +1,7 @@
 # M1-138 — The script tests that run at each commit
 
-Phase: B | Status: **started 2026-10-24. Its questions 1 to 14 are ruled
+Phase: B | Status: **done 2026-10-29, on the owner's word. Started
+2026-10-24. Its questions 1 to 14 are ruled
 (decisions 764-775 and 777-780), questions 15 to 20 about how the code is
 done (decisions 781-786), questions 21 to 24 about the rules of decision
 778 (decisions 787-790), questions 25 to 35 before step 2 (decisions
@@ -11,8 +12,8 @@ questions 51 to 61 before the safety proof (decisions 818-828), questions
 them (decisions 832-834), and questions 68 to 71 about the mutant file
 (decisions 835-838). The spike is
 done ([its record](../../measurements/m1-138-spike.md)). Steps 1 to 4 of the
-code are committed. The next session starts with "Left for the next session
-(2026-10-27)" below**
+code are committed, the safety is proved, and the mutant pass caught 47 of
+47 mutants. "Where it ended (2026-10-29)" below gives the end**
 Prerequisites: [M1-133](m1-133-selection-proved.md), which found the cost. It
 comes before M1-137 (decision 763).
 Decided by: **decision 763**, its position in the queue, and **decisions
@@ -616,6 +617,30 @@ folder `test-reads/`, which survived it. 71: the tree of the pass. The owner
 told the assistant to fix the three survivors. `run_tests_end_to_end` has four
 new steps, and each of the three mutants makes it fail.
 
+## Where it ended (2026-10-29)
+
+- **The code**, steps 1 to 4: the hook of the records of the Python
+  processes and `read_record_self_test` (`a56c1f3`, `9d39113`), the driver
+  (`e95dcef`), the trace of the `cmake -P` tests (`01c3868`), and the rules
+  for the child programs with the end-to-end test (`863d41d`). The hook
+  lists its own folder since decision 832.
+- **The safety proof** ([the record](../../measurements/m1-138-safety.md)):
+  the mutant check found no fault in the two `check` trees (Part 1). When the
+  records were compared with Process Monitor, no test with the new rules read a file of
+  the repository, not in the build tree, that its fingerprint does not hold
+  (Part 2).
+- **The mutant file** `m1-138.json`: 47 mutants, 47 caught in build/debug at
+  `bf95ace`, after decisions 835 and 836 gave `run_tests_end_to_end` four
+  steps for the three mutants that survived the pre-measure.
+- **`check-full`** passed in the two trees at `889fc03`, and the commits up
+  to `889fc03` are pushed, on the owner's word.
+- **Given to M1-137:** the three tests that read the store of the driver and
+  keep the earlier rules (decision 826, item 2), and the `.pdb` files that
+  programs read in Debug (decision 833, item 6).
+- **Scratch on the first machine:** build/m1-138-spike, build/m1-138-safety
+  and the three folders build/m1-138-mutant-check-*. They stay until the
+  owner rules on them; decision 800 deletes the first on the owner's word.
+
 ## Left for the next session (2026-10-27)
 
 The owner told the assistant to write this handover before the first file of
@@ -798,10 +823,10 @@ ends (decision 800).
 - [x] Question 7 ruled again, with the figures of the spike (decision 778).
 - [x] The measurements of question 3, recorded: [the record of the
       spike](../../measurements/m1-138-spike.md).
-- [ ] A script test runs only when a file that it read changed, or by a rule
+- [x] A script test runs only when a file that it read changed, or by a rule
       that the task document gives with its cause. *Decision 779: with no
       measurement of time, and no comparison with the estimate.*
-- [ ] The safety proved as question 4 rules.
-- [ ] `check` passes in the two trees. The task's mutant file has run after
+- [x] The safety proved as question 4 rules.
+- [x] `check` passes in the two trees. The task's mutant file has run after
       its commit, and its record is committed. A commit at the end; the push
       only on the owner's go-ahead.

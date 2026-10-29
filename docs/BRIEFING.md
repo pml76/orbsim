@@ -491,6 +491,9 @@ repository that its fingerprint does not hold, and the hook lists its own
 folder since decision 832. The questions about the mutant file of M1-138
 went to the owner (decision 828), and the owner ruled them (decisions
 835-838). The pass of the mutant file caught all 47 mutants, and the
-commits up to `889fc03` are pushed. The next
-session starts with the list "Left for the next session (2026-10-27)" in M1-138's
-task document.
+commits up to `889fc03` are pushed.
+
+**On 2026-10-29** M1-138 is done, on the owner's word (decisions 763-838).
+Next, M1-137, then M1-134. The questions of M1-137 go to the owner before
+its work starts. The next session starts with `STATUS.md` and M1-137's task
+document.
