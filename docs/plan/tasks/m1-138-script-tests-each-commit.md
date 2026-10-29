@@ -649,6 +649,10 @@ caught, 0 survived, 0 not valid and 0 that did not end. Each mutant was
 caught by the judge that the file names. The record is in
 `scripts/mutation-passes.json`. Next, `check-full` in the two trees, and the
 push on the owner's word.
+*Added 2026-10-29, after the push:* `check-full` passed in the two trees at
+`889fc03`, and on the owner's word the commits up to `889fc03` are pushed.
+The boxes of "Done when" below wait for the owner's word that the task is
+done.
 
 1. **Where the work is.** The last commit of the code is `863d41d`, step 4.
    After it come `d917dd6`, `9b832ea` (`prompts.txt`, decision 821) and the
