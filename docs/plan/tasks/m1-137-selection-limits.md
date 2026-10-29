@@ -1,8 +1,8 @@
 # M1-137 — The limits of the test selection, measured and closed
 
 Phase: B | Status: **started 2026-10-29.** Its questions 1 to 15 are ruled
-(decisions 842-856). Question 16 waits for the owner's answer, and the work
-starts after it. The next task after M1-138 (decisions 744 and 763)
+(decisions 842-856), question 16 by decision 857, and questions 17 to 22
+about the design of decision 857 by decisions 858-863. The next task after M1-138 (decisions 744 and 763)
 Prerequisites: M1-133
 Decided by: register decision 744, ruled 2026-10-21 on the owner's word, after
 the test selection was compared with published work: Ekstazi
@@ -72,7 +72,7 @@ safe.
 
 ## The questions, each with its alternatives, costs and ruling
 
-*Added 2026-10-29.* These 16 questions replace the four that this
+*Added 2026-10-29.* These questions replace the four that this
 document gave until the task started: question 1 of the four is questions 1
 to 4 here, question 2 is questions 5, 6 and 16, question 3 is questions 7
 and 8, and question 4 is questions 9 and 10. The owner ruled questions 1 to
@@ -138,8 +138,8 @@ rules.** *Ruled by decision 847: A.*
   parallel with other tests.
 - B. Keep it as a limit, which item 5 names.
 
-**16. Which mutant files does the rule of question 5 make due?** *Not ruled.
-The owner answers it before the work starts.*
+**16. Which mutant files does the rule of question 5 make due?** *Ruled by
+decision 857: B. The questions of its design are questions 17 to 22.*
 
 Facts, measured 2026-10-29:
 
@@ -177,6 +177,65 @@ Alternatives:
   `broken_goldens` in cmake/ScriptTests.cmake. Cost: seven test definitions
   change, a selected one also runs a GPU probe, and the five mutant files
   become due at nearly each change of the application.
+
+**The design of decision 857.** *Added 2026-10-29.* Questions 17 to 22
+were put to the owner after decision 857, with measurements of the two
+trees, and the owner ruled them the same day with the words "Accept all".
+At that time 44 of the 46 mutant files were due in each tree, thus a rule
+that counts more files costs little in practice.
+
+**17. Which files of the build tree count?** *Ruled by decision 858: A.*
+
+- **A (recommended).** Each file, but not the files that the tools write at
+  each run (`run-tests/`, `test-reads/`, `Testing/`, the three files
+  `mutants-due-*.json`, `.ninja_deps` and `.ninja_log`). It applies to 23
+  mutant files, and also closes two more problems of the same type: the
+  tests that read the files of the configure, and `coverage_hook`, which
+  reads the `.map` files and the objects. Before the code, the counted files
+  are compared between the two runs of decision 845.
+- B. Only the files that the build and the configure do not write: 12
+  mutant files. Cost: the problem of the configure stays.
+- C. Only `probes/` and `golden-broken/`: 11 or 12 mutant files. Cost: a new
+  folder of outputs is not seen.
+
+**18. Where does the list of the counted files come from?** *Ruled by
+decision 859: A.*
+
+- **A (recommended).** The record of each pass holds the counted files of
+  each judge with their hashes, and each reading after it calculates the
+  hashes of the same files. Cost: scripts/mutation-passes.json becomes
+  larger, from 103 KB to about 500 KB.
+- B. The store of the driver at each reading. Cost: m1-92, m1-100 and m1-109
+  are due at random, because `mutants_due` and `mutants_due_probe_shaders`
+  change between complete records and the earlier rules.
+
+**19. The read lines of paths that were not there.** *Ruled by decision
+860: A.*
+
+- **A (recommended).** They count, with the mark "missing", as the driver
+  does: 916 lines in each tree, of which 252 are paths of files.
+- B. They do not count. Cost: a file that comes after the pass is not seen.
+
+**20. The judges with no complete record.** *Ruled by decision 861: A.*
+
+- **A (recommended).** They get nothing from decision 857. The pass prints
+  each such judge, and the record of item 2 names the limit: 15 judges, of
+  17 mutant files.
+- B. A file with such a judge is due at each gate: 17 files.
+
+**21. The records of the passes before decision 857.** *Ruled by decision
+862: A.*
+
+- **A (recommended).** They stay as they are, thus each of the 23 files is
+  due one time. 22 of them were due; the other is m1-135, with 8 mutants.
+- B. Only the parts that the two sides recorded are compared, until the next
+  pass of each file. Cost: more code, and no examination until then.
+
+**22. Where does decision 857 go in the work?** *Ruled by decision 863: A.*
+
+- **A (recommended).** In item 2, after the rule of question 5, as a commit
+  of its own, with its mutants and a planted fault.
+- B. A different task after M1-137. Cost: the problems stay until then.
 
 **Item 3: the read records compared again at each gate**
 
