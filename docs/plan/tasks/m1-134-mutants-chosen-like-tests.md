@@ -135,6 +135,15 @@ Each with its options, costs and a recommendation when the task is taken up:
 9. How R5 records the functions that a test entered with the mutant: each
    mutant run then has the coverage hook, at a cost of build time.
 
+*Added 2026-10-29, on the owner's word:* M1-134 examines the data files that
+decisions 857 to 863 of M1-137 count: the probe images, the files of
+`golden-broken/`, the files of the configure and the `.map` files. The aim is
+to stop as many mutation runs as possible that cannot change a result. The
+owner wants to discuss these files when M1-134 starts. One example: the
+`mutants_due` tests read `clear.png` only to calculate its hash, and a
+measurement on 2026-10-29 showed that their results do not depend on its
+bytes.
+
 Published work agrees with this method: Regression Mutation Testing (Zhang and
 others, 2012) also keeps the result of each pair of a mutant and a test, and
 uses it again when no change is on the test's path to the mutant; and trivial
