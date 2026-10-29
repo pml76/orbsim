@@ -1061,6 +1061,33 @@
       }
     }
   },
+  "m1-138.json": {
+    "commit": "bf95ace9d2795b874d33c6f3bd7ed34d1c5376fa",
+    "tree": "build/debug",
+    "date": "2026-10-29",
+    "judges": {
+      "program build.ninja": "37a7e9d745359f4d",
+      "ctest read_record_self_test": "f9b16c8fde0623c9",
+      "ctest run_tests_self_test": "10f4f11a8345008c",
+      "ctest run_tests_end_to_end": "7491270e7342dc13"
+    },
+    "judge_parts": {
+      "program build.ninja": {
+        "commands": "772633097947c8c0",
+        "build-tree files": "e3b0c44298fc1c14",
+        "other files": "e3b0c44298fc1c14"
+      },
+      "ctest read_record_self_test": {
+        "definition": "06b06e7514116bd7"
+      },
+      "ctest run_tests_self_test": {
+        "definition": "ce02c3ef17f08550"
+      },
+      "ctest run_tests_end_to_end": {
+        "definition": "5d5949a766ac0671"
+      }
+    }
+  },
   "m1-14.json": {
     "commit": "99c47aa220c1d2a592f7db1b330e5ef85bed2fc4",
     "tree": "build/debug",

@@ -644,6 +644,11 @@ fail. Next, the rulings of questions 68 and 71.
 (decisions 837 and 838). scripts/mutants/m1-138.json holds the 47 mutants,
 and its pass runs in build/debug. Then the record of the pass, `check-full`
 in the two trees, and the push on the owner's word.
+*Added 2026-10-29, after the pass:* the pass at `bf95ace` found 47 mutants
+caught, 0 survived, 0 not valid and 0 that did not end. Each mutant was
+caught by the judge that the file names. The record is in
+`scripts/mutation-passes.json`. Next, `check-full` in the two trees, and the
+push on the owner's word.
 
 1. **Where the work is.** The last commit of the code is `863d41d`, step 4.
    After it come `d917dd6`, `9b832ea` (`prompts.txt`, decision 821) and the
