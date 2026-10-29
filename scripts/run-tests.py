@@ -2398,10 +2398,11 @@ def in_tree(tree: pathlib.Path, ctest: str, suite: pathlib.Path, other: pathlib.
             application, libraries: list) -> int:
     """What the self-test cannot see, because it reads recorded answers: that
     the tools still answer as recorded, on this tree's own programs. A suite
-    carries the read-record listener and a program without it does not; and
+    carries the read-record listener and a program without it does not;
     where the tree builds the application, its libraries, read through
     llvm-readobj or ldd and followed as a fingerprint follows them, include
-    the ones CMake names."""
+    the ones CMake names; and each test that TAKEN_BY_BYTES names is a test
+    of this tree (decision 867)."""
     run = Run(tree, ctest)
     known = {}
     problems = []
@@ -2409,6 +2410,10 @@ def in_tree(tree: pathlib.Path, ctest: str, suite: pathlib.Path, other: pathlib.
         problems.append(f"{suite} does not report {LISTENER}, which every suite carries")
     if run.carries_listener(other, known):
         problems.append(f"{other} reports {LISTENER}, which it does not carry")
+    # A test renamed in CMakeLists.txt would leave its entry in the list with
+    # no failure, and go back to its function part (decision 867).
+    problems += [f"{name}, which TAKEN_BY_BYTES names ({why}), is not a test of this tree"
+                 for name, why in sorted(TAKEN_BY_BYTES.items()) if name not in run.tests]
     if application is None:
         print("run-tests in-tree: this tree builds no application; its libraries were not checked")
     else:
@@ -2421,7 +2426,8 @@ def in_tree(tree: pathlib.Path, ctest: str, suite: pathlib.Path, other: pathlib.
     if problems:
         return 1
     print(f"run-tests in-tree: the listener found where it is and not where it is not"
-          + ("" if application is None else f"; {', '.join(libraries)} among the application's libraries"))
+          + ("" if application is None else f"; {', '.join(libraries)} among the application's libraries")
+          + f"; the {len(TAKEN_BY_BYTES)} tests of TAKEN_BY_BYTES are tests of this tree")
     return 0
 
 

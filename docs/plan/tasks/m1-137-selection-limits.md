@@ -3,7 +3,7 @@
 Phase: B | Status: **started 2026-10-29.** Its questions 1 to 15 are ruled
 (decisions 842-856), question 16 by decision 857, questions 17 to 22
 about the design of decision 857 by decisions 858-863, and questions 23 to
-25 about the result of item 6 by decisions 864-866. **Item 6 is done**
+26 about the result of item 6 by decisions 864-867. **Item 6 is done**
 (2026-10-29). The next task after M1-138 (decisions 744 and 763)
 Prerequisites: M1-133
 Decided by: register decision 744, ruled 2026-10-21 on the owner's word, after
@@ -320,6 +320,14 @@ went to the owner. The owner ruled them the same day with the words
 
 - **A (recommended).** A record and its script in `docs/measurements/`.
 - B. Only this document.
+
+**26. A guard for the list of decision 844.** *Added and ruled 2026-10-29
+(decision 867): A.* A test that is renamed would leave its entry in the list
+with no failure.
+
+- **A (recommended).** `run_tests_in_tree` examines that each name in the
+  list is a test of the tree, with a planted fault.
+- B. No guard, and the limit named.
 
 **The work itself**
 
