@@ -5,8 +5,9 @@ Phase: B | Status: **started 2026-10-24. Its questions 1 to 14 are ruled
 done (decisions 781-786), questions 21 to 24 about the rules of decision
 778 (decisions 787-790), questions 25 to 35 before step 2 (decisions
 791-801), questions 36 to 42 before step 3 (decisions 803-809), question 43
-(decision 810), questions 44 to 50 before step 4 (decisions 811-817), and
-questions 51 to 61 before the safety proof (decisions 818-828). The spike is
+(decision 810), questions 44 to 50 before step 4 (decisions 811-817),
+questions 51 to 61 before the safety proof (decisions 818-828), and questions
+62 and 63 during the recordings (decisions 829 and 830). The spike is
 done ([its record](../../measurements/m1-138-spike.md)). Steps 1 to 4 of the
 code are committed. The next session starts with "Left for the next session
 (2026-10-27)" below**
@@ -588,6 +589,12 @@ read the store of the driver go into item 2 of M1-137. 60: `accept_golden`
 runs at each `check`, and the driver gets no rule for its path. 61: the
 questions about the mutant file go to the owner after the safety proof.
 
+**62 and 63. During the recordings, 2026-10-29.** *Ruled by decisions 829
+and 830, each by its recommendation.* 62: the Debug recording, which stopped
+before the end of its run, is made again with the same settings. 63: a test
+that fails in a recorded run only by a time limit, and passes alone after
+the run, is compared with the read records of the recorded run.
+
 ## Left for the next session (2026-10-27)
 
 The owner told the assistant to write this handover before the first file of
@@ -600,6 +607,8 @@ done.
 mutant check of point 2 is done, with no fault in the two trees (Part 1 of
 [the record](../../measurements/m1-138-safety.md)). The script is `8df5bcf`.
 Next, point 3, the records compared with Process Monitor.
+*Added 2026-10-29:* the first Debug recording stopped before the end of its
+run, and it is made again (decisions 829 and 830).
 
 1. **Where the work is.** The last commit of the code is `863d41d`, step 4.
    After it come `d917dd6`, `9b832ea` (`prompts.txt`, decision 821) and the
