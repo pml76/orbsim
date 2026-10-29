@@ -228,6 +228,17 @@ TEST_NAME_VARIABLE = "ORBSIM_TEST_NAME"
 # side, by the bytes of its programs, until it is added here.
 LISTED_SCRIPTS = ("RunProbe.cmake", "RunUsage.cmake", "VerifyAssertionProbe.cmake", "VerifyAssertionMessage.cmake",
                   "RunBench.cmake", "VerifyMissingShader.cmake", "VerifyReadRecord.cmake")
+# The tests that take each program by its bytes and not function by function
+# (decision 844), each with the decision that put it here. A test that
+# examines what the .pdb file of its program gives -- the line in the chain of
+# calls -- is one: a change of only the .pdb file changes the bytes of the
+# program, but no function (decision 864, measured 2026-10-29). A new test of
+# that type stays on the function part until it is added here, which the
+# limits of the selection name.
+TAKEN_BY_BYTES = {
+    "assertion_message_precondition": "decision 864",
+    "assertion_message_postcondition": "decision 864",
+}
 # The folder in run-tests/ with the summary of each object with the hook
 # (decisions 709 (2) and 714), the folder with the kept table of each program
 # with the hook (decision 715 (1)), and the key at the top of the store with
@@ -1198,6 +1209,18 @@ def taken_programs(direct, listed: bool, on_line: set, recorded: set) -> set:
     return taken
 
 
+def stored_taken(name: str, entry) -> set:
+    """The programs that the stored `entry` of the test `name` takes function
+    by function, for its parts at the selection: none for a test in
+    TAKEN_BY_BYTES (decision 844), also when its entry was stored before the
+    test went into the list. Its parts then hold the bytes of its programs,
+    which its stored parts do not hold, thus it runs one time and is stored
+    again by the bytes."""
+    if name in TAKEN_BY_BYTES:
+        return set()
+    return set((entry or {}).get("programs") or ())
+
+
 def program_unchanged(stored: dict, now, function_part) -> bool:
     """Decision 706, for one program that a test takes function by function:
     unchanged when its bytes are as they were -- then no digest is computed --
@@ -1999,7 +2022,8 @@ class Run:
         by function, each with the functions that the test entered, from its
         complete coverage records (decisions 703 and 713 (4)). A test that
         starts a program with the hook directly and passed with no complete
-        record of it has a problem (decision 590)."""
+        record of it has a problem (decision 590). A test in TAKEN_BY_BYTES
+        takes none, and its problems stay (decision 844)."""
         command = test.get("command") or []
         tree = norm(self.tree)
         on_line = {norm(p) for p in self.arguments(test) if under(norm(p), tree) and p.is_file() and is_program(p)}
@@ -2010,6 +2034,8 @@ class Run:
             problems.append(f"it starts {command[0]}, which has the hook, and passed with no complete coverage "
                             "record of it (decision 590)")
         names = taken_programs(direct, listed_script(command, self.cmake, self.root), on_line, set(recorded))
+        if test.get("name") in TAKEN_BY_BYTES:
+            names = set()
         return {key: recorded.get(key, set()) for key in sorted(names)}, problems
 
     def stored_programs(self, taken: dict):
@@ -2176,7 +2202,7 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
     env = with_hook(without_test_name(env), tree, root)
     parts = {name: run.parts(test, (stored.get(name) or {}).get("reads"), env,
                              (stored.get(name) or {}).get("shaders"),
-                             set((stored.get(name) or {}).get("programs") or ()),
+                             stored_taken(name, stored.get(name)),
                              (stored.get(name) or {}).get("listings"),
                              traced=bool((stored.get(name) or {}).get("trace")),
                              children=(stored.get(name) or {}).get("children"))
@@ -3730,6 +3756,19 @@ def program_cases(expect) -> None:
         taken, problems = run.taken_for(test, [record()])
         expect("a direct test: its program, with the keys of its record", (taken, problems),
                ({norm(program): set(code.CODE_KEYS)}, []))
+        # Decisions 844 and 864: a test of the list takes no program function
+        # by function, when it is recorded and when it is selected.
+        expect("the list of decision 844 holds the two tests of decision 864",
+               sorted(n for n, why in TAKEN_BY_BYTES.items() if why == "decision 864"),
+               ["assertion_message_postcondition", "assertion_message_precondition"])
+        listed = {"name": "assertion_message_precondition", "command": test["command"]}
+        expect("a test of the list: no program function by function, and the problems stay",
+               (run.taken_for(listed, [record()]), run.taken_for(listed, [])[1] == run.taken_for(test, [])[1]),
+               (({}, []), True))
+        expect("at the selection, the stored programs of a test of the list count for nothing",
+               (stored_taken("assertion_message_precondition", {"programs": {"p": {}}}),
+                stored_taken("t", {"programs": {"p": {}}}), stored_taken("t", None)),
+               (set(), {"p"}, set()))
         _, problems = run.taken_for(test, [record(flags=code.CODE_ENTRIES + 1)])
         expect("a record with a count of flags different from the table: a problem",
                [f"{code.CODE_ENTRIES + 1} flags" in p for p in problems], [True])

@@ -1,8 +1,10 @@
 # M1-137 — The limits of the test selection, measured and closed
 
 Phase: B | Status: **started 2026-10-29.** Its questions 1 to 15 are ruled
-(decisions 842-856), question 16 by decision 857, and questions 17 to 22
-about the design of decision 857 by decisions 858-863. The next task after M1-138 (decisions 744 and 763)
+(decisions 842-856), question 16 by decision 857, questions 17 to 22
+about the design of decision 857 by decisions 858-863, and questions 23 to
+25 about the result of item 6 by decisions 864-866. **Item 6 is done**
+(2026-10-29). The next task after M1-138 (decisions 744 and 763)
 Prerequisites: M1-133
 Decided by: register decision 744, ruled 2026-10-21 on the owner's word, after
 the test selection was compared with published work: Ekstazi
@@ -64,11 +66,18 @@ safe.
    decision 834: a file that comes into the top folder of the tree and that
    the program does not import, and a file that comes into
    `build/SystemResources`.
+   *Added 2026-10-29 (decision 864):* the line also names that a new test
+   that examines the chain of calls must go into the list of decision 844.
 6. **The `.pdb` files of the programs** (decision 833, added 2026-10-29).
    In Debug, seven programs read their own `.pdb` file, in 7 script tests,
    because an assertion prints its call chain. The part of the programs
    does not hold the `.pdb` file. Measure if a change can change a `.pdb`
    file and keep the bytes of its program, then close the gap or name it.
+   *Done 2026-10-29 (decisions 864-866):* each change of a `.pdb` file also
+   changes the bytes of its program, but six of the seven tests take their
+   program function by function. The two that examine the line of the chain
+   of calls take it by its bytes from that date. The record is
+   [`m1-137-pdb.md`](../../measurements/m1-137-pdb.md).
 
 ## The questions, each with its alternatives, costs and ruling
 
@@ -287,6 +296,30 @@ decision 859: A.*
   program also changes, there is no gap; if not, the `.pdb` files go into
   the part of the programs.
 - B. The `.pdb` files added with no measurement.
+
+**The result of item 6.** *Added 2026-10-29.* The measurement of question
+12 found that its premise was not correct for six tests, and questions 23 to 25
+went to the owner. The owner ruled them the same day with the words
+"Accept all".
+
+**23. How does item 6 close the gap?** *Ruled by decision 864: A.*
+
+- **A (recommended).** The two `assertion_message` tests take their program
+  by its bytes, through the list of decision 844. Cost: about 4.4 s at each
+  change of the code that the probe links.
+- B. The six tests by their bytes. Cost: about 8 s more, with results that
+  cannot change.
+- C. No change, and the limit named.
+
+**24. When does the list of decision 844 come?** *Ruled by decision 865: A.*
+
+- **A (recommended).** In item 6, with a self-test case and a planted fault.
+- B. With item 1. Cost: item 6 stays open until then.
+
+**25. Where does the measurement go?** *Ruled by decision 866: A.*
+
+- **A (recommended).** A record and its script in `docs/measurements/`.
+- B. Only this document.
 
 **The work itself**
 
