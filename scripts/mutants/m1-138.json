@@ -1,0 +1,477 @@
+{
+  "task": "M1-138",
+  "tree": "build/debug",
+  "note": "The records of the Python processes, the traces of the `cmake -P` tests and the children of rules 2 and 5 (M1-138, register decisions 764-838, as the task document lists them). Each mutant changes a Python script or cmake/TraceArguments.cmake. Each judge is the judge that the pre-measure of 2026-10-29 found on a scratch copy (decision 837): read_record_self_test for the hook, scripts/read-record/sitecustomize.py; run_tests_self_test for the rules of the driver, and read_record_self_test too for decision 782; and run_tests_end_to_end for the run of the driver, run_tree(), and for the three mutants of cmake/TraceArguments.cmake, which build build.ninja. The five faults of the hook that step 1 tried come first. Three mutants survived the pre-measure. Decisions 835 and 836 gave run_tests_end_to_end four steps, and each of the three makes it fail. No mutant is declared a survivor. No mutant changes compiled code, thus the file runs in build/debug only (decisions 709 (6) and 838).",
+  "mutants": [
+    {
+      "name": "step 1: the source of a module that runs is not recorded (no exec event)",
+      "file": "scripts/read-record/sitecustomize.py",
+      "find": "if isinstance(name, str) and not name.startswith(\"<\"):",
+      "replace": "if False and isinstance(name, str):",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["read_record_self_test"]
+    },
+    {
+      "name": "step 1: the sets of os do not get the replacement",
+      "file": "scripts/read-record/sitecustomize.py",
+      "find": "            members.add(replacement)",
+      "replace": "            pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["read_record_self_test"]
+    },
+    {
+      "name": "step 1: os.stat is not replaced",
+      "file": "scripts/read-record/sitecustomize.py",
+      "find": "_OS_FUNCTIONS = (\"stat\", \"lstat\")",
+      "replace": "_OS_FUNCTIONS = (\"lstat\",)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["read_record_self_test"]
+    },
+    {
+      "name": "step 1: no record at the start of the process",
+      "file": "scripts/read-record/sitecustomize.py",
+      "find": "    _write(_DESTINATIONS, body=False)",
+      "replace": "    pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["read_record_self_test"]
+    },
+    {
+      "name": "step 1: the record goes only into the folder of its own test",
+      "file": "scripts/read-record/sitecustomize.py",
+      "find": "    if folder and test and (folder, test) not in pairs:",
+      "replace": "    pairs = []\n    if folder and test and (folder, test) not in pairs:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["read_record_self_test"]
+    },
+    {
+      "name": "decision 791: a fault of the audit hook on a thread does not stop `end`",
+      "file": "scripts/read-record/sitecustomize.py",
+      "find": "    except Exception:  # noqa: BLE001 -- the record must not change what the process does\n        _failed.set()",
+      "replace": "    except Exception:  # noqa: BLE001 -- the record must not change what the process does\n        pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["read_record_self_test"]
+    },
+    {
+      "name": "decision 791: a fault of a replaced function on a thread does not stop `end`",
+      "file": "scripts/read-record/sitecustomize.py",
+      "find": "            except Exception:  # noqa: BLE001\n                _failed.set()",
+      "replace": "            except Exception:  # noqa: BLE001\n                pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["read_record_self_test"]
+    },
+    {
+      "name": "decision 832: the folders of the hook are not recorded",
+      "file": "scripts/read-record/sitecustomize.py",
+      "find": "    _folders.update((os.path.dirname(os.path.abspath(__file__)),\n                     os.path.join(os.path.dirname(os.path.abspath(__file__)), \"__pycache__\")))",
+      "replace": "    pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["read_record_self_test"]
+    },
+    {
+      "name": "a file opened only to write counts as read",
+      "file": "scripts/read-record/sitecustomize.py",
+      "find": "        return \"r\" in mode or \"+\" in mode",
+      "replace": "        return True",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["read_record_self_test"]
+    },
+    {
+      "name": "a path outside the repository and the tree goes into the record",
+      "file": "scripts/read-record/sitecustomize.py",
+      "find": "        return _inside(path, _REPOSITORY) or _inside(path, tree)",
+      "replace": "        return True",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["read_record_self_test"]
+    },
+    {
+      "name": "the hook's own file is not recorded",
+      "file": "scripts/read-record/sitecustomize.py",
+      "find": "    _files.add(os.path.abspath(__file__))",
+      "replace": "    pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["read_record_self_test"]
+    },
+    {
+      "name": "a child process of subprocess is not recorded",
+      "file": "scripts/read-record/sitecustomize.py",
+      "find": "                _children.append({\"argv\": argv, \"cwd\": _text(args[2]) if args[2] else os.getcwd()})",
+      "replace": "                pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["read_record_self_test"]
+    },
+    {
+      "name": "a folder listed is not recorded",
+      "file": "scripts/read-record/sitecustomize.py",
+      "find": "                    _folders.add(_text(\".\" if path in (None, \"\", b\"\") else path))",
+      "replace": "                    pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["read_record_self_test"]
+    },
+    {
+      "name": "the line `end` also after a fault of the hook",
+      "file": "scripts/read-record/sitecustomize.py",
+      "find": "                if not _failed.is_set():\n                    lines.append(\"end\")",
+      "replace": "                lines.append(\"end\")",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["read_record_self_test"]
+    },
+    {
+      "name": "the test name is not escaped in the name of the record",
+      "file": "scripts/read-record/sitecustomize.py",
+      "find": "    return \"\".join(out)\n\n\ndef _text",
+      "replace": "    return name\n\n\ndef _text",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["read_record_self_test"]
+    },
+    {
+      "name": "with_hook: the folder of the hook is not on PYTHONPATH",
+      "file": "scripts/run-tests.py",
+      "find": "            \"PYTHONPATH\": os.pathsep.join([str(root.joinpath(*HOOK_FOLDER))] + before)}",
+      "replace": "            \"PYTHONPATH\": os.pathsep.join(before)}",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    },
+    {
+      "name": "decision 796: PYTHONPATH is not in the environment part",
+      "file": "scripts/run-tests.py",
+      "find": "if (fold(n) in (\"PATH\", \"PYTHONPATH\") or fold(n).startswith((\"VK_\", \"ORBSIM_\")))",
+      "replace": "if (fold(n) in (\"PATH\",) or fold(n).startswith((\"VK_\", \"ORBSIM_\")))",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    },
+    {
+      "name": "the driver gives CTest no hook",
+      "file": "scripts/run-tests.py",
+      "find": "    env = with_hook(without_test_name(env), tree, root)",
+      "replace": "    env = without_test_name(env)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_end_to_end"]
+    },
+    {
+      "name": "decision 782: a record with no line `end` counts as complete",
+      "file": "scripts/run-tests.py",
+      "find": "if len(lines) < 5 or lines[0] != PYTHON_RECORD_HEAD or lines[-2:] != [\"end\", \"\"]:",
+      "replace": "if len(lines) < 5 or lines[0] != PYTHON_RECORD_HEAD or lines[-1] != \"\":",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test", "read_record_self_test"]
+    },
+    {
+      "name": "decision 801 (7): a record of the interpreter of the test's script is not necessary",
+      "file": "scripts/run-tests.py",
+      "find": "    if not any(record[\"argv\"] and record[\"argv\"][1:] == command[1:] for record in parsed):\n        return None\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    },
+    {
+      "name": "decision 793: a record of a copy of the hook counts",
+      "file": "scripts/run-tests.py",
+      "find": "    if not all(any(norm(path) == norm(hook) for _, path in record[\"reads\"]) for record in parsed):\n        return None\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    },
+    {
+      "name": "rule 5 of decision 778: a child in the repository counts as a program",
+      "file": "scripts/run-tests.py",
+      "find": "        if not inside(line[\"cwd\"]):\n            kind = \"program\"",
+      "replace": "        if True:\n            kind = \"program\"",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    },
+    {
+      "name": "decision 815: a ctest child with its working folder not the tree counts",
+      "file": "scripts/run-tests.py",
+      "find": "              and norm(line[\"cwd\"]) == tree_key):",
+      "replace": "              ):",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    },
+    {
+      "name": "decision 813: a path of the repository in the arguments of a child counts",
+      "file": "scripts/run-tests.py",
+      "find": "                    if inside(part):\n                        return None",
+      "replace": "                    if False:\n                        return None",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    },
+    {
+      "name": "decision 812: a child with a relative program counts",
+      "file": "scripts/run-tests.py",
+      "find": "        if not os.path.isabs(argv[0]):\n            return None\n        paths = set()",
+      "replace": "        paths = set()",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    },
+    {
+      "name": "decision 815: the children part has no CTest files",
+      "file": "scripts/run-tests.py",
+      "find": "            if child[\"kind\"] == \"ctest\":\n                lines.append(f\"ctest files {self.ctest_files()}\")\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    },
+    {
+      "name": "decision 804: a trace with no version line counts as complete",
+      "file": "scripts/run-tests.py",
+      "find": "    if not isinstance(version, dict) or version.get(\"major\") != 1:\n        return None\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    },
+    {
+      "name": "decision 805: a command that the driver does not know counts",
+      "file": "scripts/run-tests.py",
+      "find": "        if cmd not in TRACE_COMMANDS and cmd not in defined:\n            return None\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    },
+    {
+      "name": "file(GLOB) gives no listing",
+      "file": "scripts/run-tests.py",
+      "find": "                    folders.add(folder)",
+      "replace": "                    pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    },
+    {
+      "name": "if(EXISTS) gives no read",
+      "file": "scripts/run-tests.py",
+      "find": "                    reads.add(resolved(args[at + 1]))",
+      "replace": "                    pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    },
+    {
+      "name": "decision 806: a child of execute_process that the driver does not know counts",
+      "file": "scripts/run-tests.py",
+      "find": "        elif cmd == \"execute_process\" and not _child_known(args, named, tree_key):\n            return None\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    },
+    {
+      "name": "decision 797: the trace keeps the paths in the build tree",
+      "file": "scripts/run-tests.py",
+      "find": "    keep = lambda paths: sorted(p for p in paths if not under(norm(p), tree_key))  # noqa: E731",
+      "replace": "    keep = lambda paths: sorted(paths)  # noqa: E731",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    },
+    {
+      "name": "decision 801 (1): a `list` line is not examined",
+      "file": "scripts/run-tests.py",
+      "find": "        lines = ([(\"read\", stamp, path) for stamp, path in stored.get(\"reads\") or []]\n                 + [(\"list\", stamp, path) for stamp, path in stored[\"listings\"]])",
+      "replace": "        lines = [(\"read\", stamp, path) for stamp, path in stored.get(\"reads\") or []]",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    },
+    {
+      "name": "decision 792: a line with `unreadable` counts as unchanged",
+      "file": "scripts/run-tests.py",
+      "find": "return all(stamp != UNREADABLE and current_line(kind, path) == (kind, stamp) for kind, stamp, path in lines)",
+      "replace": "return all(current_line(kind, path) == (kind, stamp) for kind, stamp, path in lines)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    },
+    {
+      "name": "decision 801: a test with complete records keeps the part of the build tree",
+      "file": "scripts/run-tests.py",
+      "find": "                if not recorded:\n                    found[\"build tree\"] = self.tree_inputs()",
+      "replace": "                if True:\n                    found[\"build tree\"] = self.tree_inputs()",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    },
+    {
+      "name": "decision 801: a test with complete records keeps the part of scripts/",
+      "file": "scripts/run-tests.py",
+      "find": "        if not built_program and listings is None:",
+      "replace": "        if not built_program:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    },
+    {
+      "name": "decision 801 (6): the cautious rule does not examine the listings",
+      "file": "scripts/run-tests.py",
+      "find": "        if traced or cautious(list(reads or []) + list(listings) if recorded else reads, self.root):",
+      "replace": "        if traced or cautious(reads, self.root):",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    },
+    {
+      "name": "decision 809 (2): a traced test gets no cautious part",
+      "file": "scripts/run-tests.py",
+      "find": "        if traced or cautious(list(reads or []) + list(listings) if recorded else reads, self.root):",
+      "replace": "        if cautious(list(reads or []) + list(listings) if recorded else reads, self.root):",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    },
+    {
+      "name": "the records of a test are not deleted before its run",
+      "file": "scripts/run-tests.py",
+      "find": "    for paths in python_record_files(tree / RECORDS, order).values():\n        for path in paths:\n            path.unlink(missing_ok=True)",
+      "replace": "    pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_end_to_end"]
+    },
+    {
+      "name": "decision 809 (3): the trace of a test is not deleted before its run",
+      "file": "scripts/run-tests.py",
+      "find": "    for name in order:\n        run.trace_path(name).unlink(missing_ok=True)",
+      "replace": "    pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_end_to_end"]
+    },
+    {
+      "name": "the store keeps no listings",
+      "file": "scripts/run-tests.py",
+      "find": "            if name in listings:\n                entry[\"listings\"] = listings[name]",
+      "replace": "            pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_end_to_end"]
+    },
+    {
+      "name": "decision 792: a folder at the path of a `read` line gives a `read` line",
+      "file": "scripts/run-tests.py",
+      "find": "        if kind == \"list\" or os.path.isdir(path):",
+      "replace": "        if kind == \"list\":",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    },
+    {
+      "name": "decision 794: the machine part has no capacity",
+      "file": "scripts/run-tests.py",
+      "find": "\\n{self.capacity()}\")",
+      "replace": "\")",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_self_test"]
+    },
+    {
+      "name": "decision 801 (4): the driver does not make test-reads/ before CTest",
+      "file": "scripts/run-tests.py",
+      "find": "        (tree / RECORDS).mkdir(parents=True, exist_ok=True)",
+      "replace": "        pass",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": ["run_tests_end_to_end"]
+    },
+    {
+      "name": "decision 798: a test name that the escape changes does not stop the configure",
+      "file": "cmake/TraceArguments.cmake",
+      "find": "    if(changed)\n        message(FATAL_ERROR",
+      "replace": "    if(FALSE)\n        message(FATAL_ERROR",
+      "expect": "caught",
+      "suites": [],
+      "targets": ["build.ninja"],
+      "ctest": ["run_tests_end_to_end"]
+    },
+    {
+      "name": "the trace without expanded arguments",
+      "file": "cmake/TraceArguments.cmake",
+      "find": "set(${out_var} --trace-expand --trace-format=json-v1",
+      "replace": "set(${out_var} --trace-format=json-v1",
+      "expect": "caught",
+      "suites": [],
+      "targets": ["build.ninja"],
+      "ctest": ["run_tests_end_to_end"]
+    },
+    {
+      "name": "decision 810: the configure does not make test-reads/",
+      "file": "cmake/TraceArguments.cmake",
+      "find": "file(MAKE_DIRECTORY \"${CMAKE_BINARY_DIR}/test-reads\")\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": ["build.ninja"],
+      "ctest": ["run_tests_end_to_end"]
+    }
+  ]
+}

@@ -489,7 +489,7 @@ the mutant check of the safety proof found no fault in the two trees. **On
 trees (decisions 829-834): no test with the new rules read a file of the
 repository that its fingerprint does not hold, and the hook lists its own
 folder since decision 832. The questions about the mutant file of M1-138
-went to the owner (decision 828), and the owner ruled two of them (decisions
-835 and 836). Next, the two other questions. The next
+went to the owner (decision 828), and the owner ruled them (decisions
+835-838). Next, the pass of the mutant file and the push. The next
 session starts with the list "Left for the next session (2026-10-27)" in M1-138's
 task document.
