@@ -2552,9 +2552,11 @@ orbsim_trace_arguments(trace "a:b")
 def script_records_end_to_end(cmake: str, ctest: str, ninja: str, steps: list) -> list:
     """The records of the Python processes, the trace and a child of rule 2
     through the driver (M1-138, decisions 786, 808 and 816): the twelve steps
-    of decision 816, each with the tests that must run. The scratch project
-    holds a copy of the hook, because the hook finds its repository from the
-    folder of its own file."""
+    of decision 816, each with the tests that must run. Then the steps of
+    decisions 835 and 836: a plain `ctest` in a new tree, test-reads/ removed
+    after the configure, and a `cmake -P` test without its trace arguments.
+    The scratch project holds a copy of the hook, because the hook finds its
+    repository from the folder of its own file."""
     failures = []
     trace_arguments = (ROOT / "cmake" / "TraceArguments.cmake").as_posix()
     with tempfile.TemporaryDirectory() as scratch:
@@ -2573,6 +2575,20 @@ def script_records_end_to_end(cmake: str, ctest: str, ninja: str, steps: list) -
         configure = [cmake, "-S", str(root), "-B", str(tree), "-G", "Ninja", f"-DCMAKE_MAKE_PROGRAM={ninja}",
                      f"-DPY={sys.executable}", f"-DCTEST={ctest}", f"-DTRACE_ARGUMENTS={trace_arguments}"]
         subprocess.run(configure, capture_output=True, check=True, cwd=root)
+
+        # A plain `ctest` in a new tree, with no run of the driver before it
+        # (decisions 810 and 836): CMake stops `cm` when the folder of its
+        # trace is not there, thus the configure must make the folder.
+        # --no-tests=error, because a `-R` that finds no test passes.
+        plain = pathlib.Path(scratch) / "plain"
+        subprocess.run([cmake, "-S", str(root), "-B", str(plain)] + configure[5:], capture_output=True, check=True,
+                       cwd=root)
+        done = subprocess.run([ctest, "--output-on-failure", "--no-tests=error", "-R", "^cm$"], capture_output=True,
+                              text=True, encoding="utf-8", errors="replace", check=False, cwd=plain)
+        steps.append("script records: a plain ctest in a new tree runs the cmake -P test")
+        if done.returncode != 0 or not (plain / RECORDS / f"cm{TRACE}").is_file():
+            failures.append(f"a plain ctest in a new tree: exit {done.returncode}, or no trace\n"
+                            f"{done.stdout}{done.stderr}")
 
         def step(name: str, wanted: set) -> None:
             (tree / STATE / REPORT).unlink(missing_ok=True)
@@ -2612,6 +2628,32 @@ def script_records_end_to_end(cmake: str, ctest: str, ninja: str, steps: list) -
         subprocess.run(configure, capture_output=True, check=True, cwd=root)
         step("script records: a new test: it, the ctest child of the Python test, and the cautious part",
              {"added", "py", "cm"})
+        # Decision 801 (4): the driver makes test-reads/ before CTest. Else,
+        # after a person removes the folder, CMake stops `cm`, and the hook
+        # writes no record for `py` (decision 836).
+        shutil.rmtree(tree / RECORDS)
+        change("inputs/p.txt", "p changed again\n")
+        change("inputs/c.txt", "c changed again\n")
+        step("script records: test-reads/ removed after the configure", {"py", "cm"})
+        # Decision 809 (3): the driver deletes the trace of each test that it
+        # runs before the run. Here `cm` runs without its trace arguments, and
+        # its script also reads scripts/r.txt. Else the driver reads the trace of
+        # the last run as the trace of this run, and does not run `cm` when
+        # scripts/r.txt changes (decision 835). With no trace, `cm` keeps the
+        # rules before M1-138, which hold the part of scripts/. If the text
+        # of the trace arguments is not there, `cm` keeps its trace, which
+        # names scripts/r.txt, and the step passes also without the line of
+        # decision 809 (3) (VERIFICATION.md rule 23).
+        project = (root / "CMakeLists.txt").read_bytes().decode("utf-8")
+        if project.count(" ${trace} -P") != 1:
+            failures.append("the definition of cm does not hold its trace arguments one time")
+        change("CMakeLists.txt", project.replace(" ${trace} -P", " -P"))
+        change("cmake/Run.cmake", SCRATCH_RUN + 'file(READ "${CMAKE_CURRENT_LIST_DIR}/../scripts/r.txt" text)\n')
+        change("scripts/r.txt", "r\n")
+        subprocess.run(configure, capture_output=True, check=True, cwd=root)
+        step("script records: the cmake -P test without its trace arguments", {"added", "py", "cm"})
+        change("scripts/r.txt", "r changed\n")
+        step("script records: the file in scripts/ that the cmake -P test with no trace reads", {"added", "cm"})
 
         refused = pathlib.Path(scratch) / "refused"
         refused.mkdir()

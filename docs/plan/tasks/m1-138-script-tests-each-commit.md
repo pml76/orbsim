@@ -6,8 +6,10 @@ done (decisions 781-786), questions 21 to 24 about the rules of decision
 778 (decisions 787-790), questions 25 to 35 before step 2 (decisions
 791-801), questions 36 to 42 before step 3 (decisions 803-809), question 43
 (decision 810), questions 44 to 50 before step 4 (decisions 811-817),
-questions 51 to 61 before the safety proof (decisions 818-828), and questions
-62 and 63 during the recordings (decisions 829 and 830). The spike is
+questions 51 to 61 before the safety proof (decisions 818-828), questions
+62 to 64 during the recordings (decisions 829-831), questions 65 to 67 after
+them (decisions 832-834), and questions 69 and 70 about the mutant file
+(decisions 835 and 836). Questions 68 and 71 are open. The spike is
 done ([its record](../../measurements/m1-138-spike.md)). Steps 1 to 4 of the
 code are committed. The next session starts with "Left for the next session
 (2026-10-27)" below**
@@ -605,6 +607,14 @@ the `.pdb` files that programs read in Debug go into M1-137 as item 6. 67:
 the questions about files and folders with no read are not inputs, and two
 groups are named as limits.
 
+**68 to 71. The mutant file, 2026-10-29.** *Questions 69 and 70 are ruled by
+decisions 835 and 836; questions 68 and 71 are open.* 68: the 47 mutants of
+the file, each with the judge that the pre-measure found. 69: the mutant of
+decision 809 (3), which survived the pre-measure. 70: the two mutants of the
+folder `test-reads/`, which survived it. 71: the tree of the pass. The owner
+told the assistant to fix the three survivors. `run_tests_end_to_end` has four
+new steps, and each of the three mutants makes it fail.
+
 ## Left for the next session (2026-10-27)
 
 The owner told the assistant to write this handover before the first file of
@@ -625,6 +635,10 @@ the two trees, no test with the new rules read a file of the repository, not in
 the build tree, that its fingerprint does not hold. The hook lists its own
 folder (decision 832), and the `.pdb` files go into M1-137 (decision 833).
 Next, point 5.
+*Added 2026-10-29, later:* the questions 68 to 71 of point 5 went to the
+owner. The owner ruled questions 69 and 70 (decisions 835 and 836), and the
+three mutants that survived the pre-measure now make `run_tests_end_to_end`
+fail. Next, the rulings of questions 68 and 71.
 
 1. **Where the work is.** The last commit of the code is `863d41d`, step 4.
    After it come `d917dd6`, `9b832ea` (`prompts.txt`, decision 821) and the
