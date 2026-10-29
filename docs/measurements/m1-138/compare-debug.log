@@ -1,0 +1,15 @@
+tests with the new rules in the store: 91
+procmon-debug-2.csv: events 09:59:52 to 10:10:51, 2142 processes, 83 tests included
+procmon-debug-3.csv: events 10:29:51 to 10:35:22, 179 processes, 8 tests included
+compared: 91 of 91; misses: 2335; tests with a miss: 91; queries known by a list line: 30
+   1560 misses in  83 tests: not there, in the top folder of the tree; {'query': 1560}; {'orbsim.exe': 1350, 'assertion_message_probe.exe': 42, 'python3.exe': 28, 'angle_between_zero_probe.exe': 21}
+    223 misses in  42 tests: not there, in the build tree; {'query': 223}; {'ctest.exe': 108, 'orbsim.exe': 57, 'cmake.exe': 56, 'ninja.exe': 2}
+    222 misses in  40 tests: a folder of the build tree; {'query': 212, 'listing': 10}; {'ctest.exe': 171, 'orbsim.exe': 30, 'cmake.exe': 21}
+    187 misses in  62 tests: a folder of the repository; {'query': 185, 'listing': 2}; {'cmake.exe': 116, 'orbsim.exe': 60, 'ctest.exe': 6, 'python.exe': 3}
+     68 misses in  34 tests: the folder of the hook; {'listing': 34, 'query': 34}; {'python.exe': 68}
+     57 misses in  56 tests: build/SystemResources; {'query': 57}; {'orbsim.exe': 49, 'assertion_message_probe.exe': 2, 'angle_between_zero_probe.exe': 1, 'count_wraparound_addition.exe': 1}
+     17 misses in   8 tests: a file of the build tree; {'query': 9, 'read': 8}; {'assertion_message_probe.exe': 4, 'angle_between_zero_probe.exe': 2, 'count_wraparound_addition.exe': 2, 'count_wraparound_multiplication.exe': 2}
+      1 misses in   1 tests: not there, in the repository; {'query': 1}; {'test_read_records.exe': 1}
+planted: the line of C:\Users\U439644\Projects\untitled\scripts\read-record\sitecustomize.py removed from abort_listener_self_test: new misses [('query', 'python.exe', 'c:/users/u439644/projects/untitled/scripts/read-record/sitecustomize.py'), ('read', 'python.exe', 'c:/users/u439644/projects/untitled/scripts/read-record/sitecustomize.py')]
+the planted fault was found, and no other
+exit 0

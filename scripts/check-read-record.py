@@ -22,7 +22,8 @@ and 785):
   * each folder listed, through os.listdir, os.scandir, os.walk, glob and
     pathlib;
   * the source of a module loaded from its cached .pyc file, and the hook's
-    own file;
+    own file; a `list` line for the folder of the hook and for the folder
+    __pycache__ in it, which Python examines to find the hook (decision 832);
   * each process started, and the record of each child Python process: one
     with a test name of its own, one with none, one that ends with os._exit,
     and two with a fault of the hook on a second thread, through the audit
@@ -43,8 +44,10 @@ and 785):
 
 Proven able to fail before it was trusted: the self-test then removes each
 type of line from the records, one at a time, and makes sure that the check
-fails for each; and it changes the hash of one `list` line, and makes sure
-that the driver then finds a difference.
+fails for each; it changes the hash of one `list` line, and makes sure
+that the driver then finds a difference; and it removes only the two `list`
+lines of the folders of the hook, and makes sure that the check names these
+two and nothing more.
 """
 
 import importlib.util
@@ -59,6 +62,9 @@ import tempfile
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 HOOK_FOLDER = ROOT / "scripts" / "read-record"
 HOOK = HOOK_FOLDER / "sitecustomize.py"
+# The two folders that Python examines to find the hook, before the hook is
+# active (decision 832).
+HOOK_FOLDERS = (HOOK_FOLDER, HOOK_FOLDER / "__pycache__")
 RECORDS_VARIABLE = "ORBSIM_READ_RECORDS"
 OWNER_VARIABLE = "ORBSIM_READ_RECORD_OWNER"
 TEST_NAME_VARIABLE = "ORBSIM_TEST_NAME"
@@ -258,6 +264,9 @@ def problems_of(tree, outside, inner, sets, outer, inner_records, plant=None) ->
         problems.append("no `read missing` line for the file that is not there")
     if os.path.normcase(str(HOOK)) not in read:
         problems.append("no `read` line for the hook's own file")
+    for folder in HOOK_FOLDERS:
+        if os.path.normcase(str(folder)) not in listed:
+            problems.append(f"no `list` line for the folder {folder.name} of the hook")
     for name in ("written.txt",):
         if t(name) in read:
             problems.append(f"a `read` line for {name}, which the probe only wrote")
@@ -358,6 +367,14 @@ def changed_listing(found: list) -> list:
     return changed
 
 
+def without_hook_folders(found: list) -> list:
+    """The records `found` without the `list` lines of the folders of the hook."""
+    folders = {os.path.normcase(str(folder)) for folder in HOOK_FOLDERS}
+    return [(name, [line for line in lines
+                    if not (line.startswith("list ") and os.path.normcase(line.split(" ", 2)[2]) in folders)])
+            for name, lines in found]
+
+
 def self_test(cmake: str) -> int:
     with tempfile.TemporaryDirectory() as scratch_name:
         scratch = pathlib.Path(scratch_name)
@@ -382,7 +399,17 @@ def self_test(cmake: str) -> int:
             problems.append("driver")
         else:
             planted += 1
-    print(f"read-record self-test: {len(problems)} problems; {planted} of 6 planted faults found; "
+        # The two `list` lines of the folders of the hook removed, and no
+        # other line: the check must name these two, and nothing more.
+        wanted = sorted(f"no `list` line for the folder {folder.name} of the hook" for folder in HOOK_FOLDERS)
+        found = sorted(problems_of(tree, outside, inner, sets, without_hook_folders(outer), inner_records))
+        if found != wanted:
+            print(f"read-record FAILED: with the `list` lines of the folders of the hook removed, the check "
+                  f"reported {found}")
+            problems.append("hook folders")
+        else:
+            planted += 1
+    print(f"read-record self-test: {len(problems)} problems; {planted} of 7 planted faults found; "
           f"{len(outer)} records of the outer test, {len(inner_records)} of the inner test")
     return 1 if problems else 0
 

@@ -50,6 +50,11 @@ safe.
 5. **The limits named.** One line in `docs/BRIEFING.md` and in `CLAUDE.md`
    gives the limits of ADR 0028 -- start-up code, coverage that changes between
    runs, outputs of other tests -- and the full run that finds them.
+6. **The `.pdb` files of the programs** (decision 833, added 2026-10-29).
+   In Debug, seven programs read their own `.pdb` file, in 7 script tests,
+   because an assertion prints its call chain. The part of the programs
+   does not hold the `.pdb` file. Measure if a change can change a `.pdb`
+   file and keep the bytes of its program, then close the gap or name it.
 
 ## Questions to put to the owner before it is built
 

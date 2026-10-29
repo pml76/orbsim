@@ -594,6 +594,16 @@ and 830, each by its recommendation.* 62: the Debug recording, which stopped
 before the end of its run, is made again with the same settings. 63: a test
 that fails in a recorded run only by a time limit, and passes alone after
 the run, is compared with the read records of the recorded run.
+*Ruled by decision 831:* 64: the second Debug recording also stopped before
+the end of its run. In each tree, a full recording, and then a short
+recording of the script tests that the full recording does not include.
+
+**65 to 67. After the records were compared with Process Monitor,
+2026-10-29.** *Ruled by decisions 832-834, each by its recommendation.* 65:
+the hook adds a `list` line for its own folder and for its `__pycache__`. 66:
+the `.pdb` files that programs read in Debug go into M1-137 as item 6. 67:
+the questions about files and folders with no read are not inputs, and two
+groups are named as limits.
 
 ## Left for the next session (2026-10-27)
 
@@ -608,7 +618,13 @@ mutant check of point 2 is done, with no fault in the two trees (Part 1 of
 [the record](../../measurements/m1-138-safety.md)). The script is `8df5bcf`.
 Next, point 3, the records compared with Process Monitor.
 *Added 2026-10-29:* the first Debug recording stopped before the end of its
-run, and it is made again (decisions 829 and 830).
+run, and it is made again (decisions 829 and 830). The second also stopped
+before the end of its run, thus a short recording of 10 script tests
+follows it (decision 831). Points 3 and 4 are done (Part 2 of the record): in
+the two trees, no test with the new rules read a file of the repository, not in
+the build tree, that its fingerprint does not hold. The hook lists its own
+folder (decision 832), and the `.pdb` files go into M1-137 (decision 833).
+Next, point 5.
 
 1. **Where the work is.** The last commit of the code is `863d41d`, step 4.
    After it come `d917dd6`, `9b832ea` (`prompts.txt`, decision 821) and the
@@ -632,7 +648,7 @@ run, and it is made again (decisions 829 and 830).
    check in Debug, and after it in RelWithDebInfo. Before the runs, make the
    app keep the computer awake: if the computer sleeps, the runs stop at
    their time limits.
-3. **Then, compare the records with Process Monitor** (decisions 822 and
+3. **Done: then, compare the records with Process Monitor** (decisions 822 and
    823). Write the script with the rules of decision 823. Its planted
    fault is one `read` line removed from a copy of the store, and the script
    must report that path. The spike read its recordings with
@@ -644,7 +660,7 @@ run, and it is made again (decisions 829 and 830).
    minute of its run and for each test of the run, the owner makes it again.
    The recordings go into `build/`, which git ignores. Each miss goes to the
    owner before a change.
-4. **The record**, docs/measurements/m1-138-safety.md, with the scripts and
+4. **Done: the record**, docs/measurements/m1-138-safety.md, with the scripts and
    the small results in `docs/measurements/m1-138/`, and no figures of time
    (decisions 779 and 824).
 5. **Then the questions about the mutant file**,

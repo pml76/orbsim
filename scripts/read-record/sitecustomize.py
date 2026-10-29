@@ -20,6 +20,10 @@ those files changes (decision 765):
                                       arguments and its working folder
     end
 
+The record also holds the hook's own file, and a `list` line for the folder
+of the hook and for the folder __pycache__ in it, which Python examines to
+find the hook before the hook is active (decision 832).
+
 The hook gets each hash at the exit of the process, as the C++ records get
 theirs as the test case ends (decision 527). Only paths in the repository and in the
 build tree of the record go in (decision 765). The file is written at the
@@ -280,6 +284,11 @@ _DESTINATIONS = _destinations() if os.environ.get(_RECORDS_VARIABLE) else []
 if _DESTINATIONS:
     os.environ[_OWNER_VARIABLE] = json.dumps(_DESTINATIONS)
     _files.add(os.path.abspath(__file__))
+    # Python lists the folder of the hook, and asks for the compiled file of
+    # the hook in its __pycache__, to find the hook before the hook is
+    # active: a new file there can change what Python imports (decision 832).
+    _folders.update((os.path.dirname(os.path.abspath(__file__)),
+                     os.path.join(os.path.dirname(os.path.abspath(__file__)), "__pycache__")))
     for _name in _OS_FUNCTIONS:
         _wrap(os, _name, _OS_SETS)
     _path_module = ntpath if os.name == "nt" else posixpath

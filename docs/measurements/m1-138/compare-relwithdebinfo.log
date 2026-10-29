@@ -1,0 +1,14 @@
+tests with the new rules in the store: 85
+procmon-relwithdebinfo-1.csv: events 10:36:56 to 10:47:57, 2136 processes, 85 tests included
+compared: 85 of 85; misses: 1994; tests with a miss: 85; queries known by a list line: 30
+   1255 misses in  77 tests: not there, in the top folder of the tree; {'query': 1255}; {'orbsim.exe': 1205, 'python3.exe': 28, 'ctest.exe': 9, 'coverage_recorder_probe.exe': 3}
+    223 misses in  42 tests: not there, in the build tree; {'query': 223}; {'ctest.exe': 108, 'orbsim.exe': 57, 'cmake.exe': 56, 'ninja.exe': 2}
+    222 misses in  40 tests: a folder of the build tree; {'query': 212, 'listing': 10}; {'ctest.exe': 171, 'orbsim.exe': 30, 'cmake.exe': 21}
+    175 misses in  56 tests: a folder of the repository; {'query': 173, 'listing': 2}; {'cmake.exe': 104, 'orbsim.exe': 60, 'ctest.exe': 6, 'python.exe': 3}
+     68 misses in  34 tests: the folder of the hook; {'listing': 34, 'query': 34}; {'python.exe': 68}
+     49 misses in  49 tests: build/SystemResources; {'query': 49}; {'orbsim.exe': 49}
+      1 misses in   1 tests: a file of the build tree; {'query': 1}; {'cmake.exe': 1}
+      1 misses in   1 tests: not there, in the repository; {'query': 1}; {'test_read_records.exe': 1}
+planted: the line of C:\Users\U439644\Projects\untitled\scripts\read-record\sitecustomize.py removed from abort_listener_self_test: new misses [('query', 'python.exe', 'c:/users/u439644/projects/untitled/scripts/read-record/sitecustomize.py'), ('read', 'python.exe', 'c:/users/u439644/projects/untitled/scripts/read-record/sitecustomize.py')]
+the planted fault was found, and no other
+exit 0

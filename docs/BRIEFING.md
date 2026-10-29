@@ -484,6 +484,11 @@ is committed. Next, the safety proof of decision 767.
 **On 2026-10-27** the owner ruled questions 51 to 61 of M1-138 before its
 safety proof (decisions 818-828). Then the owner stopped the session for a
 handover, before the first file of the safety proof. After that, on the same day,
-the mutant check of the safety proof found no fault in the two trees. The next
+the mutant check of the safety proof found no fault in the two trees. **On
+2026-10-29** the read records were compared with Process Monitor in the two
+trees (decisions 829-834): no test with the new rules read a file of the
+repository that its fingerprint does not hold, and the hook lists its own
+folder since decision 832. Next, the questions about the mutant file of
+M1-138 (decision 828). The next
 session starts with the list "Left for the next session (2026-10-27)" in M1-138's
 task document.
