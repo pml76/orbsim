@@ -4,9 +4,10 @@ Phase: B | Status: **started 2026-10-29.** Its questions 1 to 15 are ruled
 (decisions 842-856), question 16 by decision 857, questions 17 to 22
 about the design of decision 857 by decisions 858-863, questions 23 to
 26 about the result of item 6 by decisions 864-867, questions 27 to 30
-about the code of item 1 by decisions 868-871, and questions 31 to 40
-about the code of item 2 by decisions 872-881. **Items 6, 1 and 2 are
-done** (2026-10-29 and 2026-10-30). The next task after M1-138 (decisions 744 and 763)
+about the code of item 1 by decisions 868-871, questions 31 to 40 about
+the code of item 2 by decisions 872-881, and questions 41 to 50 about
+item 4 by decisions 882-891. **Items 6, 1, 2 and 4 are done** (2026-10-29
+and 2026-10-30). The next task after M1-138 (decisions 744 and 763)
 Prerequisites: M1-133
 Decided by: register decision 744, ruled 2026-10-21 on the owner's word, after
 the test selection was compared with published work: Ekstazi
@@ -70,6 +71,11 @@ safe.
    other variables changed -- `TEMP`, the locale, `TZ`, the proxy variables --
    and record each result that changes. Only then rule which variables go into
    the hash.
+   *Done 2026-10-30 (decisions 882-891):* the part now holds `PYTHONHOME`,
+   `PYTHONSAFEPATH`, `GIT_DIR`, `GIT_WORK_TREE`, each `CMAKE_*` variable, and
+   `PATHEXT` without its entry `.CPL`. `TEMP` stays out: after the fixes of
+   decision 888 it changes no result. The record is
+   [`m1-137-environment.md`](../../measurements/m1-137-environment.md).
 5. **The limits named.** One line in `docs/BRIEFING.md` and in `CLAUDE.md`
    gives the limits of ADR 0028 -- start-up code, coverage that changes between
    runs, outputs of other tests -- and the full run that finds them.
@@ -460,6 +466,74 @@ by decision 881: A.*
 - **A (recommended).** One list in the driver for decisions 846 and 857,
   with the store as the one difference.
 - B. Two lists, kept the same by hand.
+
+**41. How each run of item 4 changes the variables.** *Ruled by decision
+882: A.* The owner's words were "Accept all", for questions 41 to 46.
+
+- **A (recommended).** A measurement script runs CTest directly, for all
+  tests, with the environment that the driver gives CTest.
+- B. `check-full`, as decision 851 reads. Group 2 then stops the build or
+  the driver before most tests run.
+
+**42. The value of each variable.** *Ruled by decision 883: A.*
+
+- **A (recommended).** The values that the decision lists: each can change
+  a result, and is not the value at this time.
+- B. Other values, or more of them, from the owner.
+
+**43. What counts as a changed result.** *Ruled by decision 884: A.*
+
+- **A (recommended).** Each change between passed, failed and skipped.
+- B. Only passed against failed. A test that skips itself is then not seen.
+
+**44. A variable that is a pattern.** *Ruled by decision 885: A.*
+
+- **A (recommended).** All of the pattern goes into the part, as `VK_*` and
+  `ORBSIM_*` do.
+- B. Only the names that the measurement set.
+
+**45. The runs with one variable at a time.** *Ruled by decision 886: A.*
+
+- **A (recommended).** Each such run runs all tests. Cost: at most about 2.2
+  hours.
+- B. Only the tests that the run of the group changed, about ten times less
+  time. A test that changes with one variable alone is then not seen.
+
+**46. The record of item 4.** *Ruled by decision 887: A.*
+
+- **A (recommended).** `docs/measurements/m1-137-environment.md` and a
+  script in `docs/measurements/m1-137/`, as for items 1, 2 and 6.
+- B. Only this document.
+
+**47. `TEMP` and its four faults.** *Ruled by decision 888: A.* The owner's
+words were "Accept all", for questions 47 to 50.
+
+- **A (recommended).** The four fixes, and then `TEMP` again in the two
+  trees. If no result changes, `TEMP` stays out by decision 851.
+- B. No fixes, and `TEMP` goes in. Cost: 4 tests fail on each machine with a
+  space or `ä` in its `TEMP`.
+- C. The fixes, and `TEMP` goes in also.
+
+**48. The guard for these faults.** *Ruled by decision 889: A.*
+
+- **A (recommended).** The four tests make their scratch folders inside a
+  folder with a space and `ä` in its name.
+- B. One new self-test case for each of the two fixes in the scripts. The
+  stand-ins then have no guard.
+- C. No guard.
+
+**49. `PATHEXT`.** *Ruled by decision 890: A.*
+
+- **A (recommended).** `PATHEXT` goes in, without the `.CPL` that PowerShell
+  adds.
+- B. `PATHEXT` as it is. Cost: all tests run again at each change between
+  PowerShell and Bash, about 6 minutes for the two trees.
+
+**50. The rest of the list.** *Ruled by decision 891: A.*
+
+- **A (recommended).** `PYTHONHOME`, `PYTHONSAFEPATH`, `GIT_DIR`,
+  `GIT_WORK_TREE` and all of `CMAKE_*` go in, and the 16 others stay out.
+- B. A different list from the owner.
 
 **The work itself**
 
