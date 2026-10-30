@@ -1141,6 +1141,48 @@ def shader_record_cases() -> dict:
     return cases
 
 
+def read_file_cases() -> dict:
+    """A pass records the counted files that each judge read, with the mark
+    that mutants-due.py reads (M1-137, decisions 857 and 879), so that a check
+    of the tree as the pass left it finds no judge moved, and one after such a
+    file changed names it. On mutants-due.py's own stand-in tree."""
+    sys.dont_write_bytecode = True  # no __pycache__ in scripts/
+    loader = importlib.util.spec_from_file_location("mutants_due", Path(__file__).resolve().parent / "mutants-due.py")
+    module = importlib.util.module_from_spec(loader)
+    loader.loader.exec_module(module)
+    driver = module.driver_module()
+    cases = {}
+    with tempfile.TemporaryDirectory() as scratch:
+        tree = Path(scratch).resolve() / "build"
+        out = tree / "probes" / "o.png"
+        out.parent.mkdir(parents=True)
+        out.write_bytes(b"o")
+        (tree / driver.STATE).mkdir()
+        (tree / driver.STATE / driver.STORE).write_bytes(json.dumps(
+            {"version": driver.STORE_VERSION, "tests": {"t": {"parts": {}, "reads": [["0" * 64, str(out)]]}},
+             "listeners": {}}).encode("utf-8"))
+        tests = {"t": {"name": "t", "command": ["cmake", "-P", "run.cmake"]}}
+        spec = {"mutants": [{"file": "src/x.cpp", "ctest": ["t"]}]}
+        record = pass_record("c0ffee", "build", *judge_parts(module, module.stand_in_tree(tree, tests), spec))
+
+        def moved() -> list:
+            now = module.stand_in_tree(tree, tests).fingerprint_parts(spec, record)
+            return module.judged_since(record, {key: module.combine(value) for key, value in now.items()}, now)
+
+        cases["a record with parts has the mark of decision 879, by the name that mutants-due.py reads"] = (
+            record.get(READ_MARK) == "decision 857" and READ_MARK == module.READ_MARK
+            and READ_MARK not in pass_record("c0ffee", "build", None))
+        cases["a pass records each counted file that a judge read"] = [
+            part for part in record["judge_parts"]["ctest t"] if part.startswith(module.READ_PART)] == [
+            f"{module.READ_PART}probes/o.png"]
+        cases["a check of the tree as the pass left it finds no judge moved, by the files of the record"] = (
+            moved() == [])
+        out.write_bytes(b"o, changed")
+        cases["a check after such a file changed names it"] = moved() == [
+            f"ctest t: fingerprint changed ({module.READ_PART}probes/o.png)"]
+    return cases
+
+
 def self_test(tools: list) -> int:
     """Prove the harness's own rules right before a pass trusts them. `tools`
     is the cmake and the ninja to build a scratch project with, which CTest
@@ -1167,6 +1209,7 @@ def self_test(tools: list) -> int:
     record_cases["a record for a file not judged on a card names none"] = (
         "gpu" not in pass_record("c0ffee", "build/rel", judges, parts, None))
     record_cases.update(shader_record_cases())
+    record_cases.update(read_file_cases())
     # A mutant that names no build (M1-109, register decision 392): allowed for
     # a Python script, refused for anything a build must read first.
     script = {"file": "scripts/x.py", "suites": [], "targets": []}
@@ -1295,12 +1338,16 @@ def restore_problem(checkout_status: int, left: str):
 def pass_record(head: str, tree: str, judges, parts=None, gpu=None) -> dict:
     """What mutation-passes.json holds for a clean pass: since M1-109 also each
     judge's fingerprint in parts, and the graphics card for a file judged on it
-    (register decisions 396 and 397)."""
+    (register decisions 396 and 397). Since M1-137 the parts hold the counted
+    files that each judge read, and the mark READ_MARK of mutants-due.py says
+    so: a reading then takes the files from the record (decisions 859 and
+    879)."""
     record = {"commit": head, "tree": tree, "date": datetime.date.today().isoformat()}
     if judges is not None:
         record["judges"] = judges
     if parts is not None:
         record["judge_parts"] = parts
+        record[READ_MARK] = "decision 857"
     if gpu is not None:
         record["gpu"] = gpu
     return record
@@ -1331,6 +1378,9 @@ def judge_fingerprints(root: Path, tree: str, spec: dict) -> tuple:
         loader.loader.exec_module(module)
         reading = module.Tree((root / tree).resolve())
         found, parts = judge_parts(module, reading, spec)
+        for entry in reading.judges_without_record(spec):
+            print(f"{entry}: no complete record in the store of the driver, thus its parts hold no file that it read "
+                  "(decision 861)")
         gpu = None
         if reading.needs_gpu(spec):
             gpu, why = module.gpu_identity((root / tree).resolve())
@@ -1347,6 +1397,10 @@ def judge_fingerprints(root: Path, tree: str, spec: dict) -> tuple:
 # rerun rule (M1-92, ADR 0024, register decision 212) reads it -- a mutant file
 # is due again when anything its judges depend on has changed since.
 PASSES = "scripts/mutation-passes.json"
+# The mark of a record that holds the counted files of its judges (M1-137,
+# decision 879): READ_MARK of mutants-due.py, which the self-test holds this
+# name to.
+READ_MARK = "read_lines"
 # A pass vouches for the committed code only if these match the commit. The
 # mutant files and the measurement logs are left out: a pass edits its own
 # file's note, and that changes no verdict.

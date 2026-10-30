@@ -4,10 +4,9 @@ Phase: B | Status: **started 2026-10-29.** Its questions 1 to 15 are ruled
 (decisions 842-856), question 16 by decision 857, questions 17 to 22
 about the design of decision 857 by decisions 858-863, questions 23 to
 26 about the result of item 6 by decisions 864-867, questions 27 to 30
-about the code of item 1 by decisions 868-871, and questions 31 to 37
-about the code of item 2 by decisions 872-878. **Items 6 and 1 are done**
-(2026-10-29 and 2026-10-30), and the rules of decisions 846 and 847 of
-item 2 (2026-10-30). The next task after M1-138 (decisions 744 and 763)
+about the code of item 1 by decisions 868-871, and questions 31 to 40
+about the code of item 2 by decisions 872-881. **Items 6, 1 and 2 are
+done** (2026-10-29 and 2026-10-30). The next task after M1-138 (decisions 744 and 763)
 Prerequisites: M1-133
 Decided by: register decision 744, ruled 2026-10-21 on the owner's word, after
 the test selection was compared with published work: Ekstazi
@@ -60,9 +59,9 @@ safe.
    each file of the build tree that a test read, and a test with a file that
    is not as it read it runs again. The store becomes an input of the tests of
    decision 826.
-   *Done in part 2026-10-30 (decisions 872-878):* the rules of decisions 846
-   and 847 are in the driver. Decision 857 comes next, as a commit of its own
-   (decision 863). The record is
+   *Done 2026-10-30 (decisions 872-881):* the rules of decisions 846 and 847
+   are in the driver, and decision 857 is in scripts/mutants-due.py and
+   scripts/mutate.py, as a commit of its own (decision 863). The record is
    [`m1-137-outputs.md`](../../measurements/m1-137-outputs.md).
 3. **The read records compared again.** At each phase gate, the read records
    are compared again with the files that the tests actually open (decision
@@ -438,6 +437,29 @@ decision 875: A.*
   their judge and their verdicts. Their judge caught each of them.
 - B. The two mutants removed.
 - C. The old lines kept, with a second copy, only for the anchors.
+
+**38. How a reading uses a record made before decision 857.** *Ruled by
+decision 879: A.* The owner's words were "Accept all", and then "Q39: B.
+for other questions, pls go with your recommendations".
+
+- **A (recommended).** A record from decision 857 on has a mark. For a
+  record without it, the reading takes the files from the store, thus
+  only the 23 files of decision 862 are due one time.
+- B. One more part for each ctest judge of a record without the mark.
+  Cost: 38 files are due one time.
+
+**39. The value of a part.** *Ruled by decision 880: B.*
+
+- A (recommended). The SHA-256 cut to 16 digits, as the compiled
+  shaders have it. Cost: about 360 KB more in the record of the passes.
+- **B.** All 64 digits. Cost: about 190 KB more than A.
+
+**40. Where the list of the paths that do not count is written.** *Ruled
+by decision 881: A.*
+
+- **A (recommended).** One list in the driver for decisions 846 and 857,
+  with the store as the one difference.
+- B. Two lists, kept the same by hand.
 
 **The work itself**
 

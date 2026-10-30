@@ -2,10 +2,11 @@
 
 Status: measured 2026-10-29 and 2026-10-30 on the first machine, in
 `build/debug` and `build/relwithdebinfo`, with clang 23.1.2. Register
-decisions 826, 846, 847, 857-863 and 872-878. The script is
-[`m1-137/outputs-lines.py`](m1-137/outputs-lines.py); it only reads the
-tree, and it uses the functions of `scripts/run-tests.py` that do the work,
-thus it measures what the driver does.
+decisions 826, 846, 847, 857-863 and 872-881. The scripts are
+[`m1-137/outputs-lines.py`](m1-137/outputs-lines.py) and
+[`m1-137/judges-read-files.py`](m1-137/judges-read-files.py); they use
+the functions of `scripts/run-tests.py` and `scripts/mutants-due.py` that
+do the work, thus they measure what these scripts do.
 
 ## The question
 
@@ -104,3 +105,62 @@ part of the store.
 **The first runs**, on 2026-10-30, through the driver in each tree: 22 of 22
 tests passed in Debug and 28 of 28 in RelWithDebInfo, and no test ran in a
 second call. The part of the store is on the three tests of each tree above.
+
+## Decision 857: the files that a judge read (decisions 858-863 and 879-881)
+
+The rule of decision 846 adds no fixture and no `DEPENDS`, thus alone it
+does not change which mutant files are due. Decision 857 adds, to the
+fingerprint of each ctest judge, a part for each counted file in the read
+lines of its last pass, as the compiled shaders have since M1-131.
+
+- **The counted files** are the read lines of the build tree (decision 876),
+  but not the paths that are written in each run. This is the one list of
+  the driver, `written_in_each_run` (decision 881), and for decision 857
+  the store of the driver does not count, because it changes at each run.
+- **The value of a part** is the line that the hook of the driver writes for
+  the file at that time, as text, with all 64 digits of the SHA-256
+  (decisions 873 and 880): `read` and the hash, `read missing` or
+  `read unreadable`. The name of the part is `read file` and the path in
+  the tree.
+- **A pass** of scripts/mutate.py takes the files from the store of the
+  driver, records them with their parts, and marks the record with
+  `read_lines` (decisions 859 and 879). It prints each judge with no
+  complete record, which gets no part (decision 861).
+- **A reading** of scripts/mutants-due.py takes the files from the record
+  where it has the mark, and from the store where not (decision 879). The
+  report names each part that moved.
+
+Measured 2026-10-30 with
+[`m1-137/judges-read-files.py`](m1-137/judges-read-files.py), which uses
+the code of scripts/mutants-due.py, on the records of the passes at that
+time, none of which has the mark:
+
+| What | Debug | RelWithDebInfo |
+|---|---|---|
+| Mutant files recorded in the tree | 25 | 21 |
+| Parts of decision 857 of their judges | 1,962 | 1,518 |
+| Files that move by these parts | 12 | 11 |
+| Files with a judge with no complete record | 13 | 6 |
+| Judges with no complete record | 10 | 6 |
+
+The 12 and 11 files are the 23 files of decision 862, each in the tree of
+its pass, and the 3,480 parts are the number of decision 859. Each of the 23
+files is thus due one time; all 46 were due before this change, for other changes.
+After the next pass of each file, its record gives its list.
+
+**The limit that stays** (decision 861): a judge with no complete record at
+its pass gets no part, thus a change of a file of the build tree that it
+reads does not make its file due. On 2026-10-30 these were, in Debug,
+`broken_goldens`, `doc_links_self_test`, `float_equal_guard`,
+`mutants_due_gpu_identity`, `mutate_self_test`, `orbsim_smoke`,
+`orbsim_smoke_bare`, `read_record_self_test`, `run_tests_end_to_end` and
+`run_tests_function_level`, and in RelWithDebInfo `abort_listener`,
+`mutate_self_test`, `orbsim_smoke`, `reproducible_build`,
+`run_tests_end_to_end` and `run_tests_in_tree`. Which tests have no complete
+record changes between the trees and between runs (decision 826).
+
+**Seen to fail** (decision 863): the self-test of scripts/mutants-due.py
+changes a counted file after a stand-in pass; the file must be due, and the
+report must name the file. With the parts of decision 857 taken out of the
+code, that case and two more failed. The self-test of scripts/mutate.py
+holds the mark of a pass to the name that scripts/mutants-due.py reads.

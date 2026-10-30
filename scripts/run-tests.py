@@ -259,9 +259,12 @@ CAUTIOUS = ("data", "tests/golden") + BUILD_FILES
 TREE_FILES = ("build.ninja", "CMakeFiles/rules.ninja", ".ninja_deps")
 # The paths of the build tree that the driver, CTest and the tools write in
 # each run, which the new hash of decision 846 does not examine (decision
-# 872): folders and files, relative to the tree. The store of the driver
-# counts all the same, because a test can read the store that the driver
-# wrote before CTest started (decisions 737 and 738).
+# 872), and which the parts of the judges of decision 857 do not hold:
+# folders and files, relative to the tree, one list for the two rules
+# (decision 881). The store of the driver counts for decision 846 all the
+# same, because a test can read the store that the driver wrote before CTest
+# started (decisions 737 and 738). The three files of scripts/mutants-due.py
+# are its HASHES, GRAPH and TRUSTED, which its self-test examines.
 WRITTEN_FOLDERS = (STATE, RECORDS, COVERAGE_RECORDS, "Testing")
 WRITTEN_FILES = ("mutants-due-graph.json", "mutants-due-hashes-2.json", "mutants-due-sidecars.json", ".ninja_deps",
                  ".ninja_log")
@@ -898,18 +901,31 @@ def unchanged(stored, parts: dict, current_hash, programs_unchanged=None, curren
     return all(current_hash(path) == stamp for stamp, path in stored.get("reads") or [])
 
 
+def written_in_each_run(key: str, tree: pathlib.Path) -> bool:
+    """Decisions 872 and 881: whether `key`, a path as norm gives it, is one
+    that the driver, CTest and the tools write in each run (WRITTEN_FOLDERS
+    and WRITTEN_FILES). The one list for the rules of decisions 846 and 857."""
+    return (any(under(key, norm(tree / folder)) for folder in WRITTEN_FOLDERS)
+            or key in {norm(tree / name) for name in WRITTEN_FILES})
+
+
 def counted_line(path: str, tree) -> bool:
     """Decision 872: a read or list line of `path` that the new hash of
     decision 846 examines: a path of the build tree `tree`, but not one that
-    the driver, CTest and the tools write in each run (WRITTEN_FOLDERS and
-    WRITTEN_FILES), except the store of the driver."""
+    is written in each run, except the store of the driver."""
     key, tree = norm(path), pathlib.Path(tree)
     if not under(key, norm(tree)):
         return False
-    if key == norm(tree / STATE / STORE):
-        return True
-    return not (any(under(key, norm(tree / folder)) for folder in WRITTEN_FOLDERS)
-                or key in {norm(tree / name) for name in WRITTEN_FILES})
+    return key == norm(tree / STATE / STORE) or not written_in_each_run(key, tree)
+
+
+def counted_file(path: str, tree) -> bool:
+    """Decisions 858 and 881: a read line of `path` that the parts of a judge
+    of decision 857 hold: a path of the build tree `tree`, but not one that
+    is written in each run, the store of the driver with them, which changes
+    at each run."""
+    key, tree = norm(path), pathlib.Path(tree)
+    return under(key, norm(tree)) and not written_in_each_run(key, tree)
 
 
 def changed_lines(entries: dict, tree, current) -> dict:
@@ -4753,6 +4769,13 @@ def self_test() -> int:
                                                      tree / "Testing" / "Temporary" / "LastTest.log",
                                                      tree / "mutants-due-graph.json", tree / ".ninja_log")],
                [False] * 8)
+        # Decision 881: the one list, where decision 857 leaves out the store.
+        expect("the files that the parts of a judge of decision 857 hold: a file and the top folder of the tree",
+               [counted_file(str(tree / p), tree) for p in ("probes/clear.png", "")], [True, True])
+        expect("and not the store, a path outside the tree, or one written in each run",
+               [counted_file(str(p), tree) for p in (tree / STATE / STORE, pathlib.Path(scratch) / "x",
+                                                     tree / COVERAGE_RECORDS / "r", tree / ".ninja_deps")],
+               [False] * 4)
         (tree / "probes").mkdir(parents=True)
         (tree / RECORDS).mkdir()
         out, log = tree / "probes" / "o.txt", tree / RECORDS / "t.txt"

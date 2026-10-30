@@ -136,6 +136,15 @@ GRAPH_FILES = ("build.ninja", "CMakeFiles/rules.ninja", ".ninja_deps")
 RUN_TESTS = ROOT / "scripts" / "run-tests.py"
 # Raised whenever what is stored, or how, changes.
 GRAPH_FORMAT = 1
+# The files of the build tree that a judge read (M1-137, decision 857): a part
+# of its fingerprint for each counted file in the read lines of its last pass,
+# named with READ_PART and the path in the tree. A record of a pass from
+# decision 857 on has READ_MARK, and a reading then takes the files from the
+# record (decision 859); a record without it, from the store of the driver
+# (decision 879). scripts/mutate.py writes the mark, which its self-test holds
+# to this name.
+READ_PART = "read file "
+READ_MARK = "read_lines"
 
 
 def norm(path) -> str:
@@ -810,6 +819,54 @@ class Tree:
         """A fingerprint's part for each compiled shader file, by its name."""
         return {f"compiled shader {pathlib.Path(path).name}": self.compiled_hash(path) for path in paths}
 
+    # --- the files of the build tree that a judge read (M1-137) ---------------
+
+    def read_files(self, name: str):
+        """The counted files in the read lines of the last pass of the ctest
+        entry `name`, from the store of the driver, each as norm gives it
+        (decisions 857, 858, 876 and 881): read lines only, of the build tree,
+        but not the paths that are written in each run. None for an entry with
+        no complete record, which gets no part (decision 861)."""
+        module = driver_module()
+        if self._run_tests_store is None:
+            self._run_tests_store = module.load_store(self.tree / module.STATE)["tests"]
+        entry = self._run_tests_store.get(name) or {}
+        if entry.get("reads") is None:
+            return None
+        return sorted({norm(path) for _, path in entry["reads"] if module.counted_file(path, self.tree)})
+
+    def read_parts(self, paths) -> dict:
+        """A part for each of `paths`, counted files of a judge: READ_PART and
+        the path in the tree, and the line that the hook of the driver writes
+        for it at this time, as text, with all 64 digits of the SHA-256
+        (decisions 873 and 880)."""
+        world = driver_module().World(self.tree, ROOT)
+        top = norm(self.tree) + "/"
+        found = {}
+        for path in paths:
+            kind, stamp = world.hook_line("read", str(path))
+            found[f"{READ_PART}{norm(path)[len(top):]}"] = f"{kind} {stamp}"
+        return found
+
+    def judge_read_parts(self, key: str, name: str, record) -> dict:
+        """The parts of decision 857 of the judge `key`, the ctest entry
+        `name`: of each counted file that the record of its pass names, where
+        the record has READ_MARK (decision 859), and else of each counted file
+        of its last pass in the store of the driver, as a pass takes them
+        (decision 879)."""
+        if record is not None and READ_MARK in record:
+            recorded = (record.get("judge_parts") or {}).get(key) or {}
+            paths = [self.tree / part[len(READ_PART):] for part in sorted(recorded) if part.startswith(READ_PART)]
+        else:
+            paths = self.read_files(name) or []
+        return self.read_parts(paths)
+
+    def judges_without_record(self, spec: dict) -> list:
+        """The ctest entries among the judges of a mutant file with no complete
+        record in the store of the driver, which a pass prints (decision
+        861)."""
+        return [entry for entry in self.judging_tests(spec) if entry in self.tests and self.read_files(entry) is None]
+
     # --- the judges ------------------------------------------------------------
 
     def judging_tests(self, spec: dict) -> list:
@@ -866,14 +923,17 @@ class Tree:
 
     # --- fingerprints (M1-103, register decision 250; in parts since M1-109) ---
 
-    def fingerprint_parts(self, spec: dict) -> dict:
+    def fingerprint_parts(self, spec: dict, record=None) -> dict:
         """judge -> its fingerprint's parts, for the judges of one mutant file:
         the same programs and CTest entries judge_inputs reads. A ctest entry's
         parts hold each compiled shader file it loads, by its bytes, where
         they held the commands that compile every shader (decision 635): the
         bytes record whatever a compiler or a flag changes, and a change that
         compiles to the same bytes changes nothing. A mutated shader, and the
-        shaders of the application run as a suite, are held the same way."""
+        shaders of the application run as a suite, are held the same way.
+        Since M1-137 they also hold each counted file of the build tree that
+        it read (decision 857), from `record`, the record of the pass that a
+        reading compares with, or from the store at a pass (judge_read_parts)."""
         found = {}
         for mutant in spec["mutants"]:
             compiled = self.compiled_from({norm(ROOT / mutant["file"])})
@@ -891,6 +951,7 @@ class Tree:
                 continue
             parts = {"definition": test_fingerprint(test, self.tree, ROOT)}
             parts.update(self.shader_parts(self.judge_shaders(test)))
+            parts.update(self.judge_read_parts(f"ctest {entry}", entry, record))
             found[f"ctest {entry}"] = parts
             for program in self.test_programs(test):
                 found[f"program {program}"] = self.program_parts(program)
@@ -1042,7 +1103,7 @@ def main_check(tree: pathlib.Path, assumed: list, only_assumed: bool, expect_due
         # them in this tree; anywhere else the strict rule stands (M1-103).
         judged = None
         if record and not only_assumed and "judges" in record and same_tree(record["tree"], where):
-            parts = t.fingerprint_parts(spec)
+            parts = t.fingerprint_parts(spec, record)
             judged = judged_since(record, {k: combine(p) for k, p in parts.items()}, parts)
         # The graphics card, for a file judged on it (M1-109) -- compared with
         # the record, so not for made-up changes.
@@ -1468,6 +1529,10 @@ def self_test() -> int:
         status = "ok" if got else "WRONG"
         failures += status == "WRONG"
         print(f"self-test: {name} ({status})")
+    for name, got in m1_137_cases().items():
+        status = "ok" if got else "WRONG"
+        failures += status == "WRONG"
+        print(f"self-test: {name} ({status})")
     return 1 if failures else 0
 
 
@@ -1552,6 +1617,14 @@ def run_tests_module():
     module = importlib.util.module_from_spec(loader)
     loader.loader.exec_module(module)
     return module
+
+
+def driver_module():
+    """run_tests_module, loaded one time in a process: a reading asks it for
+    the counted files of each judge (decision 857)."""
+    if not hasattr(driver_module, "loaded"):
+        driver_module.loaded = run_tests_module()
+    return driver_module.loaded
 
 
 def stand_in_tree(folder: pathlib.Path, tests: dict) -> "Tree":
@@ -1666,6 +1739,77 @@ def m1_131_cases() -> dict:
         cases["and its compiled file's hash is among the file's fingerprints"] = (
             sorted(stand_in_tree(tree, tests).fingerprint_parts(own_shader).get("mutated shader shaders/b.frag", {}))
             == ["compiled shader b.frag.spv"])
+    return cases
+
+
+def m1_137_cases() -> dict:
+    """M1-137's rule for the files of the build tree that a judge read
+    (decisions 857-861, 873, 876 and 879-881): a part for each counted file
+    in the read lines of its last pass, with the line of the hook in full;
+    none for a path that is written in each run or outside the tree, and none
+    for a judge with no complete record; the files from the record where it
+    has READ_MARK, and from the store where not. And the planted fault of
+    decision 863: a counted file changed after the pass makes the file due
+    and names it."""
+    cases = {}
+    module = run_tests_module()
+    with tempfile.TemporaryDirectory() as scratch:
+        tree = pathlib.Path(scratch).resolve() / "build"
+        out, never = tree / "probes" / "o.png", tree / "never.txt"
+        written = [tree / module.RECORDS / "x.txt", tree / module.COVERAGE_RECORDS / "r.functions.txt",
+                   tree / "Testing" / "Temporary" / "LastTest.log", tree / ".ninja_log"]
+        outside = pathlib.Path(scratch).resolve() / "elsewhere.txt"
+        for path in [out, outside] + written:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(b"x")
+        store_file = tree / module.STATE / module.STORE
+        tests = {"reader": {"name": "reader", "command": ["cmake", "-P", "run.cmake"]},
+                 "silent": {"name": "silent", "command": ["cmake", "-P", "other.cmake"]}}
+        lines = [["0" * 64, str(path)] for path in [out, never, store_file, outside] + written]
+
+        def store(entries: dict) -> None:
+            store_file.parent.mkdir(parents=True, exist_ok=True)
+            store_file.write_bytes(json.dumps({"version": module.STORE_VERSION, "tests": entries,
+                                               "listeners": {}}).encode("utf-8"))
+
+        def moved(record) -> list:
+            now = stand_in_tree(tree, tests).fingerprint_parts(spec, record)
+            return judged_since(record, {key: combine(value) for key, value in now.items()}, now)
+
+        store({"reader": {"parts": {}, "reads": lines}, "silent": {"parts": {}}})
+        spec = {"mutants": [{"file": "src/x.cpp", "ctest": ["reader", "silent"]}]}
+        parts = stand_in_tree(tree, tests).fingerprint_parts(spec)
+        read = {part: value for part, value in parts["ctest reader"].items() if part.startswith(READ_PART)}
+        cases["a judge's parts hold each counted file it read, with the hook's line in full, and one not there"] = (
+            read == {f"{READ_PART}probes/o.png": "read " + hashlib.sha256(b"x").hexdigest(),
+                     f"{READ_PART}never.txt": "read missing"})
+        cases["and none for a judge with no complete record, which a pass prints"] = (
+            not any(part.startswith(READ_PART) for part in parts["ctest silent"])
+            and stand_in_tree(tree, tests).judges_without_record(spec) == ["silent"])
+        record = {"judges": {key: combine(value) for key, value in parts.items()}, "judge_parts": parts,
+                  READ_MARK: "decision 857"}
+        cases["the tree as the pass left it: no judge moved"] = moved(record) == []
+        for path in written + [outside]:
+            path.write_bytes(b"changed")
+        store({"reader": {"parts": {"x": "1"}, "reads": lines}, "silent": {"parts": {}}})
+        cases["a path written in each run, the store among them, or one outside the tree changed: no judge moved"] = (
+            moved(record) == [])
+        store({"reader": {"parts": {}}, "silent": {"parts": {}}})
+        cases["a record with the mark gives the files, also where the store holds no complete record now"] = (
+            moved(record) == [])
+        out.write_bytes(b"changed after the pass")
+        judged = moved(record)
+        cases["the planted fault: a counted file changed after the pass makes the file due and names it"] = (
+            judged == [f"ctest reader: fingerprint changed ({READ_PART}probes/o.png)"]
+            and is_due(set(), set(), True, judged) == (True, judged))
+        store({"reader": {"parts": {}, "reads": lines}, "silent": {"parts": {}}})
+        before = {key: {part: value for part, value in value.items() if not part.startswith(READ_PART)}
+                  for key, value in parts.items()}
+        old = {"judges": {key: combine(value) for key, value in before.items()}, "judge_parts": before}
+        cases["a record made before decision 857: the files from the store, thus the judge moves one time"] = (
+            moved(old) == [f"ctest reader: fingerprint changed ({READ_PART}never.txt, {READ_PART}probes/o.png)"])
+        cases["the files of this script that the driver leaves out are its own three"] = (
+            {HASHES, GRAPH, TRUSTED} <= set(module.WRITTEN_FILES))
     return cases
 
 
