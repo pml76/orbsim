@@ -16,7 +16,10 @@ short code computed from file contents, which changes whenever any of them
 does -- of:
 
 - the test's definition, as CTest describes it, and the environment variables
-  it can rest on: `PATH`, every `VK_*` and `ORBSIM_*` (decisions 483 and 501);
+  it can rest on: `PATH`, every `VK_*` and `ORBSIM_*` (decisions 483 and 501),
+  `PYTHONPATH` (decision 796), and the variables that item 4 of M1-137
+  measured: `PYTHONHOME`, `PYTHONSAFEPATH`, `GIT_DIR`, `GIT_WORK_TREE`, every
+  `CMAKE_*`, and `PATHEXT` without its entry `.CPL` (decisions 890 and 891);
 - each program on its command line, by its own bytes and those of every
   library it loads (decision 525);
 - every file it read, from a read record each test writes as it ends, with

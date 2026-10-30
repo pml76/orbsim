@@ -248,7 +248,9 @@ def test_fingerprint(test: dict, tree: pathlib.Path, root: pathlib.Path) -> str:
     """A judging CTest entry: its command and properties -- not the line of
     CMakeLists.txt it was declared on, which moves with every edit above it."""
     kept = {key: value for key, value in test.items() if key != "backtrace"}
-    return fingerprint(placeholders(json.dumps(kept, sort_keys=True), tree, root))
+    # Each letter as it is: `placeholders` does not find a path with `ä`
+    # in place of the letter (decision 888).
+    return fingerprint(placeholders(json.dumps(kept, sort_keys=True, ensure_ascii=False), tree, root))
 
 
 def content_digest(data: bytes, inside_tree: bool, tree: pathlib.Path, root: pathlib.Path) -> str:
@@ -1820,7 +1822,7 @@ def option_values(args: list, flag: str) -> list:
 def main() -> int:
     args = sys.argv[1:]
     if args == ["--self-test"]:
-        return self_test()
+        return driver_module().in_hard_scratch_folder(self_test)
     if not args:
         print(__doc__)
         return 2

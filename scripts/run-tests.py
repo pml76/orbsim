@@ -23,10 +23,12 @@ skipped when every part of its fingerprint is what it was at its last
 
   * its definition, as CTest describes it -- command line and properties;
   * its environment: PATH, each VK_* and ORBSIM_* variable (decision 501),
-    and PYTHONPATH (decision 796), but ORBSIM_TEST_NAME, which the driver
-    removes from the environment that it gives CTest (decision 715 (2)), and
-    ORBSIM_READ_RECORD_OWNER, the outer tests of a driver in a test (decision
-    781);
+    PYTHONPATH (decision 796), and the variables that item 4 of M1-137
+    measured (decisions 890 and 891): PYTHONHOME, PYTHONSAFEPATH, GIT_DIR,
+    GIT_WORK_TREE, each CMAKE_* variable, and PATHEXT without its entry .CPL,
+    but ORBSIM_TEST_NAME, which the driver removes from the environment that
+    it gives CTest (decision 715 (2)), and ORBSIM_READ_RECORD_OWNER, the outer
+    tests of a driver in a test (decision 781);
   * every program on its command line that this tree builds, by its bytes and
     those of every library it loads (decision 525), the libraries found from
     the program's import table with llvm-readobj on Windows and by ldd
@@ -312,6 +314,19 @@ HOOK_FOLDER = ("scripts", "read-record")
 HOOK_FILE = "sitecustomize.py"
 READ_RECORDS_VARIABLE = "ORBSIM_READ_RECORDS"
 OWNER_VARIABLE = "ORBSIM_READ_RECORD_OWNER"
+# The variables that item 4 of M1-137 measured to change the result of a test
+# (decisions 851, 890 and 891), beside those of decisions 501 and 796: the
+# names, the start of a name (decision 885), and PATHEXT without the entry
+# that PowerShell adds for the programs it starts, which changes no result.
+MEASURED_VARIABLES = ("PYTHONHOME", "PYTHONSAFEPATH", "GIT_DIR", "GIT_WORK_TREE")
+MEASURED_PATTERN = "CMAKE_"
+PATH_EXTENSIONS = "PATHEXT"
+POWERSHELL_EXTENSION = ".CPL"
+# The start of the name of the folder that holds the scratch folders of the
+# self-tests and of the end-to-end runs (decision 889): with a space, which a
+# command line must quote, and a letter that is not ASCII, which each reader
+# and each writer must take as UTF-8.
+HARD_FOLDER = "orbsim ä "
 # The trace of a `cmake -P` test (M1-138, decisions 768, 784 and 803-809):
 # `<escaped name>.trace.json` in test-reads/, which the arguments of
 # cmake/TraceArguments.cmake name. The commands of the scripts of these
@@ -523,9 +538,10 @@ def definition(test: dict) -> str:
 
 def environment(env: dict) -> str:
     """The variables a test's result can rest on (decision 501): PATH, every
-    VK_* and ORBSIM_*, and PYTHONPATH (decision 796), which can change the
-    module that a script imports. Names compared without case on Windows, as
-    Windows does. ORBSIM_TEST_NAME is not one of them (decision 715 (2)): the
+    VK_* and ORBSIM_*, PYTHONPATH (decision 796), which can change the
+    module that a script imports, and the variables that item 4 of M1-137
+    measured (decisions 890 and 891). Names compared without case on Windows,
+    as Windows does. ORBSIM_TEST_NAME is not one of them (decision 715 (2)): the
     driver does not give it to CTest, and each test that uses it gets it from
     its own definition, which is a part of its own. ORBSIM_READ_RECORD_OWNER
     is also not one of them (decision 781): it names the outer tests of a
@@ -534,6 +550,10 @@ def environment(env: dict) -> str:
     kept = {fold(n): v for n, v in env.items()
             if (fold(n) in ("PATH", "PYTHONPATH") or fold(n).startswith(("VK_", "ORBSIM_")))
             and fold(n) not in (TEST_NAME_VARIABLE, OWNER_VARIABLE)}
+    kept |= {fold(n): v for n, v in env.items()
+             if fold(n) in MEASURED_VARIABLES or fold(n).startswith(MEASURED_PATTERN)}
+    kept |= {PATH_EXTENSIONS: ";".join(entry for entry in v.split(";") if entry.upper() != POWERSHELL_EXTENSION)
+             for n, v in env.items() if fold(n) == PATH_EXTENSIONS}
     return digest(json.dumps(kept, sort_keys=True))
 
 
@@ -2635,7 +2655,7 @@ for f in files:
         lines.append(hashlib.sha256(stream.read()).hexdigest() + " " + path + "\n")
 if record:
     os.makedirs("test-reads", exist_ok=True)
-    with open(os.path.join("test-reads", name + ".txt"), "w", newline="\n") as out:
+    with open(os.path.join("test-reads", name + ".txt"), "w", encoding="utf-8", newline="\n") as out:
         out.write("".join(sorted(lines)) + "end\n")
 sys.exit(code)
 """
@@ -2901,7 +2921,7 @@ path = os.path.join(here, source).replace(os.sep, "/")
 with open(path, "rb") as stream:
     data = stream.read()
 os.makedirs("test-reads", exist_ok=True)
-with open(os.path.join("test-reads", name + ".txt"), "w", newline="\n") as out:
+with open(os.path.join("test-reads", name + ".txt"), "w", encoding="utf-8", newline="\n") as out:
     out.write(hashlib.sha256(data).hexdigest() + " " + path + "\nend\n")
 os.makedirs(os.path.dirname(target), exist_ok=True)
 with open(target, "wb") as out:
@@ -2917,7 +2937,7 @@ try:
 except FileNotFoundError:
     stamp = "missing"
 os.makedirs("test-reads", exist_ok=True)
-with open(os.path.join("test-reads", name + ".txt"), "w", newline="\n") as out:
+with open(os.path.join("test-reads", name + ".txt"), "w", encoding="utf-8", newline="\n") as out:
     out.write(stamp + " " + path + "\nend\n")
 if sys.argv[3:] == ["turn"]:
     with open(path, "w", encoding="utf-8") as out:
@@ -3580,11 +3600,30 @@ def each_part_moves_with_its_input(expect) -> None:
                True)
 
         environment_before = part(suite, "environment")
-        for name, value in (("PATH", "/elsewhere"), ("VK_ICD_FILENAMES", "a.json"), ("ORBSIM_X", "y")):
+        for name, value in (("PATH", "/elsewhere"), ("VK_ICD_FILENAMES", "a.json"), ("ORBSIM_X", "y"),
+                            ("PATHEXT", ".COM"), ("PYTHONHOME", "/elsewhere"), ("PYTHONSAFEPATH", "1"),
+                            ("GIT_DIR", "/elsewhere/.git"), ("GIT_WORK_TREE", "/elsewhere"),
+                            ("CMAKE_BUILD_TYPE", "Release")):
             expect(f"{name} moves the environment",
                    part(suite, "environment", {**STAND_IN_ENVIRONMENT, name: value}) != environment_before, True)
         expect("HOME leaves the environment alone",
                part(suite, "environment", {**STAND_IN_ENVIRONMENT, "HOME": "/elsewhere"}), environment_before)
+        # The variables that changed no result in item 4 of M1-137 (decisions
+        # 888 and 891); of each pattern, a name that the measurement set.
+        for name in ("TEMP", "TMP", "TZ", "LANG", "LC_ALL", "HTTP_PROXY", "HTTPS_PROXY", "NO_PROXY",
+                     "NoDefaultCurrentDirectoryInExePath", "__COMPAT_LAYER", "PYTHONNOUSERSITE", "PYTHONUTF8",
+                     "PYTHONIOENCODING", "PYTHONDONTWRITEBYTECODE", "PYTHONHASHSEED", "GIT_CONFIG_COUNT",
+                     "CTEST_PARALLEL_LEVEL"):
+            expect(f"{name} leaves the environment alone",
+                   part(suite, "environment", {**STAND_IN_ENVIRONMENT, name: "x"}), environment_before)
+        extensions_before = part(suite, "environment", {**STAND_IN_ENVIRONMENT, "PATHEXT": ".COM;.EXE"})
+        expect("the .CPL that PowerShell adds leaves the environment alone (decision 890)",
+               part(suite, "environment", {**STAND_IN_ENVIRONMENT, "PATHEXT": ".COM;.EXE;.CPL"}), extensions_before)
+        expect("the entry .cpl also, without case (decision 890)",
+               part(suite, "environment", {**STAND_IN_ENVIRONMENT, "PATHEXT": ".COM;.EXE;.cpl"}), extensions_before)
+        expect("another entry of PATHEXT moves the environment",
+               part(suite, "environment", {**STAND_IN_ENVIRONMENT, "PATHEXT": ".COM;.EXE;.BAT"}) != extensions_before,
+               True)
 
         machine_before = part(suite, "machine")
         compiler.write_text("another compiler", encoding="utf-8")
@@ -4096,7 +4135,7 @@ def program_cases(expect) -> None:
 
         def record(**change):
             fields = {"flags": code.CODE_ENTRIES, "addresses": code.CODE_RECORD, **change}
-            return read_record(coverage_record(fields.pop("program", given), f"{program} x", **fields))
+            return read_record(coverage_record(fields.pop("program", given), f'"{program}" x', **fields))
 
         run = program_run(tree, root)
         taken, problems = run.taken_for(test, [record()])
@@ -4126,7 +4165,7 @@ def program_cases(expect) -> None:
         expect("a program with a table that the two sources count differently: a problem that gives the two",
                [("not one number" in p) for p in problems], [True])
         made_program(code, root)
-        out_of_line = coverage_record(given, f"{program} x", "", code.CODE_ENTRIES).replace(
+        out_of_line = coverage_record(given, f'"{program}" x', "", code.CODE_ENTRIES).replace(
             f"flags {code.CODE_ENTRIES}", f"flags {code.CODE_ENTRIES} out of line")
         _, problems = run.taken_for(test, [read_record(out_of_line)])
         expect("a record with its flags out of line: a problem", [("out of line" in p) for p in problems], [True])
@@ -4202,7 +4241,7 @@ def program_cases(expect) -> None:
         found = tree / COVERAGE_RECORDS
         found.mkdir(exist_ok=True)
         (found / f"1-1{FUNCTION_RECORD}").write_bytes(
-            coverage_record(given, f"{program} x", "", code.CODE_ENTRIES, code.CODE_RECORD).encode("utf-8"))
+            coverage_record(given, f'"{program}" x', "", code.CODE_ENTRIES, code.CODE_RECORD).encode("utf-8"))
         def after_run(tests: dict, ninja=None) -> tuple:
             run = program_run(tree, root)
             run.tests = tests
@@ -4215,13 +4254,13 @@ def program_cases(expect) -> None:
         expect("the records of a run: the programs of each test that passed, for the store, and a test that failed "
                "not kept", (sorted(taken), sorted((taken.get("t") or {}).get(norm(program), {}).get("keys") or []),
                             problems), (["t"], sorted(code.CODE_KEYS), []))
-        (found / f"2-2{FUNCTION_RECORD}").write_bytes(coverage_record(given, f"{program} y", "", 6).encode("utf-8"))
+        (found / f"2-2{FUNCTION_RECORD}").write_bytes(coverage_record(given, f'"{program}" y', "", 6).encode("utf-8"))
         taken, problems = after_run({"t": test})
         expect("a record that belongs to no test: a problem, and no test of the run kept",
                (taken, [("matches 0 tests" in p) for p in problems]), ({}, [True]))
         (found / f"2-2{FUNCTION_RECORD}").unlink()
         (found / f"3-3{FUNCTION_RECORD}").write_bytes(
-            coverage_record(given, f"{program} x", "", code.CODE_ENTRIES + 1, code.CODE_RECORD).encode("utf-8"))
+            coverage_record(given, f'"{program}" x', "", code.CODE_ENTRIES + 1, code.CODE_RECORD).encode("utf-8"))
         taken, problems = after_run({"t": test})
         expect("a record with a problem: the test not kept, and the problem names the test",
                (taken, [p.startswith("the test t: ") and "flags" in p for p in problems]), ({}, [True]))
@@ -4288,7 +4327,7 @@ def table_cases(expect) -> None:
 
         def record(**change):
             fields = {"flags": code.CODE_ENTRIES, "addresses": code.CODE_RECORD, **change}
-            return read_record(coverage_record(given, f"{program} x", **fields))
+            return read_record(coverage_record(given, f'"{program}" x', **fields))
 
         def examined(*records, command=None) -> tuple:
             """(keys, problems, programs read in full) of a run that examines
@@ -4993,7 +5032,21 @@ def self_test() -> int:
     return 1 if failures else 0
 
 
+def in_hard_scratch_folder(action):
+    """The result of `action`, with each scratch folder that it makes inside
+    one folder with a space and a letter that is not ASCII in its name
+    (decision 889). The process ends after `action`, thus tempfile keeps the
+    folder that this function gives it."""
+    with tempfile.TemporaryDirectory(prefix=HARD_FOLDER) as folder:
+        tempfile.tempdir = folder
+        return action()
+
+
 def main() -> int:
+    # Each reader of this output takes it as UTF-8, on each code page: a path
+    # with a letter that is not ASCII must reach it whole (decision 888).
+    sys.stdout.reconfigure(encoding="utf-8", errors="backslashreplace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="backslashreplace")
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("tree", nargs="?")
     parser.add_argument("--ctest")
@@ -5014,11 +5067,11 @@ def main() -> int:
                         help="--in-tree: a library the application loads, by file name")
     args = parser.parse_args()
     if args.self_test:
-        return self_test()
+        return in_hard_scratch_folder(self_test)
     if args.end_to_end:
-        return end_to_end(*args.end_to_end)
+        return in_hard_scratch_folder(lambda: end_to_end(*args.end_to_end))
     if args.function_level:
-        return function_level(args.function_level)
+        return in_hard_scratch_folder(lambda: function_level(args.function_level))
     if args.in_tree:
         if not (args.tree and args.ctest and args.suite and args.without_listener):
             parser.error("--in-tree needs the tree, --ctest, --suite and --without-listener")
