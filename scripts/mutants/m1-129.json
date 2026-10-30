@@ -718,8 +718,8 @@
     {
       "name": "a full run forces nothing, so the run before a push skips tests",
       "file": "scripts/run-tests.py",
-      "find": "        forced = set(run.tests)\n",
-      "replace": "        forced = set()\n",
+      "find": "        chosen = set(run.tests)\n",
+      "replace": "        pass\n",
       "expect": "caught",
       "suites": [],
       "targets": [],

@@ -2,9 +2,10 @@
 
 Phase: B | Status: **started 2026-10-29.** Its questions 1 to 15 are ruled
 (decisions 842-856), question 16 by decision 857, questions 17 to 22
-about the design of decision 857 by decisions 858-863, and questions 23 to
-26 about the result of item 6 by decisions 864-867. **Item 6 is done**
-(2026-10-29). The next task after M1-138 (decisions 744 and 763)
+about the design of decision 857 by decisions 858-863, questions 23 to
+26 about the result of item 6 by decisions 864-867, and questions 27 to 30
+about the code of item 1 by decisions 868-871. **Items 6 and 1 are done**
+(2026-10-29 and 2026-10-30). The next task after M1-138 (decisions 744 and 763)
 Prerequisites: M1-133
 Decided by: register decision 744, ruled 2026-10-21 on the owner's word, after
 the test selection was compared with published work: Ekstazi
@@ -35,6 +36,11 @@ safe.
    when a function is new and the selection skips the test. It fails
    `check-full`, and the test then gets the rule "by program". A measurement
    comes first.
+   *Done 2026-10-30 (decisions 868-871):* the measurement found no test with
+   a difference. From that date, a full run fails for each test that the
+   selection skips and that entered a new function, and the test keeps the
+   entry of its last pass. The record is
+   [`m1-137-coverage.md`](../../measurements/m1-137-coverage.md).
 2. **Tests that read the outputs of other tests** (decision 508). A test that
    reads an output of a different test gets, in its fingerprint, the
    fingerprint of the test that wrote that output. If the writer runs again,
@@ -328,6 +334,45 @@ with no failure.
 - **A (recommended).** `run_tests_in_tree` examines that each name in the
   list is a test of the tree, with a planted fault.
 - B. No guard, and the limit named.
+
+**The result of item 1.** *Added 2026-10-30.* The measurement of decision
+845 found no test with a difference, and no counted file that changes
+(decision 858). The code of decision 842 gave three questions, which went to
+the owner. The owner ruled them on 2026-10-30 with the words "Accept all".
+The record is [`m1-137-coverage.md`](../../measurements/m1-137-coverage.md).
+
+**27. When is a new function a fault?** *Ruled by decision 868: A.*
+
+- **A (recommended).** Only when the selection skips the test in this run,
+  as a run without `--full` does. Cost: a full run calculates the selection
+  before CTest starts: 1.0 s more in Debug and 0.5 s more in RelWithDebInfo
+  in its first runs, which the record gives.
+- B. The words of decision 842 only. Cost: a correct change of a data file
+  can make `check-full` fail when there is no fault.
+
+**28. What does the store keep after a fault?** *Ruled by decision 869: A.*
+
+- **A (recommended).** The test keeps the entry of its last pass, thus the
+  next `check-full` fails again.
+- B. The store takes the new entry. Cost: the next `check-full` passes, and
+  the fault stays.
+
+**29. Where does the measurement go?** *Ruled by decision 870: A.*
+
+- **A (recommended).** A record and its two scripts in `docs/measurements/`,
+  as for item 6.
+- B. Only this document.
+
+**30. A mutant of M1-129 that lost its anchor.** *Added and ruled 2026-10-30
+(decision 871): A.* Item 1 removed the line `forced = set(run.tests)`, which
+the mutant "a full run forces nothing, so the run before a push skips tests"
+changes, and `check` stopped at `mutant-anchors`.
+
+- **A (recommended).** The mutant gets the anchor `chosen = set(run.tests)`,
+  which it changes to `pass`, with its name, its judge and its verdict. Its
+  judge caught it: 4 of 37 steps failed.
+- B. The mutant removed.
+- C. Code that keeps the old line, only for the anchor.
 
 **The work itself**
 

@@ -1236,6 +1236,38 @@ def program_unchanged(stored: dict, now, function_part) -> bool:
     return part is not None and part == stored.get("part")
 
 
+def coverage_faults(skipped: set, stored: dict, taken: dict) -> dict:
+    """The check of decisions 842 and 868, in a full run: {test: {program:
+    [function]}} for each test of `skipped`, which the selection skips in this
+    run, that entered a function of a program that it takes function by
+    function in this run (`taken`, as functions_of_run gives it) and that its
+    stored entry does not hold. A program that the entry does not hold counts
+    with all its functions new. Fewer functions than at the last pass are no
+    fault: the selection then examines more functions than the test entered."""
+    faults = {}
+    for name in sorted(set(skipped) & set(taken)):
+        before = (stored.get(name) or {}).get("programs") or {}
+        found = {}
+        for key, program in sorted(taken[name].items()):
+            new = sorted(set(program["keys"]) - set((before.get(key) or {}).get("keys") or ()))
+            if new:
+                found[key] = new
+        if found:
+            faults[name] = found
+    return faults
+
+
+def coverage_fault_lines(faults: dict) -> list:
+    """The problems of decision 843, one for each test and program of
+    coverage_faults: the test, the program, the number of new functions and
+    the first three of them."""
+    return [f"the test {name} entered {len(new)} function(s) of {key} that it did not enter at its last pass, "
+            f"and the selection skips it (decisions 842 and 868): {', '.join(new[:3])}"
+            + (", ..." if len(new) > 3 else "")
+            + "; it keeps the entry of its last pass until it is in TAKEN_BY_BYTES (decisions 844 and 869)"
+            for name, programs in sorted(faults.items()) for key, new in sorted(programs.items())]
+
+
 def with_numbers(store: dict) -> dict:
     """The store as it is written (decision 709 (3)): one table of function
     names for each program at the top of the store, made again at each write
@@ -2185,10 +2217,11 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
 
     if any(GPU_LABEL in labels(t) for t in run.tests.values()):
         run.card()
+    # Each GPU test runs where the card cannot be read. A full run runs each
+    # test, but calculates the selection all the same: the tests that the
+    # selection skips are those that the check of decision 868 examines.
     forced = set()
-    if full:
-        forced = set(run.tests)
-    elif run._card is None:
+    if run._card is None:
         forced = {n for n, t in run.tests.items() if GPU_LABEL in labels(t)}
     began = time.monotonic()
     run.learn_all_imports()
@@ -2211,6 +2244,9 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
     # parts for, in one call of Ninja (decision 709 (4)).
     run.link_commands(run.changed_programs({n: e for n, e in stored.items() if n in run.tests and n not in forced}))
     chosen = selection(run.tests, stored, parts, run.world.file, forced, run.programs_unchanged, run.world.hook_line)
+    skippable = set(run.tests) - chosen
+    if full:
+        chosen = set(run.tests)
     decided = time.monotonic()
     skipped = sorted(set(run.tests) - chosen)
     order = [name for name in run.tests if name in chosen]
@@ -2306,7 +2342,15 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
     # from the coverage records (M1-132). A test with a problem is not
     # stored; a record that belongs to no test stores none of this run's.
     taken = run.functions_of_run(records, order, passed) if order else {}
+    # The check of decisions 842, 843 and 868, in a full run, against the
+    # entries of the last pass, before the loop below replaces them. A test
+    # with a fault keeps its entry, thus the next full run examines it against
+    # the same functions (decision 869).
+    faults = coverage_faults(skippable, stored, taken) if full else {}
+    problems += coverage_fault_lines(faults)
     for name in order:
+        if name in faults:
+            continue
         if name in passed and name not in missing_records and not unreadable and name in taken:
             entry = {"parts": run.parts(run.tests[name], reads[name], env, shaders.get(name), set(taken[name]),
                                         listings.get(name), traced=name in traced, children=children.get(name)),
@@ -3023,13 +3067,35 @@ def function_level(tools: list) -> int:
             def listed() -> set:
                 return {p.name for p in summaries.iterdir()} if summaries.is_dir() else set()
 
+            every = {"a_alpha", "a_beta", "usage_alpha", "other_b", "elsewhere_b"}
             full_step, before = "a full run: each test", listed()
-            step(full_step, {"a_alpha", "a_beta", "usage_alpha", "other_b", "elsewhere_b"}, full=True)
+            step(full_step, every, full=True)
             if "build" not in failed and (before != linked | {gone} or listed() != linked):
                 failed.append(full_step)
                 failures.append(f"the summaries {sorted(before)} before the full run and {sorted(listed())} after "
                                 "it: before it, those of the three objects with the hook that the programs link and "
                                 "of the one that prog_a no longer links; after it, only those of the three")
+            # The check of decisions 842, 843, 868 and 869: a function taken
+            # out of the stored entry of a_beta. Each part of the test is as it
+            # was, thus the selection skips it, and the test enters a function
+            # that its entry does not hold. The full run must fail and name
+            # the test, the program and the function; the test keeps its
+            # entry, thus a second full run fails again.
+            store = load_store(tree / STATE)
+            programs = (store["tests"].get("a_beta") or {}).get("programs") or {}
+            if "build" not in failed and len(programs) == 1:
+                [(key, program)] = programs.items()
+                taken_out = program["keys"].pop(0)
+                write_store(tree / STATE, store)
+                fault = (f"the test a_beta entered 1 function(s) of {key} that it did not enter at its last pass, "
+                         f"and the selection skips it (decisions 842 and 868): {taken_out};")
+                step("a full run with a function taken out of the stored entry of a_beta: the run fails and names "
+                     "it", every, full=True, problem=fault)
+                step("a second full run: a_beta kept its entry, and the run fails again", every, full=True,
+                     problem=fault)
+            elif "build" not in failed:
+                failures.append(f"a_beta has {len(programs)} programs taken function by function in the store "
+                                "after the full run, not prog_a alone")
     for failure in failures:
         print(f"function-level FAILED: {failure}")
     print(f"run-tests function-level: {len(steps) - len(set(failed) - {'build'})} of {len(steps)} steps, "
@@ -4398,6 +4464,24 @@ def self_test() -> int:
            {"reader2"})
     expect("one forced", selection(tests, same, now, current, {"alone"}), {"alone"})
     expect("nothing stored", selection(tests, {}, now, current, set()), set(tests))
+
+    # coverage_faults() and coverage_fault_lines(): decisions 842, 843 and 868.
+    last = {"t": {"programs": {"p": {"keys": ["f", "g"]}}}, "u": {"parts": {}}}
+    expect("a test that the selection skips, with a new function: a fault that names it",
+           coverage_faults({"t"}, last, {"t": {"p": {"keys": ["f", "g", "h"]}}}), {"t": {"p": ["h"]}})
+    expect("the same test, which the selection runs: no fault",
+           coverage_faults(set(), last, {"t": {"p": {"keys": ["f", "g", "h"]}}}), {})
+    expect("fewer functions than at the last pass: no fault",
+           coverage_faults({"t"}, last, {"t": {"p": {"keys": ["f"]}}}), {})
+    expect("a program that the stored entry does not hold: each of its functions new",
+           coverage_faults({"t", "u"}, last, {"t": {"p": {"keys": ["f"]}, "q": {"keys": ["k"]}},
+                                              "u": {"q": {"keys": ["k", "l"]}}}),
+           {"t": {"q": ["k"]}, "u": {"q": ["k", "l"]}})
+    expect("a test that this run does not store: no fault", coverage_faults({"t"}, last, {}), {})
+    lines = coverage_fault_lines({"u": {"q": ["k"]}, "t": {"p": ["a", "b", "c", "d"]}})
+    expect("a problem for each test and program, which names the test, the program and the first three new functions",
+           [(line.split(" that it did not enter")[0], line.split("): ", 1)[-1].split(";")[0]) for line in lines],
+           [("the test t entered 4 function(s) of p", "a, b, c, ..."), ("the test u entered 1 function(s) of q", "k")])
 
     # cautious(): no record, or one reaching into data/, tests/golden/ or the build files.
     root = pathlib.Path(tempfile.gettempdir()) / "repo"
