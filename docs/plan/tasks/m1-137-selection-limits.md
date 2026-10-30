@@ -3,9 +3,11 @@
 Phase: B | Status: **started 2026-10-29.** Its questions 1 to 15 are ruled
 (decisions 842-856), question 16 by decision 857, questions 17 to 22
 about the design of decision 857 by decisions 858-863, questions 23 to
-26 about the result of item 6 by decisions 864-867, and questions 27 to 30
-about the code of item 1 by decisions 868-871. **Items 6 and 1 are done**
-(2026-10-29 and 2026-10-30). The next task after M1-138 (decisions 744 and 763)
+26 about the result of item 6 by decisions 864-867, questions 27 to 30
+about the code of item 1 by decisions 868-871, and questions 31 to 37
+about the code of item 2 by decisions 872-878. **Items 6 and 1 are done**
+(2026-10-29 and 2026-10-30), and the rules of decisions 846 and 847 of
+item 2 (2026-10-30). The next task after M1-138 (decisions 744 and 763)
 Prerequisites: M1-133
 Decided by: register decision 744, ruled 2026-10-21 on the owner's word, after
 the test selection was compared with published work: Ekstazi
@@ -58,6 +60,10 @@ safe.
    each file of the build tree that a test read, and a test with a file that
    is not as it read it runs again. The store becomes an input of the tests of
    decision 826.
+   *Done in part 2026-10-30 (decisions 872-878):* the rules of decisions 846
+   and 847 are in the driver. Decision 857 comes next, as a commit of its own
+   (decision 863). The record is
+   [`m1-137-outputs.md`](../../measurements/m1-137-outputs.md).
 3. **The read records compared again.** At each phase gate, the read records
    are compared again with the files that the tests actually open (decision
    612, Process Monitor), with the reads of child processes.
@@ -373,6 +379,65 @@ changes, and `check` stopped at `mutant-anchors`.
   judge caught it: 4 of 37 steps failed.
 - B. The mutant removed.
 - C. Code that keeps the old line, only for the anchor.
+
+**The code of item 2.** *Added 2026-10-30.* The stores of the two trees
+showed that the words of decision 846 make `check` fail at each run.
+Questions 31 to 36 went to the owner with the measurements, and question
+37 after the first `check`. The owner ruled them the same day with the
+words "Accept all" and "Accept A". The record is
+[`m1-137-outputs.md`](../../measurements/m1-137-outputs.md).
+
+**31. Which lines does the new hash examine?** *Ruled by decision 872: A.*
+
+- **A (recommended).** Read lines and list lines of the build tree, but
+  not the paths that the driver, CTest and the tools write in each run.
+  The store counts.
+- B. Each line of the build tree. Cost: the list of `test-reads/` changes
+  in each run, thus `check` fails at each run.
+- C. Read lines only. Cost: a new file in a listed folder is not seen.
+
+**32. How are `unreadable` and `missing` compared?** *Ruled by decision
+873: A.*
+
+- **A (recommended).** As text: the same mark before and after is no
+  change.
+- B. As the selection compares them. Cost: seven tests run again at each
+  `check`, and then `check` fails.
+
+**33. The second call of CTest.** *Ruled by decision 874: A.*
+
+- **A (recommended).** The tests with a changed line and their `DEPENDS`,
+  with no setups. The data of the second call replace those of the first,
+  and a difference after it fails `check`.
+- B. No second call. Cost: a stale reader stops `check`.
+
+**34. How does the driver find the tests of decision 847?** *Ruled by
+decision 875: A.*
+
+- **A (recommended).** By program: `scripts/mutants-due.py` on the command
+  line of a test with no complete record.
+- B. A list of the four names. Cost: a new test of that type is not seen.
+- C. Each test with no complete record and the part of the build tree.
+  Cost: three more tests, about 26 s, run at nearly each `check`.
+
+**35. Do list lines count for decision 857?** *Ruled by decision 876: A.*
+
+- **A (recommended).** No, only read lines.
+- B. Yes. Cost: the top folder holds `.ninja_lock` only while Ninja runs,
+  and mutant files are due at random.
+
+**36. The record of item 2.** *Ruled by decision 877: A.*
+
+- **A (recommended).** A record and its script in `docs/measurements/`.
+- B. Only this document.
+
+**37. Two mutants of M1-138 that lost their anchors.** *Added and ruled
+2026-10-30 (decision 878): A.* Their loops went into `remove_records`.
+
+- **A (recommended).** New anchors on the same loops, with their names,
+  their judge and their verdicts. Their judge caught each of them.
+- B. The two mutants removed.
+- C. The old lines kept, with a second copy, only for the anchors.
 
 **The work itself**
 

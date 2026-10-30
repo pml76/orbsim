@@ -386,8 +386,8 @@
     {
       "name": "the records of a test are not deleted before its run",
       "file": "scripts/run-tests.py",
-      "find": "    for paths in python_record_files(tree / RECORDS, order).values():\n        for path in paths:\n            path.unlink(missing_ok=True)",
-      "replace": "    pass",
+      "find": "        for paths in python_record_files(tree / RECORDS, names).values():\n            for path in paths:\n                path.unlink(missing_ok=True)",
+      "replace": "        pass",
       "expect": "caught",
       "suites": [],
       "targets": [],
@@ -396,8 +396,8 @@
     {
       "name": "decision 809 (3): the trace of a test is not deleted before its run",
       "file": "scripts/run-tests.py",
-      "find": "    for name in order:\n        run.trace_path(name).unlink(missing_ok=True)",
-      "replace": "    pass",
+      "find": "        for name in names:\n            run.trace_path(name).unlink(missing_ok=True)",
+      "replace": "        pass",
       "expect": "caught",
       "suites": [],
       "targets": [],

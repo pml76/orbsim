@@ -257,6 +257,21 @@ BUILD_FILES = ("CMakeLists.txt", "CMakePresets.json", "cmake")
 CAUTIOUS = ("data", "tests/golden") + BUILD_FILES
 # What a test naming the build tree reads besides the repository (decision 500).
 TREE_FILES = ("build.ninja", "CMakeFiles/rules.ninja", ".ninja_deps")
+# The paths of the build tree that the driver, CTest and the tools write in
+# each run, which the new hash of decision 846 does not examine (decision
+# 872): folders and files, relative to the tree. The store of the driver
+# counts all the same, because a test can read the store that the driver
+# wrote before CTest started (decisions 737 and 738).
+WRITTEN_FOLDERS = (STATE, RECORDS, COVERAGE_RECORDS, "Testing")
+WRITTEN_FILES = ("mutants-due-graph.json", "mutants-due-hashes-2.json", "mutants-due-sidecars.json", ".ninja_deps",
+                 ".ninja_log")
+# The second call of CTest of decision 846: its list of tests and its report.
+SELECTED_AGAIN = "selected-again.txt"
+REPORT_AGAIN = "results-again.xml"
+# The only program that reads the store of the driver (decision 875): a test
+# with no complete record that names it on its command line gets the store
+# as a part (decision 847).
+STORE_READER = ("scripts", "mutants-due.py")
 # The time-zone data, per system (decisions 509 and 533). Linux's two were
 # measured on 2026-10-14 by logging every open of test_time_leap under
 # libstdc++ 14: tzdata.zi and leapseconds, and nothing else of the folder;
@@ -881,6 +896,40 @@ def unchanged(stored, parts: dict, current_hash, programs_unchanged=None, curren
                  + [("list", stamp, path) for stamp, path in stored["listings"]])
         return all(stamp != UNREADABLE and current_line(kind, path) == (kind, stamp) for kind, stamp, path in lines)
     return all(current_hash(path) == stamp for stamp, path in stored.get("reads") or [])
+
+
+def counted_line(path: str, tree) -> bool:
+    """Decision 872: a read or list line of `path` that the new hash of
+    decision 846 examines: a path of the build tree `tree`, but not one that
+    the driver, CTest and the tools write in each run (WRITTEN_FOLDERS and
+    WRITTEN_FILES), except the store of the driver."""
+    key, tree = norm(path), pathlib.Path(tree)
+    if not under(key, norm(tree)):
+        return False
+    if key == norm(tree / STATE / STORE):
+        return True
+    return not (any(under(key, norm(tree / folder)) for folder in WRITTEN_FOLDERS)
+                or key in {norm(tree / name) for name in WRITTEN_FILES})
+
+
+def changed_lines(entries: dict, tree, current) -> dict:
+    """Decisions 846, 872 and 873: {test: [path]} for each entry of `entries`
+    with a counted line (counted_line) that is not, as text, the line that
+    `current(kind, path, by_hook)` gives for it at this time -- by the rules
+    of the hook for an entry with the key `listings`, the records of its
+    Python processes or a trace, and else as World.file hashes. Thus
+    `unreadable` before and at this time is no change, and `missing` before
+    and at this time is no change (decision 873)."""
+    found = {}
+    for name, entry in sorted(entries.items()):
+        by_hook = "listings" in entry
+        lines = ([("read", stamp, path) for stamp, path in entry.get("reads") or []]
+                 + [("list", stamp, path) for stamp, path in entry.get("listings") or []])
+        paths = sorted({path for kind, stamp, path in lines
+                        if counted_line(path, tree) and current(kind, path, by_hook) != (kind, stamp)})
+        if paths:
+            found[name] = paths
+    return found
 
 
 def with_dependents(chosen: set, tests: dict) -> set:
@@ -1757,6 +1806,12 @@ class Run:
             found["files"] = self.world.files(files)
         if not built_program and listings is None:
             found["scripts"] = self.script_inputs()
+        # Decisions 847 and 875: a test of the program that reads the store,
+        # with no complete record, has the store as a part, because no read
+        # line shows that it read it.
+        reader = norm(self.root.joinpath(*STORE_READER))
+        if not recorded and any(norm(path) == reader for path in self.arguments(test)):
+            found["store"] = self.world.file(self.state / STORE)
         if traced or cautious(list(reads or []) + list(listings) if recorded else reads, self.root):
             found["cautious"] = self.cautious_inputs()
         if children:
@@ -2185,6 +2240,78 @@ def git(root: pathlib.Path, *args) -> str:
                           errors="replace", check=True).stdout
 
 
+def collect_run(run: "Run", names: list, results: dict, listeners: dict, env: dict, application) -> tuple:
+    """({test: entry}, {test: programs}, [problem]) from the records of one
+    call of CTest for the tests `names` and its `results`: the entry for the
+    store of each test that passed with complete records; the programs that
+    each test that passed takes function by function (functions_of_run); and
+    the problems. `listeners` is the store's table of the programs that carry
+    the listener, and `application` the hash of the application at this
+    run."""
+    tree, records = run.tree, run.tree / COVERAGE_RECORDS
+    passed = [name for name in names if results.get(name) == "passed"]
+    reads = {name: run.read_record(name) for name in passed}
+    carries = {}
+    for name in passed:
+        command = run.tests[name].get("command", [])
+        program = pathlib.Path(command[0]) if command else None
+        carries[name] = (program is not None and under(norm(program), norm(tree)) and is_program(program)
+                         and run.carries_listener(program, listeners))
+    missing_records = set(unrecorded(passed, {n: r is not None for n, r in reads.items()}, carries))
+    problems = [f"{name}: passed without its read record, though its program carries {LISTENER}: is the "
+                "name escaped differently here and in tests/TestReads.cpp, or the record not written?"
+                for name in sorted(missing_records)]
+    # The tests with complete records of their Python processes (M1-138): their
+    # reads join those of a record of a C++ program, after the driver examined
+    # the C++ records above, and their listings go into the store. Each other
+    # test keeps the rules before M1-138 (decision 801 (5)).
+    listings, children = {}, {}
+    for name, found in run.python_records(passed).items():
+        if found is not None:
+            reads[name] = sorted(set(map(tuple, reads[name] or [])) | set(found[0]))
+            listings[name] = found[1]
+            if found[2]:
+                children[name] = found[2]
+    # The `cmake -P` tests with a complete trace (decisions 768, 784 and
+    # 803-809), the same way; the store marks them with `trace`.
+    traced = set()
+    for name, found in run.traces(passed).items():
+        if found is not None and name not in listings:
+            reads[name] = sorted(set(map(tuple, reads[name] or [])) | set(found[0]))
+            listings[name] = found[1]
+            traced.add(name)
+    # The shaders each test's runs asked for (decision 629). A record that
+    # cannot be read belongs to a test this cannot name, so nothing this run
+    # ran is remembered, and every one of them runs again.
+    texts, unreadable = shader_record_texts(records) if names else ([], [])
+    problems += [f"{path}: a shader record that could not be read ({why}); every test this run ran runs again"
+                 for path, why in unreadable]
+    shaders = shaders_by_test(texts)
+    # The programs that each test that passed takes function by function,
+    # from the coverage records (M1-132). A test with a problem is not
+    # stored; a record that belongs to no test stores none of this run's.
+    taken = run.functions_of_run(records, names, passed) if names else {}
+    entries = {}
+    for name in passed:
+        if name not in missing_records and not unreadable and name in taken:
+            entry = {"parts": run.parts(run.tests[name], reads[name], env, shaders.get(name), set(taken[name]),
+                                        listings.get(name), traced=name in traced, children=children.get(name)),
+                     "reads": reads[name]}
+            if name in listings:
+                entry["listings"] = listings[name]
+            if name in traced:
+                entry["trace"] = True
+            if name in children:
+                entry["children"] = children[name]
+            if taken[name]:
+                entry["programs"] = taken[name]
+            if name in shaders:
+                entry["shaders"] = shaders[name]
+                entry["application"] = application
+            entries[name] = entry
+    return entries, taken, problems
+
+
 def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathlib.Path = ROOT) -> int:
     started_at = git(root, "rev-parse", "HEAD").strip() if full else None
     clean_at_start = git(root, "status", "--porcelain").strip() == "" if full else None
@@ -2260,21 +2387,27 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
     application, renewed = renewed_applications(stored, skipped, run.world.file, run.app)
     if renewed:
         write_store(run.state, store)
-    for name in order:
-        run.record_path(name).unlink(missing_ok=True)
-    # The records of the Python processes of each test that runs: else the
-    # driver reads a record of an earlier run as a record of this run.
-    for paths in python_record_files(tree / RECORDS, order).values():
-        for path in paths:
-            path.unlink(missing_ok=True)
-    # And the trace of each such test (decision 809 (3)).
-    for name in order:
-        run.trace_path(name).unlink(missing_ok=True)
 
-    code, results = 0, {}
-    if order:
-        report = run.state / REPORT
+    def remove_records(names: list) -> None:
+        # The read record of each test that runs.
+        for name in names:
+            run.record_path(name).unlink(missing_ok=True)
+        # The records of the Python processes of each test that runs: else the
+        # driver reads a record of an earlier run as a record of this run.
+        for paths in python_record_files(tree / RECORDS, names).values():
+            for path in paths:
+                path.unlink(missing_ok=True)
+        # And the trace of each such test (decision 809 (3)).
+        for name in names:
+            run.trace_path(name).unlink(missing_ok=True)
+
+    def call(names: list, listed: str, report_name: str, exclude_setups: bool) -> tuple:
+        """(exit code, results) of one call of CTest for the tests `names`,
+        with results None, after the reason is printed, where the folder of
+        the records cannot be emptied or CTest wrote no report."""
+        report = run.state / report_name
         report.unlink(missing_ok=True)
+        (run.state / listed).write_text("".join(f"{n}\n" for n in names), encoding="utf-8")
         # The hook writes no record into a folder that is not there (decision
         # 801 (4)).
         (tree / RECORDS).mkdir(parents=True, exist_ok=True)
@@ -2284,91 +2417,86 @@ def run_tree(tree: pathlib.Path, ctest: str, jobs: int, full: bool, root: pathli
         if left:
             print(f"run-tests: {records} could not be emptied, {left[0].name} among {len(left)} left; "
                   "is a program from an earlier run still running?")
-            return 1
-        command = [ctest, "--output-on-failure", "-j", str(jobs), "--tests-from-file", str(run.state / SELECTED),
+            return 1, None
+        command = [ctest, "--output-on-failure", "-j", str(jobs), "--tests-from-file", str(run.state / listed),
                    "--output-junit", str(report)]
-        if not full:
-            # A setup test left out was unchanged, and so are its outputs.
+        if exclude_setups:
             command += ["--fixture-exclude-setup", ".*"]
-        code = subprocess.run(command, cwd=tree, env=env, check=False).returncode
+        done = subprocess.run(command, cwd=tree, env=env, check=False).returncode
         try:
-            results = outcomes(report.read_text(encoding="utf-8"))
+            return done, outcomes(report.read_text(encoding="utf-8"))
         except (OSError, ElementTree.ParseError):
             for line in run.all_problems():
                 print(f"run-tests: {line}")
             print("run-tests: CTest wrote no report; nothing is remembered from this run")
-            return code or 1
+            return done or 1, None
 
+    remove_records(order)
+    code, results = 0, {}
+    if order:
+        # A setup test left out was unchanged, and so are its outputs.
+        code, results = call(order, SELECTED, REPORT, not full)
+        if results is None:
+            return code
     listeners = store.setdefault("listeners", {})
-    passed = [name for name in order if results.get(name) == "passed"]
-    reads = {name: run.read_record(name) for name in passed}
-    carries = {}
-    for name in passed:
-        command = run.tests[name].get("command", [])
-        program = pathlib.Path(command[0]) if command else None
-        carries[name] = (program is not None and under(norm(program), norm(tree)) and is_program(program)
-                         and run.carries_listener(program, listeners))
-    missing_records = set(unrecorded(passed, {n: r is not None for n, r in reads.items()}, carries))
-    problems = [f"{name}: passed without its read record, though its program carries {LISTENER}: is the "
-                "name escaped differently here and in tests/TestReads.cpp, or the record not written?"
-                for name in sorted(missing_records)]
-    # The tests with complete records of their Python processes (M1-138): their
-    # reads join those of a record of a C++ program, after the driver examined
-    # the C++ records above, and their listings go into the store. Each other
-    # test keeps the rules before M1-138 (decision 801 (5)).
-    listings, children = {}, {}
-    for name, found in run.python_records(passed).items():
-        if found is not None:
-            reads[name] = sorted(set(map(tuple, reads[name] or [])) | set(found[0]))
-            listings[name] = found[1]
-            if found[2]:
-                children[name] = found[2]
-    # The `cmake -P` tests with a complete trace (decisions 768, 784 and
-    # 803-809), the same way; the store marks them with `trace`.
-    traced = set()
-    for name, found in run.traces(passed).items():
-        if found is not None and name not in listings:
-            reads[name] = sorted(set(map(tuple, reads[name] or [])) | set(found[0]))
-            listings[name] = found[1]
-            traced.add(name)
-    # The shaders each test's runs asked for (decision 629). A record that
-    # cannot be read belongs to a test this cannot name, so nothing this run
-    # ran is remembered, and every one of them runs again.
-    texts, unreadable = shader_record_texts(records) if order else ([], [])
-    problems += [f"{path}: a shader record that could not be read ({why}); every test this run ran runs again"
-                 for path, why in unreadable]
-    shaders = shaders_by_test(texts)
-    # The programs that each test that passed takes function by function,
-    # from the coverage records (M1-132). A test with a problem is not
-    # stored; a record that belongs to no test stores none of this run's.
-    taken = run.functions_of_run(records, order, passed) if order else {}
+    entries, taken, problems = collect_run(run, order, results, listeners, env, application)
+
+    # Decisions 846 and 872-874: after the run, and before the store is
+    # written, each counted line of each test with complete records, if it
+    # ran or not, hashed again with no value of this run's World. A test with
+    # a line that is not as it read it runs again in a second call of CTest,
+    # with each test that DEPENDS on one of them.
+    def current_lines():
+        world = World(tree, root)
+        return lambda kind, path, by_hook: world.hook_line(kind, path) if by_hook else ("read", world.file(path))
+
+    kept = {name: stored[name] for name in skipped if name in stored}
+    changed = changed_lines({**kept, **entries}, tree, current_lines())
+    again = [name for name in run.tests if name in with_dependents(set(changed), run.tests)]
+    unstored = set()
+    if again:
+        print(f"run-tests: {len(again)} test(s) run again in a second call of CTest, because a file of the build "
+              f"tree that they read changed in the run (decision 846): {', '.join(again)}")
+        remove_records(again)
+        failed_first = {name for name in order if results.get(name) == "failed"}
+        # The setups ran in the first call, or were unchanged, and no fixture
+        # of the tree has a cleanup test (decision 874).
+        second_code, second = call(again, SELECTED_AGAIN, REPORT_AGAIN, True)
+        if second is None:
+            return second_code
+        # The result of a test in the second call replaces its result of the
+        # first call: the code of the first call counts only where a test
+        # that failed there did not run again, or where no test failed.
+        code = second_code if code != 0 and failed_first and failed_first <= set(again) else code or second_code
+        results.update(second)
+        more, more_taken, more_problems = collect_run(run, again, second, listeners, env, application)
+        for name in again:
+            entries.pop(name, None)
+            taken.pop(name, None)
+        entries.update(more)
+        taken.update(more_taken)
+        problems += more_problems
+        still = changed_lines({**{n: e for n, e in kept.items() if n not in again}, **entries}, tree,
+                              current_lines())
+        problems += [f"the test {name}: {path} is not as the test read it, also after the second call of CTest; "
+                     "the test is not stored (decisions 846 and 874)"
+                     for name, paths in sorted(still.items()) for path in paths]
+        unstored = set(still)
     # The check of decisions 842, 843 and 868, in a full run, against the
     # entries of the last pass, before the loop below replaces them. A test
     # with a fault keeps its entry, thus the next full run examines it against
     # the same functions (decision 869).
     faults = coverage_faults(skippable, stored, taken) if full else {}
     problems += coverage_fault_lines(faults)
-    for name in order:
+    for name in [name for name in run.tests if name in chosen or name in again]:
         if name in faults:
             continue
-        if name in passed and name not in missing_records and not unreadable and name in taken:
-            entry = {"parts": run.parts(run.tests[name], reads[name], env, shaders.get(name), set(taken[name]),
-                                        listings.get(name), traced=name in traced, children=children.get(name)),
-                     "reads": reads[name]}
-            if name in listings:
-                entry["listings"] = listings[name]
-            if name in traced:
-                entry["trace"] = True
-            if name in children:
-                entry["children"] = children[name]
-            if taken[name]:
-                entry["programs"] = taken[name]
-            if name in shaders:
-                entry["shaders"] = shaders[name]
-                entry["application"] = application
-            stored[name] = entry
+        if name in entries and name not in unstored:
+            stored[name] = entries[name]
         else:
             stored.pop(name, None)
+    for name in unstored:
+        stored.pop(name, None)
     for name in list(stored):
         if name not in run.tests:
             del stored[name]
@@ -2744,6 +2872,116 @@ def script_records_end_to_end(cmake: str, ctest: str, ninja: str, steps: list) -
     return failures
 
 
+# The fourth scratch project (M1-137, decisions 846 and 874): `writer.py
+# <name> <input> <output>` reads <input>, relative to the project, writes a
+# read record of it, and writes its bytes into <output>, relative to the tree;
+# `follower.py <name> <file> [turn]` reads <file>, relative to the tree, and
+# writes a read record of it, with `missing` where it is not there, and with
+# `turn` it then writes the file again with a new text.
+SCRATCH_WRITER = r"""import hashlib, os, sys
+here = os.path.dirname(os.path.abspath(__file__))
+name, source, target = sys.argv[1:4]
+path = os.path.join(here, source).replace(os.sep, "/")
+with open(path, "rb") as stream:
+    data = stream.read()
+os.makedirs("test-reads", exist_ok=True)
+with open(os.path.join("test-reads", name + ".txt"), "w", newline="\n") as out:
+    out.write(hashlib.sha256(data).hexdigest() + " " + path + "\nend\n")
+os.makedirs(os.path.dirname(target), exist_ok=True)
+with open(target, "wb") as out:
+    out.write(data)
+"""
+
+SCRATCH_FOLLOWER = r"""import hashlib, os, sys, time
+name, target = sys.argv[1], sys.argv[2]
+path = os.path.join(os.getcwd(), target).replace(os.sep, "/")
+try:
+    with open(path, "rb") as stream:
+        stamp = hashlib.sha256(stream.read()).hexdigest()
+except FileNotFoundError:
+    stamp = "missing"
+os.makedirs("test-reads", exist_ok=True)
+with open(os.path.join("test-reads", name + ".txt"), "w", newline="\n") as out:
+    out.write(stamp + " " + path + "\nend\n")
+if sys.argv[3:] == ["turn"]:
+    with open(path, "w", encoding="utf-8") as out:
+        out.write(str(time.time_ns()))
+"""
+
+SCRATCH_OUTPUTS_PROJECT = """cmake_minimum_required(VERSION 3.25)
+project(scratch NONE)
+enable_testing()
+add_test(NAME writer COMMAND ${PY} ${CMAKE_SOURCE_DIR}/writer.py writer inputs/w.txt out/o.txt)
+add_test(NAME reader COMMAND ${PY} ${CMAKE_SOURCE_DIR}/follower.py reader out/o.txt)
+add_test(NAME after_reader COMMAND ${PY} ${CMAKE_SOURCE_DIR}/follower.py after_reader out/none.txt)
+set_tests_properties(after_reader PROPERTIES DEPENDS reader)
+"""
+SCRATCH_TURNS = "add_test(NAME turns COMMAND ${PY} ${CMAKE_SOURCE_DIR}/follower.py turns out/t.txt turn)\n"
+
+
+def outputs_end_to_end(cmake: str, ctest: str, ninja: str, steps: list) -> list:
+    """The new hash of decision 846 through the driver (decisions 872-874): a
+    reader of an output of a different test, with no fixture and no DEPENDS on
+    its writer, runs again in a second call of CTest when the writer changes
+    the output, with the test that DEPENDS on it, and the next run then skips
+    the two; a test that changes its own input after it reads it makes the
+    run fail, and is not stored."""
+    failures = []
+    with tempfile.TemporaryDirectory() as scratch:
+        root = pathlib.Path(scratch) / "repo"
+        tree = root / "build"
+        files = {"writer.py": SCRATCH_WRITER, "follower.py": SCRATCH_FOLLOWER, "inputs/w.txt": "w\n",
+                 "CMakeLists.txt": SCRATCH_OUTPUTS_PROJECT, ".gitignore": "build/\n"}
+        for name, text in files.items():
+            (root / name).parent.mkdir(parents=True, exist_ok=True)
+            (root / name).write_bytes(text.encode("utf-8"))
+        quiet = {"capture_output": True, "check": True, "cwd": root}
+        subprocess.run(["git", "init", "-q"], **quiet)
+        configure = [cmake, "-S", str(root), "-B", str(tree), "-G", "Ninja", f"-DCMAKE_MAKE_PROGRAM={ninja}",
+                     f"-DPY={sys.executable}"]
+        subprocess.run(configure, **quiet)
+
+        def step(name: str, wanted: set, said: str = None, problem: str = None, either: bool = False) -> None:
+            # `said`: a text that the driver must print, and with no `said`
+            # no second call; `problem`: a text that it must print as a
+            # problem, and then fail; `either`: a second call or none.
+            (tree / STATE / REPORT).unlink(missing_ok=True)
+            done = subprocess.run([sys.executable, __file__, str(tree), "--ctest", ctest, "--root", str(root)],
+                                  capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
+            try:
+                ran = set(outcomes((tree / STATE / REPORT).read_text(encoding="utf-8")))
+            except OSError:
+                ran = set()
+            steps.append(name)
+            second = "in a second call of CTest" in done.stdout
+            as_it_must = (done.returncode != 0 and problem in done.stdout) if problem else done.returncode == 0
+            said_as_it_must = either or (said in done.stdout if said else not second)
+            if ran != wanted or not as_it_must or not said_as_it_must:
+                failures.append(f"{name}: ran {sorted(ran)}, wanted {sorted(wanted)}, exit {done.returncode}"
+                                + ("" if either else f", the text {said!r} wanted" if said else
+                                   ", no second call wanted")
+                                + (f", the problem {problem!r} wanted" if problem else "")
+                                + f"\n{done.stdout}{done.stderr}")
+
+        every = {"writer", "reader", "after_reader"}
+        # The first run: CTest can start the reader before the writer, and
+        # then the reader runs again; either way the store is as it must be.
+        step("outputs: the first run", every, either=True)
+        step("outputs: nothing changed", set())
+        (root / "inputs" / "w.txt").write_bytes(b"w changed\n")
+        step("outputs: the writer's input changed: the reader and the test that DEPENDS on it run again",
+             {"writer"}, said="(decision 846): reader, after_reader")
+        step("outputs: nothing changed after the second call", set())
+        (root / "CMakeLists.txt").write_bytes((SCRATCH_OUTPUTS_PROJECT + SCRATCH_TURNS).encode("utf-8"))
+        subprocess.run(configure, **quiet)
+        step("outputs: a test that changes its own input after it reads it: the run fails", every | {"turns"},
+             said="(decision 846): turns",
+             problem="the test turns: ")
+        step("outputs: and that test was not stored, thus it runs again", {"turns"},
+             said="(decision 846): turns", problem="also after the second call of CTest")
+    return failures
+
+
 def end_to_end(cmake: str, ctest: str, ninja: str) -> int:
     """The driver on a scratch project: each change runs exactly the tests it
     should, a full run runs all and stamps its commit, and a full run from a
@@ -2837,6 +3075,7 @@ def end_to_end(cmake: str, ctest: str, ninja: str) -> int:
         failures += push_through_the_hook(root, pathlib.Path(scratch) / "remote.git", head, steps)
     failures += shader_records_end_to_end(cmake, ctest, ninja, steps)
     failures += script_records_end_to_end(cmake, ctest, ninja, steps)
+    failures += outputs_end_to_end(cmake, ctest, ninja, steps)
 
     for failure in failures:
         print(f"end-to-end FAILED: {failure}")
@@ -3369,6 +3608,25 @@ def each_part_moves_with_its_input(expect) -> None:
         expect("and a program taken function by function is not in the part of the programs",
                taken_part("programs"), None)
         suite_library.write_text("x", encoding="utf-8")
+
+        # Decisions 847 and 875: a test of scripts/mutants-due.py with no
+        # complete record has the store of the driver as a part.
+        store_reader = root.joinpath(*STORE_READER)
+        store_reader.parent.mkdir(parents=True, exist_ok=True)
+        store_reader.write_text("x", encoding="utf-8")
+        (tree / STATE).mkdir(parents=True, exist_ok=True)
+        (tree / STATE / STORE).write_text("{}", encoding="utf-8")
+        due = {"name": "m", "command": [str(cmake), str(store_reader), str(tree)]}
+        store_before = part(due, "store")
+        (tree / STATE / STORE).write_text('{"version": 6}', encoding="utf-8")
+        expect("a test of scripts/mutants-due.py with no complete record: a changed store moves its store part",
+               (store_before is not None, part(due, "store") != store_before), (True, True))
+        recorded_run = stand_in_run(tree, root)
+        recorded_run.ctest = str(cmake)
+        expect("and with complete records, or of a different script, no store part",
+               ("store" in recorded_run.parts(due, [], STAND_IN_ENVIRONMENT, listings=[]),
+                part({**due, "command": [str(cmake), str(root / "cmake" / "RunProbe.cmake"), str(tree)]}, "store")),
+               (False, None))
 
         shaders_before = part(probe, "shaders")
         shader.write_text("another shader", encoding="utf-8")
@@ -4482,6 +4740,46 @@ def self_test() -> int:
     expect("a problem for each test and program, which names the test, the program and the first three new functions",
            [(line.split(" that it did not enter")[0], line.split("): ", 1)[-1].split(";")[0]) for line in lines],
            [("the test t entered 4 function(s) of p", "a, b, c, ..."), ("the test u entered 1 function(s) of q", "k")])
+
+    # counted_line() and changed_lines(): decisions 846 and 872-873.
+    with tempfile.TemporaryDirectory() as scratch:
+        tree = pathlib.Path(scratch) / "build"
+        expect("the lines that the new hash examines: a file and the top folder of the tree, and the store",
+               [counted_line(str(tree / p), tree) for p in ("probes/clear.png", "", f"{STATE}/{STORE}", "Testing2/x")],
+               [True] * 4)
+        expect("and not a path outside the tree, or one that the driver, CTest and the tools write in each run",
+               [counted_line(str(p), tree) for p in (pathlib.Path(scratch) / "x", tree / STATE / SELECTED,
+                                                     tree / RECORDS, tree / RECORDS / "t.txt", tree / COVERAGE_RECORDS,
+                                                     tree / "Testing" / "Temporary" / "LastTest.log",
+                                                     tree / "mutants-due-graph.json", tree / ".ninja_log")],
+               [False] * 8)
+        (tree / "probes").mkdir(parents=True)
+        (tree / RECORDS).mkdir()
+        out, log = tree / "probes" / "o.txt", tree / RECORDS / "t.txt"
+        out.write_text("o", encoding="utf-8")
+        log.write_text("t", encoding="utf-8")
+        then = {"read": hashlib.sha256(b"o").hexdigest()}
+
+        def now(kind, path, by_hook):
+            # A path that the hook cannot read, as `--scene|earth` joined to
+            # the tree on Windows, stood in for: on Linux, `|` is a character
+            # of a file name.
+            if path.endswith("unreadable"):
+                return "read", UNREADABLE
+            return World(tree, tree).hook_line(kind, path) if by_hook else ("read", World(tree, tree).file(path))
+
+        cxx = {"reads": [(then["read"], str(out)), (MISSING, str(tree / "never.txt")), ("0" * 64, str(log))]}
+        hook = {"reads": [(UNREADABLE, str(tree / "unreadable")), (MISSING, str(tree / "never.txt"))],
+                "listings": [(World(tree, tree).names(str(tree / "probes")), str(tree / "probes"))]}
+        expect("as it was, with a line of test-reads/ that is not: no test",
+               changed_lines({"c": cxx, "h": hook}, tree, now), {})
+        out.write_text("o changed", encoding="utf-8")
+        (tree / "probes" / "new.txt").write_text("n", encoding="utf-8")
+        (tree / "never.txt").write_text("n", encoding="utf-8")
+        expect("a changed file, a new file in a listed folder and a file that was missing: each test and path",
+               changed_lines({"c": cxx, "h": hook}, tree, now),
+               {"c": sorted([str(out), str(tree / "never.txt")]),
+                "h": sorted([str(tree / "never.txt"), str(tree / "probes")])})
 
     # cautious(): no record, or one reaching into data/, tests/golden/ or the build files.
     root = pathlib.Path(tempfile.gettempdir()) / "repo"
