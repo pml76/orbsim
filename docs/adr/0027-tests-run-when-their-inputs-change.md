@@ -72,8 +72,9 @@ commits, 2,284 of its 8,771 test runs were needed (26%, decision 483).
 [`docs/measurements/m1-129-before-after.md`](../measurements/m1-129-before-after.md).
 
 **An input that is on no list is caught only by the full run before the
-push.** The Process Monitor recording, repeated at each phase gate, keeps the
-list of files outside the repository current (decision 509). Its first
+push.** The Process Monitor recording, repeated at each phase gate with
+`scripts/compare-reads.py` (decisions 849 and 895), keeps the list of files
+outside the repository current (decision 509). Its first
 comparison with the records, on 2026-10-16, found one read left out in 480
 test processes, now recorded, and that the leap-second test reads a registry
 value rather than the ICU files (decisions 612, 614 and 615).

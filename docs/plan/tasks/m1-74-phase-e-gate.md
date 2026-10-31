@@ -68,4 +68,9 @@ stating plainly in the commit message.
 - [ ] Six fuzzers clean.
 - [ ] The 30-day arc is clean, with drift curves recorded.
 - [ ] The GMAT budget holds for both propagators.
+- [ ] The read records are compared with Process Monitor in the two `check`
+  trees, with the steps in [`scripts/compare-reads.py`](../../../scripts/compare-reads.py)
+  (decision 849). Its exit code is 0, or the owner has ruled each miss. Its list
+  of folders outside the repository is compared with the last record (decision
+  895).
 - [ ] `VERIFICATION.md` has no rows left marked **to build**.

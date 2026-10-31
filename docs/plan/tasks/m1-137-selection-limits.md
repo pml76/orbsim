@@ -5,9 +5,9 @@ Phase: B | Status: **started 2026-10-29.** Its questions 1 to 15 are ruled
 about the design of decision 857 by decisions 858-863, questions 23 to
 26 about the result of item 6 by decisions 864-867, questions 27 to 30
 about the code of item 1 by decisions 868-871, questions 31 to 40 about
-the code of item 2 by decisions 872-881, and questions 41 to 50 about
-item 4 by decisions 882-891. **Items 6, 1, 2 and 4 are done** (2026-10-29
-and 2026-10-30). The next task after M1-138 (decisions 744 and 763)
+the code of item 2 by decisions 872-881, questions 41 to 50 about item 4
+by decisions 882-891, and questions 51 to 62 about item 3 by decisions
+892-903. **Items 6, 1, 2, 4 and 3 are done** (2026-10-29 to 2026-10-31). The next task after M1-138 (decisions 744 and 763)
 Prerequisites: M1-133
 Decided by: register decision 744, ruled 2026-10-21 on the owner's word, after
 the test selection was compared with published work: Ekstazi
@@ -67,6 +67,11 @@ safe.
 3. **The read records compared again.** At each phase gate, the read records
    are compared again with the files that the tests actually open (decision
    612, Process Monitor), with the reads of child processes.
+   *Done 2026-10-31 (decisions 892-903):* `scripts/compare-reads.py` compares
+   each test of the store, and its steps are in its description. The six
+   gates that stay have a line for it. In its first real run, no test of the
+   two trees used a path that its fingerprint does not hold. The record is
+   [`m1-137-reads.md`](../../measurements/m1-137-reads.md).
 4. **The environment part, measured** (decision 501). Run the suites with
    other variables changed -- `TEMP`, the locale, `TZ`, the proxy variables --
    and record each result that changes. Only then rule which variables go into
@@ -534,6 +539,79 @@ words were "Accept all", for questions 47 to 50.
 - **A (recommended).** `PYTHONHOME`, `PYTHONSAFEPATH`, `GIT_DIR`,
   `GIT_WORK_TREE` and all of `CMAKE_*` go in, and the 16 others stay out.
 - B. A different list from the owner.
+
+**51. Which tests the tool compares.** *Ruled by decision 892: A.* The
+owner's words were "Accept all", for questions 51 to 57.
+
+- **A (recommended).** Each test of the store. A test with no complete record
+  is compared with its other parts.
+- B. Only the three kinds of decision 848.
+
+**52. What counts as a miss.** *Ruled by decision 893: A.*
+
+- **A (recommended).** One rule for all tests: the rule of decision 823,
+  without the groups of decision 834, which the tool counts apart.
+- B. Only reads for C++ tests.
+- C. No groups taken out: about 2,300 misses at each gate, for each tree.
+
+**53. How the tool knows what a part holds.** *Ruled by decision 894: A.*
+
+- **A (recommended).** Its own function, and a stop for a part that it does
+  not know.
+- B. A function shared with `Run.parts` of the driver.
+
+**54. Files outside the repository.** *Ruled by decision 895: A.*
+
+- **A (recommended).** A list of the folders, compared by hand at each gate.
+- B. Outside files stay out.
+
+**55. A recording that stops early.** *Ruled by decision 896: A.*
+
+- **A (recommended).** The tool names the tests, and a short recording
+  follows.
+- B. The full recording again until it is complete.
+
+**56. The steps of a gate.** *Ruled by decision 897: A.*
+
+- **A (recommended).** The tool compares and makes the short run. Its
+  description holds the steps.
+- B. The tool does all steps.
+
+**57. The first real run.** *Ruled by decision 898: A.*
+
+- **A (recommended).** Before the commit of the tool, in each tree.
+- B. First use at gate M1-38.
+
+**58. `.pyc` files.** *Ruled by decision 899: A.* The owner's words were
+"Accept all", for questions 58 to 62.
+
+- **A (recommended).** Not an input when the `.py` file is known.
+- B. They stay as misses.
+
+**59. A name in a folder that a part hashes.** *Ruled by decision 900: A.*
+
+- **A (recommended).** Known, by the reason that decision 834 gives for the
+  cautious set.
+- B. They stay as misses.
+
+**60. The build tree.** *Ruled by decision 901: A.*
+
+- **A (recommended).** Each path of the tree is known for a test with the
+  part `build tree`.
+- B. Each file by name.
+- C. Complete records for the six tests.
+
+**61. Three small cases.** *Ruled by decision 902: A.*
+
+- **A (recommended).** Not inputs: `.git` by the part, and the two others by
+  name.
+- B. They stay as misses.
+
+**62. When to stop a recording.** *Ruled by decision 903: A.*
+
+- **A (recommended).** When the events in Process Monitor are later than the
+  end of the run.
+- B. A fixed wait of 10 minutes.
 
 **The work itself**
 

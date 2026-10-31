@@ -71,5 +71,10 @@ own short section.
 - [ ] Five fuzzers clean.
 - [ ] The thirty-minute soak is clean, with bounded memory.
 - [ ] `PROJECT_STATE.md` is current.
+- [ ] The read records are compared with Process Monitor in the two `check`
+  trees, with the steps in [`scripts/compare-reads.py`](../../../scripts/compare-reads.py)
+  (decision 849). Its exit code is 0, or the owner has ruled each miss. Its list
+  of folders outside the repository is compared with the last record (decision
+  895).
 - [ ] The renderer is done for this milestone, and the remaining phases are
       physics, a line and some text.

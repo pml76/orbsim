@@ -245,6 +245,19 @@ else()
 endif()
 set_tests_properties(mutants_due_self_test PROPERTIES LABELS fixtures)
 
+# The comparison of the read records with a recording of Process Monitor, which
+# runs at each phase gate (M1-137 item 3, decisions 848 and 855). A recording
+# needs the owner and takes half an hour, thus this test gives it stand-in
+# recordings, so that the script cannot stop examining between two gates.
+if(ORBSIM_PYTHON)
+    add_test(NAME compare_reads_self_test
+            COMMAND ${ORBSIM_PYTHON} ${CMAKE_CURRENT_SOURCE_DIR}/scripts/compare-reads.py --self-test
+    )
+else()
+    add_test(NAME compare_reads_self_test COMMAND ${CMAKE_COMMAND} -E false)
+endif()
+set_tests_properties(compare_reads_self_test PROPERTIES LABELS fixtures)
+
 # AgX is written twice -- shaders/tonemap.frag and src/view/Tonemap.hpp -- and
 # nothing reads a pixel back until M1-18 (M1-15, register decision 182). This
 # holds the shader's constants to the CPU's, reading GLSL's matrices column by

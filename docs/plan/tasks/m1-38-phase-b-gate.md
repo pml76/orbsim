@@ -76,4 +76,9 @@ committed with its approval date.
 - [ ] Four fuzzers clean.
 - [ ] `THIRD_PARTY.md` is complete and accurate, file lists included.
 - [ ] `PROJECT_STATE.md` describes the tree as it now is.
+- [ ] The read records are compared with Process Monitor in the two `check`
+  trees, with the steps in [`scripts/compare-reads.py`](../../../scripts/compare-reads.py)
+  (decision 849). Its exit code is 0, or the owner has ruled each miss. Its list
+  of folders outside the repository is compared with the last record (decision
+  895).
 - [ ] Nothing is carried into phase D on the promise of fixing it later.

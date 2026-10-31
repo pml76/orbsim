@@ -66,5 +66,10 @@ propagators.
 - [ ] Four fuzzers clean.
 - [ ] GPU-assisted and synchronization validation both run clean by hand.
 - [ ] All ten probes are deterministic.
+- [ ] The read records are compared with Process Monitor in the two `check`
+  trees, with the steps in [`scripts/compare-reads.py`](../../../scripts/compare-reads.py)
+  (decision 849). Its exit code is 0, or the owner has ruled each miss. Its list
+  of folders outside the repository is compared with the last record (decision
+  895).
 - [ ] `PROJECT_STATE.md` is current, and phase C starts with a known frame-time
       headroom rather than a hope.

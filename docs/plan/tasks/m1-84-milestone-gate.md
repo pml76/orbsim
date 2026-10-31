@@ -89,5 +89,10 @@ model errors is now the most limiting. That last one is the input to milestone
 - [ ] The soak is clean with bounded memory.
 - [ ] Every document above describes the tree as it actually is.
 - [ ] `VERIFICATION.md` Part 4 has no rows left marked **to build**.
+- [ ] The read records are compared with Process Monitor in the two `check`
+  trees, with the steps in [`scripts/compare-reads.py`](../../../scripts/compare-reads.py)
+  (decision 849). Its exit code is 0, or the owner has ruled each miss. Its list
+  of folders outside the repository is compared with the last record (decision
+  895).
 - [ ] Milestone 1 is done, and a person picking this up cold on another machine
       could tell that from the repository alone.
