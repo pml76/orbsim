@@ -6,8 +6,10 @@ about the design of decision 857 by decisions 858-863, questions 23 to
 26 about the result of item 6 by decisions 864-867, questions 27 to 30
 about the code of item 1 by decisions 868-871, questions 31 to 40 about
 the code of item 2 by decisions 872-881, questions 41 to 50 about item 4
-by decisions 882-891, and questions 51 to 62 about item 3 by decisions
-892-903. **Items 6, 1, 2, 4 and 3 are done** (2026-10-29 to 2026-10-31). The next task after M1-138 (decisions 744 and 763)
+by decisions 882-891, questions 51 to 62 about item 3 by decisions 892-903,
+and questions 63 and 64 about item 5 by decisions 904 and 905. **All six
+items are done** (2026-10-29 to 2026-10-31). The mutant file of decision 856
+is next. The next task after M1-138 (decisions 744 and 763)
 Prerequisites: M1-133
 Decided by: register decision 744, ruled 2026-10-21 on the owner's word, after
 the test selection was compared with published work: Ekstazi
@@ -90,6 +92,8 @@ safe.
    `build/SystemResources`.
    *Added 2026-10-29 (decision 864):* the line also names that a new test
    that examines the chain of calls must go into the list of decision 844.
+   *Done 2026-10-31 (decisions 904 and 905):* the line is in `CLAUDE.md`, after
+   the bullet of M1-132, and in `docs/BRIEFING.md`.
 6. **The `.pdb` files of the programs** (decision 833, added 2026-10-29).
    In Debug, seven programs read their own `.pdb` file, in 7 script tests,
    because an assertion prints its call chain. The part of the programs
@@ -612,6 +616,21 @@ owner's words were "Accept all", for questions 51 to 57.
 - **A (recommended).** When the events in Process Monitor are later than the
   end of the run.
 - B. A fixed wait of 10 minutes.
+
+**63. The output of a different test in the line of item 5.** *Ruled by
+decision 904: A.* The owner's words were "Accept both", for questions 63 and
+64.
+
+- **A (recommended).** "a test with no complete record that reads the output
+  of a different test".
+- B. The text of the proposal of decision 852.
+
+**64. The limits of items 3 and 4 in the line.** *Ruled by decision 905: A.*
+
+- **A (recommended).** The line also names a file of the build tree that
+  somebody changes by hand, and a value of an environment variable that is not
+  in the fingerprint.
+- B. The scope of decision 852.
 
 **The work itself**
 

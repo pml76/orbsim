@@ -209,6 +209,16 @@ only live in Debug. **While working, use the quick targets** -- `lint`,
   the hook examines our own code function by function, and the bytes examine
   the code of all others.
 
+The test selection has limits, and only `check-full` before each push finds a
+fault in them: code that runs at the start of a program, a test that enters
+other functions in a different run, a test with no complete record that reads
+the output of a different test, a file that comes into the top folder of the
+tree and that a program does not import, a file that comes into
+`build/SystemResources`, a file of the build tree that somebody changes by
+hand, and a value of an environment variable that is not in the fingerprint. A
+new test that examines the chain of calls must go into the list of decision
+844.
+
 **Before every push, `check-full` passes in both trees**, at the commit being
 pushed, from a working tree with no change and no untracked file: it runs
 every test, skipping none, and stamps the commit in the tree. The pre-push

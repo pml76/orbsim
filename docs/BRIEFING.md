@@ -218,7 +218,15 @@ the test entered at its last pass has changed
 ([ADR 0028](adr/0028-tests-run-when-a-function-they-entered-changes.md)); a two-second run of the application under the
 Vulkan validation layers fails on any validation error.
 `check-full` runs every test and stamps the commit, which the pre-push hook
-requires in both trees. Around it:
+requires in both trees. The test selection has limits, and only `check-full`
+before each push finds a fault in them: code that runs at the start of a
+program, a test that enters other functions in a different run, a test with
+no complete record that reads the output of a different test, a file that
+comes into the top folder of the tree and that a program does not import, a
+file that comes into `build/SystemResources`, a file of the build tree that
+somebody changes by hand, and a value of an environment variable that is not
+in the fingerprint. A new test that examines the chain of calls must go into
+the list of decision 844. Around it:
 
 - **Before a commit**: a change reaching a fuzz target (`src/core/`,
   `src/orbit/`, `src/astro/`, a `tests/fuzz_*.cpp`) runs that fuzzer from its
