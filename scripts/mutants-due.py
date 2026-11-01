@@ -863,6 +863,12 @@ class Tree:
             paths = self.read_files(name) or []
         return self.read_parts(paths)
 
+    def judged(self, spec: dict, record: dict) -> list:
+        """The judges of one mutant file that moved since the pass of `record`,
+        with the files that the record names (decision 859)."""
+        parts = self.fingerprint_parts(spec, record)
+        return judged_since(record, {key: combine(value) for key, value in parts.items()}, parts)
+
     def judges_without_record(self, spec: dict) -> list:
         """The ctest entries among the judges of a mutant file with no complete
         record in the store of the driver, which a pass prints (decision
@@ -1105,8 +1111,7 @@ def main_check(tree: pathlib.Path, assumed: list, only_assumed: bool, expect_due
         # them in this tree; anywhere else the strict rule stands (M1-103).
         judged = None
         if record and not only_assumed and "judges" in record and same_tree(record["tree"], where):
-            parts = t.fingerprint_parts(spec, record)
-            judged = judged_since(record, {k: combine(p) for k, p in parts.items()}, parts)
+            judged = t.judged(spec, record)
         # The graphics card, for a file judged on it (M1-109) -- compared with
         # the record, so not for made-up changes.
         other = []
@@ -1775,8 +1780,7 @@ def m1_137_cases() -> dict:
                                                "listeners": {}}).encode("utf-8"))
 
         def moved(record) -> list:
-            now = stand_in_tree(tree, tests).fingerprint_parts(spec, record)
-            return judged_since(record, {key: combine(value) for key, value in now.items()}, now)
+            return stand_in_tree(tree, tests).judged(spec, record)
 
         store({"reader": {"parts": {}, "reads": lines}, "silent": {"parts": {}}})
         spec = {"mutants": [{"file": "src/x.cpp", "ctest": ["reader", "silent"]}]}

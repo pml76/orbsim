@@ -1166,8 +1166,13 @@ def read_file_cases() -> dict:
         record = pass_record("c0ffee", "build", *judge_parts(module, module.stand_in_tree(tree, tests), spec))
 
         def moved() -> list:
-            now = module.stand_in_tree(tree, tests).fingerprint_parts(spec, record)
-            return module.judged_since(record, {key: module.combine(value) for key, value in now.items()}, now)
+            return module.stand_in_tree(tree, tests).judged(spec, record)
+
+        both = {"mutants": [{"file": "src/x.cpp", "ctest": ["t", "u"]}]}
+        cases["a pass names a judge with no complete record, and no other judge (decision 861)"] = (
+            [line.split(":")[0] for line in unrecorded_lines(
+                module.stand_in_tree(tree, {**tests, "u": {"name": "u", "command": ["cmake", "-P", "run.cmake"]}}), both)]
+            == ["u"])
 
         cases["a record with parts has the mark of decision 879, by the name that mutants-due.py reads"] = (
             record.get(READ_MARK) == "decision 857" and READ_MARK == module.READ_MARK
@@ -1353,6 +1358,13 @@ def pass_record(head: str, tree: str, judges, parts=None, gpu=None) -> dict:
     return record
 
 
+def unrecorded_lines(reading, spec: dict) -> list:
+    """The line that a pass prints for each judge with no complete record in
+    the store of the driver (decision 861)."""
+    return [f"{entry}: no complete record in the store of the driver, thus its parts hold no file that it read "
+            "(decision 861)" for entry in reading.judges_without_record(spec)]
+
+
 def judge_parts(module, reading, spec: dict) -> tuple:
     """(fingerprints, their parts) of a mutant file's judges, from `reading`, a
     reading of the tree by mutants-due.py, `module`: the parts its check
@@ -1378,9 +1390,8 @@ def judge_fingerprints(root: Path, tree: str, spec: dict) -> tuple:
         loader.loader.exec_module(module)
         reading = module.Tree((root / tree).resolve())
         found, parts = judge_parts(module, reading, spec)
-        for entry in reading.judges_without_record(spec):
-            print(f"{entry}: no complete record in the store of the driver, thus its parts hold no file that it read "
-                  "(decision 861)")
+        for line in unrecorded_lines(reading, spec):
+            print(line)
         gpu = None
         if reading.needs_gpu(spec):
             gpu, why = module.gpu_identity((root / tree).resolve())

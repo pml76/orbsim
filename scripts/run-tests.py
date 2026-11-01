@@ -1294,6 +1294,14 @@ def taken_programs(direct, listed: bool, on_line: set, recorded: set) -> set:
     return taken
 
 
+def list_problems(tests) -> list:
+    """A problem for each test of TAKEN_BY_BYTES that is not in `tests`: a test
+    renamed in CMakeLists.txt would leave its entry in the list with no
+    failure, and go back to its function part (decision 867)."""
+    return [f"{name}, which TAKEN_BY_BYTES names ({why}), is not a test of this tree"
+            for name, why in sorted(TAKEN_BY_BYTES.items()) if name not in tests]
+
+
 def stored_taken(name: str, entry) -> set:
     """The programs that the stored `entry` of the test `name` takes function
     by function, for its parts at the selection: none for a test in
@@ -2618,10 +2626,7 @@ def in_tree(tree: pathlib.Path, ctest: str, suite: pathlib.Path, other: pathlib.
         problems.append(f"{suite} does not report {LISTENER}, which every suite carries")
     if run.carries_listener(other, known):
         problems.append(f"{other} reports {LISTENER}, which it does not carry")
-    # A test renamed in CMakeLists.txt would leave its entry in the list with
-    # no failure, and go back to its function part (decision 867).
-    problems += [f"{name}, which TAKEN_BY_BYTES names ({why}), is not a test of this tree"
-                 for name, why in sorted(TAKEN_BY_BYTES.items()) if name not in run.tests]
+    problems += list_problems(run.tests)
     if application is None:
         print("run-tests in-tree: this tree builds no application; its libraries were not checked")
     else:
@@ -2933,15 +2938,74 @@ name, target = sys.argv[1], sys.argv[2]
 path = os.path.join(os.getcwd(), target).replace(os.sep, "/")
 try:
     with open(path, "rb") as stream:
-        stamp = hashlib.sha256(stream.read()).hexdigest()
+        data = stream.read()
+    stamp = hashlib.sha256(data).hexdigest()
 except FileNotFoundError:
-    stamp = "missing"
+    data, stamp = None, "missing"
 os.makedirs("test-reads", exist_ok=True)
 with open(os.path.join("test-reads", name + ".txt"), "w", encoding="utf-8", newline="\n") as out:
     out.write(stamp + " " + path + "\nend\n")
 if sys.argv[3:] == ["turn"]:
+    if data is not None:
+        with open(path + ".read", "wb") as out:
+            out.write(data)
     with open(path, "w", encoding="utf-8") as out:
         out.write(str(time.time_ns()))
+"""
+
+SCRATCH_SECOND = r"""import hashlib, os, sys
+here = os.path.dirname(os.path.abspath(__file__))
+name, files = sys.argv[1], sys.argv[2:]
+texts, lines = [], []
+for file in files:
+    path = os.path.join(here if file.startswith("inputs") else os.getcwd(), file).replace(os.sep, "/")
+    try:
+        with open(path, "rb") as stream:
+            data = stream.read()
+        stamp = hashlib.sha256(data).hexdigest()
+    except FileNotFoundError:
+        data, stamp = b"", "missing"
+    texts.append(data)
+    lines.append(stamp + " " + path + "\n")
+os.makedirs("test-reads", exist_ok=True)
+os.makedirs("out", exist_ok=True)
+with open(os.path.join("test-reads", name + ".txt"), "w", encoding="utf-8", newline="\n") as out:
+    out.write("".join(sorted(lines)) + "end\n")
+if name == "setup":
+    with open("out/setups.txt", "a", encoding="utf-8") as out:
+        out.write("setup\n")
+elif name == "reader":
+    with open("out/r.txt", "wb") as out:
+        out.write(texts[0])
+elif name == "check" and texts[0] != texts[1]:
+    sys.exit(1)
+elif name == "reader_x" and texts[0].startswith(b"fail"):
+    sys.exit(1)
+elif name == "reader_x" and texts[0].startswith(b"unreadable"):
+    os.makedirs("coverage-records/1-1.shaders.txt")
+"""
+
+SCRATCH_HOOKED = """try:
+    with open("out/p.txt", "rb") as stream:
+        stream.read()
+except FileNotFoundError:
+    pass
+"""
+
+SCRATCH_SECOND_PROJECT = """cmake_minimum_required(VERSION 3.25)
+project(scratch NONE)
+enable_testing()
+add_test(NAME writer COMMAND ${PY} ${CMAKE_SOURCE_DIR}/writer.py writer inputs/w.txt out/o.txt)
+add_test(NAME reader COMMAND ${PY} ${CMAKE_SOURCE_DIR}/second.py reader out/o.txt)
+add_test(NAME check COMMAND ${PY} ${CMAKE_SOURCE_DIR}/second.py check inputs/w.txt out/r.txt)
+set_tests_properties(check PROPERTIES DEPENDS reader)
+add_test(NAME writer_x COMMAND ${PY} ${CMAKE_SOURCE_DIR}/writer.py writer_x inputs/x.txt out/p.txt)
+add_test(NAME setup COMMAND ${PY} ${CMAKE_SOURCE_DIR}/second.py setup)
+set_tests_properties(setup PROPERTIES FIXTURES_SETUP fixture)
+add_test(NAME reader_x COMMAND ${PY} ${CMAKE_SOURCE_DIR}/second.py reader_x out/p.txt)
+set_tests_properties(reader_x PROPERTIES FIXTURES_REQUIRED fixture)
+add_test(NAME hooked COMMAND ${PY} ${CMAKE_SOURCE_DIR}/hooked.py)
+set_tests_properties(hooked PROPERTIES ENVIRONMENT ORBSIM_TEST_NAME=hooked)
 """
 
 SCRATCH_OUTPUTS_PROJECT = """cmake_minimum_required(VERSION 3.25)
@@ -3013,8 +3077,83 @@ def outputs_end_to_end(cmake: str, ctest: str, ninja: str, steps: list) -> list:
         step("outputs: a test that changes its own input after it reads it: the run fails", every | {"turns"},
              said="(decision 846): turns",
              problem="the test turns: ")
+        # The file goes back to what the test read: only the empty store entry
+        # of decision 874 still runs the test, not a changed line.
+        shutil.copy(tree / "out" / "t.txt.read", tree / "out" / "t.txt")
         step("outputs: and that test was not stored, thus it runs again", {"turns"},
              said="(decision 846): turns", problem="also after the second call of CTest")
+    return failures
+
+
+def second_call_end_to_end(cmake: str, ctest: str, ninja: str, steps: list) -> list:
+    """The second call of CTest through the driver (decisions 846, 874 and
+    907): a test that fails in the first call and passes in the second, with
+    the count of tests that the driver prints; a test with records of the real
+    hook, with no record of the first call left; no fixture setup in the
+    second call; a test that fails only in the second call; and a problem of
+    the second call. The scratch project holds a copy of the hook, because the
+    hook finds its repository from the folder of its own file."""
+    failures = []
+    with tempfile.TemporaryDirectory() as scratch:
+        root = pathlib.Path(scratch) / "repo"
+        tree = root / "build"
+        files = {"writer.py": SCRATCH_WRITER, "second.py": SCRATCH_SECOND, "hooked.py": SCRATCH_HOOKED,
+                 "inputs/w.txt": "w\n", "inputs/x.txt": "x\n", "CMakeLists.txt": SCRATCH_SECOND_PROJECT,
+                 ".gitignore": "build/\n"}
+        for name, text in files.items():
+            (root / name).parent.mkdir(parents=True, exist_ok=True)
+            (root / name).write_bytes(text.encode("utf-8"))
+        (root / "scripts" / "read-record").mkdir(parents=True)
+        shutil.copy(ROOT.joinpath(*HOOK_FOLDER, HOOK_FILE), root.joinpath(*HOOK_FOLDER, HOOK_FILE))
+        quiet = {"capture_output": True, "check": True, "cwd": root}
+        subprocess.run(["git", "init", "-q"], **quiet)
+        subprocess.run([cmake, "-S", str(root), "-B", str(tree), "-G", "Ninja", f"-DCMAKE_MAKE_PROGRAM={ninja}",
+                        f"-DPY={sys.executable}"], **quiet)
+
+        def step(name: str, wanted: set, again: str = None, fails: bool = False, problem: str = None,
+                 count: int = None, first: bool = False) -> None:
+            # `again`: the tests of the second call, and with none, no second
+            # call; `fails`: the run must fail; `problem`: a text that it must
+            # print, and fail; `count`: the tests that it must say ran;
+            # `first`: the first run, where CTest can start a reader first.
+            (tree / STATE / REPORT).unlink(missing_ok=True)
+            done = subprocess.run([sys.executable, __file__, str(tree), "--ctest", ctest, "--root", str(root)],
+                                  capture_output=True, text=True, encoding="utf-8", errors="replace", check=False)
+            try:
+                ran = set(outcomes((tree / STATE / REPORT).read_text(encoding="utf-8")))
+            except OSError:
+                ran = set()
+            steps.append(name)
+            said = f"(decision 846): {again}" in done.stdout if again else "in a second call of CTest" not in done.stdout
+            failed = done.returncode != 0
+            if (ran != wanted or failed != (fails or problem is not None) or not (first or said)
+                    or (problem and problem not in done.stdout) or (count and f"{count} ran, " not in done.stdout)):
+                failures.append(f"{name}: ran {sorted(ran)}, wanted {sorted(wanted)}, exit {done.returncode}, "
+                                f"the second call {again!r}, the problem {problem!r}, the count {count!r} wanted"
+                                f"\n{done.stdout}{done.stderr}")
+
+        step("second call: the first run", {"writer", "reader", "check", "writer_x", "setup", "reader_x", "hooked"},
+             first=True)
+        step("second call: nothing changed", set())
+        (root / "inputs" / "w.txt").write_bytes(b"w changed\n")
+        step("second call: a test that fails in the first call and passes in the second: the run passes, and the "
+             "count holds the test that only the second call ran", {"writer", "check"}, again="reader, check", count=3)
+        step("second call: nothing changed after it", set())
+        setups = (tree / "out" / "setups.txt").read_bytes()
+        (root / "inputs" / "x.txt").write_bytes(b"x changed\n")
+        step("second call: a test with records of the hook has no record of the first call left", {"writer_x"},
+             again="reader_x, hooked")
+        steps.append("second call: no fixture setup runs in it")
+        if (tree / "out" / "setups.txt").read_bytes() != setups:
+            failures.append("second call: a fixture setup ran in the second call (decision 874)")
+        (root / "inputs" / "x.txt").write_bytes(b"fail\n")
+        step("second call: a test that fails only in the second call fails the run", {"writer_x"},
+             again="reader_x, hooked", fails=True)
+        (root / "inputs" / "x.txt").write_bytes(b"x again\n")
+        step("second call: the test that failed runs in the first call", {"writer_x", "reader_x"}, again="hooked")
+        (root / "inputs" / "x.txt").write_bytes(b"unreadable\n")
+        step("second call: a problem of the second call fails the run", {"writer_x"}, again="reader_x, hooked",
+             problem="a shader record that could not be read")
     return failures
 
 
@@ -3112,6 +3251,7 @@ def end_to_end(cmake: str, ctest: str, ninja: str) -> int:
     failures += shader_records_end_to_end(cmake, ctest, ninja, steps)
     failures += script_records_end_to_end(cmake, ctest, ninja, steps)
     failures += outputs_end_to_end(cmake, ctest, ninja, steps)
+    failures += second_call_end_to_end(cmake, ctest, ninja, steps)
 
     for failure in failures:
         print(f"end-to-end FAILED: {failure}")
@@ -4777,6 +4917,12 @@ def self_test() -> int:
            {"reader2"})
     expect("one forced", selection(tests, same, now, current, {"alone"}), {"alone"})
     expect("nothing stored", selection(tests, {}, now, current, set()), set(tests))
+
+    # list_problems(): decision 867.
+    expect("each test of the list is a test of the tree: no problem", list_problems(set(TAKEN_BY_BYTES)), [])
+    expect("a test of the list that the tree does not have is a problem, with its decision",
+           list_problems(set(TAKEN_BY_BYTES) - {"assertion_message_precondition"}),
+           ["assertion_message_precondition, which TAKEN_BY_BYTES names (decision 864), is not a test of this tree"])
 
     # coverage_faults() and coverage_fault_lines(): decisions 842, 843 and 868.
     last = {"t": {"programs": {"p": {"keys": ["f", "g"]}}}, "u": {"parts": {}}}
