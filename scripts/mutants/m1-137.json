@@ -1,0 +1,1027 @@
+{
+  "task": "M1-137",
+  "tree": "build/debug",
+  "note": "The mutants of M1-137 (register decisions 842-909, as its task document lists them): item 6, the list of decision 844; item 1, a new function fails a full run; item 2, the rules of decisions 846 and 847, and decision 857; item 4, the environment part; and item 3, scripts/compare-reads.py. Each mutant changes a Python script. Each judge is the judge that the pre-measure of 2026-11-01 found on a scratch copy (decision 906), and a mutant of decisions 907-909 has each test that failed for it among all relevant judges. Ten mutants survived the first pre-measure. Decisions 907-909 gave each of those lines a test, and each of the ten now makes a test fail. No mutant is declared a survivor. No mutant changes compiled code, thus the file runs in build/debug only (decisions 709 (6) and 856).",
+  "mutants": [
+    {
+      "name": "decision 864: assertion_message_precondition is not in the list",
+      "file": "scripts/run-tests.py",
+      "find": "    \"assertion_message_precondition\": \"decision 864\",\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "decision 844: the list does not change the stored programs",
+      "file": "scripts/run-tests.py",
+      "find": "    if name in TAKEN_BY_BYTES:\n        return set()\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "decision 844: a test in the list still takes its programs by function",
+      "file": "scripts/run-tests.py",
+      "find": "        if test.get(\"name\") in TAKEN_BY_BYTES:\n            names = set()\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "decision 867: a name in the list that is no test is no problem",
+      "file": "scripts/run-tests.py",
+      "find": "for name, why in sorted(TAKEN_BY_BYTES.items()) if name not in tests]",
+      "replace": "for name, why in sorted(TAKEN_BY_BYTES.items()) if False]",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "decision 868: each test is examined, not only those that the selection skips",
+      "file": "scripts/run-tests.py",
+      "find": "    for name in sorted(set(skipped) & set(taken)):\n",
+      "replace": "    for name in sorted(taken):\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "decision 842: no function is new",
+      "file": "scripts/run-tests.py",
+      "find": "new = sorted(set(program[\"keys\"]) - set((before.get(key) or {}).get(\"keys\") or ()))",
+      "replace": "new = []",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "decision 843: a fault is no problem of the run",
+      "file": "scripts/run-tests.py",
+      "find": "    problems += coverage_fault_lines(faults)\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_function_level"
+      ]
+    },
+    {
+      "name": "decision 869: a test with a fault does not keep its entry",
+      "file": "scripts/run-tests.py",
+      "find": "        if name in faults:\n            continue\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_function_level"
+      ]
+    },
+    {
+      "name": "decision 868: a full run examines no test",
+      "file": "scripts/run-tests.py",
+      "find": "    skippable = set(run.tests) - chosen\n",
+      "replace": "    skippable = set()\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_function_level"
+      ]
+    },
+    {
+      "name": "a full run skips what the selection skips",
+      "file": "scripts/run-tests.py",
+      "find": "    if full:\n        chosen = set(run.tests)\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "decision 872: Testing/ counts as a line",
+      "file": "scripts/run-tests.py",
+      "find": "WRITTEN_FOLDERS = (STATE, RECORDS, COVERAGE_RECORDS, \"Testing\")",
+      "replace": "WRITTEN_FOLDERS = (STATE, RECORDS, COVERAGE_RECORDS)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "decision 872: the written files count as lines",
+      "file": "scripts/run-tests.py",
+      "find": "or key in {norm(tree / name) for name in WRITTEN_FILES})",
+      "replace": "or False)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "decision 872: a path outside the tree counts as a line",
+      "file": "scripts/run-tests.py",
+      "find": "    if not under(key, norm(tree)):\n        return False\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "decision 872: the store does not count as a line",
+      "file": "scripts/run-tests.py",
+      "find": "return key == norm(tree / STATE / STORE) or not written_in_each_run(key, tree)",
+      "replace": "return not written_in_each_run(key, tree)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "decision 881: the store counts as a file of a judge",
+      "file": "scripts/run-tests.py",
+      "find": "return under(key, norm(tree)) and not written_in_each_run(key, tree)",
+      "replace": "return under(key, norm(tree)) and (key == norm(tree / STATE / STORE) or not written_in_each_run(key, tree))",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "decision 873: each line is compared as World.file hashes",
+      "file": "scripts/run-tests.py",
+      "find": "        by_hook = \"listings\" in entry\n",
+      "replace": "        by_hook = False\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "decision 846: a `list` line is not examined",
+      "file": "scripts/run-tests.py",
+      "find": "                 + [(\"list\", stamp, path) for stamp, path in entry.get(\"listings\") or []])\n",
+      "replace": "                 )\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "decision 872: the lines are not limited to counted lines",
+      "file": "scripts/run-tests.py",
+      "find": "if counted_line(path, tree) and current(kind, path, by_hook) != (kind, stamp)}",
+      "replace": "if current(kind, path, by_hook) != (kind, stamp)}",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "decision 847: the store is no part of a test that reads it",
+      "file": "scripts/run-tests.py",
+      "find": "if not recorded and any(norm(path) == reader for path in self.arguments(test)):",
+      "replace": "if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "decision 847: the store is a part of a test with complete records too",
+      "file": "scripts/run-tests.py",
+      "find": "if not recorded and any(norm(path) == reader for path in self.arguments(test)):",
+      "replace": "if any(norm(path) == reader for path in self.arguments(test)):",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "decision 846: a skipped test is not examined",
+      "file": "scripts/run-tests.py",
+      "find": "    kept = {name: stored[name] for name in skipped if name in stored}\n",
+      "replace": "    kept = {}\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "decision 846: no line is examined after the run",
+      "file": "scripts/run-tests.py",
+      "find": "    changed = changed_lines({**kept, **entries}, tree, current_lines())\n",
+      "replace": "    changed = {}\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "decision 846: the dependents do not run again",
+      "file": "scripts/run-tests.py",
+      "find": "again = [name for name in run.tests if name in with_dependents(set(changed), run.tests)]",
+      "replace": "again = [name for name in run.tests if name in changed]",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "decision 846: the records of the first call stay",
+      "file": "scripts/run-tests.py",
+      "find": "        remove_records(again)\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "decision 846: the first failure stands after the second call passes",
+      "file": "scripts/run-tests.py",
+      "find": "code = second_code if code != 0 and failed_first and failed_first <= set(again) else code or second_code",
+      "replace": "code = code or second_code",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "decision 846: a failure of the second call does not count",
+      "file": "scripts/run-tests.py",
+      "find": "code = second_code if code != 0 and failed_first and failed_first <= set(again) else code or second_code",
+      "replace": "code = code",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "decision 846: the results of the second call are not kept",
+      "file": "scripts/run-tests.py",
+      "find": "        results.update(second)\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "decision 846: the entries of the second call are not kept",
+      "file": "scripts/run-tests.py",
+      "find": "        entries.update(more)\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "decision 846: the problems of the second call are lost",
+      "file": "scripts/run-tests.py",
+      "find": "        problems += more_problems\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "decision 874: a line still changed after the second call is no problem",
+      "file": "scripts/run-tests.py",
+      "find": "        problems += [f\"the test {name}: {path} is not as the test read it, also after the second call of CTest; \"\n                     \"the test is not stored (decisions 846 and 874)\"\n                     for name, paths in sorted(still.items()) for path in paths]\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "decision 874: a test still changed is stored",
+      "file": "scripts/run-tests.py",
+      "find": "        unstored = set(still)\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "decision 846: a test of the second call is not stored",
+      "file": "scripts/run-tests.py",
+      "find": "for name in [name for name in run.tests if name in chosen or name in again]:",
+      "replace": "for name in [name for name in run.tests if name in chosen]:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "decision 874: the second call runs the setups again",
+      "file": "scripts/run-tests.py",
+      "find": "second_code, second = call(again, SELECTED_AGAIN, REPORT_AGAIN, True)",
+      "replace": "second_code, second = call(again, SELECTED_AGAIN, REPORT_AGAIN, False)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "decision 846: the new hash uses the values of this run",
+      "file": "scripts/run-tests.py",
+      "find": "        world = World(tree, root)\n        return lambda kind, path, by_hook",
+      "replace": "        world = run.world\n        return lambda kind, path, by_hook",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_end_to_end"
+      ]
+    },
+    {
+      "name": "decision 857: a judge has no part for the files that it read",
+      "file": "scripts/mutants-due.py",
+      "find": "            parts.update(self.judge_read_parts(f\"ctest {entry}\", entry, record))\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "decision 879: a reading does not take the files from the record",
+      "file": "scripts/mutants-due.py",
+      "find": "        if record is not None and READ_MARK in record:\n",
+      "replace": "        if False:\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "decision 879: a record with no mark gives no files",
+      "file": "scripts/mutants-due.py",
+      "find": "            paths = self.read_files(name) or []\n",
+      "replace": "            paths = []\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "decision 858: each read line counts",
+      "file": "scripts/mutants-due.py",
+      "find": "for _, path in entry[\"reads\"] if module.counted_file(path, self.tree)})",
+      "replace": "for _, path in entry[\"reads\"]})",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "decision 861: a judge with no complete record gets a part",
+      "file": "scripts/mutants-due.py",
+      "find": "        if entry.get(\"reads\") is None:\n            return None\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "decision 880: the value of a part holds 16 digits",
+      "file": "scripts/mutants-due.py",
+      "find": "found[f\"{READ_PART}{norm(path)[len(top):]}\"] = f\"{kind} {stamp}\"",
+      "replace": "found[f\"{READ_PART}{norm(path)[len(top):]}\"] = f\"{kind} {stamp[:16]}\"",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "decision 859: a reading does not give the record to the parts",
+      "file": "scripts/mutants-due.py",
+      "find": "        parts = self.fingerprint_parts(spec, record)\n",
+      "replace": "        parts = self.fingerprint_parts(spec)\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "decision 888: a letter is written as an escape in a fingerprint",
+      "file": "scripts/mutants-due.py",
+      "find": "json.dumps(kept, sort_keys=True, ensure_ascii=False)",
+      "replace": "json.dumps(kept, sort_keys=True)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutants_due_self_test"
+      ]
+    },
+    {
+      "name": "decision 879: a pass writes no mark",
+      "file": "scripts/mutate.py",
+      "find": "        record[READ_MARK] = \"decision 857\"\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ]
+    },
+    {
+      "name": "decision 879: the mark has a different name",
+      "file": "scripts/mutate.py",
+      "find": "READ_MARK = \"read_lines\"",
+      "replace": "READ_MARK = \"read lines\"",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ]
+    },
+    {
+      "name": "decision 861: a pass does not print a judge with no complete record",
+      "file": "scripts/mutate.py",
+      "find": "for entry in reading.judges_without_record(spec)]",
+      "replace": "for entry in ()]",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "mutate_self_test"
+      ]
+    },
+    {
+      "name": "decision 891: PYTHONHOME is not in the part",
+      "file": "scripts/run-tests.py",
+      "find": "MEASURED_VARIABLES = (\"PYTHONHOME\", \"PYTHONSAFEPATH\", \"GIT_DIR\", \"GIT_WORK_TREE\")",
+      "replace": "MEASURED_VARIABLES = (\"PYTHONSAFEPATH\", \"GIT_DIR\", \"GIT_WORK_TREE\")",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "decision 891: PYTHONSAFEPATH is not in the part",
+      "file": "scripts/run-tests.py",
+      "find": "MEASURED_VARIABLES = (\"PYTHONHOME\", \"PYTHONSAFEPATH\", \"GIT_DIR\", \"GIT_WORK_TREE\")",
+      "replace": "MEASURED_VARIABLES = (\"PYTHONHOME\", \"GIT_DIR\", \"GIT_WORK_TREE\")",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "decision 891: GIT_DIR is not in the part",
+      "file": "scripts/run-tests.py",
+      "find": "MEASURED_VARIABLES = (\"PYTHONHOME\", \"PYTHONSAFEPATH\", \"GIT_DIR\", \"GIT_WORK_TREE\")",
+      "replace": "MEASURED_VARIABLES = (\"PYTHONHOME\", \"PYTHONSAFEPATH\", \"GIT_WORK_TREE\")",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "decision 891: GIT_WORK_TREE is not in the part",
+      "file": "scripts/run-tests.py",
+      "find": "MEASURED_VARIABLES = (\"PYTHONHOME\", \"PYTHONSAFEPATH\", \"GIT_DIR\", \"GIT_WORK_TREE\")",
+      "replace": "MEASURED_VARIABLES = (\"PYTHONHOME\", \"PYTHONSAFEPATH\", \"GIT_DIR\")",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "decision 885: CMAKE_* is not in the part",
+      "file": "scripts/run-tests.py",
+      "find": " or fold(n).startswith(MEASURED_PATTERN)}",
+      "replace": "}",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "decision 890: PATHEXT is not in the part",
+      "file": "scripts/run-tests.py",
+      "find": "             for n, v in env.items() if fold(n) == PATH_EXTENSIONS}\n",
+      "replace": "             for n, v in env.items() if False}\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "decision 890: .CPL moves the part",
+      "file": "scripts/run-tests.py",
+      "find": " for entry in v.split(\";\") if entry.upper() != POWERSHELL_EXTENSION)",
+      "replace": " for entry in v.split(\";\"))",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "decision 890: .cpl moves the part",
+      "file": "scripts/run-tests.py",
+      "find": "if entry.upper() != POWERSHELL_EXTENSION)",
+      "replace": "if entry != POWERSHELL_EXTENSION)",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_self_test"
+      ]
+    },
+    {
+      "name": "decision 888: the driver writes its output in the code page",
+      "file": "scripts/run-tests.py",
+      "find": "    sys.stdout.reconfigure(encoding=\"utf-8\", errors=\"backslashreplace\")\n",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "run_tests_function_level"
+      ]
+    },
+    {
+      "name": "decision 893: a miss is not counted",
+      "file": "scripts/compare-reads.py",
+      "find": "                    misses.add((kind, process.image, key))\n",
+      "replace": "                    pass\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "VERIFICATION rule 23: a miss does not fail the run",
+      "file": "scripts/compare-reads.py",
+      "find": "return 1 if misses or not_compared or found else 0",
+      "replace": "return 1 if not_compared or found else 0",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "VERIFICATION rule 23: a test not compared does not fail the run",
+      "file": "scripts/compare-reads.py",
+      "find": "return 1 if misses or not_compared or found else 0",
+      "replace": "return 1 if misses or found else 0",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 823: a planted fault not found does not fail the run",
+      "file": "scripts/compare-reads.py",
+      "find": "return 1 if misses or not_compared or found else 0",
+      "replace": "return 1 if misses or not_compared else 0",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 823: each path counts as known",
+      "file": "scripts/compare-reads.py",
+      "find": "                if key in lined or key in parts or any(under(key, s) for s in skip):\n",
+      "replace": "                if True:\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 823: the lines of a test are not read",
+      "file": "scripts/compare-reads.py",
+      "find": "    lined = {norm(p) for p in reads} | listed\n",
+      "replace": "    lined = listed\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 893: no ruled group",
+      "file": "scripts/compare-reads.py",
+      "find": "    tree, parts = norm(run.tree), entry.get(\"parts\") or {}\n",
+      "replace": "    tree, parts = norm(run.tree), entry.get(\"parts\") or {}\n    return None\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 893: each query is ruled",
+      "file": "scripts/compare-reads.py",
+      "find": "    if kind == \"query\":\n        if under(key, norm(run.root / SYSTEM_RESOURCES)):\n",
+      "replace": "    if kind == \"query\":\n        return TREE_NOT_THERE\n        if under(key, norm(run.root / SYSTEM_RESOURCES)):\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 864: the .pdb file of any program is ruled",
+      "file": "scripts/compare-reads.py",
+      "find": "if key.endswith(\".pdb\") and key[:-len(\".pdb\")] + \".exe\" in known:",
+      "replace": "if key.endswith(\".pdb\"):",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 831: a second recording uses the store",
+      "file": "scripts/compare-reads.py",
+      "find": "lines = stored_lines(store[name]) if index == 0 else lines_from_records(run, name, folder)",
+      "replace": "lines = stored_lines(store[name])",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 895: the outside list is empty",
+      "file": "scripts/compare-reads.py",
+      "find": "                    process.outside.add(key.rpartition(\"/\")[0])\n",
+      "replace": "                    pass\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 895: a folder outside counts as a file",
+      "file": "scripts/compare-reads.py",
+      "find": "\n                        and state_of(key, known) != \"folder\"):",
+      "replace": "):",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 894: a part that the tool does not know does not stop it",
+      "file": "scripts/compare-reads.py",
+      "find": "    if unknown:\n",
+      "replace": "    if False:\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 823: a folder counts as a read",
+      "file": "scripts/compare-reads.py",
+      "find": "if FOLDER.search(detail) or state_of(key, known) == \"folder\":",
+      "replace": "if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 823: no owner by the parent",
+      "file": "scripts/compare-reads.py",
+      "find": "while walk.owner is None and walk.parent_process is not None and steps < 64:",
+      "replace": "while False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 896: no names in the file",
+      "file": "scripts/compare-reads.py",
+      "find": "listed.write_bytes(\"\".join(f\"{name}\\n\" for name in not_compared).encode(\"utf-8\"))",
+      "replace": "listed.write_bytes(b\"\")",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 899: a .pyc file of any source is ruled",
+      "file": "scripts/compare-reads.py",
+      "find": "if source_of(key) in known:",
+      "replace": "if source_of(key):",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 899: no rule for a .pyc file",
+      "file": "scripts/compare-reads.py",
+      "find": "if source_of(key) in known:",
+      "replace": "if False:",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 823: a planted fault is always found",
+      "file": "scripts/compare-reads.py",
+      "find": "found = ((\"read\" in {m[0] for m in new if m[2] == key})\n                         and all(key in (m[2], source_of(m[2])) for m in new))",
+      "replace": "found = True",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 899: a .pyc file does not come back with its line",
+      "file": "scripts/compare-reads.py",
+      "find": "and all(key in (m[2], source_of(m[2])) for m in new))",
+      "replace": "and all(key == m[2] for m in new))",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 901: the tree is known with each part",
+      "file": "scripts/compare-reads.py",
+      "find": "    if \"build tree\" in parts:\n        if under(key, tree):\n",
+      "replace": "    if True:\n        if under(key, tree):\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 901: no rule for the tree",
+      "file": "scripts/compare-reads.py",
+      "find": "        if under(key, tree):\n            return BUILT\n",
+      "replace": "        if False:\n            return BUILT\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 902: no rule for .git",
+      "file": "scripts/compare-reads.py",
+      "find": "        if under(key, norm(run.root / \".git\")):\n",
+      "replace": "        if False:\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 900: build/ is a hashed folder",
+      "file": "scripts/compare-reads.py",
+      "find": "    if ((kind == \"listing\" or state is None) and not under(key, norm(run.root / \"build\"))\n            and any(under(key, folder) for folder in hashed_folders(run, parts))):\n",
+      "replace": "    if ((kind == \"listing\" or state is None)\n            and any(under(key, folder) for folder in hashed_folders(run, parts))):\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 900: a read counts as a hashed name",
+      "file": "scripts/compare-reads.py",
+      "find": "    if ((kind == \"listing\" or state is None) and not under(key, norm(run.root / \"build\"))\n            and any(under(key, folder) for folder in hashed_folders(run, parts))):\n",
+      "replace": "    if (True and not under(key, norm(run.root / \"build\"))\n            and any(under(key, folder) for folder in hashed_folders(run, parts))):\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 900: no hashed name",
+      "file": "scripts/compare-reads.py",
+      "find": "    if ((kind == \"listing\" or state is None) and not under(key, norm(run.root / \"build\"))\n            and any(under(key, folder) for folder in hashed_folders(run, parts))):\n",
+      "replace": "    if False:\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 900: the part build tree holds no folder",
+      "file": "scripts/compare-reads.py",
+      "find": "    folders = [run.root] if \"build tree\" in parts else []\n",
+      "replace": "    folders = []\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 900: the part scripts holds no folder",
+      "file": "scripts/compare-reads.py",
+      "find": "        folders += [run.root / folder for folder in DRIVER.SCRIPT_INPUTS]\n",
+      "replace": "        pass\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 900: the part cautious holds no folder",
+      "file": "scripts/compare-reads.py",
+      "find": "        folders += [run.root / folder for folder in DRIVER.CAUTIOUS]\n",
+      "replace": "        pass\n",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 902: the question of CMake is ruled for each test",
+      "file": "scripts/compare-reads.py",
+      "find": " and name in ASK_FOR_NINJA",
+      "replace": "",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    },
+    {
+      "name": "decision 902: the listings of the root are ruled for each test",
+      "file": "scripts/compare-reads.py",
+      "find": "LISTED_FOLDERS.get(name, ())",
+      "replace": "LISTED_FOLDERS[\"reproducible_build\"] + LISTED_FOLDERS[\"probe_clear_determinism\"]",
+      "expect": "caught",
+      "suites": [],
+      "targets": [],
+      "ctest": [
+        "compare_reads_self_test"
+      ]
+    }
+  ]
+}
