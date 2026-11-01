@@ -7,9 +7,11 @@ about the design of decision 857 by decisions 858-863, questions 23 to
 about the code of item 1 by decisions 868-871, questions 31 to 40 about
 the code of item 2 by decisions 872-881, questions 41 to 50 about item 4
 by decisions 882-891, questions 51 to 62 about item 3 by decisions 892-903,
-and questions 63 and 64 about item 5 by decisions 904 and 905. **All six
-items are done** (2026-10-29 to 2026-10-31). The mutant file of decision 856
-is next. The next task after M1-138 (decisions 744 and 763)
+questions 63 and 64 about item 5 by decisions 904 and 905, and questions 65
+to 68 about the mutant file by decisions 906-909. **All six items are done**
+(2026-10-29 to 2026-10-31), **and the pass of its mutant file caught 85 of 85
+mutants** in build/debug on 2026-11-01. The boxes of "Done when" wait for the
+owner's word that the task is done. The next task after M1-138 (decisions 744 and 763)
 Prerequisites: M1-133
 Decided by: register decision 744, ruled 2026-10-21 on the owner's word, after
 the test selection was compared with published work: Ekstazi
@@ -631,6 +633,31 @@ decision 904: A.* The owner's words were "Accept both", for questions 63 and
   somebody changes by hand, and a value of an environment variable that is not
   in the fingerprint.
 - B. The scope of decision 852.
+
+**65. The mutant file.** *Ruled by decision 906: A.* The owner's words were
+"Q66: go with A. When you find a test that fails pls add it to the judges
+list", and for the other questions, "pls go with your recommendations".
+
+- **A (recommended).** The 85 mutants of the pre-measure, in build/debug only.
+- B. About 15 fewer mutants for item 3.
+
+**66. The six survivors of the second call of CTest.** *Ruled by decision 907:
+A.*
+
+- **A (recommended).** New steps in `run_tests_end_to_end` that catch all six.
+- B. The six declared survivors.
+
+**67. The survivor of decision 874.** *Ruled by decision 908: A.*
+
+- **A (recommended).** The existing step writes back the content that the test
+  read, and the test must run.
+- B. The mutant declared a survivor.
+- C. The code removed as not necessary.
+
+**68. The three survivors that no test can reach.** *Ruled by decision 909: A.*
+
+- **A (recommended).** Each moves into a small function, with a self-test case.
+- B. The three declared survivors.
 
 **The work itself**
 
