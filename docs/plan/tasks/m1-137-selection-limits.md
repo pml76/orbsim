@@ -1,6 +1,7 @@
 # M1-137 — The limits of the test selection, measured and closed
 
-Phase: B | Status: **started 2026-10-29.** Its questions 1 to 15 are ruled
+Phase: B | Status: **done 2026-11-02, on the owner's word. Started
+2026-10-29.** Its questions 1 to 15 are ruled
 (decisions 842-856), question 16 by decision 857, questions 17 to 22
 about the design of decision 857 by decisions 858-863, questions 23 to
 26 about the result of item 6 by decisions 864-867, questions 27 to 30
@@ -10,8 +11,8 @@ by decisions 882-891, questions 51 to 62 about item 3 by decisions 892-903,
 questions 63 and 64 about item 5 by decisions 904 and 905, and questions 65
 to 68 about the mutant file by decisions 906-909. **All six items are done**
 (2026-10-29 to 2026-10-31), **and the pass of its mutant file caught 85 of 85
-mutants** in build/debug on 2026-11-01. The boxes of "Done when" wait for the
-owner's word that the task is done. The next task after M1-138 (decisions 744 and 763)
+mutants** in build/debug on 2026-11-01. "Where it ended (2026-11-02)" below
+gives the end. It came after M1-138 (decisions 744 and 763).
 Prerequisites: M1-133
 Decided by: register decision 744, ruled 2026-10-21 on the owner's word, after
 the test selection was compared with published work: Ekstazi
@@ -680,13 +681,47 @@ A.*
   mutant changes compiled code.
 - B. The two trees.
 
+## Where it ended (2026-11-02)
+
+- **Item 6** (`c16a8f6`, `5bd06c7`): the two tests that examine the line of
+  the chain of calls take their program by its bytes, through the list
+  `TAKEN_BY_BYTES` of the driver. The record is
+  [`m1-137-pdb.md`](../../measurements/m1-137-pdb.md).
+- **Item 1** (`0c176ff`): no test entered a different set of functions in two
+  runs at one commit. A full run now fails for each test that the selection
+  skips and that entered a new function. The record is
+  [`m1-137-coverage.md`](../../measurements/m1-137-coverage.md).
+- **Item 2** (`b358a76`, `e824c73`): a test that read a changed output of a
+  different test runs again (decisions 846 and 847), and the files of the
+  build tree that a judge of a mutant file read are in the part of that file
+  (decision 857). The record is
+  [`m1-137-outputs.md`](../../measurements/m1-137-outputs.md).
+- **Item 4** (`0b6e144`, `b235055`): the environment part holds the variables
+  that the measurement found, and `TEMP` stays out. The record is
+  [`m1-137-environment.md`](../../measurements/m1-137-environment.md).
+- **Item 3** (`2eaee5a`): `scripts/compare-reads.py` compares the read records
+  with a recording of Process Monitor, and the six gates that stay have a
+  line for it. In its first real run, no test of the two trees used a path
+  that its fingerprint does not hold, by the rulings of decisions 899-902.
+  The record is [`m1-137-reads.md`](../../measurements/m1-137-reads.md).
+- **Item 5** (`03d4ed2`): `CLAUDE.md` and `docs/BRIEFING.md` name the limits
+  of the selection.
+- **The mutant file** `scripts/mutants/m1-137.json`: 85 mutants, 85 caught in
+  build/debug at `f4004bb`, in 31 minutes. The pre-measure found 10 survivors,
+  and `7de3a15` gave each of those lines a test (decisions 906-909). The
+  record of the pass is `09d090e`.
+- **`check-full` and the push:** the owner gave the word on 2026-11-02,
+  "Done, and push". `check-full` in the two trees and the push follow the
+  commit that ends this task, and the row "Working branch" of
+  `docs/STATUS.md` records them.
+
 ## Done when
 
-- [ ] All the questions above, and each question of the design, ruled before
+- [x] All the questions above, and each question of the design, ruled before
       its code.
-- [ ] Items 1 to 6 done, each check seen to fail first. *(This said "Items 1
+- [x] Items 1 to 6 done, each check seen to fail first. *(This said "Items 1
       to 5" until 2026-10-29: decision 833 added item 6, and this line was
       not changed then.)*
-- [ ] `check` passes in the two trees.
-- [ ] The task's mutant file has run after the commit and its record is
+- [x] `check` passes in the two trees.
+- [x] The task's mutant file has run after the commit and its record is
       committed. A commit at the end; the push only on the owner's go-ahead.

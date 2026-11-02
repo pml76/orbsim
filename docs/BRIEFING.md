@@ -505,3 +505,8 @@ commits up to `889fc03` are pushed.
 Next, M1-137, then M1-134. The questions of M1-137 go to the owner before
 its work starts. The next session starts with `STATUS.md` and M1-137's task
 document.
+
+**On 2026-11-02** M1-137 is done, on the owner's word (decisions 842-909). The
+pass of its mutant file caught all 85 mutants. Next, M1-134, then M1-127. The
+questions of M1-134 go to the owner before its work starts. The next session
+starts with `STATUS.md` and M1-134's task document.
